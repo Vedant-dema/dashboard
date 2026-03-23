@@ -2,6 +2,8 @@
 
 Professional diagram set for frontend, backend, APIs, database, cloud runtime, and Terraform/IaC.
 
+**Single-cloud deep dive (Azure + logos + provisioning checklist):** [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md).
+
 ## 1) Visual legend and service logos
 
 Use these names consistently in slides and docs:

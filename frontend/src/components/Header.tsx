@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, MessageCircle, Settings, Search, Plus, LogOut } from "lucide-react";
+import { Bell, MessageCircle, Settings, Search, LogOut } from "lucide-react";
 import { loadKundenDb } from "../store/kundenStore";
 import { getQuickSearchSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
@@ -45,14 +45,6 @@ export function Header() {
           className="h-11 w-full rounded-2xl border border-slate-200/80 bg-white pl-11 pr-4 text-sm text-slate-700 shadow-sm outline-none ring-blue-500/20 placeholder:text-slate-400 focus:border-blue-300 focus:ring-2"
         />
       </div>
-
-      <button
-        type="button"
-        className="flex shrink-0 items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
-      >
-        <Plus className="h-4 w-4" />
-        {t("headerAddNew", "Neu hinzufügen")}
-      </button>
 
       <div className="flex shrink-0 items-center gap-1">
         <button

@@ -26,9 +26,10 @@
 8. [Deployment and hosting](#8-deployment-and-hosting)  
 9. [Quality, security, and compliance](#9-quality-security-and-compliance)  
 10. [AI and automation (roadmap)](#10-ai-and-automation-roadmap)  
-11. [Success criteria and KPIs](#11-success-criteria-and-kpis)  
-12. [Risks, dependencies, and open decisions](#12-risks-dependencies-and-open-decisions)  
-13. [Appendix — document map and glossary](#appendix--document-map-and-glossary)  
+11. [Feature status — today vs target](#11-feature-status--today-vs-target)  
+12. [Success criteria and KPIs](#12-success-criteria-and-kpis)  
+13. [Risks, dependencies, and open decisions](#13-risks-dependencies-and-open-decisions)  
+14. [Appendix — document map and glossary](#appendix--document-map-and-glossary)  
 
 ---
 
@@ -246,13 +247,76 @@ Container images (API/worker), DB migrations, static SPA build, OpenAPI snapshot
 
 ## 10. AI and automation (roadmap)
 
-- **Principle:** No LLM keys or direct model calls in the browser; all generative/embedding use **Python** services with quotas, audit, and RBAC (**HLD §8**).  
-- **Examples of planned capabilities:** natural-language inventory/FAQ, semantic customer search, document OCR/extraction, draft replies/offers (human confirmation), duplicate customer hints.  
-- **Phased:** foundations → read-only assist → domain integration → drafting (HLD §8.10).
+### 10.1 AI operating principles (non-negotiable)
+
+- **Server-side only:** No LLM keys or direct model calls in the browser; all AI traffic flows through backend APIs.
+- **Human-in-the-loop:** High-risk outputs (draft communications, extracted invoice fields, dedupe suggestions) require human confirmation before save/post.
+- **Role and tenant controls:** AI retrieval and tools are filtered by user role and business area.
+- **Observability and governance:** Usage, quality, and costs are logged and reviewed.
+
+### 10.2 AI feature portfolio (planned)
+
+| Feature ID | AI feature | Business value | Department impact | Priority phase |
+|------------|------------|----------------|-------------------|----------------|
+| **AI-SEARCH-01** | Natural-language inventory / parts query | Faster vehicle/part discovery and less manual filtering | Sales, Purchase, Dashboard | Phase 2 |
+| **AI-SEARCH-02** | Semantic customer/company search | Better match quality despite spelling variations | Sales, Purchase, Workshop, Wash | Phase 2 |
+| **AI-FAQ-01** | Internal process assistant | Reduces training load and SOP lookup time | All internal users | Phase 2 |
+| **AI-LEAD-01** | Inquiry triage (classification + urgency) | Shorter lead-response time, better prioritisation | Sales, Purchase | Phase 2 |
+| **AI-LEAD-02** | Draft response to inquiry | Speeds first customer response; still human-approved | Sales | Phase 3 |
+| **AI-OFFER-01** | Offer text drafting | Faster offer creation and consistency | Sales, Purchase | Phase 3 |
+| **AI-DOC-01** | Invoice/receipt field extraction (OCR + schema) | Reduces manual finance entry effort | Finance, Workshop | Phase 2-3 |
+| **AI-DOC-02** | Document summary for long files | Faster understanding of contracts/files | Sales, Admin | Phase 3 |
+| **AI-DEDUP-01** | Duplicate-customer hints | Better data quality, fewer fragmented records | Sales, Purchase, Wash | Phase 2 |
+| **AI-REP-01** | KPI narrative generation | Management-ready summaries for dashboards | Leadership, BI users | Phase 3 |
+| **AI-B2B-01** | B2B catalog Q&A assistant | Better partner self-service | B2B | Phase 3 |
+| **AI-SEC-01** | Login risk signal enrichment (optional) | Better security posture | Admin/Security | Later |
+| **AI-OGT-01** | Route/task suggestion (optional) | Better field efficiency | On-ground team | Later |
+
+### 10.3 AI outcomes for owners
+
+| Outcome type | Expected impact |
+|--------------|-----------------|
+| **Speed** | Reduced search, drafting, and document processing time across core operations |
+| **Quality** | Better consistency in offers, replies, and customer master data |
+| **Control** | AI decisions remain audited, permission-scoped, and human-approved where required |
+| **Scalability** | Shared AI platform reused across departments, not isolated one-off tools |
+
+### 10.4 AI features intentionally out of scope (v1)
+
+- Fully autonomous accounting postings
+- Unsupervised customer merge
+- Medical/legal advice workflows
+- Training AI models on customer PII without legal approval and DPA controls
 
 ---
 
-## 11. Success criteria and KPIs
+## 11. Feature status — today vs target
+
+### 11.1 Product capability status matrix
+
+| Capability area | Current status in system | Target status |
+|-----------------|--------------------------|---------------|
+| Authentication shell | Implemented (login flow, protected-route behavior) | Production OIDC/JWT with enterprise policy |
+| Department navigation | Implemented (Sales/Purchase/Workshop/Wash/HRM/OGT) | Role-aware menu and policy-level authZ per API |
+| Dashboard widgets | Implemented (dynamic layout, charts) | Live API-backed KPIs with role-specific data |
+| Customers | Implemented UI with search/filter/edit patterns | Full API persistence + dedupe workflow controls |
+| Offers / Inquiries | Implemented UI flows | Full state transitions and business-rule validation on backend |
+| Inventory / Sold stock | Implemented UI paths | Authoritative backend CRUD + reporting exports |
+| Invoices | Implemented list/detail-first UX | Full posting, line-item logic, tax/payment workflows |
+| Workshop / Wash | Implemented navigation + core screens | Domain APIs, integrations, and audited actions |
+| HRM | Implemented section scaffolding and routing | API-backed records with role restrictions and audit |
+| B2B portal | Implemented route entry | Partner-scoped data model and hardened auth |
+| AI assistant features | Planned in architecture | Phased rollout via controlled APIs |
+
+### 11.2 Maturity summary
+
+- **Strong today:** UX coverage, modular front-end structure, multilingual foundations, dashboard flexibility.
+- **In-progress next:** API-backed persistence, stricter access controls, and production SLO hardening.
+- **Strategic next layer:** AI-assisted productivity embedded inside existing domains.
+
+---
+
+## 12. Success criteria and KPIs
 
 Aligned with **TRD §8** and charter:
 
@@ -268,7 +332,7 @@ Aligned with **TRD §8** and charter:
 
 ---
 
-## 12. Risks, dependencies, and open decisions
+## 13. Risks, dependencies, and open decisions
 
 | Type | Examples |
 |------|----------|
@@ -280,7 +344,7 @@ Architecture decisions should be recorded as **ADRs** (`docs/adr/`, template in 
 
 ---
 
-## Appendix — document map and glossary
+## 14. Appendix — document map and glossary
 
 ### A. Where to read more
 
@@ -312,5 +376,6 @@ Architecture decisions should be recorded as **ADRs** (`docs/adr/`, template in 
 | Version | Date | Notes |
 |---------|------|--------|
 | 1.0 | 2026-03-20 | Initial owner master report consolidating TRD, HLD, LLD, ERD, and codebase routes |
+| 1.1 | 2026-03-20 | Added detailed AI feature portfolio, product feature status matrix, and owner-facing value framing |
 
 *For formal approval workflow, see TRD §0.*

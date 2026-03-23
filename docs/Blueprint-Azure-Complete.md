@@ -66,7 +66,7 @@ This document is the **authoritative Azure reference** for DEMA: which **managed
 
 | Logo | Azure service | Role |
 |:----:|---------------|------|
-| <img src="https://cdn.simpleicons.org/microsoft/5E5E5E" width="22" height="22" alt="Microsoft" /> | **Microsoft Entra ID** | OIDC SSO, groups → app roles |
+| <img src="https://www.google.com/url?sa=t&source=web&rct=j&url=https%3A%2F%2Fde.wikipedia.org%2Fwiki%2FDatei%3AMicrosoft_Entra_ID_color_icon.svg&ved=0CBYQjRxqFwoTCPDlzs6DtpMDFQAAAAAdAAAAABAH&opi=89978449" width="22" height="22" alt="Microsoft" /> | **Microsoft Entra ID** | OIDC SSO, groups → app roles |
 | <img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure" /> | **Azure Key Vault** | Secrets, certs, CMK integration |
 | <img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure" /> | **Microsoft Defender for Cloud** | Posture, recommendations |
 | <img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure" /> | **Azure DDoS Protection** (std/premium) | Edge hardening with Front Door |

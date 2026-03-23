@@ -16,6 +16,8 @@ import { SignupPage } from "./pages/SignupPage";
 import { HrmPage } from "./pages/HrmPage";
 import { OnGroundTeamPage } from "./pages/OnGroundTeamPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ChatPage } from "./pages/ChatPage";
+import { PresenceReporter } from "./components/PresenceReporter";
 import { useAuth, setReturnHash } from "./contexts/AuthContext";
 import { useLanguage } from "./contexts/LanguageContext";
 import type { DepartmentArea } from "./types/departmentArea";
@@ -188,6 +190,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans">
+      <PresenceReporter />
       <Sidebar />
       <div className="flex min-h-screen min-w-0 flex-col pl-[260px]">
         <Header />
@@ -214,6 +217,8 @@ export default function App() {
             <OnGroundTeamPage section={ogtSectionFromRoute(route)} />
           ) : route === "settings" || route === "profile" ? (
             <SettingsPage />
+          ) : route === "chat" ? (
+            <ChatPage />
           ) : (
             <DynamicDashboard />
           )}

@@ -1,22 +1,33 @@
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { WidgetRenderProps } from "../types/dashboard";
 import { useWidgetLanguage } from "./useWidgetLanguage";
+import { cfgArray, cfgString } from "./widgetConfigHelpers";
+import { DEFAULT_SALES_CHART } from "./defaultWidgetData";
 
-const salesData = [
-  { m: "Jan", umsatz: 42 },
-  { m: "Feb", umsatz: 48 },
-  { m: "Mär", umsatz: 55 },
-  { m: "Apr", umsatz: 52 },
-  { m: "Mai", umsatz: 61 },
-  { m: "Jun", umsatz: 68 },
+const DEFAULT_FOOTER = [
+  { label: "Gesamtumsatz", value: "€ 320K" },
+  { label: "Abgeschlossene Deals", value: "30" },
+  { label: "Gewinn", value: "€ 58K" },
 ];
 
-export function SalesWidget() {
+export function SalesWidget({ config }: WidgetRenderProps) {
   const { t } = useWidgetLanguage();
+  const title = cfgString(config, "customTitle", t("salesTitle", "Verkaufsleistung"));
+  const period = cfgString(config, "salesPeriod", t("salesPeriod", "6 Monate"));
+  const salesData = cfgArray<{ m?: string; umsatz?: number }>(config, "salesChart", DEFAULT_SALES_CHART).map((row, i) => ({
+    m: row.m ?? String(i),
+    umsatz: typeof row.umsatz === "number" ? row.umsatz : 0,
+  }));
+  const footer = cfgArray<{ label?: string; value?: string }>(config, "salesFooter", DEFAULT_FOOTER).map((x, i) => ({
+    label: x.label ?? DEFAULT_FOOTER[i]?.label ?? "—",
+    value: x.value ?? "—",
+  }));
+
   return (
     <div className="glass-card flex h-full flex-col p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-800">{t("salesTitle", "Verkaufsleistung")}</h2>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">{t("salesPeriod", "6 Monate")}</span>
+        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">{period}</span>
       </div>
       <div className="min-h-[160px] flex-1">
         <ResponsiveContainer width="100%" height="100%">
@@ -38,19 +49,13 @@ export function SalesWidget() {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4 border-t border-slate-100 pt-4">
-        <div>
-          <p className="text-xs text-slate-500">{t("salesTotalRevenue", "Gesamtumsatz")}</p>
-          <p className="text-lg font-bold text-slate-800">€ 320K</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">{t("salesClosedDeals", "Abgeschlossene Deals")}</p>
-          <p className="text-lg font-bold text-slate-800">30</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">{t("salesProfit", "Gewinn")}</p>
-          <p className="text-lg font-bold text-emerald-600">€ 58K</p>
-        </div>
+      <div className="mt-4 flex flex-wrap gap-4 border-t border-slate-100 pt-4">
+        {footer.slice(0, 6).map((f) => (
+          <div key={f.label}>
+            <p className="text-xs text-slate-500">{f.label}</p>
+            <p className="text-lg font-bold text-slate-800">{f.value}</p>
+          </div>
+        ))}
       </div>
     </div>
   );

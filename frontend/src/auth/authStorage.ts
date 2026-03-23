@@ -115,6 +115,15 @@ export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
+/** Public profiles for chat contact picker (demo: same browser storage for all registered users). */
+export function listRegisteredUserProfiles(excludeEmail?: string): { email: string; name: string }[] {
+  ensureDemoUser();
+  const ex = excludeEmail?.trim().toLowerCase();
+  return loadUsers()
+    .filter((u) => !ex || u.email.toLowerCase() !== ex)
+    .map((u) => ({ email: u.email, name: u.name }));
+}
+
 export function setReturnHash(hash: string): void {
   if (hash && hash !== "#/login" && hash !== "#/signup") {
     sessionStorage.setItem(RETURN_KEY, hash);

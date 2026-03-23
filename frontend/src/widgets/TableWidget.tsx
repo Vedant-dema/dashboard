@@ -1,29 +1,50 @@
-const rows = [
-  { id: "1", kunde: "Weber GmbH", status: "Angebot", betrag: "€ 42.500" },
-  { id: "2", kunde: "Schmidt AG", status: "Deal", betrag: "€ 28.900" },
-  { id: "3", kunde: "Meyer KG", status: "Anfrage", betrag: "—" },
-  { id: "4", kunde: "Kuhn Transport", status: "Lieferung", betrag: "€ 12.100" },
-];
+import { useMemo } from "react";
+import type { WidgetRenderProps } from "../types/dashboard";
+import { cfgString } from "./widgetConfigHelpers";
+import { DEFAULT_TABLE_ROWS } from "./defaultWidgetData";
+import { parseTableConfig } from "./parseLineFormats";
 
-export function TableWidget() {
+const DEFAULT_HEADERS = ["Kunde", "Status", "Betrag"];
+const DEFAULT_ROWS = DEFAULT_TABLE_ROWS.map((r) => [r.kunde, r.status, r.betrag]);
+
+export function TableWidget({ config }: WidgetRenderProps) {
+  const title = cfgString(config, "customTitle", "Tabelle");
+  const { headers, rows } = useMemo(
+    () =>
+      parseTableConfig(
+        config.tableHeaders as string | undefined,
+        config.tableRows as string | undefined,
+        DEFAULT_HEADERS,
+        DEFAULT_ROWS
+      ),
+    [config.tableHeaders, config.tableRows]
+  );
+
   return (
     <div className="flex h-full flex-col">
-      <h2 className="mb-3 text-lg font-bold text-slate-800">Tabelle</h2>
+      <h2 className="mb-3 text-lg font-bold text-slate-800">{title}</h2>
       <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200">
         <table className="w-full min-w-[280px] text-left text-sm">
           <thead className="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-3 py-2.5">Kunde</th>
-              <th className="px-3 py-2.5">Status</th>
-              <th className="px-3 py-2.5 text-right">Betrag</th>
+              {headers.map((h) => (
+                <th key={h} className="px-3 py-2.5">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
-            {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-50/80">
-                <td className="px-3 py-2.5 font-medium text-slate-800">{r.kunde}</td>
-                <td className="px-3 py-2.5 text-slate-600">{r.status}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">{r.betrag}</td>
+            {rows.map((cells, ri) => (
+              <tr key={ri} className="hover:bg-slate-50/80">
+                {cells.map((cell, ci) => (
+                  <td
+                    key={ci}
+                    className={`px-3 py-2.5 text-slate-800 ${ci === cells.length - 1 ? "text-right tabular-nums" : "font-medium"}`}
+                  >
+                    {cell}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

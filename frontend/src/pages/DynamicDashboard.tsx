@@ -17,7 +17,9 @@ import {
   loadLayout,
   removeWidget,
   saveLayout,
+  updateWidgetConfig,
 } from "../store/dashboardLayout";
+import { WidgetConfigModal } from "../components/WidgetConfigModal";
 import type { WidgetInstance, WidgetType } from "../types/dashboard";
 import {
   getWidgetComponent,
@@ -25,7 +27,7 @@ import {
   getAddableWidgetsByGroup,
   WIDGET_GROUP_I18N_KEY,
 } from "../widgets/registry";
-import { Plus, X, GripVertical } from "lucide-react";
+import { Plus, PencilLine, X, GripVertical } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 
 const COLS = 12;
@@ -70,6 +72,7 @@ export function DynamicDashboard() {
   const { language, t } = useLanguage();
   const [layoutState, setLayoutState] = useState(() => loadLayout());
   const [showAddPalette, setShowAddPalette] = useState(false);
+  const [settingsWidget, setSettingsWidget] = useState<WidgetInstance | null>(null);
   const { ref: gridWrapRef, width: gridWidth } = useContainerWidth();
 
   const layoutItems: Layout[] = layoutState.widgets.map((w) =>
@@ -121,6 +124,17 @@ export function DynamicDashboard() {
     saveLayout(defaultLayout);
     setShowAddPalette(false);
   }, []);
+
+  const handleSaveWidgetConfig = useCallback(
+    (widgetId: string, patch: Record<string, unknown>) => {
+      setLayoutState((prev) => {
+        const next = updateWidgetConfig(prev, widgetId, patch);
+        saveLayout(next);
+        return next;
+      });
+    },
+    []
+  );
 
   const groupedPalette = getAddableWidgetsByGroup();
 
@@ -178,6 +192,15 @@ export function DynamicDashboard() {
         )}
       </div>
 
+      <WidgetConfigModal
+        open={settingsWidget != null}
+        widget={settingsWidget}
+        onClose={() => setSettingsWidget(null)}
+        onSave={(patch) => {
+          if (settingsWidget) handleSaveWidgetConfig(settingsWidget.id, patch);
+        }}
+      />
+
       <div ref={gridWrapRef as LegacyRef<HTMLDivElement>} className="w-full">
         <GridLayout
           key={language}
@@ -198,33 +221,61 @@ export function DynamicDashboard() {
           {layoutState.widgets.map((w) => {
             const renderWidget = getWidgetComponent(w.type);
             const isLocked = !!w.locked;
+            const meta = getWidgetMeta(w.type);
+            const moduleLabel = t(meta.titleKey ?? `widgetTitle_${w.type}`, meta.title);
             return (
               <div key={w.id} className="overflow-hidden rounded-2xl">
-                <div className="dashboard-widget-shell relative flex h-full flex-col overflow-hidden rounded-2xl bg-white/95 shadow-sm ring-1 ring-slate-200/60">
-                  {!isLocked && (
-                    <button
-                      type="button"
-                      className="dashboard-drag-handle dashboard-widget-handle absolute left-2 top-2 z-20 flex h-8 w-8 cursor-grab items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm active:cursor-grabbing hover:bg-slate-50"
-                      title={t("dynamicDragToMove", "Ziehen zum Verschieben")}
-                      aria-label={t("dynamicMoveWidget", "Widget verschieben")}
+                <div className="dashboard-widget-shell flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                  <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-slate-200 bg-slate-50/90 px-1">
+                    {!isLocked ? (
+                      <button
+                        type="button"
+                        className="dashboard-drag-handle dashboard-widget-handle flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-lg text-slate-400 transition active:cursor-grabbing hover:bg-white hover:text-slate-600"
+                        title={t("dynamicDragToMove", "Zum Verschieben ziehen")}
+                        aria-label={t("dynamicMoveWidget", "Modul verschieben")}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <span className="w-2 shrink-0" aria-hidden />
+                    )}
+                    <span
+                      className="min-w-0 flex-1 truncate px-1.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      title={moduleLabel}
                     >
-                      <GripVertical className="h-4 w-4" />
-                    </button>
-                  )}
-                  {!isLocked && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(w.id)}
-                      className="dashboard-widget-remove absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-xl bg-slate-800/80 text-white shadow transition hover:bg-slate-800"
-                      title={t("dynamicRemoveWidget", "Widget entfernen")}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                  <div
-                    className={`flex h-full min-h-0 flex-1 flex-col overflow-auto p-4 ${isLocked ? "" : "pt-12"}`}
-                  >
-                    <Fragment key={language}>{renderWidget()}</Fragment>
+                      {moduleLabel}
+                    </span>
+                    {w.type !== "welcome" && (
+                      <button
+                        type="button"
+                        onClick={() => setSettingsWidget(w)}
+                        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-600 transition hover:bg-white hover:text-slate-900"
+                        title={t("dynamicCustomizeModule", "Inhalte dieses Moduls anpassen")}
+                      >
+                        <PencilLine className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+                        <span className="hidden sm:inline">{t("dynamicCustomize", "Anpassen")}</span>
+                      </button>
+                    )}
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(w.id)}
+                        className="dashboard-widget-remove flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        title={t("dynamicRemoveWidget", "Modul entfernen")}
+                        aria-label={t("dynamicRemoveWidget", "Modul entfernen")}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-auto p-4">
+                    <Fragment key={language}>
+                      {renderWidget({
+                        config: w.config ?? {},
+                        widgetId: w.id,
+                        onUpdateConfig: (patch) => handleSaveWidgetConfig(w.id, patch),
+                      })}
+                    </Fragment>
                   </div>
                 </div>
               </div>

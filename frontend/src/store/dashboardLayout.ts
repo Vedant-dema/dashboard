@@ -133,3 +133,22 @@ export function applyGridLayout(
     }),
   };
 }
+
+export function updateWidgetConfig(
+  layout: DashboardLayout,
+  widgetId: string,
+  patch: Record<string, unknown>
+): DashboardLayout {
+  return {
+    ...layout,
+    widgets: layout.widgets.map((w) => {
+      if (w.id !== widgetId) return w;
+      const next = { ...(w.config ?? {}) };
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === undefined) delete next[k];
+        else next[k] = v;
+      }
+      return { ...w, config: next };
+    }),
+  };
+}

@@ -40,6 +40,15 @@ export interface DashboardLayout {
   version?: number;
 }
 
+/** Props passed to every dashboard widget; `config` is persisted in layout (localStorage). */
+export interface WidgetRenderProps {
+  config: Record<string, unknown>;
+  /** Set when rendered on the dynamic dashboard (not used in isolation). */
+  widgetId?: string;
+  /** Persist partial config updates (merged into widget.config). */
+  onUpdateConfig?: (patch: Record<string, unknown>) => void;
+}
+
 export interface WidgetMeta {
   type: WidgetType;
   title: string;

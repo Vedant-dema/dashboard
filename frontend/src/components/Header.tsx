@@ -5,10 +5,20 @@ import { getQuickSearchSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useProfileAvatarDataUrl } from "../hooks/useProfileAvatar";
+import { resolveDisplayName, useProfileExtraSettings } from "../hooks/useProfileExtraSettings";
+import { useChatSync } from "../hooks/useChatSync";
+import { getUnreadTotalForUser } from "../store/chatStore";
 
 export function Header() {
   const { user, logout } = useAuth();
+  useChatSync();
+  const chatUnread = user ? getUnreadTotalForUser(user.email) : 0;
+  const avatarDataUrl = useProfileAvatarDataUrl();
+  const profileExtra = useProfileExtraSettings();
   const { t } = useLanguage();
+  const displayName =
+    resolveDisplayName(user?.email, user?.name, profileExtra) || t("commonUser", "Benutzer");
   const [dbTick, setDbTick] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const db = useMemo(() => loadKundenDb(), [dbTick]);
@@ -56,15 +66,18 @@ export function Header() {
             4
           </span>
         </button>
-        <button
-          type="button"
+        <a
+          href="#/chat"
+          title={t("headerChat", "Chat")}
           className="relative rounded-xl p-2.5 text-slate-500 transition hover:bg-white hover:shadow-sm"
         >
           <MessageCircle className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
-            5
-          </span>
-        </button>
+          {chatUnread > 0 && (
+            <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
+              {chatUnread > 99 ? "99+" : chatUnread}
+            </span>
+          )}
+        </a>
         <button
           type="button"
           className="rounded-xl p-2.5 text-slate-500 transition hover:bg-white hover:shadow-sm"
@@ -76,16 +89,20 @@ export function Header() {
       <div className="flex shrink-0 items-center gap-2">
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm">
           <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white ring-2 ring-white">
-            {(user?.name ?? "")
-              .split(/\s+/)
-              .filter(Boolean)
-              .map((p) => p[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase() || "?"}
+            {avatarDataUrl ? (
+              <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              displayName
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((p) => p[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "?"
+            )}
           </div>
           <div className="hidden text-left sm:block">
-            <p className="text-sm font-semibold text-slate-800">{user?.name ?? t("commonUser", "Benutzer")}</p>
+            <p className="text-sm font-semibold text-slate-800">{displayName}</p>
             <p className="max-w-[140px] truncate text-xs text-slate-500" title={user?.email}>
               {user?.email}
             </p>

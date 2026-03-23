@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { WidgetMeta, WidgetType } from "../types/dashboard";
+import type { WidgetMeta, WidgetRenderProps, WidgetType } from "../types/dashboard";
 import { useWidgetLanguage } from "./useWidgetLanguage";
 import { WelcomeWidget } from "./WelcomeWidget";
 import { KpiWidget } from "./KpiWidget";
@@ -30,30 +30,30 @@ function UnknownDashboardWidget({ type }: { type: string }) {
   );
 }
 
-const componentMap: Record<WidgetType, () => ReactNode> = {
-  welcome: () => <WelcomeWidget />,
-  kpi: () => <KpiWidget />,
-  sales: () => <SalesWidget />,
-  inventory: () => <InventoryWidget />,
-  "quick-actions": () => <QuickActionsWidget />,
-  tasks: () => <TasksWidget />,
-  finances: () => <FinancesWidget />,
-  "user-card": () => <ProfileModuleWidget />,
-  profile: () => <ProfileModuleWidget />,
-  calendar: () => <CalendarWidget />,
-  appointments: () => <AppointmentsWidget />,
-  meetings: () => <MeetingsWidget />,
-  notes: () => <NotesWidget />,
-  table: () => <TableWidget />,
-  "todo-list": () => <TodoListWidget />,
-  picture: () => <PictureWidget />,
-  "graph-line": () => <GraphLineWidget />,
-  "graph-bar": () => <GraphBarWidget />,
-  "graph-pie": () => <GraphPieWidget />,
-  "graph-area": () => <GraphAreaWidget />,
+const componentMap: Record<WidgetType, (p: WidgetRenderProps) => ReactNode> = {
+  welcome: (p) => <WelcomeWidget {...p} />,
+  kpi: (p) => <KpiWidget {...p} />,
+  sales: (p) => <SalesWidget {...p} />,
+  inventory: (p) => <InventoryWidget {...p} />,
+  "quick-actions": (p) => <QuickActionsWidget {...p} />,
+  tasks: (p) => <TasksWidget {...p} />,
+  finances: (p) => <FinancesWidget {...p} />,
+  "user-card": (p) => <ProfileModuleWidget {...p} />,
+  profile: (p) => <ProfileModuleWidget {...p} />,
+  calendar: (p) => <CalendarWidget {...p} />,
+  appointments: (p) => <AppointmentsWidget {...p} />,
+  meetings: (p) => <MeetingsWidget {...p} />,
+  notes: (p) => <NotesWidget {...p} />,
+  table: (p) => <TableWidget {...p} />,
+  "todo-list": (p) => <TodoListWidget {...p} />,
+  picture: (p) => <PictureWidget {...p} />,
+  "graph-line": (p) => <GraphLineWidget {...p} />,
+  "graph-bar": (p) => <GraphBarWidget {...p} />,
+  "graph-pie": (p) => <GraphPieWidget {...p} />,
+  "graph-area": (p) => <GraphAreaWidget {...p} />,
 };
 
-export function getWidgetComponent(type: WidgetType): () => ReactNode {
+export function getWidgetComponent(type: WidgetType): (p: WidgetRenderProps) => ReactNode {
   return componentMap[type] ?? (() => <UnknownDashboardWidget type={type} />);
 }
 

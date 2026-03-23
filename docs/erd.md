@@ -4,7 +4,7 @@
 
 This document describes **entities, attributes, keys, relationships, referential actions, indexing**, and how **ACID** applies in the target database. It is intended for architects, backend engineers, and migration teams (SQL Server → PostgreSQL).
 
-**Diagram logos:** Each Mermaid `erDiagram` below is followed by a **PostgreSQL** technology strip (Simple Icons CDN). See [diagram-tech-logos.md](./diagram-tech-logos.md).
+**Diagram note:** `erDiagram` blocks are kept renderer-friendly for GitHub and markdown previews.
 
 ---
 

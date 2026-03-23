@@ -7,7 +7,7 @@
 | Document type | Project report + technical requirements specification (TRS) |
 | Product | DEMA Dashboard / DEMA Digital Core (web client + target platform) |
 | Repository | `Dema-Dashboard` (see remote URL in Git configuration) |
-| Related artefacts | [HLD.md](./HLD.md), [LLD.md](./LLD.md), [erd.md](./erd.md), [Architecture-Diagrams.md](./Architecture-Diagrams.md), [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md), [diagram-tech-logos.md](./diagram-tech-logos.md), [adr/000-template.md](./adr/000-template.md) |
+| Related artefacts | [README.md](./README.md), [HLD.md](./HLD.md), [LLD.md](./LLD.md), [erd.md](./erd.md), [adr/000-template.md](./adr/000-template.md) |
 | Version | 1.1 |
 | Status | Controlled baseline — changes via review per §0 |
 
@@ -444,7 +444,6 @@ Assuming **2-week sprints**.
 
 - [HLD.md](./HLD.md) — stack, modules, AI phases.  
 - [LLD.md](./LLD.md) — REST, errors, DTOs, idempotency.  
-- [Architecture-Diagrams.md](./Architecture-Diagrams.md) — C4-style diagrams.  
 - [erd.md](./erd.md) — entity relationships.  
 
 ---
@@ -618,8 +617,7 @@ L1: internal super-user → L2: IT helpdesk → L3: development team with **corr
 | [HLD.md](./HLD.md) | Technology stack, modules, cloud, AI strategy |
 | [LLD.md](./LLD.md) | API contracts, errors, security implementation rules |
 | [erd.md](./erd.md) | Data model narrative and diagrams |
-| [Architecture-Diagrams.md](./Architecture-Diagrams.md) | C4-style and flow diagrams |
-| [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md) | Azure-specific deployment blueprint |
+| [README.md](./README.md) | Canonical docs index and maintained set |
 | [database/schema.sql](../database/schema.sql) | SQL DDL |
 | [database/README.md](../database/README.md) | DB usage notes (if present) |
 | **This TRD** | Requirements, planning, testing, user guide index |

@@ -11,7 +11,7 @@
 
 **PDF export:** Open this file in VS Code / Cursor, or use Pandoc (`pandoc docs/HLD.md -o HLD.pdf`). For Mermaid diagrams, use a renderer that supports Mermaid (e.g. Typora, Obsidian, or print from GitHub preview if enabled).
 
-**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md).
+**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md). Detailed professional architecture views are in [Architecture-Diagrams.md](./Architecture-Diagrams.md).
 
 ---
 

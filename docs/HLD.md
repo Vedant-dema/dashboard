@@ -11,7 +11,7 @@
 
 **PDF export:** Open this file in VS Code / Cursor, or use Pandoc (`pandoc docs/HLD.md -o HLD.pdf`). For Mermaid diagrams, use a renderer that supports Mermaid (e.g. Typora, Obsidian, or print from GitHub preview if enabled).
 
-**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md). **Technical requirements specification (TRD/TRS):** [Project-Report-Technical-Requirements.md](./Project-Report-Technical-Requirements.md) — governance, delivery/rollback, SLAs, compliance, traceability, ADR register. For the maintained document set, see [README.md](./README.md).
+**Companion:** Owner-facing end-to-end summary: [Owner-Master-Report.md](./Owner-Master-Report.md). Low-level contracts: [LLD.md](./LLD.md). **Technical requirements specification (TRD/TRS):** [Project-Report-Technical-Requirements.md](./Project-Report-Technical-Requirements.md) — governance, delivery/rollback, SLAs, compliance, traceability, ADR register. For the maintained document set, see [README.md](./README.md).
 
 ---
 

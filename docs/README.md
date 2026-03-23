@@ -4,6 +4,7 @@ This directory uses a **minimal canonical set** to avoid overlap and confusion.
 
 ## Keep these as source of truth
 
+- `Owner-Master-Report.md` — **single owner/stakeholder report** (vision → features → tech → delivery → deployment)
 - `Project-Report-Technical-Requirements.md` — master TRD/TRS (requirements, delivery, SLAs, compliance, traceability)
 - `HLD.md` — high-level architecture and technology direction
 - `LLD.md` — low-level implementation contracts and API conventions

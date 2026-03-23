@@ -7,8 +7,8 @@
 | Document type | Project report + technical requirements specification (TRS) |
 | Product | DEMA Dashboard / DEMA Digital Core (web client + target platform) |
 | Repository | `Dema-Dashboard` (see remote URL in Git configuration) |
-| Related artefacts | [README.md](./README.md), [HLD.md](./HLD.md), [LLD.md](./LLD.md), [erd.md](./erd.md), [adr/000-template.md](./adr/000-template.md) |
-| Version | 1.1 |
+| Related artefacts | [README.md](./README.md), [Owner-Master-Report.md](./Owner-Master-Report.md), [HLD.md](./HLD.md), [LLD.md](./LLD.md), [erd.md](./erd.md), [adr/000-template.md](./adr/000-template.md) |
+| Version | 1.2 |
 | Status | Controlled baseline — changes via review per §0 |
 
 ---
@@ -618,6 +618,7 @@ L1: internal super-user → L2: IT helpdesk → L3: development team with **corr
 | [LLD.md](./LLD.md) | API contracts, errors, security implementation rules |
 | [erd.md](./erd.md) | Data model narrative and diagrams |
 | [README.md](./README.md) | Canonical docs index and maintained set |
+| [Owner-Master-Report.md](./Owner-Master-Report.md) | Owner/stakeholder narrative (start → deployment) |
 | [database/schema.sql](../database/schema.sql) | SQL DDL |
 | [database/README.md](../database/README.md) | DB usage notes (if present) |
 | **This TRD** | Requirements, planning, testing, user guide index |
@@ -873,6 +874,7 @@ ADRs capture **why** a decision was made; full text may live in `docs/adr/` or e
 |---------|------|--------|-------|
 | 1.0 | 2026-03-20 | Project | Initial TRD + project report structure |
 | 1.1 | 2026-03-20 | Project | Professional TRS: §0 governance, §3.2.1 env targets, §15–§21 delivery/ops/compliance/traceability/design/SSO/ADR register; expanded §14.2 runbooks |
+| 1.2 | 2026-03-20 | Project | Linked [Owner-Master-Report.md](./Owner-Master-Report.md) from related artefacts and §14.1 document map |
 
 ---
 

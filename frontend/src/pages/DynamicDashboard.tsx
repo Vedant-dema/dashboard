@@ -1,4 +1,12 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type LegacyRef,
+  type RefObject,
+} from "react";
 import GridLayout, { type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -170,7 +178,7 @@ export function DynamicDashboard() {
         )}
       </div>
 
-      <div ref={gridWrapRef} className="w-full">
+      <div ref={gridWrapRef as LegacyRef<HTMLDivElement>} className="w-full">
         <GridLayout
           key={language}
           className="layout"

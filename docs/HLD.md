@@ -11,7 +11,7 @@
 
 **PDF export:** Open this file in VS Code / Cursor, or use Pandoc (`pandoc docs/HLD.md -o HLD.pdf`). For Mermaid diagrams, use a renderer that supports Mermaid (e.g. Typora, Obsidian, or print from GitHub preview if enabled).
 
-**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md). Detailed professional architecture views are in [Architecture-Diagrams.md](./Architecture-Diagrams.md). **Single-cloud (Azure) blueprint** with logos and layered diagrams: [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md). **Diagram logo strips** (Simple Icons CDN): [diagram-tech-logos.md](./diagram-tech-logos.md). **Project report & technical requirements (TRD):** [Project-Report-Technical-Requirements.md](./Project-Report-Technical-Requirements.md).
+**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md). Detailed professional architecture views are in [Architecture-Diagrams.md](./Architecture-Diagrams.md). **Single-cloud (Azure) blueprint** with logos and layered diagrams: [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md). **Diagram logo strips** (Simple Icons CDN): [diagram-tech-logos.md](./diagram-tech-logos.md). **Technical requirements specification (TRD/TRS):** [Project-Report-Technical-Requirements.md](./Project-Report-Technical-Requirements.md) — governance, delivery/rollback, SLAs, compliance, traceability, ADR register.
 
 ---
 

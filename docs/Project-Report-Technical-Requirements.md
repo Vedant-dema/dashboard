@@ -1,18 +1,71 @@
 # DEMA Digital Core — Project Report & Technical Requirements Document (TRD)
 
+**Classification:** Internal — technical & delivery. **Normative language:** SHALL / SHOULD / MAY per [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) where used in requirements tables.
+
 | Field | Value |
 |-------|--------|
-| Document type | Project report + technical requirements |
+| Document type | Project report + technical requirements specification (TRS) |
 | Product | DEMA Dashboard / DEMA Digital Core (web client + target platform) |
-| Repository | `Dema-Dashboard` |
-| Related artefacts | [HLD.md](./HLD.md), [LLD.md](./LLD.md), [erd.md](./erd.md), [Architecture-Diagrams.md](./Architecture-Diagrams.md), [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md) |
-| Version | 1.0 |
-| Status | Living document — update on major scope or release changes |
+| Repository | `Dema-Dashboard` (see remote URL in Git configuration) |
+| Related artefacts | [HLD.md](./HLD.md), [LLD.md](./LLD.md), [erd.md](./erd.md), [Architecture-Diagrams.md](./Architecture-Diagrams.md), [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md), [diagram-tech-logos.md](./diagram-tech-logos.md), [adr/000-template.md](./adr/000-template.md) |
+| Version | 1.1 |
+| Status | Controlled baseline — changes via review per §0 |
+
+---
+
+## 0. Document control and governance
+
+### 0.1 Identification
+
+| Item | Value |
+|------|--------|
+| Document title | DEMA Digital Core — Project Report & Technical Requirements Document |
+| Short name | TRD / TRS |
+| Primary audience | Engineering, architecture, QA, IT operations, product/security stakeholders |
+| Secondary audience | Business owners (summary: §1–§2, §8, §15) |
+
+### 0.2 Ownership and roles
+
+| Role | Responsibility |
+|------|----------------|
+| **Document owner** | Product Owner (or delegate) — scope, priorities, acceptance of requirement changes |
+| **Technical owner** | Engineering / Tech Lead — technical accuracy, feasibility, alignment with HLD/LLD |
+| **Reviewers (minimum)** | Security representative (for §3, §17), Operations (for §15–§16), QA lead (for §11–§12, §18) |
+| **Authors** | Named in [Document history](#document-history); major edits append a row |
+
+*Replace placeholder titles with named individuals when the organisation assigns them.*
+
+### 0.3 Approval and review cadence
+
+| Gate | Action |
+|------|--------|
+| **Minor revision** (clarifications, typos, non-normative text) | Document owner acknowledgment; no full re-approval required |
+| **Major revision** (new FR/NFR, scope change, release re-baseline) | Peer review + document owner sign-off; bump **minor** version (e.g. 1.1 → 1.2) |
+| **Structural change** (new sections, renumbering contract) | Full reviewer set + bump **major** if traceability or numbering breaks downstream tools |
+
+**Planned review:** At least **quarterly**, or within **two weeks** of any production incident attributed to ambiguous requirements.
+
+### 0.4 Work management traceability
+
+| System | Purpose |
+|--------|---------|
+| **Backlog / work tracker** | Each substantive change SHOULD link to an epic, feature, or change ticket (ID recorded in commit message or PR description) |
+| **Git** | Tagged releases align with [§5 Release plan](#5-release-plan); `CHANGELOG` or release notes reference FR/NFR IDs where applicable |
+| **This document** | [§18 Requirements traceability](#18-requirements-traceability-matrix) maps FR/NFR → tests → target releases |
+
+*Insert concrete links (e.g. GitHub Projects, Jira, Azure DevOps) when the programme selects a tool.*
+
+### 0.5 Distribution and retention
+
+- **Master copy:** Version-controlled Markdown in repository `docs/` (single source of truth).
+- **Exports:** PDF/HTML exports are **non-authoritative** unless stamped with version and commit hash.
+- **Retention:** Keep document history for the lifetime of the product; archive superseded PDFs with version in filename.
 
 ---
 
 ## Table of contents
 
+0. [Document control and governance](#0-document-control-and-governance)  
 1. [Vision statement](#1-vision-statement)  
 2. [Project charter](#2-project-charter)  
 3. [Software requirements](#3-software-requirements)  
@@ -27,6 +80,13 @@
 12. [Test case specification](#12-test-case-specification)  
 13. [User guide](#13-user-guide)  
 14. [System documentation](#14-system-documentation)  
+15. [Delivery, deployment, and rollback](#15-delivery-deployment-and-rollback)  
+16. [Service operations and SLAs](#16-service-operations-and-slas)  
+17. [Security, compliance, and privacy](#17-security-compliance-and-privacy)  
+18. [Requirements traceability matrix](#18-requirements-traceability-matrix)  
+19. [Design system and UX standards](#19-design-system-and-ux-standards)  
+20. [Third-party software and open-source governance](#20-third-party-software-and-open-source-governance)  
+21. [Architecture decision records (register)](#21-architecture-decision-records-register)  
 
 ---
 
@@ -185,6 +245,22 @@ Functional requirements are grouped by capability. IDs are stable for traceabili
 | NFR-MAINT-01 | Maintainability | TypeScript `strict`; Python typed services; documented module boundaries. |
 | NFR-OBS-01 | Observability | Correlation IDs, structured logs, metrics for API latency and errors. |
 | NFR-PORT-01 | Portability | Application containers and DB abstraction allow **Azure or AWS** hosting (cloud ADR). |
+
+#### 3.2.1 Environment-specific targets (baseline — adjust per contract)
+
+The following **baseline** targets SHALL be refined with measured baselines after the API is live in **staging**. Values are **SLOs** (targets), not guarantees; error budgets and exceptions are governed in [§16](#16-service-operations-and-slas).
+
+| Metric | Local / dev | CI | Staging | Production |
+|--------|-------------|-----|---------|------------|
+| **API latency** (p95, authenticated `GET` list, warm) | Best effort | N/A (unit/integration only) | ≤ **800 ms** | ≤ **500 ms** (same region) |
+| **API latency** (p95, simple `GET` by id) | Best effort | N/A | ≤ **400 ms** | ≤ **250 ms** |
+| **API error rate** (5xx, excluding deploy windows) | N/A | N/A | &lt; **0.5%** rolling 7d | &lt; **0.1%** rolling 30d |
+| **Monthly availability** (API + static app, planned maintenance excluded) | N/A | N/A | ≥ **99.0%** | ≥ **99.5%** (per NFR-AVAIL-01) |
+| **SPA first load** (LCP, typical office network) | Best effort | N/A | ≤ **3.0 s** | ≤ **2.5 s** |
+| **RTO** (restore service after declared disaster) | N/A | N/A | ≤ **4 h** (exercise annually) | Per DR plan (typical **4–24 h** by tier) |
+| **RPO** (max acceptable data loss) | N/A | N/A | ≤ **1 h** | ≤ **15 min** (managed DB PITR) |
+
+**Measurement:** OpenTelemetry / APM (see HLD, Blueprint observability); dashboards SHALL expose p95 latency, error rate, and saturation (CPU, DB connections). **Synthetic checks** SHOULD run against staging and production health endpoints.
 
 ### 3.3 Implementation requirements
 
@@ -547,14 +623,20 @@ L1: internal super-user → L2: IT helpdesk → L3: development team with **corr
 | [database/schema.sql](../database/schema.sql) | SQL DDL |
 | [database/README.md](../database/README.md) | DB usage notes (if present) |
 | **This TRD** | Requirements, planning, testing, user guide index |
+| [adr/000-template.md](./adr/000-template.md) | Template for Architecture Decision Records (see §21) |
 
-### 14.2 Operational runbooks (to maintain in ops wiki)
+### 14.2 Operational runbooks (authoritative copy in ops wiki)
 
-- Deployment procedure (GitHub Actions + Terraform apply order).
-- Backup and restore PostgreSQL.
-- Secret rotation (Key Vault / Secrets Manager).
-- Incident response and escalation.
-- Scaling playbook (Container Apps / ECS replicas).
+The repository **references** runbooks; the **executed** checklists live in the organisation’s ops wiki or ITSM, versioned and owned by Operations. Minimum content for each:
+
+| Runbook | Minimum sections |
+|---------|------------------|
+| **RB-DEPLOY** | Preconditions (approvals, maintenance window), artefact list (image tags, Terraform revision), ordered steps (infra → DB migration → API → workers → static SPA), verification (smoke tests, health), communication template |
+| **RB-DB-BACKUP-RESTORE** | Backup schedule, restore drill frequency, step-by-step restore to non-prod, validation query set, escalation |
+| **RB-SECRETS** | Rotation cadence (e.g. 90 days API keys), dual-key pattern where supported, blast radius, who approves |
+| **RB-INCIDENT** | Severity matrix (aligned with §16), communication channels, technical triage order, post-incident review template |
+| **RB-SCALE** | When to scale API vs workers, limits, cost guardrails, rollback of scale changes |
+| **RB-DR** | RTO/RPO restatement, failover decision authority, DNS/cutover, fail-back procedure |
 
 ### 14.3 API documentation
 
@@ -568,11 +650,231 @@ L1: internal super-user → L2: IT helpdesk → L3: development team with **corr
 
 ---
 
+## 15. Delivery, deployment, and rollback
+
+### 15.1 Delivery artefacts per release
+
+| Artefact | Owner | Consumed by |
+|----------|--------|-------------|
+| Versioned **container images** (API, worker) with digest | Engineering | Runtime platform |
+| **Database migration** bundle (Alembic revision) | Engineering | DBA / automated pipeline |
+| **Static SPA** build (hashed assets) | Engineering | CDN / object host |
+| **OpenAPI** snapshot (JSON/YAML) for the release tag | Engineering | QA, partners, docs |
+| **Release notes** (user-visible + technical) | PO + Engineering | Support, stakeholders |
+| **Updated TRD** rows if FR/NFR changed | Document owner | Audit, compliance |
+
+### 15.2 Standard deployment sequence (target production)
+
+1. **Freeze** scope for the release; tag candidate `vX.Y.Z-rc.N`.
+2. **Automated pipeline:** lint, tests, build images, scan images (policy: block critical CVEs per §20).
+3. **Database:** run **backward-compatible** migrations first where required by LLD; avoid breaking changes without expand–contract plan.
+4. **API / workers:** rolling or blue/green deploy per platform; maintain **health checks** and **graceful shutdown**.
+5. **SPA:** publish assets; **cache invalidation** or versioned URLs so users receive new bundles.
+6. **Smoke tests** (synthetic + manual checklist) against production or canary.
+7. **Tag** `vX.Y.Z`; archive OpenAPI and migration IDs in release notes.
+
+### 15.3 Rollback strategy
+
+| Failure mode | Response |
+|--------------|----------|
+| **Defective API** | Revert to previous **image tag**; if DB migration already applied, use **forward fix** or documented down-migration only if tested (prefer forward patch) |
+| **Defective SPA** | Redeploy previous static asset set; CDN purge if applicable |
+| **Bad migration** | **Stop** further deploys; restore DB from snapshot if data corrupted; execute RB-DB-BACKUP-RESTORE with incident commander |
+| **Partial deploy** | Complete or revert **all** tiers (API + worker + SPA) to a **single** known-good combination — avoid mixed versions unless explicitly supported |
+
+**Feature flags:** New high-risk capabilities SHOULD ship **dark** (disabled) until validated in production.
+
+### 15.4 Training and organisational readiness
+
+| Activity | Timing |
+|----------|--------|
+| **Release briefing** for super-users / trainers | Before go-live of major module (R2+) |
+| **Quick reference** or short video for changed flows | Linked from in-app help or intranet |
+| **Cutover communication** (downtime window, new URL, support contact) | T−48h minimum for production |
+
+### 15.5 Go / no-go checklist (production)
+
+- [ ] All **blocker** defects for scope closed; waivers documented with PO approval  
+- [ ] **Migrations** tested on staging copy of production-sized data (or justified sampling)  
+- [ ] **Rollback** path identified (image tag + SPA version; DB strategy)  
+- [ ] **Monitoring** dashboards and alerts updated for new endpoints or SLOs  
+- [ ] **On-call** roster aware of release window  
+
+---
+
+## 16. Service operations and SLAs
+
+### 16.1 Service tiers (example — align with ITSM)
+
+| Tier | Description | Example response target* | Example resolution target* |
+|------|-------------|---------------------------|-----------------------------|
+| **P1** | Production down or data loss risk | 15 min | 4 h |
+| **P2** | Major degradation (large user group) | 1 h | 8 h |
+| **P3** | Minor defect, workaround exists | 4 h | 3 business days |
+| **P4** | Cosmetic, enhancement | Best effort | Backlog |
+
+\***Targets** are organisational SLAs; tune with contract and on-call model. Document approved numbers in the ops wiki.
+
+### 16.2 Incident workflow (summary)
+
+1. **Detect** (alerting, user report) → log ticket with **severity**, **start time**, **impact**.  
+2. **Triage** → assign incident commander; communicate status per communication plan.  
+3. **Mitigate** → restore service first (rollback, scale, disable feature flag).  
+4. **Resolve** → root cause analysis within agreed window; link to **post-incident review** if P1/P2 or repeat issue.  
+5. **Follow-up** → track corrective actions; update TRD/HLD/LLD if requirement gap found.
+
+### 16.3 Support boundaries
+
+| In scope | Out of scope (unless contracted) |
+|----------|----------------------------------|
+| Application defects, configuration as per runbooks | Legacy Access runtime support post-cutover |
+| Identity provider configuration **for this app** | General desktop / network support |
+| API availability per SLO | Third-party ERP/accounting vendor bugs |
+
+### 16.4 Maintenance windows
+
+- **Planned maintenance** SHOULD be communicated **≥ 5 business days** in advance for production (unless emergency).  
+- Prefer **zero-downtime** deploys; if downtime required, duration and blast radius SHALL be stated in the change record.
+
+---
+
+## 17. Security, compliance, and privacy
+
+### 17.1 Security baseline
+
+| Area | Requirement |
+|------|-------------|
+| **Transport** | TLS 1.2+ everywhere; HSTS on public endpoints where applicable |
+| **Authentication** | Production: OIDC / JWT per LLD; no long-lived secrets in SPA |
+| **Authorisation** | RBAC enforced **server-side** (NFR-SEC-02); periodic access review for admin roles |
+| **Input validation** | All mutating API inputs validated (Pydantic); output encoding safe defaults in UI |
+| **Dependencies** | Automated SCA in CI; critical CVEs block release unless risk accepted in writing |
+| **Secrets** | Key vault / secret manager; **never** committed; rotation per RB-SECRETS |
+
+### 17.2 Data protection (EU-oriented baseline)
+
+| Topic | Control |
+|-------|---------|
+| **Residency** | Primary processing in **EU** region unless ADR documents exception |
+| **Minimisation** | Collect only fields required for business process; LLM prompts minimise PII (HLD §8) |
+| **Logging** | No passwords, tokens, or full payment data in logs; pseudonymise where feasible |
+| **Retention** | Data classes (e.g. audit logs, AI debug traces) have **TTL** documented in LLD/ops wiki |
+| **Subprocessors** | Cloud host, IdP, optional AI provider listed for **DPA** / vendor risk |
+
+### 17.3 Compliance scope statement
+
+- **GoBD / tax archiving / statutory accounting** certification is **explicitly out of scope** for this software document until legal engagement defines controls; see **§2.2**.  
+- **WCAG 2.1 Level AA** for critical flows is a **target** (NFR-ACC-01); track gaps in accessibility test results.  
+- **Penetration testing** and **remediation** are **go-live gates** per [§8](#8-criteria-for-project-success) (S3).
+
+### 17.4 Audit and non-repudiation (target)
+
+- Security-sensitive actions (role changes, exports, merge of customers) SHOULD emit **audit events** (who, when, what, correlation id) stored in tamper-evident or restricted store per LLD evolution.
+
+---
+
+## 18. Requirements traceability matrix
+
+Traceability reduces **orphan requirements** and **orphan tests**. Expand this table as FRs and TCs grow; automation MAY export from a test management tool.
+
+| Req ID | Summary | Primary verification (TC / automated suite) | Target release* |
+|--------|---------|-----------------------------------------------|-----------------|
+| FR-AUTH-01 | Login | TC-AUTH-01, TC-AUTH-02 | R0 / R1 |
+| FR-AUTH-03 | Auth wall | TC-AUTH-01 | R0 |
+| FR-AUTH-04 | OIDC/JWT prod | TC-API-01, TC-API-02, integration suite | R1 |
+| FR-NAV-01 | Sidebar groups | TC-NAV-01 (extend per area) | R0 |
+| FR-NAV-03 | Purchase context | TC-NAV-02 | R0 |
+| FR-KUN-01 | Customer search | TC-KUN-01 | R0 |
+| FR-KUN-02 | Customer edit | TC-KUN-02, TC-KUN-03 | R0 / R1 |
+| FR-KUN-04 | API persistence | TC-API-01 + contract tests | R1 |
+| FR-REC-01 | Invoice list | TC-REC-01 | R0 |
+| FR-SET-01 | Settings/theme/lang | TC-I18N-01 | R0 |
+| NFR-SEC-01 | HTTPS, ASVS alignment | Security scan + pen-test | Ongoing |
+| NFR-AVAIL-01 | Availability | Monitoring SLO + incident metrics | Production |
+
+\***Target release** is indicative; PO may re-baseline per [§5](#5-release-plan).
+
+---
+
+## 19. Design system and UX standards
+
+### 19.1 Visual and interaction baseline
+
+| Element | Standard |
+|---------|----------|
+| **Framework** | Tailwind CSS utility patterns; consistent spacing scale (4/8 px rhythm) |
+| **Typography** | System or webfont stack defined in app; heading levels map to semantic HTML |
+| **Colour** | Primary/secondary/accent + semantic states (success, warning, error); meet **contrast** for WCAG targets |
+| **Components** | Reuse shared components (`components/*`); new patterns documented in Storybook **when introduced** (recommended) |
+| **Density** | Data-heavy tables: prioritise **scannability** (zebra, sticky header, column resize where needed) |
+
+### 19.2 States and feedback
+
+- **Loading:** skeletons or inline spinners; avoid blank screens &gt; 300 ms perceived wait without feedback  
+- **Empty:** explain *why* empty and **next action** (e.g. “No customers — add customer”)  
+- **Errors:** user-safe message + support hint; technical detail only in dev or with correlation id  
+- **Success:** toast or inline confirmation for destructive or long-running actions  
+
+### 19.3 Accessibility (engineering obligations)
+
+- Keyboard **tab order** logical; focus visible  
+- Form fields have **labels**; errors associated with `aria-*` where applicable  
+- **Critical flows** (login, customer search, invoice list): automated a11y checks in CI (e.g. axe) **recommended**  
+
+### 19.4 Internationalisation
+
+- No user-visible concatenation of translated fragments that break grammar across languages  
+- Dates/numbers per **NFR-I18N-01**; RTL not required unless ADR adds locale  
+
+---
+
+## 20. Third-party software and open-source governance
+
+### 20.1 Dependency policy
+
+| Rule | Detail |
+|------|--------|
+| **Approval** | New **runtime** dependencies (npm, PyPI) SHOULD be reviewed for licence, maintenance, and security posture |
+| **Pinning** | Lockfiles committed (`package-lock.json`, `requirements.txt` / Poetry lock as adopted) |
+| **Scanning** | CI runs **Dependabot** or equivalent + **pip-audit** / **npm audit**; policy for failing builds on critical issues |
+| **SBOM** | For regulated customers, generate **CycloneDX** or SPDX SBOM per release artefact (tooling TBD) |
+
+### 20.2 Licence categories (guidance)
+
+| Category | Typical handling |
+|----------|------------------|
+| **Permissive** (MIT, Apache-2.0, BSD) | Generally acceptable; retain NOTICE files |
+| **Weak copyleft** (LGPL, MPL) | Legal review if linked in ways that trigger obligations |
+| **Strong copyleft** (GPL AGPL) | **Avoid** in application dependencies unless legal approves |
+
+### 20.3 Cloud and SaaS
+
+- Subprocessors (hosting, IdP, email, optional AI) tracked for **DPA** and **subprocessor notification** process.
+
+---
+
+## 21. Architecture decision records (register)
+
+ADRs capture **why** a decision was made; full text may live in `docs/adr/` or external wiki. This register SHALL stay in sync when new ADRs are added.
+
+| ADR ID | Title | Status | Location |
+|--------|-------|--------|----------|
+| ADR-001 | Primary cloud: Azure vs AWS vs multi-cloud | Proposed | *TBD — create `docs/adr/001-cloud-provider.md`* |
+| ADR-002 | Identity: Microsoft Entra OIDC vs interim JWT-only | Proposed | *TBD* |
+| ADR-003 | Canonical database: PostgreSQL vs Azure SQL | Proposed | *TBD* |
+| ADR-004 | Hash routing vs History API router | Accepted (current) | Implicit in HLD / codebase |
+| ADR-005 | AI provider (Azure OpenAI vs other) and EU residency | Proposed | HLD §8 + Blueprint §7 |
+
+**Template for new ADRs:** Context → Decision → Consequences → Compliance / Security notes → Review date.
+
+---
+
 ## Document history
 
 | Version | Date | Author | Notes |
 |---------|------|--------|-------|
 | 1.0 | 2026-03-20 | Project | Initial TRD + project report structure |
+| 1.1 | 2026-03-20 | Project | Professional TRS: §0 governance, §3.2.1 env targets, §15–§21 delivery/ops/compliance/traceability/design/SSO/ADR register; expanded §14.2 runbooks |
 
 ---
 

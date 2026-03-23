@@ -11,11 +11,13 @@
 
 **PDF export:** Open this file in VS Code / Cursor, or use Pandoc (`pandoc docs/HLD.md -o HLD.pdf`). For Mermaid diagrams, use a renderer that supports Mermaid (e.g. Typora, Obsidian, or print from GitHub preview if enabled).
 
+**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md).
+
 ---
 
 ## Abstract
 
-DEMA’s evolution replaces Access-bound clients and SQL Server as the sole interactive pattern with a **browser-based React application**, a **Python API layer**, and a **managed cloud database** (PostgreSQL preferred; Azure SQL optional per ADR). This document specifies **languages, products, and patterns per architectural layer**, **API grouping**, **cloud options**, **AI integration**, **DevOps tooling**, and a **module-by-module technology map** aligned with the DEMA dashboard. Detailed low-level API contracts and migration runbooks live in separate LLD and delivery artefacts.
+DEMA’s evolution replaces Access-bound clients and SQL Server as the sole interactive pattern with a **browser-based React application**, a **Python API layer**, and a **managed cloud database** (PostgreSQL preferred; Azure SQL optional per ADR). This document specifies **languages, products, and patterns per architectural layer**, **API grouping**, **cloud options**, **AI integration** (expanded in **§8** with feature list, execution plan, and governance), **DevOps tooling**, and a **module-by-module technology map** aligned with the DEMA dashboard. Detailed low-level API contracts and migration runbooks live in separate LLD and delivery artefacts.
 
 ---
 
@@ -160,18 +162,204 @@ DEMA’s evolution replaces Access-bound clients and SQL Server as the sole inte
 
 ## 8. AI and intelligent automation — detailed HLD (controlled phase)
 
-All model calls are **server-side** only.
+This section is the **single source of truth** in this document for **what AI means for DEMA Digital Core**, **which features are in scope**, **how they are executed technically and organisationally**, and **what is not implemented in the current UI prototype**.
+
+### 8.1 Current state vs. target state (repository)
+
+| Aspect | **AS-IS (today in `frontend/`)** | **TO-BE (this HLD)** |
+|--------|----------------------------------|----------------------|
+| LLM / embeddings | **Not present** — no API keys in browser, no calls to OpenAI/Azure OpenAI/Anthropic | All generative and embedding calls **only from Python** (`backend/`), never from Vite bundle |
+| “Smart” UX | **Deterministic**: autocomplete from local/demo data (`SuggestTextInput`, stores), rule-based filters | Same patterns remain for speed; AI **augments** search, drafting, and document understanding **behind** APIs |
+| Document AI | Uploads stored locally in demo (e.g. customer files) | Pipeline: object storage → worker → OCR/extract → review queue |
+| HLD references | Section 6 (`/ai` APIs), §3 pgvector, module table “AI (optional)” | Expanded below: contracts, phases, governance |
+
+**Implication for stakeholders:** AI features are **roadmapped capabilities** aligned with the FastAPI + worker stack; they are **not** a separate product — they plug into existing domains (`kunden`, `bestand`, `anfrage`, `rechnung`, etc.).
+
+---
+
+### 8.2 Principles (non-negotiable)
+
+1. **Server-side only:** The React app receives **already-scoped, audited responses** (text, structured JSON, job IDs). No provider secrets in the client.
+2. **Human in the loop for high-risk outputs:** Draft emails, extracted invoice fields, merge suggestions — **user confirms** before persistence where policy requires it.
+3. **Tenant and role isolation:** RAG retrieval and tool calls are filtered by **organisation, site, and RBAC** (same as REST APIs).
+4. **Observability:** Every AI request logs `correlation_id`, `user_id`, `route`, **token usage** (if available), and outcome — no raw PII in logs where avoidable.
+5. **Provider abstraction:** Internal interface (`CompletionPort`, `EmbeddingPort`) so Azure OpenAI vs. OpenAI vs. Anthropic is a **configuration**, not a rewrite.
+
+---
+
+### 8.3 Feature catalogue (what we plan to offer)
+
+Below: **feature ID**, **user-facing value**, **primary integration point**, **pattern**, **phase** (indicative).
+
+| ID | Feature | User value | Integrates with | Technical pattern | Phase |
+|----|---------|------------|-----------------|-------------------|-------|
+| **AI-SEARCH-01** | Natural-language **inventory / parts** query | “Show me all MAN axles under €X from last month” | `bestand`, dashboard | RAG over curated product/stock docs + **structured SQL tool** (LLM proposes query; validator executes) | 2 |
+| **AI-SEARCH-02** | **Semantic customer / company** search | Find customers by fuzzy description when spelling differs | `kunden` | Embeddings on name + address + notes; hybrid with **PostgreSQL FTS** | 2 |
+| **AI-FAQ-01** | **Internal FAQ / process** assistant | “How do we post a Gutschrift in DEMA?” | Wiki/SOP markdown in repo or CMS | RAG with **citations** (source path + chunk id) | 2 |
+| **AI-LEAD-01** | **Inquiry triage** | Suggest category, urgency, duplicate customer | `anfrage` | Classification + optional embedding similarity to open leads | 2 |
+| **AI-LEAD-02** | **Draft reply** to inquiry (email) | Speed up first response | `anfrage`, email outbound | Prompt + RAG (product snippets, SLA text); **editable draft only** | 3 |
+| **AI-OFFER-01** | **Offer text draft** | Boilerplate + line descriptions from template | `angebot` | Template slots + LLM; user edits before PDF | 3 |
+| **AI-DOC-01** | **Invoice / receipt understanding** | Pre-fill line items or totals for review | `rechnung`, uploads | OCR (Tesseract / Azure DI) + **structured extraction** schema (Pydantic) | 2–3 |
+| **AI-DOC-02** | **Document summary** for long PDFs | Short summary + key dates/amounts | Attachments on customer/vehicle | Chunked summarisation; store summary in DB after approval | 3 |
+| **AI-DEDUP-01** | **Duplicate customer hints** | Suggest possible merges (not auto-merge) | `kunden`, dedupe UI | Embedding similarity + rules; **merge stays explicit user action** | 2 |
+| **AI-REP-01** | **Report narratives** | One-paragraph explanation of KPI chart | `reports`, dashboard | LLM on **aggregated numbers only** (no row-level PII in prompt unless allowed) | 3 |
+| **AI-B2B-01** | **B2B catalogue Q&A** | Partner asks about listed vehicles/specs | `b2b` | Scoped RAG on public/partner-safe corpus only | 3 |
+| **AI-SEC-01** | **Login risk signals** (optional) | Unusual pattern flagging | `auth` | Rules + optional classifier on metadata (not password content) | Later |
+| **AI-OGT-01** | **Route / task hints** (optional) | Suggest ordering of stops | On-ground team | Optimisation APIs first; LLM only for natural-language explanations | Later |
+
+**Out of scope for v1 AI:** fully autonomous posting to accounting, unsupervised customer merge, medical/legal advice, training on **customer PII** without DPA and retention policy.
+
+---
+
+### 8.4 Architecture (how it runs)
+
+```mermaid
+flowchart LR
+  subgraph Client["Browser React"]
+    UI[Screens]
+  end
+  subgraph API["FastAPI"]
+    REST[Domain APIs]
+    AISVC[AI orchestration service]
+    VAL[Policy validator]
+  end
+  subgraph Data["Data plane"]
+    PG[(PostgreSQL + optional pgvector)]
+    OBJ[Object storage]
+    REDIS[(Redis queue)]
+  end
+  subgraph Workers["Workers"]
+    W1[Embed / index jobs]
+    W2[OCR / extract jobs]
+  end
+  subgraph Provider["Model provider"]
+    LLM[LLM API]
+    EMB[Embedding API]
+  end
+  UI -->|HTTPS JSON| REST
+  UI -->|HTTPS JSON| AISVC
+  AISVC --> VAL
+  VAL --> PG
+  AISVC --> LLM
+  W1 --> EMB
+  W1 --> PG
+  W2 --> OBJ
+  W2 --> PG
+  REST --> PG
+  AISVC --> REDIS
+  REDIS --> W1
+  REDIS --> W2
+```
+
+**Request path (synchronous “ask”):** `POST /api/v1/ai/query` → authZ → rate limit → load **allowed tools** (e.g. `search_kunden`, `sql_readonly`) → build prompt with **retrieved chunks** → LLM → **output validation** (JSON schema / length) → audit log → response.
+
+**Request path (async “analyse document”):** `POST /api/v1/ai/documents/analyse` → returns `job_id` → worker runs OCR/extract → result stored → `GET /api/v1/ai/jobs/{id}` or webhook.
+
+---
+
+### 8.5 API surface (high level; LLD will define schemas)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/v1/ai/query` | NL question with optional `context` (e.g. `module=bestand`); returns answer + citations |
+| `POST` | `/api/v1/ai/documents/analyse` | Submit `document_id` or upload handle; returns `job_id` |
+| `GET` | `/api/v1/ai/jobs/{job_id}` | Poll extraction / summarisation status |
+| `POST` | `/api/v1/ai/embeddings/reindex` | Admin: trigger re-embed for corpus scope (protected) |
+| `GET` | `/api/v1/ai/health` | Provider connectivity + model version (no secrets) |
+
+**Authorisation:** Same JWT/OIDC as REST; additional `ai:query`, `ai:documents`, `ai:admin` permissions where needed.
+
+---
+
+### 8.6 RAG and knowledge bases
+
+| Corpus | Content | Refresh | Storage |
+|--------|---------|---------|---------|
+| **Product / stock help** | Sanitised descriptions, OEM notes, internal SKU docs | On article change + nightly | Chunks in DB + **pgvector** |
+| **SOP / FAQ** | Markdown in repo or headless CMS | CI or webhook on publish | Versioned chunks; cite `source_uri` |
+| **Customer-facing B2B** | Only public/partner-approved text | Editorial workflow | Separate index namespace |
+
+**Retrieval:** hybrid **BM25 (Postgres FTS) + vector** top-k; **re-rank** optional second stage; **max chunks** and **max tokens** enforced per request.
+
+---
+
+### 8.7 Security, privacy, compliance
+
+| Topic | Control |
+|-------|---------|
+| Data residency | EU deployment; **Azure OpenAI in EU** or EU-processed endpoint per contract |
+| PII | Redact or hash before logging; **minimise** what enters the prompt; field-level allow lists per feature |
+| Prompt injection | System prompt hardening; **tool allow list**; no arbitrary URL fetch from model output |
+| Retention | Configurable TTL for prompts/responses in DB; default **short** for debugging only |
+| DPA | Subprocessor list includes chosen LLM provider; customer consent for optional features |
+
+---
+
+### 8.8 Cost, quotas, and abuse prevention
+
+| Mechanism | Implementation |
+|-----------|----------------|
+| Per-user / per-tenant **daily token budget** | Redis counter + DB rollup |
+| **Rate limiting** | Middleware (e.g. slowapi) per IP + per user |
+| **Model choice** | Cheaper model for classification; premium for long documents |
+| **Caching** | Hash of (normalised question + corpus version) → cached answer TTL 5–60 min where safe |
+| **Billing visibility** | Internal table: `ai_usage(user_id, tenant_id, tokens, cost_estimate, feature_id, ts)` |
+
+---
+
+### 8.9 Quality assurance and evaluation
+
+| Activity | Detail |
+|----------|--------|
+| **Golden sets** | Curated Q&A + expected citations / SQL shapes for `AI-SEARCH-01`, `AI-FAQ-01` |
+| **Regression** | CI job runs prompts against stub or recorded responses; fail on major drift |
+| **Human review** | Sample rate of production queries reviewed weekly in early phase |
+| **Model upgrades** | Pin versions; run golden set before bump; document in changelog |
+
+---
+
+### 8.10 Execution roadmap (how we deliver)
+
+**Phase 0 — Foundations (no user-visible AI)**  
+- FastAPI `ai` package skeleton: `CompletionPort`, `EmbeddingPort`, feature flags.  
+- Postgres: `ai_usage`, `ai_job`, optional `pgvector` extension migration.  
+- Secrets: Key Vault / env; **no** keys in frontend.  
+- Observability: structured logs + metric counters.
+
+**Phase 1 — Read-only assist**  
+- `AI-FAQ-01` on static SOP corpus (internal).  
+- `AI-SEARCH-01` prototype: NL → **validated read-only SQL** or search API (no writes).  
+- UI: single “**Ask DEMA**” side panel or header entry (behind feature flag).
+
+**Phase 2 — Domain-integrated**  
+- `AI-LEAD-01`, `AI-DEDUP-01`, `AI-DOC-01` (job-based) wired to `anfrage`, `kunden`, `rechnung`.  
+- Embeddings incremental pipeline on worker.
+
+**Phase 3 — Drafting and narratives**  
+- `AI-LEAD-02`, `AI-OFFER-01`, `AI-REP-01`, `AI-DOC-02` with strict **confirm to save**.
+
+**Dependencies:** stable REST APIs for each domain, object storage for documents, Redis (or equivalent) for queues, legal sign-off on provider and data flow.
+
+---
+
+### 8.11 Mapping: module table ↔ AI features
+
+Cross-reference to **§9** (module mapping): cells that mention “RAG”, “draft”, “OCR”, “Fuzzy”, “Narratives” correspond to the feature IDs above. Purchase (`PUR-*`) inherits the same AI features as Sales where the **same backend service** applies, with **stricter RBAC** and purchase-specific corpora/filters.
+
+---
+
+### 8.12 Summary table (capabilities × technologies)
 
 | Capability | Pattern | Technologies (typical) |
 |------------|---------|-------------------------|
-| NL inventory / FAQ | **RAG** + citations | OpenAI / Azure OpenAI / Anthropic; token limits |
-| Embeddings | Batch + incremental | Provider embedding models; **pgvector** |
-| Documents | Upload → worker → OCR + structured extraction → human review | PyMuPDF, pdfplumber; optional Azure Document Intelligence |
-| Guardrails | Versioned prompts; PII redaction | FastAPI middleware |
-| Cost / abuse | Quotas, rate limits, token billing table | Redis + DB |
-| Evaluation | Golden sets; regression before model upgrades | pytest |
+| NL inventory / FAQ | RAG + citations + optional tools | Azure OpenAI / OpenAI / Anthropic; **pgvector**; Postgres FTS |
+| Embeddings | Batch + incremental | Provider embedding models; worker queue |
+| Documents | Upload → worker → OCR + structured extraction → human review | PyMuPDF, pdfplumber; **Azure Document Intelligence** optional |
+| Guardrails | Versioned prompts; PII redaction; output schema validation | FastAPI middleware; Pydantic |
+| Cost / abuse | Quotas, rate limits, usage ledger | Redis + PostgreSQL |
+| Evaluation | Golden sets; CI regression | pytest; recorded fixtures (YAML/JSON) |
 
-Orchestration: **Python**; fixtures: **YAML/JSON**.
+**Orchestration language:** Python only for AI workflows touching data. Prompts and eval fixtures versioned in Git (`/prompts`, `/evals` or similar).
 
 ---
 
@@ -246,5 +434,6 @@ sequenceDiagram
 | Version | Notes |
 |---------|--------|
 | 1.0 | Standalone extract for stakeholder PDFs; paths relative to repository root |
+| 1.1 | Expanded **§8 AI**: current vs target state, feature catalogue (AI-SEARCH-01 …), architecture, APIs, RAG, security, cost, QA, execution roadmap, module cross-reference |
 
 *This HLD is aligned with the master delivery blueprint stored in the project planning artefact (`e2e_python_to_cloud` plan). For C4 context diagrams and LLD-level API standards, refer to that blueprint.*

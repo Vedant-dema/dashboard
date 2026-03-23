@@ -21,7 +21,7 @@ Use these names consistently in slides and docs:
 | Cloud edge | CDN + WAF + LB | Azure Front Door / CloudFront / Cloud CDN |
 | Secret management | Key Vault / Secret Manager | Azure Key Vault / AWS Secrets Manager / GCP Secret Manager |
 
-Note: Mermaid does not reliably embed official product logos in all renderers. Keep logos in exported PNG/SVG (draw.io/Figma) and keep these diagrams as architecture source-of-truth.
+**Logos in this file:** Each Mermaid diagram is followed by a **technology strip** (Simple Icons CDN). For rationale and accessibility notes, see [diagram-tech-logos.md](./diagram-tech-logos.md). For slide decks, you can hide the strip or rebuild the diagram in draw.io/Figma with the same assets.
 
 ---
 
@@ -56,6 +56,18 @@ flowchart LR
   API --> EXT2
   API --> EXT3
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/typescript/3178C6" width="22" height="22" alt="TypeScript" title="TypeScript" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+<img src="https://cdn.simpleicons.org/amazons3/569A31" width="22" height="22" alt="Object storage (S3-style)" title="Object storage (S3-style)" />
+<img src="https://cdn.simpleicons.org/microsoftoutlook/0078D4" width="22" height="22" alt="Email / messaging provider" title="Email / messaging provider" />
+<img src="https://cdn.simpleicons.org/openid/F78C40" width="22" height="22" alt="OpenID Connect" title="OpenID Connect" />
+<img src="https://cdn.simpleicons.org/sap/0FAAFF" width="22" height="22" alt="ERP / accounting export" title="ERP / accounting export" />
+</p>
 
 ---
 
@@ -100,6 +112,19 @@ flowchart TB
   Worker --> Blob
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/googlechrome/4285F4" width="22" height="22" alt="Browser" title="Browser" />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/vite/646CFF" width="22" height="22" alt="Vite" title="Vite" />
+<img src="https://cdn.simpleicons.org/cloudflare/F38020" width="22" height="22" alt="CDN / edge" title="CDN / edge" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Redis" title="Redis" />
+<img src="https://cdn.simpleicons.org/celery/37814A" width="22" height="22" alt="Celery" title="Celery" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Object storage (cloud blob)" title="Object storage (cloud blob)" />
+</p>
+
 ---
 
 ## 4) Frontend module architecture
@@ -126,6 +151,13 @@ flowchart LR
   Pages --> Types
   UI --> Ctx2
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/typescript/3178C6" width="22" height="22" alt="TypeScript" title="TypeScript" />
+<img src="https://cdn.simpleicons.org/vite/646CFF" width="22" height="22" alt="Vite" title="Vite" />
+<img src="https://cdn.simpleicons.org/tailwindcss/06B6D4" width="22" height="22" alt="Tailwind CSS" title="Tailwind CSS" />
+</p>
 
 ### Frontend route-to-module map
 
@@ -168,6 +200,13 @@ flowchart TB
   Core --> APIv1
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/pydantic/E92063" width="22" height="22" alt="Pydantic" title="Pydantic" />
+<img src="https://cdn.simpleicons.org/sqlalchemy/D71F00" width="22" height="22" alt="SQLAlchemy" title="SQLAlchemy" />
+</p>
+
 ### Domain services breakdown (target)
 
 ```mermaid
@@ -196,6 +235,10 @@ flowchart LR
   ADM --- H
   AI --- REP
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python (domain services)" />
+</p>
 
 ---
 
@@ -236,6 +279,12 @@ flowchart LR
   GW --> AI
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+</p>
+
 ### API execution sequence (example: invoice list)
 
 ```mermaid
@@ -273,6 +322,10 @@ erDiagram
   MITARBEITER ||--o{ HRM_ATTENDANCE : tracks
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+</p>
+
 ### DB runtime topology
 
 ```mermaid
@@ -290,6 +343,12 @@ flowchart LR
   PG --> Replica
   PG --> Backups
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+</p>
 
 ---
 
@@ -323,6 +382,15 @@ flowchart TB
   Worker --> Obs
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Microsoft Azure" title="Microsoft Azure" />
+<img src="https://cdn.simpleicons.org/amazonaws/232F3E" width="22" height="22" alt="Amazon Web Services" title="Amazon Web Services" />
+<img src="https://cdn.simpleicons.org/googlecloud/4285F4" width="22" height="22" alt="Google Cloud" title="Google Cloud" />
+<img src="https://cdn.simpleicons.org/docker/2496ED" width="22" height="22" alt="Docker" title="Docker" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Redis" title="Redis" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+</p>
+
 ### Cloud environment split
 
 ```mermaid
@@ -333,6 +401,12 @@ flowchart LR
 
   Dev --> Stg --> Prd
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Microsoft Azure" title="Microsoft Azure" />
+<img src="https://cdn.simpleicons.org/amazonaws/232F3E" width="22" height="22" alt="Amazon Web Services" title="Amazon Web Services" />
+<img src="https://cdn.simpleicons.org/googlecloud/4285F4" width="22" height="22" alt="Google Cloud" title="Google Cloud" />
+</p>
 
 ---
 
@@ -368,6 +442,14 @@ flowchart TB
   TFA --> App
   TFA --> Obs
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/github/181717" width="22" height="22" alt="GitHub" title="GitHub" />
+<img src="https://cdn.simpleicons.org/githubactions/2088FF" width="22" height="22" alt="GitHub Actions" title="GitHub Actions" />
+<img src="https://cdn.simpleicons.org/terraform/844FBA" width="22" height="22" alt="Terraform" title="Terraform" />
+<img src="https://cdn.simpleicons.org/docker/2496ED" width="22" height="22" alt="Docker" title="Docker" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure (remote state / targets)" title="Azure (remote state / targets)" />
+</p>
 
 ### Suggested Terraform module boundaries
 
@@ -407,6 +489,16 @@ sequenceDiagram
   W->>OS: Store artifact (PDF/export/OCR)
   W->>DB: Update status
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Redis" title="Redis" />
+<img src="https://cdn.simpleicons.org/amazons3/569A31" width="22" height="22" alt="Object storage" title="Object storage" />
+<img src="https://cdn.simpleicons.org/celery/37814A" width="22" height="22" alt="Celery / worker" title="Celery / worker" />
+</p>
 
 ---
 

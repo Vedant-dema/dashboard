@@ -11,7 +11,7 @@
 
 **PDF export:** Open this file in VS Code / Cursor, or use Pandoc (`pandoc docs/HLD.md -o HLD.pdf`). For Mermaid diagrams, use a renderer that supports Mermaid (e.g. Typora, Obsidian, or print from GitHub preview if enabled).
 
-**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md). Detailed professional architecture views are in [Architecture-Diagrams.md](./Architecture-Diagrams.md). **Single-cloud (Azure) blueprint** with logos and layered diagrams: [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md).
+**Companion:** Low-level contracts and implementation rules are in [LLD.md](./LLD.md). Detailed professional architecture views are in [Architecture-Diagrams.md](./Architecture-Diagrams.md). **Single-cloud (Azure) blueprint** with logos and layered diagrams: [Blueprint-Azure-Complete.md](./Blueprint-Azure-Complete.md). **Diagram logo strips** (Simple Icons CDN): [diagram-tech-logos.md](./diagram-tech-logos.md). **Project report & technical requirements (TRD):** [Project-Report-Technical-Requirements.md](./Project-Report-Technical-Requirements.md).
 
 ---
 
@@ -426,6 +426,19 @@ sequenceDiagram
   AI-->>API: model_output
   API-->>Browser: JSON_response
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/typescript/3178C6" width="22" height="22" alt="TypeScript" title="TypeScript" />
+<img src="https://cdn.simpleicons.org/vite/646CFF" width="22" height="22" alt="Vite" title="Vite" />
+<img src="https://cdn.simpleicons.org/cloudflare/F38020" width="22" height="22" alt="CDN" title="CDN" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/sqlalchemy/D71F00" width="22" height="22" alt="SQLAlchemy" title="SQLAlchemy" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Redis" title="Redis" />
+<img src="https://cdn.simpleicons.org/openai/412991" width="22" height="22" alt="LLM provider (optional)" title="LLM provider (optional)" />
+</p>
 
 ---
 

@@ -3,7 +3,7 @@
 **Single chosen cloud:** **Microsoft Azure** (EU region, e.g. **Germany West Central** or **West Europe**).  
 This document is the **authoritative Azure reference** for DEMA: which **managed services** to use, how **APIs**, **data**, **AI**, **identity**, and **IaC** connect, and **blueprint-level diagrams** (not ad-hoc boxes).
 
-**Companion docs:** [HLD.md](./HLD.md) (strategy), [Architecture-Diagrams.md](./Architecture-Diagrams.md) (cloud-neutral views), [erd.md](./erd.md) (data model).
+**Companion docs:** [HLD.md](./HLD.md) (strategy), [Architecture-Diagrams.md](./Architecture-Diagrams.md) (cloud-neutral views), [erd.md](./erd.md) (data model), [diagram-tech-logos.md](./diagram-tech-logos.md) (logo strip convention).
 
 ---
 
@@ -168,6 +168,20 @@ flowchart TB
   ACA --> ERP
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Microsoft Azure" title="Microsoft Azure" />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="Azure Database for PostgreSQL" title="Azure Database for PostgreSQL" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Azure Cache for Redis" title="Azure Cache for Redis" />
+<img src="https://cdn.simpleicons.org/openai/412991" width="22" height="22" alt="Azure OpenAI Service" title="Azure OpenAI Service" />
+<img src="https://cdn.simpleicons.org/microsoft/5E5E5E" width="22" height="22" alt="Microsoft Entra ID" title="Microsoft Entra ID" />
+<img src="https://cdn.simpleicons.org/microsoftoutlook/0078D4" width="22" height="22" alt="Email (e.g. M365)" title="Email (e.g. M365)" />
+<img src="https://cdn.simpleicons.org/sap/0FAAFF" width="22" height="22" alt="ERP / accounting export" title="ERP / accounting export" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure AI Document Intelligence" title="Azure AI Document Intelligence" />
+</p>
+
 ---
 
 ## 4. Blueprint B — Landing zone & network (detail)
@@ -199,6 +213,17 @@ flowchart TB
   ACA --> PEKV
   ACA --> PEAOAI
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Virtual Network" title="Azure Virtual Network" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Front Door" title="Azure Front Door" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Container Apps" title="Azure Container Apps" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL (private endpoint)" title="PostgreSQL (private endpoint)" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Redis (private endpoint)" title="Redis (private endpoint)" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Blob Storage (private endpoint)" title="Blob Storage (private endpoint)" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Key Vault (private endpoint)" title="Key Vault (private endpoint)" />
+<img src="https://cdn.simpleicons.org/openai/412991" width="22" height="22" alt="Azure OpenAI (private optional)" title="Azure OpenAI (private optional)" />
+</p>
 
 **Controls:** NSGs on subnets; **Private DNS zones** linked to VNet for private endpoints; **Managed identities** on Container Apps for Key Vault + storage + database (AAD auth where supported).
 
@@ -232,6 +257,13 @@ flowchart LR
 
 **Scaling:** API on HTTP concurrency / CPU; workers on **queue length** (KEDA + Redis).
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Container Apps" title="Azure Container Apps" />
+<img src="https://cdn.simpleicons.org/githubactions/2088FF" width="22" height="22" alt="GitHub Actions" title="GitHub Actions" />
+<img src="https://cdn.simpleicons.org/docker/2496ED" width="22" height="22" alt="Docker" title="Docker" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Container Registry" title="Azure Container Registry" />
+</p>
+
 ---
 
 ## 6. Blueprint D — Data platform
@@ -252,6 +284,14 @@ flowchart TB
   WRK --> RD
   WRK --> BL
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python workers" title="Python workers" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" width="22" height="22" alt="Redis" title="Redis" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Blob Storage" title="Azure Blob Storage" />
+</p>
 
 **PostgreSQL extensions (when needed):** `pgvector` for embeddings (align with HLD §8).  
 **Backup:** Flexible Server **automated backups** + optional **geo-redundant**; Blob **RA-GRS** for critical exports (policy decision).
@@ -293,6 +333,17 @@ flowchart TB
   AOAI --> LOG
   API --> LOG
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python worker" title="Python worker" />
+<img src="https://cdn.simpleicons.org/openai/412991" width="22" height="22" alt="Azure OpenAI" title="Azure OpenAI" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure AI Content Safety" title="Azure AI Content Safety" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Application Insights" title="Application Insights" />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL + pgvector" title="PostgreSQL + pgvector" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Blob" title="Azure Blob" />
+</p>
 
 **Typical flows:**
 
@@ -338,6 +389,14 @@ flowchart LR
 
 **API grouping (maps to HLD §6):** `auth`, `users`, `kunden`, `anfrage`, `angebot`, `bestand`, `rechnung`, `werkstatt`, `wash`, `hrm`, `b2b`, `reports`, `ai`.
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/react/61DAFB" width="22" height="22" alt="React" title="React" />
+<img src="https://cdn.simpleicons.org/fastapi/009688" width="22" height="22" alt="FastAPI" title="FastAPI" />
+<img src="https://cdn.simpleicons.org/python/3776AB" width="22" height="22" alt="Python" title="Python" />
+<img src="https://cdn.simpleicons.org/microsoft/5E5E5E" width="22" height="22" alt="Microsoft Entra ID" title="Microsoft Entra ID" />
+<img src="https://cdn.simpleicons.org/openid/F78C40" width="22" height="22" alt="OpenID Connect" title="OpenID Connect" />
+</p>
+
 ---
 
 ## 9. Blueprint G — Terraform module map (Azure)
@@ -364,6 +423,12 @@ flowchart TB
   MAPP --> MSEC
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/terraform/844FBA" width="22" height="22" alt="Terraform" title="Terraform" />
+<img src="https://cdn.simpleicons.org/github/181717" width="22" height="22" alt="GitHub" title="GitHub" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure modules" title="Azure modules" />
+</p>
+
 **State:** Remote backend **Azure Storage** + **state locking** (blob lease or Terraform Cloud).
 
 **CI/CD:** GitHub Actions → `terraform fmt/validate/plan` on PR; `apply` on protected branch with approval.
@@ -388,6 +453,16 @@ flowchart LR
   AIEXP --> DASH[Azure Dashboards / Grafana]
   LOGS --> ALERT[Alert rules\nlatency 5xx queue depth]
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Container Apps" title="Azure Container Apps" />
+<img src="https://cdn.simpleicons.org/opentelemetry/000000" width="22" height="22" alt="OpenTelemetry" title="OpenTelemetry" />
+<img src="https://cdn.simpleicons.org/openai/412991" width="22" height="22" alt="Azure OpenAI" title="Azure OpenAI" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Application Insights" title="Application Insights" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Log Analytics" title="Log Analytics" />
+<img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="22" height="22" alt="Azure Monitor" title="Azure Monitor" />
+<img src="https://cdn.simpleicons.org/grafana/F46800" width="22" height="22" alt="Grafana" title="Grafana" />
+</p>
 
 **SLO examples:** API p95 latency, error rate, worker backlog depth, OpenAI token budget burn rate.
 

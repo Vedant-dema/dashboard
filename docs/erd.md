@@ -4,6 +4,8 @@
 
 This document describes **entities, attributes, keys, relationships, referential actions, indexing**, and how **ACID** applies in the target database. It is intended for architects, backend engineers, and migration teams (SQL Server → PostgreSQL).
 
+**Diagram logos:** Each Mermaid `erDiagram` below is followed by a **PostgreSQL** technology strip (Simple Icons CDN). See [diagram-tech-logos.md](./diagram-tech-logos.md).
+
 ---
 
 ## 1. Conventions and notation
@@ -198,6 +200,10 @@ erDiagram
   kunden ||--o{ kunden_rollen : "roles_ON_DELETE_CASCADE"
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+</p>
+
 ---
 
 ## 7. Relationship diagram — inquiry, inventory, offer, pickup
@@ -370,6 +376,10 @@ erDiagram
   bestand ||--o{ abholauftrag : "bestand_id_optional"
 ```
 
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+</p>
+
 ---
 
 ## 8. Relationship diagram — collective transfer and invoicing
@@ -453,6 +463,10 @@ erDiagram
   kunden ||--o{ rechnung : "kunden_id"
   rechnung ||--o{ rechnung_position : "CASCADE"
 ```
+
+<p align="left"><strong>Technologies in this diagram:</strong><br />
+<img src="https://cdn.simpleicons.org/postgresql/4169E1" width="22" height="22" alt="PostgreSQL" title="PostgreSQL" />
+</p>
 
 ---
 

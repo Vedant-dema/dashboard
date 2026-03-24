@@ -3,7 +3,7 @@
 **Audience:** Owners, business stakeholders, operations leaders, non-technical reviewers  
 **Service:** Internal Chat  
 **Related technical spec:** `docs/Detailed report/InternalChat-Service-Spec.md`  
-**Version:** 1.0
+**Version:** 1.1
 
 ---
 
@@ -20,20 +20,17 @@ It answers:
 
 ---
 
-## 2) Technology stack at a glance (with logos)
+## 2) Technology stack at a glance
 
-<p>
-  <img src="https://cdn.simpleicons.org/react/61DAFB" width="24" height="24" alt="React" title="React" />
-  <img src="https://cdn.simpleicons.org/typescript/3178C6" width="24" height="24" alt="TypeScript" title="TypeScript" />
-  <img src="https://cdn.simpleicons.org/python/3776AB" width="24" height="24" alt="Python" title="Python" />
-  <img src="https://cdn.simpleicons.org/fastapi/009688" width="24" height="24" alt="FastAPI" title="FastAPI" />
-  <img src="https://cdn.simpleicons.org/postgresql/4169E1" width="24" height="24" alt="PostgreSQL" title="PostgreSQL" />
-  <img src="https://cdn.simpleicons.org/redis/DC382D" width="24" height="24" alt="Redis" title="Redis" />
-  <img src="https://cdn.simpleicons.org/docker/2496ED" width="24" height="24" alt="Docker" title="Docker" />
-  <img src="https://cdn.simpleicons.org/githubactions/2088FF" width="24" height="24" alt="GitHub Actions" title="GitHub Actions" />
-  <img src="https://cdn.simpleicons.org/openai/412991" width="24" height="24" alt="AI Provider" title="AI Provider" />
-  <img src="https://cdn.simpleicons.org/microsoftazure/0089D6" width="24" height="24" alt="Cloud Platform" title="Cloud Platform" />
-</p>
+| Layer | Technology | Role in Internal Chat |
+|-------|------------|------------------------|
+| UI | React, TypeScript | Chat screens, composer, threads, attachments UX |
+| API | Python, FastAPI | REST/WebSocket endpoints, validation, orchestration |
+| Data | PostgreSQL | Messages, channels, membership, audit references |
+| Cache / realtime | Redis | Presence, typing, rate limits, pub/sub helpers |
+| Containers / CI | Docker, GitHub Actions | Repeatable builds, automated checks and deploys |
+| AI (later phases) | Provider abstraction | Summaries, smart replies, extraction (human-approved) |
+| Hosting | Cloud platform | Networking, secrets, scaling, backups |
 
 ---
 
@@ -51,25 +48,32 @@ By the end of this roadmap, Internal Chat should be:
 
 ## 4) Version roadmap (V1 to final goal)
 
-## V1 - Stable foundation (Weeks 1-6)
+### V1 - Stable foundation (Weeks 1-6)
 
-### What users get
+#### Feature summary
 
-- Chat messages saved reliably (not just browser/demo data)
-- Better stability when refreshing or re-logging in
-- Core direct and group messaging with consistent history
+| # | Feature | What users get | Business value |
+|---|---------|----------------|----------------|
+| 1 | Persistent messaging | Messages and history survive refresh and re-login | Trust; no “lost chat” perception |
+| 2 | Direct & group threads | Consistent 1:1 and small-group conversations | Teams can coordinate without workarounds |
+| 3 | Basic delivery reliability | Clear success/failure for send operations | Fewer support escalations |
 
-### Business value
+#### Delivery flow (message lifecycle)
 
-- Immediate trust in message persistence
-- Reduced communication loss risk
-- Better adoption by internal teams
+```mermaid
+flowchart TD
+  U[User composes message] --> C[Client validates input]
+  C --> A[API receives message]
+  A --> D[(PostgreSQL stores message)]
+  D --> R[API confirms to client]
+  R --> H[History visible to participants]
+```
 
-### Primary technologies
+#### Primary technologies
 
 - FastAPI + PostgreSQL + React integration
 
-### Move-to-next-version criteria
+#### Move-to-next-version criteria
 
 - Message save reliability is high
 - No major data loss incidents
@@ -77,26 +81,33 @@ By the end of this roadmap, Internal Chat should be:
 
 ---
 
-## V2 - Team collaboration maturity (Weeks 7-14)
+### V2 - Team collaboration maturity (Weeks 7-14)
 
-### What users get
+#### Feature summary
 
-- Better group/channel experience
-- Read receipts and improved presence behavior
-- Attachment handling with cloud storage
-- Better conversation search
+| # | Feature | What users get | Business value |
+|---|---------|----------------|----------------|
+| 1 | Channels / groups | Clear spaces for team topics | Less noise; faster alignment |
+| 2 | Presence & read receipts | See who is active and what was read | Fewer duplicate pings |
+| 3 | Attachments | Files stored in object storage, linked to messages | Richer context in one place |
+| 4 | Search | Find past messages by text/metadata | Reduces repeated questions |
 
-### Business value
+#### Flow (attachment + notify)
 
-- Faster team coordination
-- More context-rich communication
-- Better discoverability of past discussions
+```mermaid
+flowchart TD
+  U[User attaches file] --> UP[Upload to object storage]
+  UP --> M[Message references file URL]
+  M --> API[API persists message + metadata]
+  API --> RT[Realtime / notifications]
+  RT --> P[Participants notified]
+```
 
-### Primary technologies
+#### Primary technologies
 
 - Realtime gateway + Redis + object storage + search indexing
 
-### Move-to-next-version criteria
+#### Move-to-next-version criteria
 
 - Attachment workflow is stable
 - Search quality is acceptable for everyday use
@@ -104,25 +115,33 @@ By the end of this roadmap, Internal Chat should be:
 
 ---
 
-## V3 - Security and governance (Weeks 15-22)
+### V3 - Security and governance (Weeks 15-22)
 
-### What users get
+#### Feature summary
 
-- Role-based access to channels and actions
-- Stronger policy enforcement
-- Reliable audit records for sensitive operations
+| # | Feature | What users get | Business value |
+|---|---------|----------------|----------------|
+| 1 | Role-based access | Only allowed users see channels/actions | Lower leakage risk |
+| 2 | Policy enforcement | Server-side checks on sensitive operations | Consistent rules, not “UI-only” |
+| 3 | Audit trail | Records for joins, deletes, admin actions | Accountability and investigations |
 
-### Business value
+#### Flow (protected action)
 
-- Better compliance posture
-- Clear accountability
-- Lower risk of unauthorized access
+```mermaid
+flowchart TD
+  U[User requests action] --> T[Auth token validated]
+  T --> P{Policy / RBAC check}
+  P -->|deny| E[Blocked + logged]
+  P -->|allow| X[Execute action]
+  X --> L[Audit log entry]
+  L --> R[Result to user]
+```
 
-### Primary technologies
+#### Primary technologies
 
 - IAM/OIDC integration + policy middleware + audit pipeline
 
-### Move-to-next-version criteria
+#### Move-to-next-version criteria
 
 - Security review passes agreed threshold
 - Audit records complete for key actions
@@ -130,29 +149,35 @@ By the end of this roadmap, Internal Chat should be:
 
 ---
 
-## V4 - AI assistant layer (Weeks 23-32)
+### V4 - AI assistant layer (Weeks 23-32)
 
-### What users get
+#### Feature summary
 
-- Conversation summary suggestions
-- Smart reply suggestions
-- Action-item extraction support
+| # | Feature | What users get | Business value |
+|---|---------|----------------|----------------|
+| 1 | Conversation summaries | Optional recap of long threads | Managers save reading time |
+| 2 | Smart reply suggestions | Draft replies user can edit/send | Faster responses |
+| 3 | Action-item hints | Suggested follow-ups from chat | Discussion turns into work |
 
-### Business value
+#### Flow (human-in-the-loop AI)
 
-- Time saved for managers and teams
-- Faster response quality in busy chats
-- Better conversion of discussion into action
+```mermaid
+flowchart TD
+  C[Chat context] --> O[AI orchestration]
+  O --> S[Suggestion generated]
+  S --> UI[Shown as draft / suggestion only]
+  UI --> D{User accepts?}
+  D -->|no| DISCARD[Discarded / ignored]
+  D -->|yes| APPLY[User edits and sends]
+```
 
-### Important control rule
+**Important control rule:** AI recommendations are suggestions, not automatic final decisions.
 
-- AI recommendations are suggestions, not automatic final decisions
-
-### Primary technologies
+#### Primary technologies
 
 - AI orchestration service + provider abstraction + usage tracking
 
-### Move-to-next-version criteria
+#### Move-to-next-version criteria
 
 - AI quality acceptable to pilot users
 - AI usage cost under budget
@@ -160,25 +185,32 @@ By the end of this roadmap, Internal Chat should be:
 
 ---
 
-## V5 - Scale and resilience (Weeks 33-42)
+### V5 - Scale and resilience (Weeks 33-42)
 
-### What users get
+#### Feature summary
 
-- Better performance during high activity
-- Stronger reliability and disaster readiness
-- Improved responsiveness under load
+| # | Feature | What users get | Business value |
+|---|---------|----------------|----------------|
+| 1 | Performance under load | Stable latency at peak usage | Confidence for wider rollout |
+| 2 | Backpressure & queues | Graceful handling of spikes | Fewer outages during events |
+| 3 | DR readiness | Tested recovery paths | Lower business continuity risk |
 
-### Business value
+#### Flow (high-load path)
 
-- Lower operational risk
-- Better user confidence across departments
-- Strong foundation for company-wide rollout
+```mermaid
+flowchart TD
+  L[High traffic] --> GW[Gateway / API tier]
+  GW --> Q[Queue when needed]
+  Q --> W[Workers process]
+  W --> DB[(Data stores)]
+  GW --> SLO[Monitoring / SLO alerts]
+```
 
-### Primary technologies
+#### Primary technologies
 
 - Performance tuning + queue/backpressure + DR drills
 
-### Move-to-next-version criteria
+#### Move-to-next-version criteria
 
 - SLO targets met consistently
 - DR rehearsal completed successfully
@@ -186,23 +218,33 @@ By the end of this roadmap, Internal Chat should be:
 
 ---
 
-## V6 - Enterprise excellence (Continuous)
+### V6 - Enterprise excellence (Continuous)
 
-### What users get
+#### Feature summary
 
-- Mature, policy-led chat platform
-- Advanced analytics and insights
-- AI tuned by department/language needs
+| # | Feature | What users get | Business value |
+|---|---------|----------------|----------------|
+| 1 | Policy-led platform | Mature defaults per org/department | Sustainable operations |
+| 2 | Analytics & insights | Adoption and health signals (privacy-aware) | Data-driven improvements |
+| 3 | Tuned AI | Language/department-aware assistance | Better fit without losing control |
 
-### Business value
+#### Flow (continuous improvement loop)
 
-- Strategic internal communication platform
-- Better productivity intelligence
-- Sustainable long-term operating model
+```mermaid
+flowchart LR
+  M[Metrics & feedback] --> R[Review with owners]
+  R --> B[Backlog priorities]
+  B --> D[Deliver improvements]
+  D --> M
+```
+
+#### Primary technologies
+
+- Scale optimization, analytics pipelines, governed AI tuning
 
 ---
 
-## 5) Visual timeline
+## 5) Visual timeline (versions)
 
 ```mermaid
 flowchart LR
@@ -217,7 +259,20 @@ flowchart LR
 
 ---
 
-## 6) Decision gates for owners (every version)
+## 6) Cross-version comparison
+
+| Version | Focus | Main user-visible wins | Main risk reduced |
+|---------|--------|-------------------------|-------------------|
+| V1 | Persistence & core chat | Reliable history | Data loss / mistrust |
+| V2 | Collaboration | Groups, files, search | Fragmented tools |
+| V3 | Security & audit | RBAC, audit | Unauthorized access |
+| V4 | AI assist | Summaries, drafts | Time cost of reading |
+| V5 | Scale & DR | Speed at peak, recovery | Outages at scale |
+| V6 | Maturity | Insights, tuning | Stagnation / one-size-fits-all |
+
+---
+
+## 7) Decision gates for owners (every version)
 
 Before approving the next version, leadership should confirm:
 
@@ -229,19 +284,21 @@ Before approving the next version, leadership should confirm:
 
 ---
 
-## 7) Success metrics (non-technical view)
+## 8) Success metrics (non-technical view)
 
-- Team adoption rate
-- Communication turnaround time
-- Reliability perception score
-- Security incident trend
-- AI usefulness feedback score (from pilot users)
+| Metric | What it tells you |
+|--------|-------------------|
+| Team adoption rate | Are people actually using chat? |
+| Communication turnaround time | Is coordination faster? |
+| Reliability perception score | Do users trust the system? |
+| Security incident trend | Is governance working? |
+| AI usefulness feedback (pilots) | Is assist layer worth the cost? |
 
 ---
 
-## 8) Document history
+## 9) Document history
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 1.0 | 2026-03-20 | Initial non-technical Internal Chat roadmap with version-wise rollout and logos |
-
+| 1.0 | 2026-03-20 | Initial non-technical Internal Chat roadmap |
+| 1.1 | 2026-03-24 | Tables per version; per-feature mermaid flows; logos removed |

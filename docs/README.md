@@ -21,8 +21,8 @@ All service reports are under **`Detailed report/`** only:
 
 ## Roadmaps (non-technical)
 
-- `roadmap/InternalChat-Roadmap.md` — business-friendly version roadmap with logos and simple language
-- `roadmap/Settings-Roadmap.md` — business-friendly Settings roadmap with logos and simple language
+- `roadmap/InternalChat-Roadmap.md` — business-friendly version roadmap (tables per version, mermaid flows per feature, no vendor logos)
+- `roadmap/Settings-Roadmap.md` — business-friendly Settings roadmap (tables per version, mermaid flows per feature, no vendor logos)
 
 ## Retired documents
 

@@ -17,7 +17,12 @@ All service reports are under **`Detailed report/`** only:
 
 - `Detailed report/README.md` — index of service specifications in this folder
 - `Detailed report/SettingsPage-Service-Spec.md` — Settings and profile preferences (`SettingsPage`)
-- `Detailed report/InternalChat-Service-Spec.md` — Internal Chat enterprise specification (diagrams and V1→end-goal roadmap)
+- `Detailed report/InternalChat-Service-Spec.md` — Internal Chat enterprise technical specification (diagrams, contracts, controls)
+
+## Roadmaps (non-technical)
+
+- `roadmap/InternalChat-Roadmap.md` — business-friendly version roadmap with logos and simple language
+- `roadmap/Settings-Roadmap.md` — business-friendly Settings roadmap with logos and simple language
 
 ## Retired documents
 

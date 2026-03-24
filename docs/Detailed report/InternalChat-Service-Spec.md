@@ -332,42 +332,13 @@ sequenceDiagram
 
 ---
 
-## 11) Version-wise roadmap (V1 to end-goal)
+## 11) Roadmap location
 
-### V1 (Core backendization)
+The complete version-wise roadmap for Internal Chat is maintained in:
 
-- DB-backed conversations/messages
-- Basic APIs and frontend migration from local store
-- Initial websocket for new message events
+- `docs/roadmap/InternalChat-Roadmap.md`
 
-### V2 (Enterprise messaging maturity)
-
-- Groups/channels, read receipts, typing, stronger presence
-- Attachment service with object storage
-- Search baseline and indexing
-
-### V3 (Security/governance)
-
-- RBAC policies and retention controls
-- Audit events and compliance export basics
-- SLO dashboards, incident alerting, runbooks
-
-### V4 (AI assistive layer)
-
-- Summaries, smart drafts, semantic retrieval
-- Guardrails, explainability, usage/cost tracking
-
-### V5 (Scale and resilience)
-
-- Throughput optimization, queue/backpressure patterns
-- Multi-region strategy and DR rehearsals
-- Performance and reliability hardening
-
-### V6 (End-goal)
-
-- Mature policy-as-code gates
-- Advanced analytics and AI tuning by role/department/language
-- Full enterprise readiness sign-off
+This keeps architecture/spec details and business rollout planning as separate documents.
 
 ---
 

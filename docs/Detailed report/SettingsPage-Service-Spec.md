@@ -105,6 +105,24 @@ Business value:
 
 ---
 
+## 4.1 Framework and platform inventory (traceable)
+
+| Area | Framework / platform | Why used here | Primary files |
+|------|----------------------|---------------|---------------|
+| Frontend app | React 18 + TypeScript | Stateful, component-driven settings UX with strict typing | `frontend/src/pages/SettingsPage.tsx` |
+| Styling system | Tailwind CSS | Fast, consistent UI composition for forms/cards/modals | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/index.css` |
+| Icon system | lucide-react | Lightweight, consistent iconography | `frontend/src/pages/SettingsPage.tsx` |
+| i18n context | Custom React context (`LanguageContext`) | Runtime language switching and persistence integration | `frontend/src/contexts/LanguageContext.tsx` |
+| Auth/session context | Custom React context (`AuthContext`) | User identity state and session-aware behavior | `frontend/src/contexts/AuthContext.tsx` |
+| Local persistence | Browser `localStorage` | Current baseline for user-level preference persistence | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/hooks/useProfileExtraSettings.ts` |
+| Avatar handling | Custom hook + browser APIs | Client-side validation and storage for avatar payload | `frontend/src/hooks/useProfileAvatar.ts` |
+| Target API stack | FastAPI + Pydantic + SQLAlchemy | Production-grade persistence and policy enforcement | `docs/LLD.md`, `docs/Project-Report-Technical-Requirements.md` |
+| Target data stack | PostgreSQL (+ Redis for session helpers) | Durable settings storage and low-latency session support | `docs/HLD.md`, `docs/erd.md` |
+| Delivery pipeline | Docker + GitHub Actions | Repeatable build/test/deploy controls | `docs/Project-Report-Technical-Requirements.md` |
+| Observability | OpenTelemetry-compatible telemetry | SLO visibility and incident diagnostics | `docs/Project-Report-Technical-Requirements.md` |
+
+---
+
 ## 5) Internal data model (current local persistence)
 
 ### 5.1 Storage keys
@@ -262,6 +280,23 @@ flowchart LR
 
 ---
 
+## 8.4 Feature-to-file traceability matrix (current implementation)
+
+| Feature | Status | Current implementation files | Target service/API ownership |
+|---------|--------|-------------------------------|------------------------------|
+| Theme selection (`light/dark/system`) | Live | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/index.css` | Settings API (`PATCH /users/me/settings`) |
+| Language switching | Live | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/contexts/LanguageContext.tsx` | Settings API + user profile preference store |
+| Date format preference | Live | `frontend/src/pages/SettingsPage.tsx` | Settings API |
+| Notification toggles and quiet hours | Live (local persistence) | `frontend/src/pages/SettingsPage.tsx` | Settings API + policy checks |
+| Profile details update | Live (local persistence) | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/hooks/useProfileExtraSettings.ts` | Profile API (`PATCH /users/me/profile`) |
+| Avatar upload/remove | Live (local persistence) | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/hooks/useProfileAvatar.ts` | Avatar API + object storage |
+| Password change flow | Demo/placeholder | `frontend/src/pages/SettingsPage.tsx` | Auth API (`POST /auth/password/change`) |
+| MFA toggle | Demo/placeholder | `frontend/src/pages/SettingsPage.tsx` | Auth API (`POST /auth/mfa/toggle`) |
+| Sessions/devices list + revoke | Demo/placeholder | `frontend/src/pages/SettingsPage.tsx` | Auth/session APIs (`GET/DELETE /auth/sessions`) |
+| Live activity trail | Live (local) | `frontend/src/pages/SettingsPage.tsx` | Audit event pipeline + immutable audit store |
+
+---
+
 ## 9) Security and privacy notes (current + target)
 
 ### Current
@@ -280,6 +315,36 @@ flowchart LR
 - Add audit logs with correlation IDs
 - Add policy enforcement by role and department
 - Minimize PII in client-stored values
+
+---
+
+## 9.1 Backup, restore, and disaster recovery (production target)
+
+### Data protection scope
+
+- User preferences and profile settings persisted in managed PostgreSQL
+- Avatar metadata in PostgreSQL; binary/object payload in object storage
+- Security/audit events in centralized audit store
+
+### Backup policy baseline
+
+- PostgreSQL: automated daily full backups + point-in-time recovery (PITR)
+- Object storage: versioning + soft-delete retention for accidental removal events
+- Audit/event store: immutable retention per compliance policy
+
+### Restore validation baseline
+
+- Monthly non-production restore drill of settings schema
+- Validation checklist:
+  - settings row counts and checksum sample
+  - profile/avatar metadata integrity checks
+  - API smoke verification after restore
+
+### DR expectations (inherits TRD baseline)
+
+- RTO and RPO targets align with `docs/Project-Report-Technical-Requirements.md`
+- Annual DR exercise minimum, including owner sign-off and lessons learned
+- Failover/failback decisions tracked through incident command process
 
 ---
 
@@ -380,180 +445,11 @@ The Settings service is a strong place for high-trust, explainable AI.
 
 ---
 
-## 16) Enterprise version-wise roadmap (V1 to end-goal)
+## 16) Roadmap location
 
-This roadmap follows enterprise transformation patterns common in large programs:
+The complete business-facing version roadmap is maintained in:
 
-- security and governance from day one
-- identity and policy checks for all sensitive actions
-- platform observability and release gates as first-class deliverables
-- AI introduced in controlled phases with explicit user approval
+- `docs/roadmap/Settings-Roadmap.md`
 
-### 16.1 Benchmark-aligned principles
-
-- **Cloud + AI readiness foundation:** Build scalable cloud/data foundations before adding advanced AI behavior.
-- **Zero-trust identity posture:** Treat settings and security controls as high-risk surfaces requiring strict IAM checks.
-- **Control plane mindset:** Keep unified policy, observability, and deployment governance across environments.
-
-Detailed alignment with cloud, identity, and AI governance should follow your organization’s internal standards and approved reference architectures (no third-party marketing or blog links are included here).
-
-### 16.2 End-goal architecture vision
-
-```mermaid
-flowchart LR
-  user[User] --> ui[Settings UI]
-  ui --> api[Settings API]
-  api --> iam[IAM OIDC]
-  api --> db[(PostgreSQL)]
-  api --> redis[(Redis)]
-  api --> blob[ObjectStorage]
-  api --> audit[AuditLog]
-  api --> ai[AIOrchestrator]
-  ai --> llm[LLMProvider]
-  ai --> vec[(pgvector)]
-  api --> obs[Observability]
-```
-
-### 16.3 Version roadmap
-
-#### V1 - Foundation and persistence baseline (4-6 weeks)
-
-**Objective:** Replace local-only persistence for non-sensitive settings with backend storage.
-
-**Scope:**
-
-- backend APIs for theme, language, date format, notification toggles, region
-- profile fields persisted server-side
-- avatar metadata + object key handling
-- migration path from existing localStorage values
-
-**Exit criteria:**
-
-- settings reliably persisted across sessions/devices
-- API contracts documented and versioned
-- save success/error telemetry available
-
-#### V2 - Security hardening and session authority (6-8 weeks)
-
-**Objective:** Move sensitive controls to secure, auditable backend flows.
-
-**Scope:**
-
-- password change API
-- MFA status/enrollment/toggle API
-- live session list + revoke API
-- role-sensitive policy enforcement (server-side)
-- audit event logging for every sensitive change
-
-**Exit criteria:**
-
-- 100% sensitive actions audited
-- unauthorized operations blocked by policy layer
-- security validation complete for settings endpoints
-
-#### V3 - Cloud operations and SRE maturity (6-8 weeks)
-
-**Objective:** Operate Settings as a production cloud service with SLO discipline.
-
-**Scope:**
-
-- IaC modules for settings dependencies
-- SLO dashboards and alerting
-- release and rollback runbooks
-- canary/rolling deployment safety checks
-
-**Exit criteria:**
-
-- SLO reporting active in staging and production
-- rollback drill successfully executed
-- RTO/RPO alignment with TRD targets
-
-#### V4 - AI assistive settings layer (8-10 weeks)
-
-**Objective:** Add low-risk, high-value AI assistance.
-
-**Scope:**
-
-- AI-SET-01 smart preference assistant
-- AI-SET-02 security posture coach
-- AI-SET-03 quiet-hours optimizer
-- explainability in UI (“why this recommendation”)
-- explicit user approval before apply
-
-**Exit criteria:**
-
-- no AI-applied setting without consent
-- AI actions logged with cost/usage metadata
-- recommendation quality metrics available
-
-#### V5 - Governance and compliance expansion (6-8 weeks)
-
-**Objective:** Strengthen compliance evidence and policy automation.
-
-**Scope:**
-
-- data retention policies by setting class
-- access review workflow for security-sensitive settings
-- compliance evidence export pipeline
-- policy-as-code checks in CI/CD
-
-**Exit criteria:**
-
-- periodic access review process active
-- evidence package generation automated
-- release gates include compliance controls
-
-#### V6 - End-goal optimization and scale (continuous)
-
-**Objective:** Reach enterprise-grade resilience, efficiency, and personalization.
-
-**Scope:**
-
-- cross-device conflict resolution
-- multi-region strategy option
-- AI recommendation tuning by role/department
-- cost controls (model routing, caching, quotas)
-- executive scorecards for value + risk posture
-
-**Exit criteria:**
-
-- stable multi-device settings consistency
-- predictable AI unit economics
-- architecture/security/ops sign-off for enterprise readiness
-
-### 16.4 Cross-version workstreams
-
-- **Architecture:** schemas, contracts, backward compatibility strategy
-- **Security:** IAM, policy checks, secrets, audit controls
-- **Platform:** CI/CD, IaC, observability, incident readiness
-- **Product UX:** usability, accessibility, explainability
-- **AI governance:** approval controls, token/cost budgets, quality review
-- **Documentation:** DFD/ER/sequence/deployment snapshots per version
-
-### 16.5 Version-wise documentation pack
-
-For each version, publish:
-
-- updated service spec
-- ER diagram snapshot
-- DFD snapshot
-- key sequence diagrams (3-5)
-- API changelog
-- SLO scorecard
-- risk register delta
-
-### 16.6 Example quarterly timeline
-
-- **Quarter 1:** V1 + V2
-- **Quarter 2:** V3 + V4
-- **Quarter 3:** V5
-- **Quarter 4+:** V6 iterative optimization
-
-### 16.7 Decision gates per version (owner checklist)
-
-1. Feature completeness against planned scope
-2. Security and compliance readiness
-3. Operational readiness and rollback confidence
-4. KPI trend and adoption signal
-5. Budget and cost alignment
+This keeps this file implementation-focused and traceable for engineering onboarding.
 

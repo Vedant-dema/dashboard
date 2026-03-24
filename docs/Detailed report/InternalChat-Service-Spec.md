@@ -97,6 +97,23 @@ Business value:
 
 ---
 
+## 4.1 Framework and platform inventory (traceable)
+
+| Area | Framework / platform | Why used | Primary files |
+|------|----------------------|----------|---------------|
+| Frontend app | React + TypeScript | Realtime collaboration UX with strong typing | `frontend/src/pages/ChatPage.tsx` |
+| Styling system | Tailwind CSS | Consistent chat layouts and interaction states | `frontend/src/pages/ChatPage.tsx` |
+| Frontend chat state | `chatStore`, `chatPresence`, `useChatSync` | Message/presence sync orchestration | `frontend/src/store/chatStore.ts`, `frontend/src/store/chatPresence.ts`, `frontend/src/hooks/useChatSync.ts` |
+| Presence UI | React component | Online/offline/readiness visual feedback | `frontend/src/components/PresenceIndicator.tsx` |
+| Backend API target | FastAPI + Pydantic + SQLAlchemy | Typed contracts + durable persistence + policy checks | `docs/LLD.md`, `docs/HLD.md` |
+| Realtime target | WebSocket gateway + Redis | Event fan-out, presence, typing, read state propagation | `docs/HLD.md`, `docs/LLD.md` |
+| Durable storage | PostgreSQL | Conversation, message, membership, audit persistence | `docs/erd.md`, `docs/HLD.md` |
+| Attachment storage | Object storage (S3/Blob compatible) | Scalable file handling decoupled from DB blobs | `docs/HLD.md` |
+| AI orchestration | Provider abstraction layer | Safe, replaceable AI for summary/smart-reply/extraction | `docs/Project-Report-Technical-Requirements.md` |
+| Delivery and controls | GitHub Actions + Docker + IaC | Repeatable releases, scan gates, rollback safety | `docs/Project-Report-Technical-Requirements.md` |
+
+---
+
 ## 5) Data model (ER-style target)
 
 ```mermaid
@@ -295,6 +312,22 @@ sequenceDiagram
 
 ---
 
+## 8.4 Feature-to-file traceability matrix (current and target)
+
+| Feature | Status | Current implementation files | Target service/API ownership |
+|---------|--------|------------------------------|------------------------------|
+| Direct chat thread UI | Live (prototype) | `frontend/src/pages/ChatPage.tsx`, `frontend/src/store/chatStore.ts` | Chat conversations/messages APIs |
+| Group/channel chat UI | Live (prototype) | `frontend/src/pages/ChatPage.tsx`, `frontend/src/store/chatStore.ts` | Channel policy + membership service |
+| Presence indicators | Live (prototype) | `frontend/src/store/chatPresence.ts`, `frontend/src/components/PresenceIndicator.tsx` | Realtime presence gateway |
+| Message sync behavior | Live (prototype/local sync) | `frontend/src/hooks/useChatSync.ts` | Realtime event stream + durable persistence |
+| Attachment UX | Live (demo-level flow) | `frontend/src/pages/ChatPage.tsx` | Upload URL API + object storage + metadata persistence |
+| Read receipts | Live (prototype behavior) | `frontend/src/pages/ChatPage.tsx`, `frontend/src/store/chatStore.ts` | Receipt events + message-read service |
+| Audit logs | Target | N/A (not fully implemented in frontend) | Backend audit pipeline + immutable store |
+| Role/policy enforcement | Target | N/A | IAM + RBAC/ABAC middleware |
+| AI summaries/smart reply | Target | N/A | AI orchestration + policy guardrails |
+
+---
+
 ## 9) API and realtime contracts (target)
 
 ### REST
@@ -329,6 +362,37 @@ sequenceDiagram
 - Retention policy enforcement (auto-archive/delete)
 - Audit logs for moderation/admin/security actions
 - Privacy controls for exports and legal hold support
+
+---
+
+## 10.1 Backup, restore, and disaster recovery (production target)
+
+### Protection scope
+
+- PostgreSQL: conversations, messages, membership, read receipts, audit references
+- Object storage: attachments and related metadata pointers
+- Realtime state: Redis treated as transient, recoverable from durable stores
+
+### Backup baseline
+
+- Daily full backup + PITR for PostgreSQL
+- Object storage versioning + retention controls
+- Audit export snapshots aligned to compliance cadence
+
+### Restore and drill baseline
+
+- Monthly restore drill to non-production environment
+- Verification checklist:
+  - message/thread count reconciliation
+  - attachment link integrity sample
+  - read-receipt/event consistency checks
+  - smoke tests for core send/read flows
+
+### DR baseline
+
+- RTO/RPO inherit enterprise targets from TRD
+- Annual failover rehearsal with business and operations sign-off
+- Clear incident command authority for cutover/failback
 
 ---
 

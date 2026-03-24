@@ -35,6 +35,22 @@ It covers:
 
 ---
 
+## 2.1 Current feature baseline and source traceability
+
+This section helps a new team member immediately find where Settings behavior lives today.
+
+| Capability | Current status | Primary source file(s) |
+|-----------|----------------|-------------------------|
+| Theme and visual mode | Live | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/index.css` |
+| Language switching | Live | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/contexts/LanguageContext.tsx` |
+| Profile details | Live | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/hooks/useProfileExtraSettings.ts` |
+| Avatar flow | Live | `frontend/src/pages/SettingsPage.tsx`, `frontend/src/hooks/useProfileAvatar.ts` |
+| Password/MFA/session controls | Partly demo | `frontend/src/pages/SettingsPage.tsx` |
+| Identity context dependencies | Live | `frontend/src/contexts/AuthContext.tsx` |
+| Full technical service definition | Live doc | `docs/Detailed report/SettingsPage-Service-Spec.md` |
+
+---
+
 ## 3) End goal
 
 At the end of this roadmap, Settings should be:
@@ -144,6 +160,7 @@ flowchart TD
 - SLO dashboards active
 - rollback drill successful
 - incident readiness verified
+- first backup-restore drill completed and validated
 
 ---
 
@@ -209,6 +226,7 @@ flowchart TD
 
 - compliance checklist pass
 - access review process operational
+- retention and data handling controls approved by leadership
 
 ---
 
@@ -274,6 +292,12 @@ Before approving progression:
 3. Is operations/support ready?
 4. Are timeline and cost still aligned?
 5. Is the next scope realistic for team capacity?
+
+Include these mandatory continuity checks before approval:
+
+6. Has backup/restore validation been completed for this phase?
+7. Are DR responsibilities and escalation contacts explicitly confirmed?
+8. Is support readiness (runbook + on-call + communications) verified?
 
 ---
 

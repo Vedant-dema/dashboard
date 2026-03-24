@@ -34,6 +34,20 @@ It answers:
 
 ---
 
+## 2.1 Current feature baseline and source traceability
+
+This section is for onboarding so new members can map capabilities to code quickly.
+
+| Capability | Current status | Primary source file(s) |
+|-----------|----------------|-------------------------|
+| Chat screen and core UX | Live prototype | `frontend/src/pages/ChatPage.tsx` |
+| Local message state handling | Live prototype | `frontend/src/store/chatStore.ts` |
+| Presence behavior | Live prototype | `frontend/src/store/chatPresence.ts`, `frontend/src/components/PresenceIndicator.tsx` |
+| Sync orchestration | Live prototype | `frontend/src/hooks/useChatSync.ts` |
+| Enterprise backend/realtime contracts | Targeted | `docs/Detailed report/InternalChat-Service-Spec.md` |
+
+---
+
 ## 3) End goal (simple view)
 
 By the end of this roadmap, Internal Chat should be:
@@ -215,6 +229,7 @@ flowchart TD
 - SLO targets met consistently
 - DR rehearsal completed successfully
 - No critical reliability blockers
+- backup restore validation passes agreed checklist
 
 ---
 
@@ -281,6 +296,12 @@ Before approving the next version, leadership should confirm:
 3. Reliability and support readiness are in place
 4. Budget and timeline are still aligned
 5. Team capacity is sufficient for next scope
+
+Continuity checks that must be explicitly signed off:
+
+6. Backup/restore drill evidence is available
+7. DR command roles and communication chain are confirmed
+8. Customer/user communication templates are ready for incidents
 
 ---
 

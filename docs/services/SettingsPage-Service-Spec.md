@@ -2,7 +2,7 @@
 
 **Service:** Settings and profile preferences (`SettingsPage`)  
 **Module family:** CORE-ADMIN / CORE-AUTH / UX personalization  
-**Primary file:** `frontend/src/pages/SettingsPage.tsx`  
+**Primary file:** [`frontend/src/pages/SettingsPage.tsx`](../../frontend/src/pages/SettingsPage.tsx)  
 **Status:** Frontend-rich, local persistence today; API-backed target defined below  
 **Version:** 1.1
 
@@ -370,13 +370,13 @@ The Settings service is a strong place for high-trust, explainable AI.
 
 ## 15) References
 
-- `frontend/src/pages/SettingsPage.tsx`
-- `frontend/src/contexts/LanguageContext.tsx`
-- `frontend/src/contexts/AuthContext.tsx`
-- `frontend/src/hooks/useProfileAvatar.ts`
-- `frontend/src/hooks/useProfileExtraSettings.ts`
-- `docs/HLD.md`
-- `docs/Project-Report-Technical-Requirements.md`
+- [`frontend/src/pages/SettingsPage.tsx`](../../frontend/src/pages/SettingsPage.tsx)
+- [`frontend/src/contexts/LanguageContext.tsx`](../../frontend/src/contexts/LanguageContext.tsx)
+- [`frontend/src/contexts/AuthContext.tsx`](../../frontend/src/contexts/AuthContext.tsx)
+- [`frontend/src/hooks/useProfileAvatar.ts`](../../frontend/src/hooks/useProfileAvatar.ts)
+- [`frontend/src/hooks/useProfileExtraSettings.ts`](../../frontend/src/hooks/useProfileExtraSettings.ts)
+- [`docs/HLD.md`](../HLD.md)
+- [`docs/Project-Report-Technical-Requirements.md`](../Project-Report-Technical-Requirements.md)
 
 ---
 
@@ -384,7 +384,7 @@ The Settings service is a strong place for high-trust, explainable AI.
 
 The complete non-technical, version-wise roadmap for Settings is maintained in:
 
-- `docs/roadmap/Settings-Roadmap.md`
+- [`docs/roadmap/Settings-Roadmap.md`](../roadmap/Settings-Roadmap.md)
 
 This service spec remains technical by design, while roadmap communication for owners/business teams lives in the dedicated roadmap folder.
 

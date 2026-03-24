@@ -2,7 +2,7 @@
 
 **Audience:** Owners, business stakeholders, operations leaders, non-technical reviewers  
 **Service:** Settings and Profile Preferences  
-**Related technical specification:** `docs/Detailed report/SettingsPage-Service-Spec.md`  
+**Related technical specification:** [`docs/Detailed report/SettingsPage-Service-Spec.md`](../Detailed%20report/SettingsPage-Service-Spec.md)  
 **Version:** 1.1
 
 ---

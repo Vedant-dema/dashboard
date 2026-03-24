@@ -2,7 +2,7 @@
 
 **Audience:** Owners, business stakeholders, operations leaders, non-technical reviewers  
 **Service:** Internal Chat  
-**Related technical spec:** `docs/Detailed report/InternalChat-Service-Spec.md`  
+**Related technical spec:** [`docs/Detailed report/InternalChat-Service-Spec.md`](../Detailed%20report/InternalChat-Service-Spec.md)  
 **Version:** 1.1
 
 ---

@@ -2,7 +2,7 @@
 
 **Service:** Internal Chat  
 **Module family:** Collaboration / Communication Platform  
-**Primary frontend file:** `frontend/src/pages/ChatPage.tsx`  
+**Primary frontend file:** [`frontend/src/pages/ChatPage.tsx`](../../frontend/src/pages/ChatPage.tsx)  
 **Status:** UI-rich prototype with local/demo data today; enterprise backend target defined below  
 **Version:** 1.0
 
@@ -400,7 +400,7 @@ sequenceDiagram
 
 The complete version-wise roadmap for Internal Chat is maintained in:
 
-- `docs/roadmap/InternalChat-Roadmap.md`
+- [`docs/roadmap/InternalChat-Roadmap.md`](../roadmap/InternalChat-Roadmap.md)
 
 This keeps architecture/spec details and business rollout planning as separate documents.
 
@@ -433,12 +433,12 @@ This keeps architecture/spec details and business rollout planning as separate d
 
 ## 14) References
 
-- `frontend/src/pages/ChatPage.tsx`
-- `frontend/src/store/chatStore.ts`
-- `frontend/src/store/chatPresence.ts`
-- `frontend/src/hooks/useChatSync.ts`
-- `frontend/src/components/PresenceIndicator.tsx`
-- `docs/HLD.md`
-- `docs/LLD.md`
-- `docs/Project-Report-Technical-Requirements.md`
+- [`frontend/src/pages/ChatPage.tsx`](../../frontend/src/pages/ChatPage.tsx)
+- [`frontend/src/store/chatStore.ts`](../../frontend/src/store/chatStore.ts)
+- [`frontend/src/store/chatPresence.ts`](../../frontend/src/store/chatPresence.ts)
+- [`frontend/src/hooks/useChatSync.ts`](../../frontend/src/hooks/useChatSync.ts)
+- [`frontend/src/components/PresenceIndicator.tsx`](../../frontend/src/components/PresenceIndicator.tsx)
+- [`docs/HLD.md`](../HLD.md)
+- [`docs/LLD.md`](../LLD.md)
+- [`docs/Project-Report-Technical-Requirements.md`](../Project-Report-Technical-Requirements.md)
 

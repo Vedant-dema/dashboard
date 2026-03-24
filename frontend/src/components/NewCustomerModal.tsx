@@ -1,11 +1,140 @@
-import { useEffect, useState, useCallback } from "react";
-import { X, Droplets } from "lucide-react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { X, Droplets, BadgeCheck } from "lucide-react";
 import type { NewKundeInput, KundenWashUpsertFields } from "../store/kundenStore";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import type { DepartmentArea } from "../types/departmentArea";
 
-type TabId = "kunde" | "adresse" | "art" | "waschanlage";
+type TabId = "vat" | "kunde" | "adresse" | "art" | "waschanlage";
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+
+/** EU / Northern Ireland codes accepted by VIES (VoW). */
+const VIES_MS_OPTIONS: { code: string; label: string }[] = [
+  { code: "AT", label: "Österreich" },
+  { code: "BE", label: "Belgien" },
+  { code: "BG", label: "Bulgarien" },
+  { code: "CY", label: "Zypern" },
+  { code: "CZ", label: "Tschechien" },
+  { code: "DE", label: "Deutschland" },
+  { code: "DK", label: "Dänemark" },
+  { code: "EE", label: "Estland" },
+  { code: "EL", label: "Griechenland (EL)" },
+  { code: "ES", label: "Spanien" },
+  { code: "FI", label: "Finnland" },
+  { code: "FR", label: "Frankreich" },
+  { code: "HR", label: "Kroatien" },
+  { code: "HU", label: "Ungarn" },
+  { code: "IE", label: "Irland" },
+  { code: "IT", label: "Italien" },
+  { code: "LT", label: "Litauen" },
+  { code: "LU", label: "Luxemburg" },
+  { code: "LV", label: "Lettland" },
+  { code: "MT", label: "Malta" },
+  { code: "NL", label: "Niederlande" },
+  { code: "PL", label: "Polen" },
+  { code: "PT", label: "Portugal" },
+  { code: "RO", label: "Rumänien" },
+  { code: "SE", label: "Schweden" },
+  { code: "SI", label: "Slowenien" },
+  { code: "SK", label: "Slowakei" },
+  { code: "XI", label: "Nordirland (XI)" },
+];
+
+/** Official EU pages explaining what VIES returns (validity vs. name/address). */
+const VIES_OFFICIAL = {
+  yourEuropeDe:
+    "https://europa.eu/youreurope/business/taxation/vat/check-vat-number-vies/index_de.htm",
+  faq: "https://ec.europa.eu/taxation_customs/vies/faq.html",
+  swaggerYaml:
+    "https://ec.europa.eu/assets/taxud/vow-information/swagger_publicVAT.yaml",
+} as const;
+
+/** Requester dropdown = member states + EU (MOSS), per EU CheckVatRequest. */
+const VIES_REQUESTER_MS_OPTIONS: { code: string; label: string }[] = [
+  ...VIES_MS_OPTIONS,
+  { code: "EU", label: "EU (MOSS)" },
+];
+
+function ExternalDocLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-medium text-blue-700 underline decoration-blue-400/70 underline-offset-2 hover:text-blue-900"
+    >
+      {children}
+    </a>
+  );
+}
+
+type ViesCheckResult = {
+  valid: boolean;
+  country_code: string;
+  vat_number: string;
+  name: string | null;
+  address: string | null;
+  request_date?: string | null;
+  request_identifier?: string | null;
+  /** Backend sets false when VIES only returned placeholders (e.g. ---) or omitted trader data. */
+  trader_details_available?: boolean;
+  /** Full JSON from VIES (when backend includes it). */
+  vies_raw?: Record<string, unknown> | null;
+  trader_name_match?: string | null;
+  trader_street_match?: string | null;
+  trader_postal_code_match?: string | null;
+  trader_city_match?: string | null;
+  trader_company_type_match?: string | null;
+};
+
+/** VIES / Germany often returns '---' with odd Unicode dashes; never treat that as real company data. */
+function isMeaningfulViesText(s: string | null | undefined): boolean {
+  if (s == null) return false;
+  const t = String(s).trim();
+  if (!t) return false;
+  const low = t.toLowerCase();
+  if (["---", "n/a", "na", "none", "...", "..", "-", "unknown"].includes(low)) return false;
+  const core = t.replace(/[\s\-\u00ad\u2010-\u2015\u2212\u00a0·.]+/gu, "");
+  return core.length > 0;
+}
+
+function viesLandToFormLand(viesCode: string): string {
+  const m: Record<string, string> = {
+    DE: "DE",
+    AT: "AT",
+    NL: "NL",
+    PL: "PL",
+  };
+  return m[viesCode] ?? "OTHER";
+}
+
+function parseViesAddress(block: string | null | undefined): {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+} {
+  if (!block?.trim()) return {};
+  const lines = block
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return {};
+  const strasse = lines[0];
+  if (lines.length === 1) return { strasse };
+  const last = lines[lines.length - 1]!;
+  const plzOrt = last.match(/^(\d{4,6})\s+(.+)$/);
+  if (plzOrt) {
+    return { strasse, plz: plzOrt[1], ort: plzOrt[2] };
+  }
+  return { strasse, ort: lines.slice(1).join(", ") };
+}
 
 const ZUSTAENDIGE_OPTIONS = [
   "nicht zugeordnet",
@@ -158,11 +287,14 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
 }
 
 const tabLabels: Record<TabId, string> = {
+  vat: "USt-IdNr. prüfen",
   kunde: "Kunde",
   adresse: "Adresse (Tel/Fax)",
   art: "Art / Buchungskonto",
   waschanlage: "Waschanlage",
 };
+
+const TAB_ORDER: TabId[] = ["vat", "kunde", "adresse", "art", "waschanlage"];
 
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
@@ -188,9 +320,23 @@ export function NewCustomerModal({
   fieldSuggestions,
   onSubmit,
 }: Props) {
-  const [tab, setTab] = useState<TabId>("kunde");
+  const [tab, setTab] = useState<TabId>("vat");
   const [form, setForm] = useState<FormState>(initialForm);
   const [aufnahmePreview, setAufnahmePreview] = useState("");
+  const [viesCountry, setViesCountry] = useState("DE");
+  const [viesVatInput, setViesVatInput] = useState("");
+  const [viesReqCountry, setViesReqCountry] = useState("");
+  const [viesReqNumber, setViesReqNumber] = useState("");
+  const [viesTraderName, setViesTraderName] = useState("");
+  const [viesTraderStreet, setViesTraderStreet] = useState("");
+  const [viesTraderPlz, setViesTraderPlz] = useState("");
+  const [viesTraderCity, setViesTraderCity] = useState("");
+  const [viesTraderCompanyType, setViesTraderCompanyType] = useState("");
+  const [vatCheckLoading, setVatCheckLoading] = useState(false);
+  const [vatCheckResult, setVatCheckResult] = useState<ViesCheckResult | null>(null);
+  const [vatCheckError, setVatCheckError] = useState<string | null>(null);
+  /** Full JSON string last returned by POST /api/v1/vat/check (always shown after a request). */
+  const [vatBackendResponseJson, setVatBackendResponseJson] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -198,7 +344,20 @@ export function NewCustomerModal({
         ...initialForm(),
         includeWashProfile: department === "waschanlage",
       });
-      setTab("kunde");
+      setTab("vat");
+      setViesCountry("DE");
+      setViesVatInput("");
+      setViesReqCountry("");
+      setViesReqNumber("");
+      setViesTraderName("");
+      setViesTraderStreet("");
+      setViesTraderPlz("");
+      setViesTraderCity("");
+      setViesTraderCompanyType("");
+      setVatCheckLoading(false);
+      setVatCheckResult(null);
+      setVatCheckError(null);
+      setVatBackendResponseJson(null);
       setAufnahmePreview(
         new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" })
       );
@@ -208,6 +367,123 @@ export function NewCustomerModal({
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
   }, []);
+
+  const formatVatCheckDetail = (raw: unknown): string => {
+    if (typeof raw === "string") return raw;
+    if (Array.isArray(raw)) {
+      return raw
+        .map((e) => {
+          if (e && typeof e === "object" && "msg" in e) return String((e as { msg: string }).msg);
+          if (e && typeof e === "object" && "message" in e)
+            return String((e as { message: string }).message);
+          return JSON.stringify(e);
+        })
+        .join("; ");
+    }
+    return "Prüfung fehlgeschlagen";
+  };
+
+  const runVatCheck = async () => {
+    const trimmed = viesVatInput.trim();
+    if (!trimmed) {
+      setVatCheckError("Bitte USt-IdNr. eingeben.");
+      setVatCheckResult(null);
+      return;
+    }
+    const rq = viesReqCountry.trim();
+    const rnum = viesReqNumber.trim();
+    if ((rq && !rnum) || (!rq && rnum)) {
+      setVatCheckError(
+        "Auskunftgeber: bitte Land und USt-IdNr. gemeinsam ausfüllen (oder beides leer lassen)."
+      );
+      setVatCheckResult(null);
+      return;
+    }
+    setVatCheckLoading(true);
+    setVatCheckError(null);
+    setVatCheckResult(null);
+    setVatBackendResponseJson(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/vat/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country_code: viesCountry,
+          vat_number: trimmed,
+          ...(viesReqCountry.trim() && viesReqNumber.trim()
+            ? {
+                requester_member_state_code: viesReqCountry.trim().toUpperCase(),
+                requester_number: viesReqNumber.trim(),
+              }
+            : {}),
+          ...(viesTraderName.trim() ? { trader_name: viesTraderName.trim() } : {}),
+          ...(viesTraderStreet.trim() ? { trader_street: viesTraderStreet.trim() } : {}),
+          ...(viesTraderPlz.trim() ? { trader_postal_code: viesTraderPlz.trim() } : {}),
+          ...(viesTraderCity.trim() ? { trader_city: viesTraderCity.trim() } : {}),
+          ...(viesTraderCompanyType.trim()
+            ? { trader_company_type: viesTraderCompanyType.trim() }
+            : {}),
+        }),
+      });
+      const textBody = await res.text();
+      let raw: unknown = {};
+      try {
+        raw = textBody ? JSON.parse(textBody) : {};
+      } catch {
+        raw = { _parseError: "Response was not JSON", _rawText: textBody.slice(0, 4000) };
+      }
+      try {
+        setVatBackendResponseJson(JSON.stringify(raw, null, 2));
+      } catch {
+        setVatBackendResponseJson(String(raw));
+      }
+      if (!res.ok) {
+        const body = raw as { detail?: unknown };
+        setVatCheckError(formatVatCheckDetail(body?.detail));
+        return;
+      }
+      const body = raw as ViesCheckResult;
+      setVatCheckResult(body);
+    } catch {
+      setVatCheckError(
+        "Netzwerkfehler. Läuft das Python-Backend (Port 8000) und ist der Vite-Proxy aktiv?"
+      );
+      setVatBackendResponseJson(
+        JSON.stringify(
+          {
+            error: "fetch failed — keine Antwort vom Server",
+            hint: "Backend starten: cd backend && python -m uvicorn main:app --host 127.0.0.1 --port 8000",
+            apiBase: API_BASE || "(leer — nutzt gleichen Host /api)",
+          },
+          null,
+          2
+        )
+      );
+    } finally {
+      setVatCheckLoading(false);
+    }
+  };
+
+  const applyViesResultToForm = () => {
+    if (!vatCheckResult?.valid) return;
+    const cc = vatCheckResult.country_code;
+    const nr = vatCheckResult.vat_number;
+    const ust = `${cc}${nr}`.replace(/\s+/g, "");
+    const addr = isMeaningfulViesText(vatCheckResult.address)
+      ? parseViesAddress(vatCheckResult.address)
+      : {};
+    const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
+    setForm((f) => ({
+      ...f,
+      ust_id_nr: ust,
+      land_code: viesLandToFormLand(cc),
+      ...(nm ? { firmenname: nm } : {}),
+      ...(addr.strasse ? { strasse: addr.strasse } : {}),
+      ...(addr.plz ? { plz: addr.plz } : {}),
+      ...(addr.ort ? { ort: addr.ort } : {}),
+    }));
+    setTab("kunde");
+  };
 
   const handleSave = () => {
     if (!form.firmenname.trim()) {
@@ -268,8 +544,8 @@ export function NewCustomerModal({
         </div>
 
         {/* Tabs */}
-        <div className="flex shrink-0 gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
-          {(Object.keys(tabLabels) as TabId[]).map((id) => (
+        <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
+          {TAB_ORDER.map((id) => (
             <button
               key={id}
               type="button"
@@ -284,6 +560,8 @@ export function NewCustomerModal({
             >
               {id === "waschanlage" ? (
                 <Droplets className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+              ) : id === "vat" ? (
+                <BadgeCheck className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
               ) : null}
               {tabLabels[id]}
             </button>
@@ -291,6 +569,261 @@ export function NewCustomerModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/40 px-4 py-5 sm:px-6">
+          {tab === "vat" && (
+            <div className="mx-auto max-w-4xl space-y-5">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={labelClass}>Mitgliedstaat / Schema</label>
+                    <select
+                      value={viesCountry}
+                      onChange={(e) => setViesCountry(e.target.value)}
+                      className={inputClass}
+                    >
+                      {VIES_MS_OPTIONS.map((o) => (
+                        <option key={o.code} value={o.code}>
+                          {o.code} — {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>USt-IdNr.</label>
+                    <input
+                      type="text"
+                      value={viesVatInput}
+                      onChange={(e) => setViesVatInput(e.target.value)}
+                      placeholder="z. B. 814584193 oder DE814584193"
+                      className={inputClass}
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+                    Erweitert — vollständiger EU-<code className="text-xs">CheckVatRequest</code>{" "}
+                    (optional)
+                  </summary>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                    Laut{" "}
+                    <ExternalDocLink href={VIES_OFFICIAL.swaggerYaml}>swagger_publicVAT.yaml</ExternalDocLink>{" "}
+                    können Sie <strong>requesterMemberStateCode</strong> +{" "}
+                    <strong>requesterNumber</strong> (Ihre eigene USt-IdNr.) mitschicken — u. a. für{" "}
+                    <strong>requestIdentifier</strong> und Näherungsabgleich. Zusätzlich optionale{" "}
+                    <strong>trader*</strong>-Felder für den Abgleich.
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>Auskunftgeber — Land</label>
+                      <select
+                        value={viesReqCountry}
+                        onChange={(e) => setViesReqCountry(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">— nicht mitsenden —</option>
+                        {VIES_REQUESTER_MS_OPTIONS.map((o) => (
+                          <option key={o.code} value={o.code}>
+                            {o.code} — {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Auskunftgeber — USt-IdNr.</label>
+                      <input
+                        type="text"
+                        value={viesReqNumber}
+                        onChange={(e) => setViesReqNumber(e.target.value)}
+                        placeholder="Ihre DE… / AT… (wenn Land gewählt)"
+                        className={inputClass}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={labelClass}>traderName (laut Schema)</label>
+                      <input
+                        type="text"
+                        value={viesTraderName}
+                        onChange={(e) => setViesTraderName(e.target.value)}
+                        className={inputClass}
+                        placeholder="optional"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={labelClass}>traderStreet</label>
+                      <input
+                        type="text"
+                        value={viesTraderStreet}
+                        onChange={(e) => setViesTraderStreet(e.target.value)}
+                        className={inputClass}
+                        placeholder="optional"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>traderPostalCode</label>
+                      <input
+                        type="text"
+                        value={viesTraderPlz}
+                        onChange={(e) => setViesTraderPlz(e.target.value)}
+                        className={inputClass}
+                        placeholder="optional"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>traderCity</label>
+                      <input
+                        type="text"
+                        value={viesTraderCity}
+                        onChange={(e) => setViesTraderCity(e.target.value)}
+                        className={inputClass}
+                        placeholder="optional"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={labelClass}>traderCompanyType</label>
+                      <input
+                        type="text"
+                        value={viesTraderCompanyType}
+                        onChange={(e) => setViesTraderCompanyType(e.target.value)}
+                        className={inputClass}
+                        placeholder="optional"
+                      />
+                    </div>
+                  </div>
+                </details>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={vatCheckLoading}
+                    onClick={() => void runVatCheck()}
+                    className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {vatCheckLoading ? "Prüfe…" : "Bei VIES prüfen"}
+                  </button>
+                  {vatCheckResult?.valid ? (
+                    <button
+                      type="button"
+                      onClick={applyViesResultToForm}
+                      className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
+                    >
+                      Daten ins Formular übernehmen
+                    </button>
+                  ) : null}
+                </div>
+                {vatCheckError ? (
+                  <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                    {vatCheckError}
+                  </p>
+                ) : null}
+                {vatBackendResponseJson ? (
+                  <div className="mt-4 rounded-xl border-2 border-blue-200 bg-white p-3 shadow-sm ring-1 ring-blue-100">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">
+                      Server-Antwort (komplettes JSON vom Backend)
+                    </p>
+                    <p className="mb-2 text-[11px] leading-snug text-slate-600">
+                      Feld <code className="rounded bg-slate-100 px-1">vies_raw</code> enthält die VoW-Rohantwort,
+                      sofern das Backend sie mitsendet.
+                    </p>
+                    <pre
+                      className="max-h-[min(50vh,28rem)] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-3 text-left font-mono text-[11px] leading-relaxed text-amber-100"
+                      tabIndex={0}
+                    >
+                      {vatBackendResponseJson}
+                    </pre>
+                  </div>
+                ) : null}
+                {vatCheckResult ? (
+                  <div
+                    className={`mt-4 rounded-lg border px-3 py-3 text-sm ${
+                      vatCheckResult.valid
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                        : "border-amber-200 bg-amber-50 text-amber-950"
+                    }`}
+                  >
+                    <p className="font-semibold">
+                      {vatCheckResult.valid
+                        ? "USt-IdNr. gültig laut VIES"
+                        : "USt-IdNr. ungültig oder nicht bestätigt"}
+                    </p>
+                    <p className="mt-1 font-mono text-xs">
+                      {vatCheckResult.country_code}
+                      {vatCheckResult.vat_number}
+                    </p>
+                    {vatCheckResult.valid &&
+                    !isMeaningfulViesText(vatCheckResult.name) &&
+                    !isMeaningfulViesText(vatCheckResult.address) ? (
+                      <p className="mt-2 rounded-md border border-emerald-300/60 bg-white/80 px-2 py-2 text-xs leading-relaxed text-slate-700">
+                        Das ist <strong>kein Fehler dieser Anwendung</strong>. Die EU erklärt, dass VIES
+                        eine Suchmaschine über <strong>nationale</strong> USt-Register ist und der
+                        Mitgliedstaat entscheidet, welche Felder er ausgibt; viele liefern aus{" "}
+                        <strong>Datenschutz</strong> keinen Firmennamen und keine Adresse in der
+                        Webschnittstelle (oft „---“), während die <strong>Nummer trotzdem gültig</strong>{" "}
+                        sein kann. Nachlesen:{" "}
+                        <ExternalDocLink href={VIES_OFFICIAL.yourEuropeDe}>
+                          Your Europe — USt-IdNr. prüfen (VIES)
+                        </ExternalDocLink>
+                        , <ExternalDocLink href={VIES_OFFICIAL.faq}>FAQ</ExternalDocLink> (u. a.{" "}
+                        <strong>Q17</strong>, <strong>Q22</strong>). Für Zuordnung Name/Adresse wenden Sie
+                        sich an die <strong>Finanzbehörden</strong> des Unternehmens. Hier: Name/Adresse
+                        unter <strong>Kunde</strong> / <strong>Adresse</strong> eintragen.
+                      </p>
+                    ) : null}
+                    {isMeaningfulViesText(vatCheckResult.name) ? (
+                      <p className="mt-2 text-slate-800">
+                        <span className="font-medium text-slate-600">Name: </span>
+                        {vatCheckResult.name}
+                      </p>
+                    ) : null}
+                    {isMeaningfulViesText(vatCheckResult.address) ? (
+                      <p className="mt-1 whitespace-pre-line text-slate-800">
+                        <span className="font-medium text-slate-600">Adresse: </span>
+                        {vatCheckResult.address}
+                      </p>
+                    ) : null}
+                    {vatCheckResult.request_identifier ? (
+                      <p className="mt-2 break-all font-mono text-[11px] text-slate-700">
+                        <span className="font-sans font-medium text-slate-600">requestIdentifier: </span>
+                        {vatCheckResult.request_identifier}
+                      </p>
+                    ) : null}
+                    {[
+                      ["Name", vatCheckResult.trader_name_match],
+                      ["Straße", vatCheckResult.trader_street_match],
+                      ["PLZ", vatCheckResult.trader_postal_code_match],
+                      ["Ort", vatCheckResult.trader_city_match],
+                      ["Rechtsform", vatCheckResult.trader_company_type_match],
+                    ].some(([, v]) => v) ? (
+                      <div className="mt-2 rounded-md border border-slate-200 bg-white/90 px-2 py-2 text-xs text-slate-700">
+                        <p className="font-semibold text-slate-800">Näherungsabgleich (VIES Match)</p>
+                        <ul className="mt-1 list-inside list-disc">
+                          {[
+                            ["Name", vatCheckResult.trader_name_match],
+                            ["Straße", vatCheckResult.trader_street_match],
+                            ["PLZ", vatCheckResult.trader_postal_code_match],
+                            ["Ort", vatCheckResult.trader_city_match],
+                            ["Rechtsform", vatCheckResult.trader_company_type_match],
+                          ].map(
+                            ([label, val]) =>
+                              val ? (
+                                <li key={label}>
+                                  <span className="font-medium">{label}:</span> {val}
+                                </li>
+                              ) : null
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <p className="text-xs text-slate-500">
+                Hinweis: VIES kann auslastungsbedingt kurzzeitig antworten — ggf. später erneut
+                versuchen. Geprüfte Daten können Sie im Tab <strong>Kunde</strong> und{" "}
+                <strong>Adresse</strong> anpassen.
+              </p>
+            </div>
+          )}
+
           {tab === "kunde" && (
             <div className="mx-auto max-w-4xl space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">

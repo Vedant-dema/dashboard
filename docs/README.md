@@ -15,6 +15,7 @@ This directory uses a **minimal canonical set** to avoid overlap and confusion.
 
 - `Detailed report/README.md` — canonical folder for all service-wise detailed reports
 - `Detailed report/SettingsPage-Service-Spec.md` — Settings service report starter in the canonical folder
+- `Detailed report/InternalChat-Service-Spec.md` — full Internal Chat enterprise service specification with diagrams and V1→end-goal roadmap
 - `services/SettingsPage-Service-Spec.md` — existing full Settings deep-dive (to be gradually migrated into `Detailed report/`)
 
 ## Retired documents

@@ -382,7 +382,7 @@ The Settings service is a strong place for high-trust, explainable AI.
 
 ## 16) Enterprise version-wise roadmap (V1 to end-goal)
 
-This roadmap follows enterprise transformation patterns common in large consulting-led programs:
+This roadmap follows enterprise transformation patterns common in large programs:
 
 - security and governance from day one
 - identity and policy checks for all sensitive actions
@@ -395,11 +395,7 @@ This roadmap follows enterprise transformation patterns common in large consulti
 - **Zero-trust identity posture:** Treat settings and security controls as high-risk surfaces requiring strict IAM checks.
 - **Control plane mindset:** Keep unified policy, observability, and deployment governance across environments.
 
-Reference material:
-
-- [Accenture: AI-ready cloud foundation](https://www.accenture.com/us-en/insights/cloud/ai-ready-cloud-foundation)
-- [Accenture: AI agent security and identity management](https://www.accenture.com/us-en/blogs/security/strengthening-ai-agent-security-identity-management)
-- [AWS + Accenture: secure cloud foundation acceleration](https://aws.amazon.com/blogs/apn/how-accenture-accelerates-building-a-secure-cloud-foundation-natively-on-aws/)
+Detailed alignment with cloud, identity, and AI governance should follow your organization’s internal standards and approved reference architectures (no third-party marketing or blog links are included here).
 
 ### 16.2 End-goal architecture vision
 

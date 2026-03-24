@@ -20,7 +20,7 @@ export function PresenceIndicator({
   labelOffline,
   variant = "dot",
   className = "",
-  dotBorderClass = "border-[#111b21]",
+  dotBorderClass = "border-white",
 }: Props) {
   const title =
     status === "online" ? labelOnline : status === "away" ? labelAway : labelOffline;
@@ -39,7 +39,7 @@ export function PresenceIndicator({
 
   return (
     <span
-      className={`absolute bottom-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 bg-[#111b21] ${dotBorderClass} ${className}`}
+      className={`absolute bottom-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 bg-white ${dotBorderClass} ${className}`}
       title={title}
     >
       {status === "online" && <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />}
@@ -49,14 +49,14 @@ export function PresenceIndicator({
   );
 }
 
-/** Border color for thread header avatar (matches #202c33). */
+/** Border color for thread header avatar (dashboard light header). */
 export function PresenceIndicatorHeader(props: Omit<Props, "variant" | "className">) {
   const { status, labelOnline, labelAway, labelOffline } = props;
   const title =
     status === "online" ? labelOnline : status === "away" ? labelAway : labelOffline;
   return (
     <span
-      className="absolute bottom-0 right-0 flex h-3 w-3 items-center justify-center rounded-full border-2 border-[#202c33] bg-[#202c33]"
+      className="absolute bottom-0 right-0 flex h-3 w-3 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm"
       title={title}
     >
       {status === "online" && <span className="h-2 w-2 rounded-full bg-emerald-400" />}

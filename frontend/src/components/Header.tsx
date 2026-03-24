@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Bell, MessageCircle, Settings, Search, LogOut } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bell, MessageCircle, Settings, Search, LogOut, User, ChevronDown } from "lucide-react";
 import { loadKundenDb } from "../store/kundenStore";
 import { getQuickSearchSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
@@ -21,14 +21,35 @@ export function Header() {
     resolveDisplayName(user?.email, user?.name, profileExtra) || t("commonUser", "Benutzer");
   const [dbTick, setDbTick] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const db = useMemo(() => loadKundenDb(), [dbTick]);
   const quickSearchSuggestions = useMemo(() => getQuickSearchSuggestions(db), [db]);
 
   useEffect(() => {
-    const onDbChanged = () => setDbTick((t) => t + 1);
+    const onDbChanged = () => setDbTick((tick) => tick + 1);
     window.addEventListener("dema-kunden-db-changed", onDbChanged);
     return () => window.removeEventListener("dema-kunden-db-changed", onDbChanged);
   }, []);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const el = profileMenuRef.current;
+      if (el && !el.contains(e.target as Node)) setProfileMenuOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProfileMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [profileMenuOpen]);
 
   const handleSearchSubmit = (value: string) => {
     const q = value.trim();
@@ -78,17 +99,24 @@ export function Header() {
             </span>
           )}
         </a>
-        <button
-          type="button"
+        <a
+          href="#/settings"
+          title={t("navSettings", "Einstellungen")}
           className="rounded-xl p-2.5 text-slate-500 transition hover:bg-white hover:shadow-sm"
         >
           <Settings className="h-5 w-5" />
-        </button>
+        </a>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white ring-2 ring-white">
+      <div className="relative shrink-0" ref={profileMenuRef}>
+        <button
+          type="button"
+          onClick={() => setProfileMenuOpen((v) => !v)}
+          aria-expanded={profileMenuOpen}
+          aria-haspopup="menu"
+          className="flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50/80"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white ring-2 ring-white">
             {avatarDataUrl ? (
               <img src={avatarDataUrl} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -101,21 +129,47 @@ export function Header() {
                 .toUpperCase() || "?"
             )}
           </div>
-          <div className="hidden text-left sm:block">
+          <div className="hidden min-w-0 text-left sm:block">
             <p className="text-sm font-semibold text-slate-800">{displayName}</p>
-            <p className="max-w-[140px] truncate text-xs text-slate-500" title={user?.email}>
+            <p className="max-w-[160px] truncate text-xs text-slate-500" title={user?.email}>
               {user?.email}
             </p>
           </div>
-        </div>
-        <button
-          type="button"
-          onClick={logout}
-          title={t("headerLogout", "Abmelden")}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-white text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-        >
-          <LogOut className="h-5 w-5" />
+          <ChevronDown
+            className={`hidden h-4 w-4 shrink-0 text-slate-400 transition sm:block ${profileMenuOpen ? "rotate-180" : ""}`}
+            aria-hidden
+          />
         </button>
+
+        {profileMenuOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 top-[calc(100%+8px)] z-50 min-w-[220px] rounded-2xl border border-slate-200/80 bg-white py-1.5 shadow-xl shadow-slate-900/10"
+          >
+            <a
+              href="#/settings"
+              role="menuitem"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              onClick={() => setProfileMenuOpen(false)}
+            >
+              <User className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+              {t("headerAccountInfo", "Account info")}
+            </a>
+            <div className="my-1 border-t border-slate-100" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+              onClick={() => {
+                setProfileMenuOpen(false);
+                logout();
+              }}
+            >
+              <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+              {t("headerLogout", "Abmelden")}
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

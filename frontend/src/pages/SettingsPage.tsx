@@ -13,6 +13,7 @@ import {
   Shield,
   Smartphone,
   Sun,
+  Trash2,
   UserCog,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -66,6 +67,8 @@ function CompactToggle({ checked = false, onToggle }: { checked?: boolean; onTog
     </button>
   );
 }
+
+type DemoSessionRow = { id: string; device: string; whenKind: "now" | "today" };
 
 function initialsFromUserName(name: string | undefined): string {
   return (
@@ -124,6 +127,10 @@ export function SettingsPage() {
   const [profilePhone, setProfilePhone] = useState("");
   const [profileJobTitle, setProfileJobTitle] = useState("");
   const [showSessions, setShowSessions] = useState(false);
+  const [demoSessions, setDemoSessions] = useState<DemoSessionRow[]>([
+    { id: "s1", device: "Windows · Chrome", whenKind: "now" },
+    { id: "s2", device: "Android · Chrome", whenKind: "today" },
+  ]);
 
   useEffect(() => {
     try {
@@ -229,8 +236,8 @@ export function SettingsPage() {
         }
         return;
       }
-      setStoredProfileAvatarDataUrl(res.dataUrl);
-      if (getStoredProfileAvatarDataUrl() !== res.dataUrl) {
+      setStoredProfileAvatarDataUrl(res.dataUrl, user?.email);
+      if (getStoredProfileAvatarDataUrl(user?.email) !== res.dataUrl) {
         ping(t("settingsAvatarSaveFailed", "Could not save photo. Try a smaller image."));
         return;
       }
@@ -239,7 +246,7 @@ export function SettingsPage() {
   }
 
   function clearAvatar() {
-    setStoredProfileAvatarDataUrl(null);
+    setStoredProfileAvatarDataUrl(null, user?.email);
     ping(t("settingsAvatarRemoved", "Profile photo removed."));
   }
 
@@ -462,133 +469,140 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-5">
-          <h2 className="text-sm font-bold text-slate-900">{t("settingsNotifications", "Benachrichtigungen")}</h2>
-          <div className="mt-2.5 space-y-1.5">
-            {[
-              { label: t("settingsNotifySalesAlerts", "Sales alerts"), enabled: notify.sales, onToggle: () => setNotify((s) => ({ ...s, sales: !s.sales })) },
-              { label: t("settingsNotifyHrmApprovals", "HRM approvals"), enabled: notify.hrm, onToggle: () => setNotify((s) => ({ ...s, hrm: !s.hrm })) },
-              { label: t("settingsNotifyPayrollErrors", "Payroll errors"), enabled: notify.payroll, onToggle: () => setNotify((s) => ({ ...s, payroll: !s.payroll })) },
-              { label: t("settingsNotifyB2bLeads", "B2B leads"), enabled: notify.b2b, onToggle: () => setNotify((s) => ({ ...s, b2b: !s.b2b })) },
-              {
-                label: t("settingsNotifyWeeklyDigest", "Weekly summary email"),
-                enabled: notify.weeklyDigest,
-                onToggle: () => setNotify((s) => ({ ...s, weeklyDigest: !s.weeklyDigest })),
-              },
-            ].map(({ label, enabled, onToggle }) => (
-              <div
-                key={label}
-                className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5"
-              >
-                <span className="min-w-0 text-xs font-medium leading-tight text-slate-700">{label}</span>
-                <CompactToggle checked={enabled} onToggle={onToggle} />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-6">
-          <h2 className="text-base font-bold text-slate-900">{t("settingsDisplay", "Darstellung")}</h2>
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <button
-              onClick={() => setTheme("light")}
-              className={`rounded-xl border p-3 text-sm font-semibold ${
-                theme === "light"
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              <Sun className="mx-auto mb-1.5 h-4 w-4" />
-              {t("themeLight", "Light")}
-            </button>
-            <button
-              onClick={() => setTheme("dark")}
-              className={`rounded-xl border p-3 text-sm font-semibold ${
-                theme === "dark"
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              <Moon className="mx-auto mb-1.5 h-4 w-4" />
-              {t("themeDark", "Dark")}
-            </button>
-            <button
-              onClick={() => setTheme("system")}
-              className={`rounded-xl border p-3 text-sm font-semibold ${
-                theme === "system"
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              <Monitor className="mx-auto mb-1.5 h-4 w-4" />
-              {t("themeSystem", "System")}
-            </button>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left">
-              <label className="text-xs uppercase tracking-wide text-slate-400" htmlFor="language-select">
-                {t("settingsLanguage", "Sprache")}
-              </label>
-              <select
-                id="language-select"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as typeof language)}
-                className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-800"
-              >
-                {languageOptions.map((opt) => (
-                  <option key={opt.code} value={opt.code}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-[11px] text-slate-500">
-                {t("settingsLanguageHelp", "Die ausgewählte Sprache wird im Dashboard angewendet.")}
-              </p>
+        <div className="flex flex-col gap-6 xl:col-span-8 xl:col-start-5">
+          <section className="h-fit w-full self-start rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h2 className="text-sm font-bold text-slate-900">{t("settingsNotifications", "Benachrichtigungen")}</h2>
+            <div className="mt-2 space-y-1">
+              {[
+                { label: t("settingsNotifySalesAlerts", "Sales alerts"), enabled: notify.sales, onToggle: () => setNotify((s) => ({ ...s, sales: !s.sales })) },
+                { label: t("settingsNotifyHrmApprovals", "HRM approvals"), enabled: notify.hrm, onToggle: () => setNotify((s) => ({ ...s, hrm: !s.hrm })) },
+                { label: t("settingsNotifyPayrollErrors", "Payroll errors"), enabled: notify.payroll, onToggle: () => setNotify((s) => ({ ...s, payroll: !s.payroll })) },
+                { label: t("settingsNotifyB2bLeads", "B2B leads"), enabled: notify.b2b, onToggle: () => setNotify((s) => ({ ...s, b2b: !s.b2b })) },
+                {
+                  label: t("settingsNotifyWeeklyDigest", "Weekly summary email"),
+                  enabled: notify.weeklyDigest,
+                  onToggle: () => setNotify((s) => ({ ...s, weeklyDigest: !s.weeklyDigest })),
+                },
+              ].map(({ label, enabled, onToggle }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5"
+                >
+                  <span className="min-w-0 text-xs font-medium leading-tight text-slate-700">{label}</span>
+                  <CompactToggle checked={enabled} onToggle={onToggle} />
+                </div>
+              ))}
             </div>
-            <button
-              onClick={() => setDateFormat((v) => (v === "TT.MM.JJJJ" ? "DD/MM/YYYY" : "TT.MM.JJJJ"))}
-              className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left hover:bg-slate-100"
-            >
-              <p className="text-xs uppercase tracking-wide text-slate-400">{t("settingsDateFormat", "Date format")}</p>
-              <p className="mt-1 font-semibold text-slate-800">{dateFormat}</p>
-            </button>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-6">
-          <h2 className="text-base font-bold text-slate-900">{t("settingsSecurity", "Sicherheit")}</h2>
-          <div className="mt-4 space-y-3">
-            {[
-              { id: "password" as const, label: t("settingsActionChangePassword", "Change password"), Icon: KeyRound },
-              { id: "2fa" as const, label: t("settingsActionManage2fa", "Manage 2FA"), Icon: Shield },
-              { id: "roles" as const, label: t("settingsActionReviewRoles", "Review roles"), Icon: UserCog },
-              { id: "rules" as const, label: t("settingsActionNotificationRules", "Notification rules"), Icon: Bell },
-              { id: "region" as const, label: t("settingsActionLanguageRegion", "Language & region"), Icon: Globe2 },
-            ].map(({ id, label, Icon }) => (
+          <section className="w-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-bold text-slate-900">{t("settingsDisplay", "Darstellung")}</h2>
+            <div className="mt-4 grid grid-cols-3 gap-3">
               <button
-                key={id}
-                onClick={() => runSecurityAction(id)}
-                className="flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                type="button"
+                onClick={() => setTheme("light")}
+                className={`rounded-xl border p-3 text-sm font-semibold ${
+                  theme === "light"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
               >
-                <span>{label}</span>
-                <Icon className="h-4 w-4 text-blue-600" />
+                <Sun className="mx-auto mb-1.5 h-4 w-4" />
+                {t("themeLight", "Light")}
               </button>
-            ))}
-          </div>
-          <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs text-slate-600">
-            <p>{t("settings2faStatus", "2FA")}: <span className="font-semibold text-slate-800">{mfaEnabled ? t("commonOn", "On") : t("commonOff", "Off")}</span></p>
-            <p className="mt-1">{t("settingsLastPasswordChange", "Last password change")}: <span className="font-semibold text-slate-800">{passwordUpdatedAt || t("settingsNever", "Never")}</span></p>
-            <p className="mt-1">{t("settingsRegion", "Region")}: <span className="font-semibold text-slate-800">{region === "de" ? t("settingsRegionGermany", "Germany") : t("settingsRegionInternational", "International")}</span></p>
-          </div>
-          {hint ? (
-            <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-              {hint}
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={`rounded-xl border p-3 text-sm font-semibold ${
+                  theme === "dark"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                <Moon className="mx-auto mb-1.5 h-4 w-4" />
+                {t("themeDark", "Dark")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("system")}
+                className={`rounded-xl border p-3 text-sm font-semibold ${
+                  theme === "system"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                <Monitor className="mx-auto mb-1.5 h-4 w-4" />
+                {t("themeSystem", "System")}
+              </button>
             </div>
-          ) : null}
-        </section>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left">
+                <label className="text-xs uppercase tracking-wide text-slate-400" htmlFor="language-select">
+                  {t("settingsLanguage", "Sprache")}
+                </label>
+                <select
+                  id="language-select"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as typeof language)}
+                  className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-800"
+                >
+                  {languageOptions.map((opt) => (
+                    <option key={opt.code} value={opt.code}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  {t("settingsLanguageHelp", "Die ausgewählte Sprache wird im Dashboard angewendet.")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDateFormat((v) => (v === "TT.MM.JJJJ" ? "DD/MM/YYYY" : "TT.MM.JJJJ"))}
+                className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left hover:bg-slate-100"
+              >
+                <p className="text-xs uppercase tracking-wide text-slate-400">{t("settingsDateFormat", "Date format")}</p>
+                <p className="mt-1 font-semibold text-slate-800">{dateFormat}</p>
+              </button>
+            </div>
+          </section>
+
+          <section className="w-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-bold text-slate-900">{t("settingsSecurity", "Sicherheit")}</h2>
+            <div className="mt-4 space-y-3">
+              {[
+                { id: "password" as const, label: t("settingsActionChangePassword", "Change password"), Icon: KeyRound },
+                { id: "2fa" as const, label: t("settingsActionManage2fa", "Manage 2FA"), Icon: Shield },
+                { id: "roles" as const, label: t("settingsActionReviewRoles", "Review roles"), Icon: UserCog },
+                { id: "rules" as const, label: t("settingsActionNotificationRules", "Notification rules"), Icon: Bell },
+                { id: "region" as const, label: t("settingsActionLanguageRegion", "Language & region"), Icon: Globe2 },
+              ].map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => runSecurityAction(id)}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  <span>{label}</span>
+                  <Icon className="h-4 w-4 text-blue-600" />
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs text-slate-600">
+              <p>{t("settings2faStatus", "2FA")}: <span className="font-semibold text-slate-800">{mfaEnabled ? t("commonOn", "On") : t("commonOff", "Off")}</span></p>
+              <p className="mt-1">{t("settingsLastPasswordChange", "Last password change")}: <span className="font-semibold text-slate-800">{passwordUpdatedAt || t("settingsNever", "Never")}</span></p>
+              <p className="mt-1">{t("settingsRegion", "Region")}: <span className="font-semibold text-slate-800">{region === "de" ? t("settingsRegionGermany", "Germany") : t("settingsRegionInternational", "International")}</span></p>
+            </div>
+            {hint ? (
+              <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                {hint}
+              </div>
+            ) : null}
+          </section>
+        </div>
 
         {activeAction === "password" ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-8 xl:col-start-5">
             <h2 className="text-base font-bold text-slate-900">{t("settingsUpdatePassword", "Passwort aktualisieren")}</h2>
             <div className="mt-4 space-y-3">
               <input
@@ -631,7 +645,7 @@ export function SettingsPage() {
         ) : null}
 
         {activeAction === "rules" ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-8 xl:col-start-5">
             <h2 className="text-base font-bold text-slate-900">{t("settingsNotificationRules", "Benachrichtigungsregeln")}</h2>
             <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
               <span className="text-sm font-medium text-slate-700">{t("settingsQuietHours", "Ruhezeiten aktivieren (22:00 - 07:00)")}</span>
@@ -650,7 +664,7 @@ export function SettingsPage() {
         ) : null}
 
         {activeAction === "region" ? (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-8 xl:col-start-5">
             <h2 className="text-base font-bold text-slate-900">{t("settingsLanguageRegion", "Sprache & Region")}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
@@ -703,19 +717,39 @@ export function SettingsPage() {
           </button>
           {showSessions ? (
             <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-              {[
-                { device: "Windows · Chrome", when: t("settingsSessionNow", "Jetzt aktiv"), where: profileLocation || "Hamburg" },
-                { device: "Android · Chrome", when: t("settingsSessionToday", "Heute, 08:12"), where: profileLocation || "Hamburg" },
-              ].map((s) => (
-                <div
-                  key={s.device}
-                  className="flex flex-col gap-1 rounded-lg bg-white px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="font-semibold text-slate-800">{s.device}</span>
-                  <span className="text-slate-500">{s.when}</span>
-                  <span className="text-slate-500">{s.where}</span>
-                </div>
-              ))}
+              {demoSessions.length === 0 ? (
+                <p className="py-2 text-center text-xs text-slate-500">{t("settingsSessionsEmpty", "Keine Sitzungen in dieser Liste.")}</p>
+              ) : (
+                demoSessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex flex-col gap-2 rounded-lg bg-white px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:gap-3"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <span className="font-semibold text-slate-800">{s.device}</span>
+                      <span className="text-slate-500">
+                        {s.whenKind === "now"
+                          ? t("settingsSessionNow", "Jetzt aktiv")
+                          : t("settingsSessionToday", "Heute, 08:12")}
+                      </span>
+                      <span className="text-slate-500">{profileLocation || "Hamburg"}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDemoSessions((prev) => prev.filter((row) => row.id !== s.id));
+                        ping(t("settingsSessionRemoved", "Sitzung aus der Liste entfernt (Demo)."));
+                      }}
+                      title={t("settingsSessionRemove", "Gerät entfernen")}
+                      aria-label={t("settingsSessionRemove", "Gerät entfernen")}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 self-end rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-50 sm:self-center"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      <span className="sm:hidden">{t("settingsSessionRemove", "Gerät entfernen")}</span>
+                    </button>
+                  </div>
+                ))
+              )}
               <p className="pt-1 text-[11px] text-slate-500">{t("settingsSessionsDemoNote", "Abmeldung einzelner Sitzungen folgt mit Backend-Anbindung.")}</p>
             </div>
           ) : null}

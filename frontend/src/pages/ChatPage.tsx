@@ -247,30 +247,30 @@ export function ChatPage() {
   if (!user) return null;
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-[#0b141a]">
+    <div className="relative flex min-h-0 flex-1 flex-col px-6 pb-8 pt-4">
       {toast && (
-        <div className="absolute bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg">
+        <div className="absolute bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800 shadow-lg shadow-slate-200/50">
           {toast}
-          <button type="button" className="ml-3 text-slate-300 underline" onClick={() => setToast(null)}>
+          <button type="button" className="ml-3 text-blue-600 underline" onClick={() => setToast(null)}>
             OK
           </button>
         </div>
       )}
 
       {notifBanner && (
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-emerald-900/40 bg-emerald-950/90 px-4 py-2 text-sm text-emerald-50">
+        <div className="mb-3 flex shrink-0 items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/90 px-4 py-2.5 text-sm text-slate-800 shadow-sm">
           <span>{t("chatNotifBanner", "Desktop-Benachrichtigungen für neue Nachrichten aktivieren?")}</span>
           <div className="flex gap-2">
             <button
               type="button"
-              className="rounded-lg bg-emerald-600 px-3 py-1 font-medium text-white hover:bg-emerald-500"
+              className="rounded-lg bg-blue-600 px-3 py-1 font-medium text-white shadow-sm shadow-blue-600/25 transition hover:bg-blue-700"
               onClick={requestNotifications}
             >
               {t("chatNotifEnable", "Aktivieren")}
             </button>
             <button
               type="button"
-              className="rounded-lg px-2 py-1 text-emerald-200 hover:bg-emerald-900/50"
+              className="rounded-lg px-2 py-1 text-slate-600 transition hover:bg-white/80"
               onClick={() => setNotifBanner(false)}
             >
               {t("chatNotifLater", "Später")}
@@ -279,29 +279,30 @@ export function ChatPage() {
         </div>
       )}
 
-      <div className="flex min-h-0 min-h-[calc(100vh-72px-1px)] flex-1">
+      <div className="glass-card flex min-h-0 min-h-[calc(100vh-7.5rem)] flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1">
         {/* Conversation list */}
         <aside
-          className={`flex w-full max-w-full shrink-0 flex-col border-r border-slate-800 bg-[#111b21] sm:w-[360px] ${
+          className={`flex w-full max-w-full shrink-0 flex-col border-r border-slate-200/80 bg-white/60 sm:w-[360px] ${
             !mobileShowList && selectedId ? "hidden sm:flex" : "flex"
           }`}
         >
-          <div className="flex h-14 items-center gap-2 border-b border-slate-800 px-3">
+          <div className="flex h-14 items-center gap-2 border-b border-slate-200/80 bg-white/80 px-3 backdrop-blur-sm">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("chatSearchPlaceholder", "Suchen oder neuer Chat")}
-                className="h-10 w-full rounded-xl border-0 bg-[#202c33] pl-10 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+                className="h-10 w-full rounded-xl border border-slate-200/80 bg-slate-50/80 pl-10 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <button
               type="button"
               title={t("chatNewGroup", "Neue Gruppe")}
               onClick={() => setShowNewGroup(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#202c33] text-slate-300 transition hover:bg-[#2a3942]"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-700"
             >
               <Users className="h-5 w-5" />
             </button>
@@ -309,15 +310,15 @@ export function ChatPage() {
               type="button"
               title={t("chatNewChat", "Neuer Chat")}
               onClick={() => setShowNewChat(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-700 text-white transition hover:bg-emerald-600"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-700"
             >
               <Plus className="h-5 w-5" />
             </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="sticky top-0 z-10 border-b border-slate-800 bg-[#111b21] px-3 py-2">
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/90 px-3 py-2 backdrop-blur-sm">
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 {t("chatSectionContacts", "Kontakte")}
               </h2>
             </div>
@@ -334,10 +335,10 @@ export function ChatPage() {
                     setSelectedId(conv.id);
                     setMobileShowList(false);
                   }}
-                  className="flex w-full items-center gap-3 border-b border-slate-800/80 px-3 py-2.5 text-left transition hover:bg-[#202c33]"
+                  className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left transition hover:bg-slate-50/90"
                 >
                   <div className="relative shrink-0">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-xs font-semibold text-white">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-semibold text-white shadow-sm ring-2 ring-white">
                       {initials(c.name)}
                     </div>
                     <PresenceIndicator
@@ -345,21 +346,21 @@ export function ChatPage() {
                       labelOnline={presenceLabels.online}
                       labelAway={presenceLabels.away}
                       labelOffline={presenceLabels.offline}
-                      dotBorderClass="border-[#111b21]"
+                      dotBorderClass="border-white"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-medium text-slate-100">{c.name}</span>
+                      <span className="truncate font-medium text-slate-800">{c.name}</span>
                       {isSelf && (
-                        <span className="shrink-0 rounded-md bg-slate-700/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+                        <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                           {t("chatYouBadge", "Sie")}
                         </span>
                       )}
                     </div>
                     <p className="truncate text-xs text-slate-500">{c.email}</p>
                   </div>
-                  <span className="shrink-0 text-[10px] text-slate-500">
+                  <span className="shrink-0 text-[10px] text-slate-400">
                     {st === "online"
                       ? presenceLabels.online
                       : st === "away"
@@ -370,14 +371,14 @@ export function ChatPage() {
               );
             })}
 
-            <div className="sticky top-0 z-10 border-b border-slate-800 bg-[#111b21] px-3 py-2">
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/90 px-3 py-2 backdrop-blur-sm">
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 {t("chatSectionChats", "Chats")}
               </h2>
             </div>
             {filteredConversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center text-slate-500">
-                <MessageCircle className="h-10 w-10 opacity-40" />
+                <MessageCircle className="h-10 w-10 text-slate-300" />
                 <p className="text-sm">{t("chatEmptyList", "Noch keine Chats. Starten Sie einen neuen.")}</p>
               </div>
             ) : (
@@ -390,7 +391,7 @@ export function ChatPage() {
                     ? c.memberEmails.find((em) => normEmail(em) !== normEmail(me))
                     : null;
                 const peerStatus = peer ? getPresenceStatus(peer) : null;
-                const dotBorder = selectedId === c.id ? "border-[#2a3942]" : "border-[#111b21]";
+                const dotBorder = selectedId === c.id ? "border-blue-50" : "border-white";
                 return (
                   <button
                     key={c.id}
@@ -399,12 +400,12 @@ export function ChatPage() {
                       setSelectedId(c.id);
                       setMobileShowList(false);
                     }}
-                    className={`flex w-full items-start gap-3 border-b border-slate-800/80 px-3 py-3 text-left transition hover:bg-[#202c33] ${
-                      selectedId === c.id ? "bg-[#2a3942]" : ""
+                    className={`flex w-full items-start gap-3 border-b border-slate-100 px-3 py-3 text-left transition hover:bg-slate-50/90 ${
+                      selectedId === c.id ? "border-l-2 border-l-blue-500 bg-blue-50/70" : ""
                     }`}
                   >
                     <div className="relative shrink-0">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-sm font-semibold text-white">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-semibold text-white shadow-sm ring-2 ring-white">
                         {initials(title)}
                       </div>
                       {c.kind === "direct" && peerStatus != null && (
@@ -419,13 +420,13 @@ export function ChatPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-medium text-slate-100">{title}</span>
-                        <span className="shrink-0 text-xs text-slate-500">
+                        <span className="truncate font-medium text-slate-800">{title}</span>
+                        <span className="shrink-0 text-xs text-slate-400">
                           {last ? formatTime(last.createdAt, localeTag) : ""}
                         </span>
                       </div>
                       <div className="mt-0.5 flex items-center justify-between gap-2">
-                        <p className="truncate text-sm text-slate-400">
+                        <p className="truncate text-sm text-slate-500">
                           {last
                             ? last.text.trim()
                               ? `${last.senderEmail === normEmail(me) ? "" : `${last.senderName}: `}${last.text}`
@@ -437,7 +438,7 @@ export function ChatPage() {
                             : t("chatNoMessagesYet", "Noch keine Nachrichten")}
                         </p>
                         {unread > 0 && (
-                          <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+                          <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white shadow-sm">
                             {unread > 99 ? "99+" : unread}
                           </span>
                         )}
@@ -452,23 +453,23 @@ export function ChatPage() {
 
         {/* Thread */}
         <section
-          className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[#0b141a] bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23182229%22%20fill-opacity%3D%220.35%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] ${
+          className={`flex min-h-0 min-w-0 flex-1 flex-col bg-gradient-to-b from-slate-50/90 to-[#f4f7fe]/80 ${
             mobileShowList && !selectedId ? "hidden sm:flex" : "flex"
           }`}
         >
           {!selected ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-slate-500">
-              <div className="rounded-full bg-[#202c33] p-8">
-                <MessageCircle className="h-16 w-16 text-slate-600" />
+              <div className="rounded-full border border-slate-200/80 bg-white p-8 shadow-md shadow-slate-200/40">
+                <MessageCircle className="h-16 w-16 text-slate-300" />
               </div>
-              <p className="max-w-sm text-center text-sm">{t("chatSelectThread", "Wählen Sie einen Chat aus der Liste.")}</p>
+              <p className="max-w-sm text-center text-sm text-slate-600">{t("chatSelectThread", "Wählen Sie einen Chat aus der Liste.")}</p>
             </div>
           ) : (
             <>
-              <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-800 bg-[#202c33] px-3">
+              <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white/90 px-3 backdrop-blur-sm">
                 <button
                   type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-200 sm:hidden"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 sm:hidden"
                   onClick={() => {
                     setMobileShowList(true);
                     setSelectedId(null);
@@ -478,7 +479,7 @@ export function ChatPage() {
                   <ArrowLeft className="h-5 w-5" />
                 </button>
                 <div className="relative">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-xs font-bold text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm ring-2 ring-white">
                     {initials(convDisplayTitle(selected, me))}
                   </div>
                   {selected.kind === "direct" &&
@@ -496,8 +497,8 @@ export function ChatPage() {
                     })()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="truncate font-semibold text-slate-100">{convDisplayTitle(selected, me)}</h1>
-                  <p className="truncate text-xs text-slate-400">
+                  <h1 className="truncate font-semibold text-slate-800">{convDisplayTitle(selected, me)}</h1>
+                  <p className="truncate text-xs text-slate-500">
                     {selected.kind === "group"
                       ? t("chatMembersCount", "{n} Mitglieder").replace("{n}", String(selected.memberEmails.length))
                       : (() => {
@@ -519,14 +520,14 @@ export function ChatPage() {
                     return (
                       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[85%] rounded-lg px-3 py-2 shadow-sm ${
+                          className={`max-w-[85%] rounded-2xl px-3 py-2 shadow-sm ${
                             mine
-                              ? "rounded-tr-none bg-[#005c4b] text-slate-50"
-                              : "rounded-tl-none bg-[#202c33] text-slate-100"
+                              ? "rounded-tr-sm border border-blue-500/20 bg-blue-600 text-white shadow-blue-600/15"
+                              : "rounded-tl-sm border border-slate-200/90 bg-white text-slate-800 shadow-slate-200/50"
                           }`}
                         >
                           {selected.kind === "group" && !mine && (
-                            <p className="mb-1 text-xs font-medium text-emerald-400">{m.senderName}</p>
+                            <p className="mb-1 text-xs font-medium text-blue-600">{m.senderName}</p>
                           )}
                           {m.attachment?.kind === "image" && (
                             <a href={m.attachment.dataUrl} download={m.attachment.fileName} className="block">
@@ -541,7 +542,9 @@ export function ChatPage() {
                             <a
                               href={m.attachment.dataUrl}
                               download={m.attachment.fileName}
-                              className="mb-1 flex items-center gap-2 rounded-md bg-black/20 px-2 py-2 text-sm underline"
+                              className={`mb-1 flex items-center gap-2 rounded-md px-2 py-2 text-sm underline ${
+                                mine ? "bg-white/15" : "bg-slate-100"
+                              }`}
                             >
                               <Paperclip className="h-4 w-4 shrink-0" />
                               {m.attachment.fileName}
@@ -552,23 +555,23 @@ export function ChatPage() {
                           ) : null}
                           <div
                             className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
-                              mine ? "text-emerald-200/80" : "text-slate-500"
+                              mine ? "text-blue-100/90" : "text-slate-400"
                             }`}
                           >
                             <span>{formatTime(m.createdAt, localeTag)}</span>
                             {mine && tick === "single_grey" && (
                               <span title={t("chatTickSent", "Gesendet")}>
-                                <Check className="h-3.5 w-3.5 text-slate-400/90" aria-hidden />
+                                <Check className="h-3.5 w-3.5 text-blue-200/90" aria-hidden />
                               </span>
                             )}
                             {mine && tick === "double_grey" && (
                               <span title={t("chatTickDelivered", "Zugestellt")}>
-                                <CheckCheck className="h-3.5 w-3.5 text-slate-400/90" aria-hidden />
+                                <CheckCheck className="h-3.5 w-3.5 text-blue-200/90" aria-hidden />
                               </span>
                             )}
                             {mine && tick === "double_blue" && (
                               <span title={t("chatTickRead", "Gelesen")}>
-                                <CheckCheck className="h-3.5 w-3.5 text-sky-400" aria-hidden />
+                                <CheckCheck className="h-3.5 w-3.5 text-white drop-shadow-sm" aria-hidden />
                               </span>
                             )}
                           </div>
@@ -580,13 +583,13 @@ export function ChatPage() {
                 </div>
               </div>
 
-              <footer className="shrink-0 border-t border-slate-800 bg-[#202c33] px-3 py-2">
+              <footer className="shrink-0 border-t border-slate-200/80 bg-white/95 px-3 py-2 backdrop-blur-sm">
                 <div className="mx-auto flex max-w-3xl items-end gap-2">
                   <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPickFile(e.target.files)} />
                   <input ref={fileRef} type="file" className="hidden" onChange={(e) => onPickFile(e.target.files)} />
                   <button
                     type="button"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-[#2a3942] hover:text-slate-200"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-600"
                     onClick={() => imgRef.current?.click()}
                     title={t("chatAddPhoto", "Foto")}
                   >
@@ -594,7 +597,7 @@ export function ChatPage() {
                   </button>
                   <button
                     type="button"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-[#2a3942] hover:text-slate-200"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-600"
                     onClick={() => fileRef.current?.click()}
                     title={t("chatAddFile", "Datei")}
                   >
@@ -611,12 +614,12 @@ export function ChatPage() {
                       }
                     }}
                     placeholder={t("chatMessagePlaceholder", "Nachricht")}
-                    className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border-0 bg-[#2a3942] px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+                    className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <button
                     type="button"
                     onClick={() => void onSend()}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white transition hover:bg-emerald-500 disabled:opacity-40"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-700 disabled:opacity-40"
                     disabled={!draft.trim()}
                     title={t("chatSend", "Senden")}
                   >
@@ -628,19 +631,20 @@ export function ChatPage() {
           )}
         </section>
       </div>
+      </div>
 
       {/* New chat modal */}
       {showNewChat && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4" role="dialog">
-          <div className="w-full max-w-md rounded-2xl bg-[#111b21] p-5 shadow-xl">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]" role="dialog">
+          <div className="glass-card w-full max-w-md p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">{t("chatNewChat", "Neuer Chat")}</h2>
-              <button type="button" onClick={() => setShowNewChat(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10">
+              <h2 className="text-lg font-semibold text-slate-800">{t("chatNewChat", "Neuer Chat")}</h2>
+              <button type="button" onClick={() => setShowNewChat(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
             {contacts.length === 0 ? (
-              <p className="text-sm text-slate-400">{t("chatNoContacts", "Keine weiteren Konten. Registrieren Sie ein zweites Konto im Browser.")}</p>
+              <p className="text-sm text-slate-600">{t("chatNoContacts", "Keine weiteren Konten. Registrieren Sie ein zweites Konto im Browser.")}</p>
             ) : (
               <ul className="max-h-72 space-y-1 overflow-y-auto">
                 {contacts.map((c) => {
@@ -650,16 +654,16 @@ export function ChatPage() {
                       <button
                         type="button"
                         onClick={() => openDirect(c.email, c.name)}
-                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-200 hover:bg-[#202c33]"
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-800 hover:bg-slate-50"
                       >
-                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm ring-2 ring-white">
                           {initials(c.name)}
                           <PresenceIndicator
                             status={st}
                             labelOnline={presenceLabels.online}
                             labelAway={presenceLabels.away}
                             labelOffline={presenceLabels.offline}
-                            dotBorderClass="border-emerald-900"
+                            dotBorderClass="border-white"
                           />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -678,36 +682,36 @@ export function ChatPage() {
 
       {/* New group modal */}
       {showNewGroup && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4" role="dialog">
-          <div className="w-full max-w-md rounded-2xl bg-[#111b21] p-5 shadow-xl">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]" role="dialog">
+          <div className="glass-card w-full max-w-md p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">{t("chatNewGroup", "Neue Gruppe")}</h2>
-              <button type="button" onClick={() => setShowNewGroup(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10">
+              <h2 className="text-lg font-semibold text-slate-800">{t("chatNewGroup", "Neue Gruppe")}</h2>
+              <button type="button" onClick={() => setShowNewGroup(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <label className="mb-3 block text-sm text-slate-400">{t("chatGroupName", "Gruppenname")}</label>
+            <label className="mb-3 block text-sm text-slate-600">{t("chatGroupName", "Gruppenname")}</label>
             <input
               value={groupTitle}
               onChange={(e) => setGroupTitle(e.target.value)}
-              className="mb-4 w-full rounded-xl border-0 bg-[#202c33] px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+              className="mb-4 w-full rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               placeholder={t("chatGroupNamePh", "z. B. Projektteam")}
             />
-            <p className="mb-2 text-sm text-slate-400">{t("chatGroupMembers", "Mitglieder")}</p>
+            <p className="mb-2 text-sm text-slate-600">{t("chatGroupMembers", "Mitglieder")}</p>
             <ul className="mb-4 max-h-48 space-y-1 overflow-y-auto">
               {contacts.map((c) => {
                 const id = normEmail(c.email);
                 const st = getPresenceStatus(c.email);
                 return (
                   <li key={c.email}>
-                    <label className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 hover:bg-[#202c33]">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 hover:bg-slate-50">
                       <input
                         type="checkbox"
                         checked={!!groupPick[id]}
                         onChange={(e) => setGroupPick((p) => ({ ...p, [id]: e.target.checked }))}
-                        className="rounded border-slate-600"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="flex-1 text-slate-200">{c.name}</span>
+                      <span className="flex-1 text-slate-800">{c.name}</span>
                       <PresenceIndicator
                         variant="inline"
                         status={st}
@@ -723,7 +727,7 @@ export function ChatPage() {
             <button
               type="button"
               onClick={submitGroup}
-              className="w-full rounded-xl bg-emerald-600 py-3 font-medium text-white hover:bg-emerald-500"
+              className="w-full rounded-xl bg-blue-600 py-3 font-medium text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-700"
             >
               {t("chatCreateGroup", "Gruppe erstellen")}
             </button>

@@ -11,6 +11,12 @@ This directory uses a **minimal canonical set** to avoid overlap and confusion.
 - `erd.md` — logical/physical data model reference
 - `adr/` — architecture decision records (start with `adr/000-template.md`)
 
+## Service-by-service specs
+
+- `Detailed report/README.md` — canonical folder for all service-wise detailed reports
+- `Detailed report/SettingsPage-Service-Spec.md` — Settings service report starter in the canonical folder
+- `services/SettingsPage-Service-Spec.md` — existing full Settings deep-dive (to be gradually migrated into `Detailed report/`)
+
 ## Retired documents
 
 The following were removed to reduce duplication:

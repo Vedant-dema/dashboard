@@ -15,13 +15,16 @@ This directory uses a **minimal canonical set** to avoid overlap and confusion.
 
 All service reports are under **`Detailed report/`** only:
 
+- [`Detailed report/README.md`](Detailed%20report/README.md) — index of service specifications in this folder
 - [`Detailed report/SettingsPage-Service-Spec.md`](Detailed%20report/SettingsPage-Service-Spec.md) — Settings and profile preferences (`SettingsPage`)
 - [`Detailed report/InternalChat-Service-Spec.md`](Detailed%20report/InternalChat-Service-Spec.md) — Internal Chat enterprise technical specification (diagrams, contracts, controls)
+- [`Detailed report/DashboardHome-Service-Spec.md`](Detailed%20report/DashboardHome-Service-Spec.md) — Dashboard home / dynamic widget grid (`DynamicDashboard`)
 
 ## Roadmaps (non-technical)
 
 - [`roadmap/InternalChat-Roadmap.md`](roadmap/InternalChat-Roadmap.md) — business-friendly version roadmap (tables per version, mermaid flows per feature, no vendor logos)
 - [`roadmap/Settings-Roadmap.md`](roadmap/Settings-Roadmap.md) — business-friendly Settings roadmap (tables per version, mermaid flows per feature, no vendor logos)
+- [`roadmap/DashboardHome-Roadmap.md`](roadmap/DashboardHome-Roadmap.md) — business-friendly Dashboard Home roadmap (tables per version, mermaid flows, continuity gates)
 
 ## Retired documents
 

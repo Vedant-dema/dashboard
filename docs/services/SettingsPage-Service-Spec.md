@@ -4,7 +4,7 @@
 **Module family:** CORE-ADMIN / CORE-AUTH / UX personalization  
 **Primary file:** `frontend/src/pages/SettingsPage.tsx`  
 **Status:** Frontend-rich, local persistence today; API-backed target defined below  
-**Version:** 1.0
+**Version:** 1.1
 
 ---
 
@@ -377,4 +377,187 @@ The Settings service is a strong place for high-trust, explainable AI.
 - `frontend/src/hooks/useProfileExtraSettings.ts`
 - `docs/HLD.md`
 - `docs/Project-Report-Technical-Requirements.md`
+
+---
+
+## 16) Enterprise version-wise roadmap (V1 to end-goal)
+
+This roadmap follows enterprise transformation patterns common in large consulting-led programs:
+
+- security and governance from day one
+- identity and policy checks for all sensitive actions
+- platform observability and release gates as first-class deliverables
+- AI introduced in controlled phases with explicit user approval
+
+### 16.1 Benchmark-aligned principles
+
+- **Cloud + AI readiness foundation:** Build scalable cloud/data foundations before adding advanced AI behavior.
+- **Zero-trust identity posture:** Treat settings and security controls as high-risk surfaces requiring strict IAM checks.
+- **Control plane mindset:** Keep unified policy, observability, and deployment governance across environments.
+
+Reference material:
+
+- [Accenture: AI-ready cloud foundation](https://www.accenture.com/us-en/insights/cloud/ai-ready-cloud-foundation)
+- [Accenture: AI agent security and identity management](https://www.accenture.com/us-en/blogs/security/strengthening-ai-agent-security-identity-management)
+- [AWS + Accenture: secure cloud foundation acceleration](https://aws.amazon.com/blogs/apn/how-accenture-accelerates-building-a-secure-cloud-foundation-natively-on-aws/)
+
+### 16.2 End-goal architecture vision
+
+```mermaid
+flowchart LR
+  user[User] --> ui[Settings UI]
+  ui --> api[Settings API]
+  api --> iam[IAM OIDC]
+  api --> db[(PostgreSQL)]
+  api --> redis[(Redis)]
+  api --> blob[ObjectStorage]
+  api --> audit[AuditLog]
+  api --> ai[AIOrchestrator]
+  ai --> llm[LLMProvider]
+  ai --> vec[(pgvector)]
+  api --> obs[Observability]
+```
+
+### 16.3 Version roadmap
+
+#### V1 - Foundation and persistence baseline (4-6 weeks)
+
+**Objective:** Replace local-only persistence for non-sensitive settings with backend storage.
+
+**Scope:**
+
+- backend APIs for theme, language, date format, notification toggles, region
+- profile fields persisted server-side
+- avatar metadata + object key handling
+- migration path from existing localStorage values
+
+**Exit criteria:**
+
+- settings reliably persisted across sessions/devices
+- API contracts documented and versioned
+- save success/error telemetry available
+
+#### V2 - Security hardening and session authority (6-8 weeks)
+
+**Objective:** Move sensitive controls to secure, auditable backend flows.
+
+**Scope:**
+
+- password change API
+- MFA status/enrollment/toggle API
+- live session list + revoke API
+- role-sensitive policy enforcement (server-side)
+- audit event logging for every sensitive change
+
+**Exit criteria:**
+
+- 100% sensitive actions audited
+- unauthorized operations blocked by policy layer
+- security validation complete for settings endpoints
+
+#### V3 - Cloud operations and SRE maturity (6-8 weeks)
+
+**Objective:** Operate Settings as a production cloud service with SLO discipline.
+
+**Scope:**
+
+- IaC modules for settings dependencies
+- SLO dashboards and alerting
+- release and rollback runbooks
+- canary/rolling deployment safety checks
+
+**Exit criteria:**
+
+- SLO reporting active in staging and production
+- rollback drill successfully executed
+- RTO/RPO alignment with TRD targets
+
+#### V4 - AI assistive settings layer (8-10 weeks)
+
+**Objective:** Add low-risk, high-value AI assistance.
+
+**Scope:**
+
+- AI-SET-01 smart preference assistant
+- AI-SET-02 security posture coach
+- AI-SET-03 quiet-hours optimizer
+- explainability in UI (“why this recommendation”)
+- explicit user approval before apply
+
+**Exit criteria:**
+
+- no AI-applied setting without consent
+- AI actions logged with cost/usage metadata
+- recommendation quality metrics available
+
+#### V5 - Governance and compliance expansion (6-8 weeks)
+
+**Objective:** Strengthen compliance evidence and policy automation.
+
+**Scope:**
+
+- data retention policies by setting class
+- access review workflow for security-sensitive settings
+- compliance evidence export pipeline
+- policy-as-code checks in CI/CD
+
+**Exit criteria:**
+
+- periodic access review process active
+- evidence package generation automated
+- release gates include compliance controls
+
+#### V6 - End-goal optimization and scale (continuous)
+
+**Objective:** Reach enterprise-grade resilience, efficiency, and personalization.
+
+**Scope:**
+
+- cross-device conflict resolution
+- multi-region strategy option
+- AI recommendation tuning by role/department
+- cost controls (model routing, caching, quotas)
+- executive scorecards for value + risk posture
+
+**Exit criteria:**
+
+- stable multi-device settings consistency
+- predictable AI unit economics
+- architecture/security/ops sign-off for enterprise readiness
+
+### 16.4 Cross-version workstreams
+
+- **Architecture:** schemas, contracts, backward compatibility strategy
+- **Security:** IAM, policy checks, secrets, audit controls
+- **Platform:** CI/CD, IaC, observability, incident readiness
+- **Product UX:** usability, accessibility, explainability
+- **AI governance:** approval controls, token/cost budgets, quality review
+- **Documentation:** DFD/ER/sequence/deployment snapshots per version
+
+### 16.5 Version-wise documentation pack
+
+For each version, publish:
+
+- updated service spec
+- ER diagram snapshot
+- DFD snapshot
+- key sequence diagrams (3-5)
+- API changelog
+- SLO scorecard
+- risk register delta
+
+### 16.6 Example quarterly timeline
+
+- **Quarter 1:** V1 + V2
+- **Quarter 2:** V3 + V4
+- **Quarter 3:** V5
+- **Quarter 4+:** V6 iterative optimization
+
+### 16.7 Decision gates per version (owner checklist)
+
+1. Feature completeness against planned scope
+2. Security and compliance readiness
+3. Operational readiness and rollback confidence
+4. KPI trend and adoption signal
+5. Budget and cost alignment
 

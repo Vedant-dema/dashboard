@@ -553,7 +553,7 @@ export function NewCustomerModal({
         setVatCheckError(formatVatCheckDetail(body));
         return;
       }
-      const body = raw as ViesCheckResult;
+      const body = parsedBody as ViesCheckResult;
       setVatCheckResult(body);
     } catch {
       setVatCheckError(

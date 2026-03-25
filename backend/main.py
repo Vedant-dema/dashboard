@@ -343,8 +343,8 @@ def _vies_address_or_none(value: Any) -> str | None:
 
 
 @app.get("/api/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> dict[str, Any]:
+    return {"status": "ok", "cors_origins": _cors_origins()}
 
 
 def _build_vies_check_payload(body: VatCheckRequest) -> dict[str, str]:

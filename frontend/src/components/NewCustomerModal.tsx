@@ -505,24 +505,48 @@ export function NewCustomerModal({
         return;
       }
       const textBody = await res.text();
-      let raw: unknown = {};
+      let parsedBody: unknown = null;
+      let parseError: string | null = null;
       try {
-        raw = textBody ? JSON.parse(textBody) : {};
+        parsedBody = textBody.trim() ? JSON.parse(textBody) : null;
       } catch {
-        // Proxy returned HTML or plain text — surface it directly so the user can diagnose.
-        raw = { _parseError: "Antwort war kein gültiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)", _rawText: textBody.slice(0, 4000) };
+        parseError = "Antwort war kein gültiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)";
+      }
+
+      // Always inject the HTTP status into the displayed panel so the user can see it.
+      const displayMeta: Record<string, unknown> = {
+        _httpStatus: res.status,
+        _httpStatusText: res.statusText || "(kein Statustext)",
+      };
+      let displayJson: unknown;
+      if (parseError) {
+        displayJson = { ...displayMeta, _parseError: parseError, _rawText: textBody.slice(0, 4000) };
+      } else if (parsedBody !== null && typeof parsedBody === "object") {
+        displayJson = { ...displayMeta, ...(parsedBody as Record<string, unknown>) };
+      } else if (parsedBody !== null) {
+        displayJson = { ...displayMeta, _body: parsedBody };
+      } else {
+        // Empty body.
+        displayJson = { ...displayMeta, _body: "(leer)" };
       }
       try {
-        setVatBackendResponseJson(JSON.stringify(raw, null, 2));
+        setVatBackendResponseJson(JSON.stringify(displayJson, null, 2));
       } catch {
-        setVatBackendResponseJson(String(raw));
+        setVatBackendResponseJson(String(displayJson));
       }
+
       if (!res.ok) {
-        const body = raw as Record<string, unknown>;
-        // Check for _parseError first — proxy returned non-JSON.
-        if (body._parseError) {
+        const body = parsedBody as Record<string, unknown> | null;
+        if (parseError) {
           setVatCheckError(
-            `HTTP ${res.status} — ${String(body._parseError)}. Proxy-Timeout? Prüfen Sie VIES_MAX_TOTAL_SEC in der Backend-Konfiguration.`
+            `HTTP ${res.status} — ${parseError}. Proxy-Timeout? Prüfen Sie VIES_MAX_TOTAL_SEC in der Backend-Konfiguration.`
+          );
+          return;
+        }
+        // Empty body — show the HTTP status code clearly.
+        if (!body || Object.keys(body).length === 0) {
+          setVatCheckError(
+            `HTTP ${res.status} — leere Antwort vom Server. Mögliche Ursachen: Proxy-Timeout, Cold-Start des Backends oder fehlende CORS_ORIGINS-Konfiguration.`
           );
           return;
         }

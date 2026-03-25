@@ -53,7 +53,7 @@ Business value:
 ## 3.1 Profile & account
 
 - Upload/remove profile avatar
-- Edit display name, location, phone, job title
+- Read display name, location, phone, job title
 - Show read-only sign-in email and internal metadata
 - Save profile detail snapshot
 

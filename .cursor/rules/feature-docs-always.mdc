@@ -1,0 +1,87 @@
+---
+description: Auto-document every new feature added to the project in docs/FEATURE-LOG.md
+alwaysApply: true
+---
+
+# Feature Documentation Rule — Always Log New Features
+
+**Every time you add, modify, or extend a feature**, you MUST update `docs/FEATURE-LOG.md` with a full entry. This applies to any change that is more than a bug fix or minor style tweak.
+
+## When to Write a Log Entry
+
+Write an entry whenever you:
+- Add a new component, widget, page, or route
+- Add or modify a backend endpoint or service
+- Add a new database table, column, or query
+- Add a new store/context/hook with meaningful logic
+- Add new API integrations or data flows
+- Add any user-visible feature or setting
+
+## Where to Append
+
+Always **append** a new entry to the bottom of `docs/FEATURE-LOG.md`. Never delete or overwrite existing entries.
+
+## Mandatory Entry Format
+
+Each entry must follow this exact template:
+
+```markdown
+---
+
+## [FEATURE-NNN] Feature Name
+**Date:** YYYY-MM-DD  
+**Author/Agent:** Cursor AI  
+**Status:** Added | Modified | Extended  
+
+### What Was Added
+One-paragraph description of exactly what this feature does from the user's perspective.
+
+### Where It Was Added
+List every file touched or created:
+- `frontend/src/...` — reason
+- `backend/main.py` — reason
+- `docs/...` — reason
+
+### What It Does (Technical)
+Step-by-step description of the logic flow:
+1. ...
+2. ...
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| ...   | ...  | ...      | ...         |
+
+### Database
+- **Engine:** SQLite (`dema.db`) / None
+- **Tables Affected:** List table names or "N/A"
+- **Schema Changes:** Describe any new columns/tables or "None"
+- **Key Queries:** Describe the main SQL patterns used or "None"
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|--------|------|------|-------------|----------|
+| ...    | ...  | ...  | ...         | ...      |
+
+### State / Store (if applicable)
+- **Store file:** `frontend/src/store/...`
+- **Actions/Selectors added:** List them
+- **Persisted:** Yes / No
+
+### i18n Keys Added
+List any new translation keys added to `LanguageContext.tsx`, or "None".
+
+### Dependencies Added
+List any new npm packages or pip packages installed, or "None".
+
+### Notes / Known Limitations
+Any caveats, TODOs, or follow-up items.
+```
+
+## Rules
+
+1. **FEATURE-NNN** — increment the number from the last entry in the file. Start at FEATURE-001 if the file is empty.
+2. Fill in every section. Write "N/A" or "None" if a section does not apply — never skip a section.
+3. Do not use vague language like "updated some files". Be specific with file paths and function names.
+4. If a feature spans multiple sessions, add a new entry with status `Extended` and reference the original entry number.
+5. After appending the entry, confirm to the user: "Feature logged in docs/FEATURE-LOG.md as [FEATURE-NNN]."

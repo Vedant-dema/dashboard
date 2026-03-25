@@ -875,6 +875,9 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  aside {
+    transition: none !important;
+  }
   .auth-ambient-light,
   .auth-grid-drift,
   .auth-float-orb-1,

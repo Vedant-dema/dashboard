@@ -1,0 +1,63 @@
+---
+description: Dema-Dashboard project structure, folder organization, and tooling standards
+alwaysApply: true
+---
+
+# Project Structure & Organization
+
+## Folder Layout (Feature-Based)
+
+```
+frontend/src/
+├── assets/               # Static files (images, fonts)
+├── common/
+│   ├── components/       # Shared UI used in 2+ features
+│   ├── hooks/            # Shared hooks (useLocalStorage, useDebounce)
+│   └── utils/            # Shared utility functions
+├── config/               # External service integrations only
+├── constants/            # App-wide constants used in 2+ features
+├── contexts/             # AuthContext, LanguageContext (app-wide)
+├── layouts/              # Sidebar, Header, page shells
+├── pages/
+│   └── {feature}/
+│       ├── components/   # Feature-specific UI
+│       ├── hooks/        # Feature-specific hooks
+│       ├── types.ts      # Feature-specific types
+│       ├── {Feature}.tsx # Page root component
+│       └── index.ts      # Barrel export
+├── services/             # API call functions
+├── store/                # Global state stores
+├── types/                # Global shared TypeScript types
+└── App.tsx
+```
+
+## Rules
+
+- Widgets belong in `pages/dashboard/widgets/`, not a top-level `widgets/` folder
+- Auth pages/components belong in `pages/auth/`
+- If a component/hook is used in only ONE feature → keep it inside that feature folder
+- If used in 2+ features → move to `common/`
+- Every page folder must have an `index.ts` barrel export
+
+## Backend Layout (Layered Architecture)
+
+```
+backend/
+├── app/
+│   ├── api/v1/endpoints/ # Route handlers (HTTP logic only)
+│   ├── core/             # config.py, logging.py
+│   ├── schemas/          # Pydantic request/response models
+│   └── services/         # Business logic
+├── tests/
+├── main.py               # App factory, CORS, router mounting
+└── pyproject.toml
+```
+
+- Routers handle HTTP only — parse request, call service, return response
+- Services hold all business logic — no FastAPI imports
+- Schemas hold all Pydantic models — no business logic
+
+## Tooling
+
+- Frontend: ESLint + Prettier (`singleQuote: true`, `semi: false`, `printWidth: 100`)
+- Backend: Black (line-length 88) + Ruff for linting

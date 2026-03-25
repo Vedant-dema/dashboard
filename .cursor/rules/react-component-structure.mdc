@@ -1,0 +1,120 @@
+---
+description: React component internal structure, JSX formatting, and hook ordering for Dema-Dashboard
+globs: frontend/src/**/*.tsx
+alwaysApply: false
+---
+
+# React Component Structure
+
+## Internal Order (Airbnb standard)
+
+Every component must follow this exact order:
+
+```typescript
+// 1. Hooks (useNavigate, useState, custom hooks)
+// 2. Local variables derived from hook data
+// 3. useEffect (side effects)
+// 4. Event handlers / derived functions
+// 5. Early returns for loading/error states
+// 6. Main return — always blank line before it
+
+export const CustomerCard = ({ id, name }: CustomerCardProps) => {
+  const navigate = useNavigate()
+  const { data, isLoading, hasError } = useCustomerData(id)
+  const { email, phone } = data ?? {}
+
+  useEffect(() => {
+    // side effect
+  }, [id])
+
+  const handleEdit = () => navigate(`/customers/${id}/edit`)
+
+  if (isLoading) return <CustomerCardLoading />
+
+  if (hasError) return <CustomerCardError />
+
+  return (
+    <div>
+      <h2>{name}</h2>
+    </div>
+  )
+}
+```
+
+## Rules
+
+- ✅ Named exports only — no default exports for components
+- ✅ Split components that exceed 150 lines into sub-components
+- ✅ Use early returns for loading and error states — reduces nesting
+- ✅ Always blank line before the final `return`
+- ✅ `Loading` and `Error` state components must mirror the main component structure
+
+## JSX Formatting
+
+Single-line when no logic:
+```typescript
+export const Divider = () => <hr className="border-dema-200" />
+```
+
+Multi-line with parens when JSX spans multiple lines:
+```typescript
+export const CustomerCard = () => (
+  <div>
+    <CustomerHeader />
+    <CustomerBody />
+  </div>
+)
+```
+
+## Function Spacing Rules
+
+No blank line between hooks:
+```typescript
+// ✅
+const navigate = useNavigate()
+const { id } = useParams()
+const { data } = useCustomerData(id)
+```
+
+Blank line between separate function declarations:
+```typescript
+// ✅
+const handleSave = () => { ... }
+
+const handleDelete = () => { ... }
+```
+
+Blank line before `useEffect`:
+```typescript
+const { data } = useCustomerData(id)
+
+useEffect(() => { ... }, [])
+```
+
+## Early Return Placement
+
+```typescript
+// ✅ Single-line early return — no braces, no blank line before
+if (isLoading) return <Spinner />
+
+// ✅ Multi-line if block — return on its own line
+if (!data) {
+  console.warn('Missing data')
+  return null
+}
+
+// ❌ Avoid nested else — use early returns instead
+if (isLoading) {
+  return <Spinner />
+} else {
+  return <div>{data.name}</div>
+}
+```
+
+## When to Split a Component
+
+Split when:
+- Component exceeds 150 lines
+- Component handles more than one responsibility (UI + data logic)
+- JSX is deeply nested (more than 3 levels)
+- A JSX block is repeated 2+ times

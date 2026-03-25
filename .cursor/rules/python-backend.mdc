@@ -1,0 +1,98 @@
+---
+description: Python FastAPI naming conventions, file structure, and documentation standards for the Dema-Dashboard backend
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Python Backend Standards (FastAPI + PEP8)
+
+## Naming Conventions
+
+| Item | Convention | Example |
+|------|-----------|---------|
+| Files/modules | snake_case | `vat_service.py` |
+| Functions | snake_case | `check_vat_number()` |
+| Classes / Pydantic models | PascalCase | `VatCheckRequest` |
+| Constants | SCREAMING_SNAKE_CASE | `VIES_BASE_URL`, `MAX_RETRIES` |
+| Private helpers | `_` prefix | `_build_vies_url()` |
+| Type hints | Always required | `def fn(x: str) -> bool:` |
+
+## File Responsibilities (Separation of Concerns)
+
+- **`endpoints/*.py`** — HTTP only: parse request body, call service, return response. No business logic.
+- **`services/*.py`** — All business logic. No FastAPI imports (`Request`, `Response`, etc.)
+- **`schemas/*.py`** — All Pydantic `BaseModel` classes. No logic.
+- **`core/config.py`** — All env vars via `pydantic-settings`. Never read `os.environ` directly elsewhere.
+
+```python
+# ✅ Endpoint (HTTP only)
+@router.post("/check", response_model=VatCheckResponse)
+async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
+    return await vat_service.check_vat_number(body.country_code, body.vat_number)
+
+# ✅ Service (business logic only)
+async def check_vat_number(country_code: str, vat_number: str) -> VatCheckResponse:
+    url = _build_vies_url(country_code, vat_number)
+    # ... retry logic, translation, etc.
+
+# ❌ Bad — business logic inside endpoint
+@router.post("/check")
+async def check_vat(body: VatCheckRequest):
+    url = f"{VIES_URL}/{body.country_code}/{body.vat_number}"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)  # ← this belongs in a service
+```
+
+## Docstrings (Google Style — used by Google, Airbnb backend)
+
+Every module, class, and public function must have a docstring:
+
+```python
+"""VAT number validation service via EU VIES REST API."""  # module-level
+
+async def check_vat_number(country_code: str, vat_number: str) -> VatCheckResponse:
+    """Check a VAT number against the EU VIES service.
+
+    Args:
+        country_code: ISO 3166-1 alpha-2 country code (e.g., "DE").
+        vat_number: VAT number without country prefix.
+
+    Returns:
+        VatCheckResponse with validity status and company details.
+
+    Raises:
+        httpx.HTTPError: If the VIES service is unreachable after all retries.
+    """
+```
+
+## Comments
+
+- No comments that describe what the code does — only explain **why**
+- Use `# TODO:` for future work (ruff enforces `# TODO:` format)
+- Use `# NOTE:` for non-obvious decisions or constraints
+
+```python
+# ✅ Explains why
+# VIES REST API returns 200 even for invalid numbers; check the 'valid' field
+if not response_data.get("valid"):
+    ...
+
+# ❌ Describes what (redundant)
+# Make a GET request to the URL
+async with httpx.AsyncClient() as client:
+    response = await client.get(url)
+```
+
+## Type Hints
+
+- All function parameters and return types must be annotated
+- Use `Optional[X]` or `X | None` for nullable (prefer `X | None` in Python 3.10+)
+- Use `pydantic-settings` `BaseSettings` for config, never raw `os.getenv()`
+
+```python
+# ✅
+def translate_company_name(name: str | None) -> str | None: ...
+
+# ❌
+def translate_company_name(name):  # missing type hints
+```

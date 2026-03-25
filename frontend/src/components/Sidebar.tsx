@@ -22,7 +22,6 @@ import {
   Landmark,
   Truck,
   Copy,
-  MapPin,
   Navigation,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -88,17 +87,43 @@ function NavGroup({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
   const activeRoute = getRouteFromHash();
   const { t } = useLanguage();
+
+  const handleNavClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("a")) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r border-slate-200/80 bg-white/90 px-4 py-6 shadow-sm backdrop-blur-md">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 md:hidden ${
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      />
+
+      <aside
+        className={`fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r border-slate-200/80 bg-white/90 px-4 py-6 shadow-sm backdrop-blur-md transition-transform duration-300 ease-in-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+      >
       <div className="mb-8 flex w-full min-w-0 justify-start">
         <a
           href="#/"
           className="block min-w-0 max-w-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500"
+          onClick={onClose}
         >
-          {/* Wide horizontal lockup: cap height & width so it fits sidebar without distortion */}
           <img
             src="/dema-logo.png"
             alt="DEMA"
@@ -107,7 +132,7 @@ export function Sidebar() {
         </a>
       </div>
 
-      <nav className="flex-1 overflow-y-auto pr-1">
+      <nav className="flex-1 overflow-y-auto pr-1" onClick={handleNavClick}>
         <a
           href="#/"
           className={`mb-3 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold shadow-sm ring-1 ${
@@ -269,5 +294,6 @@ export function Sidebar() {
         </a>
       </div>
     </aside>
+    </>
   );
 }

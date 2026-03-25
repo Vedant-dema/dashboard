@@ -3,9 +3,15 @@ import { TASK_PRIORITIES, TASK_TITLE_PRESETS, TODO_PRESETS } from "./widgetListP
 
 export type AppointmentStored = {
   id: string;
+  /** ISO date string YYYY-MM-DD — defaults to today if absent (legacy) */
+  date?: string;
+  /** HH:MM 24-hour time */
   time: string;
+  /** Duration in minutes (default 60) */
+  duration?: number;
   activityId: string;
   customerNr: string;
+  note?: string;
   /** From legacy text import until user saves from form */
   legacyTitle?: string;
 };
@@ -69,9 +75,12 @@ export function getAppointmentsFromConfig(config: Record<string, unknown>): Appo
         if (typeof o.id === "string" && typeof o.time === "string") {
           return {
             id: o.id,
+            date: typeof o.date === "string" ? o.date : undefined,
             time: o.time,
+            duration: typeof o.duration === "number" ? o.duration : 60,
             activityId: typeof o.activityId === "string" ? o.activityId : "consult",
             customerNr: typeof o.customerNr === "string" ? o.customerNr : "",
+            note: typeof o.note === "string" ? o.note : undefined,
             legacyTitle: typeof o.legacyTitle === "string" ? o.legacyTitle : undefined,
           };
         }

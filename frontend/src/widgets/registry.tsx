@@ -252,9 +252,9 @@ const metaByType: Record<WidgetType, WidgetMeta> = {
     titleKey: "widgetTitleAppointments",
     paletteGroupKey: "planning",
     paletteGroup: "Planung",
-    defaultSize: { w: 4, h: 5 },
+    defaultSize: { w: 5, h: 7 },
     minW: 3,
-    minH: 3,
+    minH: 5,
     addable: true,
   },
   meetings: {

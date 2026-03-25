@@ -137,9 +137,13 @@ export default function App() {
   const { isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const [route, setRoute] = useState(getRouteFromHash);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const onHashChange = () => setRoute(getRouteFromHash());
+    const onHashChange = () => {
+      setRoute(getRouteFromHash());
+      setSidebarOpen(false);
+    };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -191,9 +195,9 @@ export default function App() {
   return (
     <div className="min-h-screen font-sans">
       <PresenceReporter />
-      <Sidebar />
-      <div className="flex min-h-screen min-w-0 flex-col pl-[260px]">
-        <Header />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex min-h-screen min-w-0 flex-col md:pl-[260px]">
+        <Header onMenuClick={() => setSidebarOpen((v) => !v)} />
         <main className="flex min-h-0 flex-1 flex-col">
           {isCustomers ? (
             <CustomersPage department={customerDepartmentFromRoute(route)} />

@@ -1,0 +1,89 @@
+---
+description: TypeScript naming conventions, type vs interface usage, and import standards for Dema-Dashboard
+globs: frontend/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript Naming & Type Standards
+
+## Naming Conventions (Microsoft + Google)
+
+| Item | Convention | Example |
+|------|-----------|---------|
+| Components | PascalCase | `CustomerCard` |
+| Hooks | `use` + camelCase | `useCustomerData` |
+| Utilities/functions | camelCase | `formatCurrency` |
+| Types & Interfaces | PascalCase | `CustomerData` |
+| Component props | `{Name}Props` | `CustomerCardProps` |
+| Enum values | PascalCase | `Status.Active` |
+| Constants (module-level) | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
+| Store files | camelCase + `Store` | `kundenStore.ts` |
+
+- ❌ Do NOT prefix interfaces with `I` (no `ICustomer`, no `IProps`)
+- ❌ Do NOT prefix private items with `_` unless truly private class member
+- ✅ Use `undefined` instead of `null` (Microsoft TypeScript rule)
+- ✅ One component per file; file name matches the component name
+
+## interface vs type
+
+Use `interface` for component props only:
+```typescript
+// ✅
+interface CustomerCardProps {
+  id: string
+  name: string
+  onClick: () => void
+}
+```
+
+Use `type` for everything else (hooks, utilities, API responses, unions):
+```typescript
+// ✅
+type UseCustomerDataReturn = {
+  data: CustomerData | undefined
+  isLoading: boolean
+  hasError: boolean
+}
+
+type CustomerStatus = 'active' | 'inactive' | 'pending'
+```
+
+Use `Pick`, `Omit`, `Extract` to avoid duplicating types:
+```typescript
+type PublicCustomer = Omit<Customer, 'password' | 'internalNotes'>
+```
+
+## Imports
+
+- Use named imports — never `import * as X`
+```typescript
+// ✅
+import { formatCurrency, formatDate } from 'common/utils'
+
+// ❌
+import * as utils from 'common/utils'
+```
+
+- Use `index.ts` barrel files for clean feature imports:
+```typescript
+// ✅
+import { CustomerCard } from 'pages/customers'
+
+// ❌
+import { CustomerCard } from 'pages/customers/components/CustomerCard/CustomerCard'
+```
+
+## Comments & Documentation
+
+- No comments that describe what the code does — only explain **why**
+- Use `/** @todo */` (JSDoc style) for future work
+- Use `/** @see URL */` for browser quirks or API workarounds
+- Use JSDoc for all exported utilities and hooks:
+```typescript
+/**
+ * Formats a value as Euro currency for display in the German locale.
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat
+ */
+export const formatEuro = (value: number): string =>
+  new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value)
+```

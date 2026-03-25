@@ -4,6 +4,7 @@ import {
   CheckCheck,
   ClipboardList,
   MessageCircle,
+  Menu,
   Settings,
   Search,
   LogOut,
@@ -29,7 +30,7 @@ import {
   type TaskNotification,
 } from "../store/taskNotifications";
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, logout } = useAuth();
   useChatSync();
   const chatUnread = user ? getUnreadTotalForUser(user.email) : 0;
@@ -149,7 +150,17 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-[72px] items-center gap-4 border-b border-slate-200/60 bg-[#F4F7FE]/80 px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-[72px] items-center gap-2 border-b border-slate-200/60 bg-[#F4F7FE]/80 px-4 backdrop-blur-md sm:gap-4 sm:px-6">
+      {/* Hamburger – mobile only */}
+      <button
+        type="button"
+        onClick={onMenuClick}
+        aria-label={t("headerOpenMenu", "Open menu")}
+        className="shrink-0 rounded-xl p-2 text-slate-500 transition hover:bg-white hover:shadow-sm md:hidden"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       <div className="relative mx-auto max-w-xl flex-1">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <SuggestTextInput

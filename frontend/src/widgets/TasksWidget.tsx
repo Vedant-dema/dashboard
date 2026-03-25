@@ -19,7 +19,7 @@ import { TASK_PRIORITIES, TASK_TITLE_PRESETS } from "./widgetListPresets";
 import { useAuth } from "../contexts/AuthContext";
 import { listRegisteredUserProfiles } from "../auth/authStorage";
 import { addTaskNotification } from "../store/taskNotifications";
-import { TaskContextFields, type ContextData } from "./TaskContextFields";
+import { TaskFormModal, type TaskFormValues } from "./TaskFormModal";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -81,10 +81,6 @@ function isAssignedOut(task: TaskStored, userEmail: string | undefined): boolean
   );
 }
 
-const selectCls =
-  "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20";
-const inputCls =
-  "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400";
 
 // ─── Section group in "All" view ──────────────────────────────────────────────
 
@@ -192,69 +188,72 @@ export function TasksWidget({ config, onUpdateConfig }: WidgetRenderProps) {
   );
   const [showDone, setShowDone] = useState(false);
 
-  // ── form state ──
+  // ── modal / form state ──
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [formPreset, setFormPreset] = useState<string>(TASK_TITLE_PRESETS[0]!.id);
-  const [formCustomTitle, setFormCustomTitle] = useState("");
-  const [formPriority, setFormPriority] = useState<"high" | "medium" | "new">("medium");
-  const [formAssignedTo, setFormAssignedTo] = useState("__self__");
-  const [formDueDate, setFormDueDate] = useState("");
-  const [formNote, setFormNote] = useState("");
-  const [formContextData, setFormContextData] = useState<ContextData>({});
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const resetForm = () => {
-    setFormPreset(TASK_TITLE_PRESETS[0]!.id);
-    setFormCustomTitle("");
-    setFormPriority("medium");
-    setFormAssignedTo("__self__");
-    setFormDueDate(activeTab === "today" ? isoToday() : "");
-    setFormNote("");
-    setFormContextData({});
+  const emptyForm = (): TaskFormValues => ({
+    preset: TASK_TITLE_PRESETS[0]!.id,
+    contextData: {},
+    customTitle: "",
+    priority: "medium",
+    dueDate: activeTab === "today" ? isoToday() : "",
+    assignedTo: "__self__",
+    note: "",
+  });
+  const [formValues, setFormValues] = useState<TaskFormValues>(emptyForm);
+
+  const patchForm = (patch: Partial<TaskFormValues>) =>
+    setFormValues((prev) => ({ ...prev, ...patch }));
+
+  const openAdd = () => {
+    setEditingId(null);
+    setFormValues(emptyForm());
+    setModalOpen(true);
   };
-
-  const openAdd = () => { setEditingId(null); resetForm(); setAdding(true); };
 
   const openEdit = (row: TaskStored) => {
-    setAdding(false);
     setEditingId(row.id);
-    setFormPreset(row.titlePresetId);
-    setFormCustomTitle(row.customTitle ?? "");
-    setFormPriority(row.priority);
-    setFormAssignedTo(row.assignedTo ?? "__self__");
-    setFormDueDate(row.dueDate ?? "");
-    setFormNote(row.note ?? "");
-    setFormContextData(row.contextData ?? {});
+    setFormValues({
+      preset: row.titlePresetId,
+      contextData: row.contextData ?? {},
+      customTitle: row.customTitle ?? "",
+      priority: row.priority,
+      dueDate: row.dueDate ?? "",
+      assignedTo: row.assignedTo ?? "__self__",
+      note: row.note ?? "",
+    });
+    setModalOpen(true);
   };
 
-  const cancelForm = () => { setAdding(false); setEditingId(null); };
+  const closeModal = () => { setModalOpen(false); setEditingId(null); };
 
   const saveForm = () => {
-    const assignedToEmail = formAssignedTo === "__self__" ? undefined : formAssignedTo;
+    const { preset, contextData, customTitle, priority, dueDate, assignedTo, note } = formValues;
+    const assignedToEmail = assignedTo === "__self__" ? undefined : assignedTo;
     const assignedToMember = teamMembers.find((m) => m.email === assignedToEmail);
     const resolvedTitle =
-      formCustomTitle.trim() ||
-      translatedTaskPresets.find((p) => p.id === formPreset)?.label ||
+      customTitle.trim() ||
+      translatedTaskPresets.find((p) => p.id === preset)?.label ||
       t("tasksDefaultTitle", "Task");
 
     const existing = list.find((x) => x.id === editingId);
-    // Strip empty values from contextData before saving
-    const cleanedContext: ContextData = {};
-    for (const [k, v] of Object.entries(formContextData)) {
+    const cleanedContext: Record<string, string> = {};
+    for (const [k, v] of Object.entries(contextData)) {
       if (v?.trim()) cleanedContext[k] = v.trim();
     }
     const row: TaskStored = {
       id: editingId ?? `t-${Date.now()}`,
-      titlePresetId: formPreset,
-      priority: formPriority,
-      customTitle: formCustomTitle.trim() || undefined,
+      titlePresetId: preset,
+      priority,
+      customTitle: customTitle.trim() || undefined,
       contextData: Object.keys(cleanedContext).length > 0 ? cleanedContext : undefined,
       assignedTo: assignedToEmail,
       assignedToName: assignedToMember?.name,
       assignedBy: user?.email,
       assignedByName: user?.name,
-      dueDate: formDueDate || undefined,
-      note: formNote.trim() || undefined,
+      dueDate: dueDate || undefined,
+      note: note.trim() || undefined,
       done: existing?.done ?? false,
     };
 
@@ -269,12 +268,12 @@ export function TasksWidget({ config, onUpdateConfig }: WidgetRenderProps) {
         timestamp: new Date().toISOString(),
       });
     }
-    cancelForm();
+    closeModal();
   };
 
   const remove = (id: string) => {
     persist(list.filter((x) => x.id !== id));
-    if (editingId === id) cancelForm();
+    if (editingId === id) closeModal();
   };
 
   const toggleDone = (id: string) => {
@@ -290,7 +289,7 @@ export function TasksWidget({ config, onUpdateConfig }: WidgetRenderProps) {
   };
 
   const canEdit = Boolean(onUpdateConfig);
-  const isFormOpen = adding || !!editingId;
+  const isFormOpen = modalOpen;
 
   // ── filtered list for current tab ──
   const visibleTasks = useMemo(() => {
@@ -506,141 +505,21 @@ export function TasksWidget({ config, onUpdateConfig }: WidgetRenderProps) {
         )}
       </div>
 
-      {/* ── Add / Edit form ── */}
-      {isFormOpen && canEdit && (
-        <div className="mt-2 shrink-0 space-y-2.5 rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-slate-50/40 p-3 shadow-sm">
-          <p className="text-xs font-bold text-slate-700">
-            {editingId ? t("tasksFormEdit", "Edit task") : t("tasksFormNew", "New task")}
-          </p>
-
-          {/* Task type */}
-          <div>
-            <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {t("tasksFieldTitle", "Task type")}
-            </label>
-            <select
-              className={selectCls}
-              value={formPreset}
-              onChange={(e) => {
-                setFormPreset(e.target.value);
-                setFormContextData({});
-              }}
-            >
-              {translatedTaskPresets.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Context-specific DB-backed fields */}
-          <TaskContextFields
-            preset={formPreset}
-            contextData={formContextData}
-            onChange={setFormContextData}
-            inputCls={inputCls}
-            labelCls="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500"
-          />
-
-          {/* Custom title override */}
-          <div>
-            <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {t("tasksCustomTitle", "Custom title")}{" "}
-              <span className="font-normal normal-case text-slate-400">{t("optionalLabel", "(optional)")}</span>
-            </label>
-            <input
-              className={inputCls}
-              type="text"
-              placeholder={t("tasksCustomTitlePlaceholder", "Custom title…")}
-              value={formCustomTitle}
-              onChange={(e) => setFormCustomTitle(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {/* Priority */}
-            <div>
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                {t("tasksFieldPriority", "Priority")}
-              </label>
-              <select
-                className={selectCls}
-                value={formPriority}
-                onChange={(e) => setFormPriority(e.target.value as "high" | "medium" | "new")}
-              >
-                {translatedPriorities.map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Due date */}
-            <div>
-              <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                {t("tasksDueDate", "Due date")}
-              </label>
-              <input
-                className={inputCls}
-                type="date"
-                value={formDueDate}
-                onChange={(e) => setFormDueDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Assign to */}
-          <div>
-            <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {t("tasksAssignTo", "Assign to")}
-            </label>
-            <select
-              className={selectCls}
-              value={formAssignedTo}
-              onChange={(e) => setFormAssignedTo(e.target.value)}
-            >
-              <option value="__self__">{t("tasksAssignSelf", "— Myself —")}</option>
-              {teamMembers.map((m) => (
-                <option key={m.email} value={m.email}>{m.name} ({m.email})</option>
-              ))}
-            </select>
-            {formAssignedTo !== "__self__" && (
-              <p className="mt-0.5 text-[10px] text-blue-600">
-                {t("tasksAssignNotif", "The assigned person will receive a notification.")}
-              </p>
-            )}
-          </div>
-
-          {/* Note */}
-          <div>
-            <label className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {t("tasksNote", "Note")}{" "}
-              <span className="font-normal normal-case text-slate-400">{t("optionalLabel", "(optional)")}</span>
-            </label>
-            <textarea
-              className={`${inputCls} resize-none`}
-              rows={2}
-              placeholder={t("tasksNotePlaceholder", "Description or hint…")}
-              value={formNote}
-              onChange={(e) => setFormNote(e.target.value)}
-            />
-          </div>
-
-          <div className="flex gap-2 pt-0.5">
-            <button
-              type="button"
-              onClick={saveForm}
-              className="flex-1 rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
-            >
-              {t("commonSave", "Save")}
-            </button>
-            <button
-              type="button"
-              onClick={cancelForm}
-              className="flex-1 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-            >
-              {t("commonCancel", "Cancel")}
-            </button>
-          </div>
-        </div>
+      {/* ── Task form modal (portal) ── */}
+      {canEdit && (
+        <TaskFormModal
+          open={modalOpen}
+          isEditing={!!editingId}
+          values={formValues}
+          onChange={patchForm}
+          onSave={saveForm}
+          onClose={closeModal}
+          taskPresets={translatedTaskPresets}
+          priorities={translatedPriorities}
+          teamMembers={teamMembers}
+          currentUserEmail={user?.email}
+          t={t}
+        />
       )}
     </div>
   );

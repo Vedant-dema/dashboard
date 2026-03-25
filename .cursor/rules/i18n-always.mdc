@@ -1,0 +1,101 @@
+---
+description: Enforce i18n on every frontend file — no hardcoded UI text allowed
+globs: frontend/src/**/*.{tsx,ts}
+alwaysApply: true
+---
+
+# i18n Rule — All UI Text Must Be Translated
+
+This project supports 12 languages. **Every user-visible string must come through the translation system.** Never write a raw string literal where the user can see it.
+
+## How the system works
+
+- **Single source of truth**: `frontend/src/contexts/LanguageContext.tsx`
+  - `MESSAGES.de` — German (default/primary)
+  - `MESSAGES.en` — English
+  - `MESSAGES.fr` — French
+  - `LANGUAGE_OVERRIDES.{es,it,pt,tr,ru,hi,ar,zh,ja}` — merge over `en`
+
+- **In pages / components**: use `useLanguage()`
+- **In widgets**: use `useWidgetLanguage()`
+
+```tsx
+// ✅ CORRECT
+const { t } = useLanguage();
+<p>{t("myNewKey", "Fallback in English")}</p>
+
+// ❌ WRONG — hardcoded text
+<p>No tasks yet</p>
+<p>Noch keine Aufgaben</p>
+```
+
+## Rules to follow every time you add or edit a file
+
+### 1. No hardcoded strings in JSX or return values
+Any text the user can see — labels, placeholders, titles, tooltips, `aria-label`, empty states, error messages — must call `t("key", "English fallback")`.
+
+### 2. Always add the key to ALL three primary languages
+When you add a new key, add it to **`MESSAGES.de`**, **`MESSAGES.en`**, and **`MESSAGES.fr`** in `LanguageContext.tsx`. The other 9 languages inherit from `en` automatically.
+
+```ts
+// In MESSAGES.de:
+myNewKey: "Deutsch",
+
+// In MESSAGES.en:
+myNewKey: "English",
+
+// In MESSAGES.fr:
+myNewKey: "Français",
+```
+
+### 3. Use English as the fallback, never German
+```tsx
+// ✅ English fallback
+t("tabOverdue", "Overdue")
+
+// ❌ German fallback — will show German when key is missing
+t("tabOverdue", "Überfällig")
+```
+
+### 4. Static arrays/constants with labels must be inside the component (useMemo)
+If a constant has user-visible labels (like tab lists, section headers, dropdown options), define it inside the component with `useMemo` so labels react to language changes.
+
+```tsx
+// ✅ CORRECT — reactive to language
+const tabs = useMemo(() => [
+  { id: "today", label: t("tabToday", "Today") },
+  { id: "overdue", label: t("tabOverdue", "Overdue") },
+], [t]);
+
+// ❌ WRONG — static, language never updates
+const TABS = [
+  { id: "today", label: "Heute" },
+];
+```
+
+### 5. Relative time and date strings must use t()
+```tsx
+// ✅ CORRECT
+t("relTimeJustNow", "Just now")
+t("relTimeMins", "{n} min ago").replace("{n}", String(mins))
+
+// ❌ WRONG
+`vor ${mins} Min.`
+"Gerade eben"
+```
+
+### 6. Key naming convention
+Use camelCase, grouped by feature prefix:
+- `tab*` — filter tabs (tabToday, tabOverdue, tabAll…)
+- `tasks*` — task widget strings
+- `notif*` — notification panel
+- `settings*` — settings page
+- `common*` — shared actions (commonSave, commonCancel, commonEdit…)
+- `relTime*` — relative timestamps
+- `dueDate*` — due date display labels
+
+### 7. When editing TasksWidget or adding new widgets
+- Task preset labels → add `taskPreset{Name}` keys to MESSAGES
+- Priority labels → use existing `tasksHigh`, `tasksMedium`, `tasksNew` keys
+- Section/group headers → add `tasksSection{Name}` or reuse `tab*` keys
+- Always pass `t` to sub-components that render user text

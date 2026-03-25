@@ -45,6 +45,12 @@ It answers:
 | Add / remove / reset widgets | Live | `frontend/src/pages/DynamicDashboard.tsx`, `dashboardLayout.ts` |
 | Widget catalog and palette | Live | `frontend/src/widgets/registry.tsx` |
 | Widget types and config | Live | `frontend/src/types/dashboard.ts`, `frontend/src/widgets/*.tsx` |
+| **Pinned widget concept** — Tasks & Reminders permanently on dashboard; movable + resizable but not removable; "Fixiert" badge in chrome | **Live** *(2026-03-25)* | `frontend/src/types/dashboard.ts`, `frontend/src/store/dashboardLayout.ts`, `frontend/src/pages/DynamicDashboard.tsx` |
+| **Task assignment to team members** — assign tasks with due date, note, priority, assignee picker; assignment badges on task items; assigned tasks sorted to top | **Live** *(2026-03-25)* | `frontend/src/widgets/TasksWidget.tsx`, `frontend/src/widgets/dynamicWidgetLists.ts` |
+| **Task notification system** — localStorage inbox; real-time bell badge; dropdown panel with sender, title, relative time; individual and bulk mark-read | **Live** *(2026-03-25)* | `frontend/src/store/taskNotifications.ts`, `frontend/src/components/Header.tsx` |
+| **Dynamic Calendar widget** — navigate any month/year; month picker overlay; today button; date selection; weekend colouring; locale-aware (DE/EN) | **Live** *(2026-03-25)* | `frontend/src/widgets/CalendarWidget.tsx` |
+| **Tasks date-grouped view** — filter tabs (Today / This Week / Overdue / No Date / All); grouped collapsible sections in All view; done checkbox with counter; smart default tab; hover-reveal actions | **Live** *(2026-03-25)* | `frontend/src/widgets/TasksWidget.tsx`, `frontend/src/widgets/dynamicWidgetLists.ts` |
+| **Tasks DB-backed context fields** — per-preset structured fields with live datalist suggestions from Kunden/Angebote/Rechnungen/Abholauftraege/KundenWash DBs; auto-fill on customer/invoice selection; `contextData` persisted in task; subtitle shown on task row | **Live** *(2026-03-25)* | `frontend/src/widgets/TaskContextFields.tsx`, `frontend/src/widgets/dynamicWidgetLists.ts` |
 | Legacy static dashboard (not main route) | Reference only | `frontend/src/pages/Dashboard.tsx` |
 | Full technical definition | Live doc | `docs/Detailed report/DashboardHome-Service-Spec.md` |
 
@@ -313,3 +319,8 @@ Before approving progression:
 | Version | Date | Notes |
 |---------|------|-------|
 | 1.0 | 2026-03-24 | Initial Dashboard Home roadmap; pairs with Detailed report spec |
+| 1.1 | 2026-03-25 | Added: pinned widget concept; Tasks & Reminders team assignment; task notification bell |
+| 1.2 | 2026-03-25 | Added: fully dynamic Calendar widget (month/year navigation, picker overlay, today, date selection) |
+| 1.3 | 2026-03-25 | Added: Tasks date-bucket filter tabs; grouped "All" view with collapsible sections; done checkbox; smart default tab |
+| 1.4 | 2026-03-25 | Added: "Zugewiesen" tab isolates tasks assigned to others; date tabs show only own/received tasks |
+| 1.5 | 2026-03-25 | Added: DB-backed context fields per task preset; auto-fill; contextData persistence; subtitle on task row |

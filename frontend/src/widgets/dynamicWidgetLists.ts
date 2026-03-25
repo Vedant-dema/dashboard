@@ -24,6 +24,23 @@ export type TaskStored = {
   titlePresetId: string;
   priority: "high" | "medium" | "new";
   customTitle?: string;
+  /** Email of the user this task is assigned to (undefined = assigned to self). */
+  assignedTo?: string;
+  assignedToName?: string;
+  /** Email/name of whoever created/assigned this task. */
+  assignedBy?: string;
+  assignedByName?: string;
+  /** ISO date string YYYY-MM-DD */
+  dueDate?: string;
+  note?: string;
+  /** Marked complete by the user. */
+  done?: boolean;
+  /**
+   * Context-specific structured fields keyed by preset.
+   * e.g. { firmenname, angebot_nr } for "offer",
+   *      { rechn_nr, firmenname } for "invoice", etc.
+   */
+  contextData?: Record<string, string>;
 };
 
 export type TodoStored = {
@@ -136,6 +153,17 @@ export function getTasksFromConfig(
           titlePresetId: typeof o.titlePresetId === "string" ? o.titlePresetId : "offer",
           priority,
           customTitle: typeof o.customTitle === "string" ? o.customTitle : undefined,
+          assignedTo: typeof o.assignedTo === "string" ? o.assignedTo : undefined,
+          assignedToName: typeof o.assignedToName === "string" ? o.assignedToName : undefined,
+          assignedBy: typeof o.assignedBy === "string" ? o.assignedBy : undefined,
+          assignedByName: typeof o.assignedByName === "string" ? o.assignedByName : undefined,
+          dueDate: typeof o.dueDate === "string" ? o.dueDate : undefined,
+          note: typeof o.note === "string" ? o.note : undefined,
+          done: Boolean(o.done),
+          contextData:
+            o.contextData != null && typeof o.contextData === "object" && !Array.isArray(o.contextData)
+              ? (o.contextData as Record<string, string>)
+              : undefined,
         };
       }
       return { id: genId("t"), titlePresetId: "offer", priority: "medium" as const };
@@ -149,11 +177,48 @@ export function getTasksFromConfig(
   }));
 }
 
-export function taskDisplay(row: TaskStored): { title: string; tag: string; tagClass: string } {
+/** Build a readable context suffix from structured contextData (no labels, just values). */
+function buildContextSuffix(titlePresetId: string, ctx: Record<string, string> | undefined): string {
+  if (!ctx) return "";
+  const v = (key: string) => ctx[key]?.trim() || "";
+  switch (titlePresetId) {
+    case "offer": {
+      const parts = [v("firmenname"), v("angebot_nr") ? `[${v("angebot_nr")}]` : ""].filter(Boolean);
+      return parts.join(" ");
+    }
+    case "handover": {
+      const vehicle = [v("fabrikat"), v("typ")].filter(Boolean).join(" ");
+      const parts = [v("firmenname"), vehicle].filter(Boolean);
+      return parts.join(" — ");
+    }
+    case "invoice": {
+      const parts = [v("rechn_nr") ? `#${v("rechn_nr")}` : "", v("firmenname")].filter(Boolean);
+      return parts.join(" · ");
+    }
+    case "wash": {
+      const parts = [v("firmenname"), v("kennzeichen") ? `(${v("kennzeichen")})` : ""].filter(Boolean);
+      return parts.join(" ");
+    }
+    case "callback": {
+      const parts = [v("firmenname"), v("telefonnummer")].filter(Boolean);
+      return parts.join(" · ");
+    }
+    case "parts": {
+      const parts = [v("part_name"), v("firmenname") ? `(${v("firmenname")})` : ""].filter(Boolean);
+      return parts.join(" ");
+    }
+    default:
+      return Object.values(ctx).filter(Boolean).slice(0, 2).join(" · ");
+  }
+}
+
+export function taskDisplay(row: TaskStored): { title: string; subtitle: string; tag: string; tagClass: string } {
   const preset = TASK_TITLE_PRESETS.find((p) => p.id === row.titlePresetId);
-  const title = row.customTitle ?? preset?.label ?? "Aufgabe";
+  const presetLabel = preset?.label ?? "Aufgabe";
+  const subtitle = buildContextSuffix(row.titlePresetId, row.contextData);
+  const title = row.customTitle || presetLabel;
   const pr = TASK_PRIORITIES.find((p) => p.id === row.priority) ?? TASK_PRIORITIES[1];
-  return { title, tag: pr.label, tagClass: pr.tagClass };
+  return { title, subtitle, tag: pr.label, tagClass: pr.tagClass };
 }
 
 export function getTodosFromConfig(config: Record<string, unknown>): TodoStored[] {

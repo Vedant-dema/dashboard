@@ -51,6 +51,21 @@ function ensureProfileWidget(widgets: WidgetInstance[]): WidgetInstance[] {
   ];
 }
 
+/** Tasks & Reminders is always present on the dashboard (pinned). */
+function ensureTasksWidget(widgets: WidgetInstance[]): WidgetInstance[] {
+  if (widgets.some((w) => w.type === "tasks")) return widgets;
+  const maxY = widgets.reduce((acc, w) => Math.max(acc, w.grid.y + w.grid.h), 0);
+  return [
+    ...widgets,
+    { id: "tasks", type: "tasks", grid: { x: 6, y: maxY, w: 6, h: 4 }, pinned: true },
+  ];
+}
+
+/** Upgrade any existing tasks widget to be pinned so it can't be removed. */
+function upgradePinnedWidgets(widgets: WidgetInstance[]): WidgetInstance[] {
+  return widgets.map((w) => (w.type === "tasks" ? { ...w, pinned: true } : w));
+}
+
 export function getDefaultWidgets(): WidgetInstance[] {
   return [
     { id: "welcome", type: "welcome", grid: { x: 0, y: 0, w: 12, h: 1 }, locked: true },
@@ -58,7 +73,7 @@ export function getDefaultWidgets(): WidgetInstance[] {
     { id: "sales", type: "sales", grid: { x: 0, y: 3, w: 6, h: 5 } },
     { id: "inventory", type: "inventory", grid: { x: 6, y: 3, w: 6, h: 5 } },
     { id: "quick-actions", type: "quick-actions", grid: { x: 0, y: 8, w: 6, h: 3 } },
-    { id: "tasks", type: "tasks", grid: { x: 6, y: 8, w: 6, h: 3 } },
+    { id: "tasks", type: "tasks", grid: { x: 6, y: 8, w: 6, h: 4 }, pinned: true },
     { id: "finances", type: "finances", grid: { x: 0, y: 11, w: 8, h: 5 } },
     { id: "profile", type: "profile", grid: { x: 8, y: 11, w: 4, h: 4 } },
     { id: "calendar", type: "calendar", grid: { x: 8, y: 15, w: 4, h: 5 } },
@@ -74,7 +89,10 @@ export function loadLayout(): DashboardLayout {
     if (!Array.isArray(parsed?.widgets)) return { widgets: getDefaultWidgets(), version: 1 };
     const clean = sanitizeWidgets(parsed.widgets);
     if (clean.length === 0) return { widgets: getDefaultWidgets(), version: 1 };
-    return { ...parsed, widgets: ensureProfileWidget(clean), version: parsed.version ?? 1 };
+    const withProfile = ensureProfileWidget(clean);
+    const withTasks = ensureTasksWidget(withProfile);
+    const withPinned = upgradePinnedWidgets(withTasks);
+    return { ...parsed, widgets: withPinned, version: parsed.version ?? 1 };
   } catch {
     return { widgets: getDefaultWidgets(), version: 1 };
   }
@@ -98,7 +116,7 @@ export function addWidget(type: WidgetType, grid: { x: number; y: number; w: num
 
 export function removeWidget(layout: DashboardLayout, widgetId: string): DashboardLayout {
   const widget = layout.widgets.find((w) => w.id === widgetId);
-  if (widget?.locked) return layout;
+  if (widget?.locked || widget?.pinned) return layout;
   return {
     ...layout,
     widgets: layout.widgets.filter((w) => w.id !== widgetId),
@@ -117,7 +135,7 @@ export function updateLayout(
   return { ...layout, widgets: Array.from(byId.values()) };
 }
 
-/** Apply positions from react-grid-layout (only non-locked widgets move). */
+/** Apply positions from react-grid-layout (locked widgets are immovable; pinned widgets can move). */
 export function applyGridLayout(
   layout: DashboardLayout,
   items: Array<{ i: string; x: number; y: number; w: number; h: number }>

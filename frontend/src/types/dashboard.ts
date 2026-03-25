@@ -32,7 +32,10 @@ export interface WidgetInstance {
   type: WidgetType;
   grid: GridPosition;
   config?: Record<string, unknown>;
+  /** Fully static: cannot be moved, resized, or removed. */
   locked?: boolean;
+  /** Pinned: can be moved and resized but cannot be removed from the dashboard. */
+  pinned?: boolean;
 }
 
 export interface DashboardLayout {

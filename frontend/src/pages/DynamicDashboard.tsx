@@ -41,6 +41,7 @@ function widgetToLayoutItem(w: WidgetInstance, meta: ReturnType<typeof getWidget
     y: w.grid.y,
     w: w.grid.w,
     h: w.grid.h,
+    // Only fully-locked widgets are static; pinned widgets can still be moved/resized
     static: !!w.locked,
     minW: meta.minW ?? 1,
     minH: meta.minH ?? 1,
@@ -210,6 +211,9 @@ export function DynamicDashboard() {
           {layoutState.widgets.map((w) => {
             const renderWidget = getWidgetComponent(w.type);
             const isLocked = !!w.locked;
+            const isPinned = !!w.pinned;
+            const isDraggable = !isLocked;
+            const isRemovable = !isLocked && !isPinned;
             const meta = getWidgetMeta(w.type);
             const moduleLabel = t(meta.titleKey ?? `widgetTitle_${w.type}`, meta.title);
             return (
@@ -217,7 +221,7 @@ export function DynamicDashboard() {
                 <div className="dashboard-widget-shell flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
                   {w.type !== "welcome" && (
                     <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-slate-200 bg-slate-50/90 px-1">
-                      {!isLocked ? (
+                      {isDraggable ? (
                         <button
                           type="button"
                           className="dashboard-drag-handle dashboard-widget-handle flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-lg text-slate-400 transition active:cursor-grabbing hover:bg-white hover:text-slate-600"
@@ -235,7 +239,15 @@ export function DynamicDashboard() {
                       >
                         {moduleLabel}
                       </span>
-                      {!isLocked && (
+                      {isPinned && (
+                        <span
+                          className="mr-1 flex h-5 items-center rounded-full bg-blue-100 px-2 text-[10px] font-semibold text-blue-600"
+                          title={t("dynamicPinnedWidget", "Dieses Widget ist fixiert und kann nicht entfernt werden")}
+                        >
+                          {t("dynamicPinned", "Fixiert")}
+                        </span>
+                      )}
+                      {isRemovable && (
                         <button
                           type="button"
                           onClick={() => handleRemove(w.id)}

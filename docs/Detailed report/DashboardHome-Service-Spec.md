@@ -4,7 +4,7 @@
 **Module family:** CORE-UX / Analytics shell / Personalization  
 **Primary file:** `frontend/src/pages/DynamicDashboard.tsx`  
 **Status:** Production-oriented UI with browser-local layout persistence; server-backed layout and live widget data are targets below  
-**Version:** 1.0
+**Version:** 1.3 *(updated 2026-03-25 — pinned widget, task assignment, notifications, dynamic calendar, date-grouped task view)*
 
 ---
 
@@ -51,11 +51,12 @@ The Dashboard Home is the default landing experience after authentication. It is
 
 - Render responsive 12-column grid (`COLS = 12`, `ROW_HEIGHT`, margins from `DynamicDashboard.tsx`)  
 - Add widget from palette (`getAddableWidgetsByGroup`, grouped by `WIDGET_PALETTE_GROUP_ORDER`)  
-- Remove non-locked widgets  
+- Remove non-locked **and non-pinned** widgets  
 - Reset layout to defaults (`getDefaultWidgets`)  
 - Persist layout on change (`onLayoutChange` → `applyGridLayout` → `saveLayout`)  
 - Persist per-widget config patches (`updateWidgetConfig` + `onUpdateConfig` prop)  
 - Drag handle: `.dashboard-drag-handle`; grid remounts on `language` change (`key={language}`)  
+- **Pinned widgets** (`pinned: true`): can be dragged and resized but cannot be removed; shown with a "Fixiert" badge in the widget chrome header; the remove button is hidden for pinned widgets  
 
 ### 3.2 Widget types (allowed)
 
@@ -68,7 +69,7 @@ Aligned with `VALID_WIDGET_TYPES` in `dashboardLayout.ts` and `WidgetType` in `t
 | `sales` | Sales overview |
 | `inventory` | Inventory overview |
 | `quick-actions` | Quick actions |
-| `tasks` | Tasks / reminders |
+| `tasks` | Tasks / reminders (**pinned** — movable/resizable but cannot be removed; see §3.5) |
 | `finances` | Finances block |
 | `user-card` | Profile module variant (addable) |
 | `profile` | Profile module (default layout includes; also addable) |
@@ -88,11 +89,81 @@ Aligned with `VALID_WIDGET_TYPES` in `dashboardLayout.ts` and `WidgetType` in `t
 
 - Unknown or legacy widget types dropped on load (`sanitizeWidgets`) so the dashboard always mounts  
 - `ensureProfileWidget` ensures a `profile` widget exists after sanitize  
+- `ensureTasksWidget` ensures a `tasks` widget is always present; injected at the bottom if missing from a saved layout  
+- `upgradePinnedWidgets` retroactively sets `pinned: true` on any existing `tasks` widget loaded from legacy storage
+
+### 3.5 Tasks & Reminders — pinned widget with team assignment
+
+The **Tasks & Reminders** widget (`tasks` type) is a **permanently pinned** workflow module. Key rules:
+
+| Rule | Behaviour |
+|------|-----------|
+| Cannot be removed | `removeWidget` blocks widgets with `pinned: true`; remove button hidden in chrome |
+| Can be moved | drag handle shown; `applyGridLayout` updates position for pinned widgets |
+| Can be resized | not marked `static` in react-grid-layout |
+| Always present | `ensureTasksWidget` re-injects if absent from saved layout |
+| Badge shown | "Fixiert" chip displayed in widget header bar |
+
+**Date-grouped task view** (added 2026-03-25):
+
+The task list no longer shows all items at once. Tasks are organised into **date-bucket filter tabs**:
+
+| Tab | Filter rule | Badge colour |
+|-----|-------------|-------------|
+| **Heute** | `dueDate === today` (excludes assigned-out) | Blue dot |
+| **Diese Woche** | `today < dueDate < today+7` (excludes assigned-out) | Amber dot |
+| **Überfällig** | `dueDate < today` and not done (excludes assigned-out) | Red dot |
+| **Kein Datum** | `dueDate` absent (excludes assigned-out) | Grey dot |
+| **Zugewiesen** | Tasks created by current user and assigned to someone else | Emerald dot |
+| **Alle** | All tasks — grouped into collapsible sections including a "Zugewiesen" section | — |
+
+- The **default tab** is auto-selected: Overdue → Today → This Week → No Date → All (first non-empty bucket)
+- Within each bucket, tasks are sorted: high priority first, then by due date ascending
+- The **"Alle" tab** groups tasks into collapsible sections (Überfällig / Heute / Diese Woche / Später / Kein Datum) with per-section count badges
+- Each section collapses/expands; "Später" and "Kein Datum" start collapsed
+- A **done checkbox** on each task row marks it complete; done tasks show as strikethrough + muted
+- A **done counter pill** in the header toggles visibility of completed tasks
+- Edit/delete action buttons appear on row hover (hidden by default) to keep the list clean
+- Overdue tasks get a red border + Clock icon on their due-date chip instead of a calendar icon
+
+**Task assignment feature** (added 2026-03-25):
+
+- Any authenticated user can create a task and assign it to any registered team member via a user-picker dropdown  
+- Form fields: task type (preset), custom title, priority, due date, "Assign to" (dropdown), note  
+- Task list highlights tasks assigned to the current user (blue border); shows "von [Name]" / "→ [Name]" assignment badges  
+- Tasks assigned to the current user are sorted to the top of the list  
+- When a task is assigned to another user, a `TaskNotification` is written to `localStorage` (`dema-task-notifications`) and a `CustomEvent` (`dema-task-notifications-changed`) is dispatched for real-time UI updates
+
+**Notification system** (`frontend/src/store/taskNotifications.ts`):
+
+| Function | Purpose |
+|----------|---------|
+| `addTaskNotification` | Persist a new notification and dispatch change event |
+| `getNotificationsForUser(email)` | Return all notifications for a user, newest first |
+| `getUnreadCountForUser(email)` | Count unread notifications |
+| `markNotificationRead(id)` | Mark one notification read |
+| `markAllReadForUser(email)` | Bulk mark all as read |  
 
 ### 3.4 Internationalization
 
 - Navigation label and help strings: `LanguageContext`  
 - Widget titles and palette groups: `titleKey` / `WIDGET_GROUP_I18N_KEY` in registry  
+
+### 3.6 Calendar widget — fully dynamic *(added 2026-03-25)*
+
+The calendar widget (`CalendarWidget.tsx`) was replaced from a static April 2025 hard-code to a **fully interactive monthly calendar**:
+
+| Feature | Detail |
+|---------|--------|
+| Month navigation | Left / right chevron buttons step ±1 month |
+| Month/year picker | Clicking the month label opens a popover with 12-month grid + year ±1 navigation |
+| Jump to today | "Heute" / "Today" button resets view and selection to current date |
+| Date selection | Clicking any day date highlights it; selected date label shown below grid |
+| Today indicator | Today's date is shown with a blue ring (distinct from the filled-blue selected state) |
+| Weekend colouring | Saturday and Sunday columns display in rose/red |
+| Locale-aware | German (`MONTHS_DE`, `WEEKDAYS_DE`) or English names from `language` context |
+| Picker close | Click outside overlay to dismiss |
+| No API dependency | Fully self-contained; state lives in component; no config persistence needed |
 
 ---
 
@@ -133,10 +204,63 @@ Aligned with `VALID_WIDGET_TYPES` in `dashboardLayout.ts` and `WidgetType` in `t
 
 ### 5.1 Storage keys and shapes
 
-- **Key:** `dema-dashboard-layout` (`STORAGE_KEY` in `dashboardLayout.ts`)  
-- **JSON shape:** `DashboardLayout` — `widgets: WidgetInstance[]`, optional `version`  
-- **Widget instance:** `id`, `type`, `grid { x, y, w, h }`, optional `config`, optional `locked`  
-- **Default widgets:** `getDefaultWidgets()` — welcome + kpi locked; core business widgets positioned on first run  
+| Key | Owner | Shape |
+|-----|-------|-------|
+| `dema-dashboard-layout` | `dashboardLayout.ts` | `DashboardLayout` — `widgets: WidgetInstance[]`, optional `version` |
+| `dema-task-notifications` | `taskNotifications.ts` | `TaskNotification[]` — per-user inbox for task assignments |
+
+**`WidgetInstance` fields:** `id`, `type`, `grid { x, y, w, h }`, optional `config`, optional `locked`, optional `pinned`
+
+- `locked: true` → fully static (no move, no resize, no remove)  
+- `pinned: true` → movable + resizable, but cannot be removed; always re-ensured on layout load  
+
+**`TaskStored` fields** (widget config item in `config.taskItems[]`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | Unique task ID |
+| `titlePresetId` | string | Key into `TASK_TITLE_PRESETS` |
+| `priority` | `"high" \| "medium" \| "new"` | Drives badge colour |
+| `customTitle` | string? | Overrides preset label |
+| `assignedTo` | string? | Assignee email |
+| `assignedToName` | string? | Assignee display name |
+| `assignedBy` | string? | Creator email |
+| `assignedByName` | string? | Creator display name |
+| `dueDate` | string? | ISO date `YYYY-MM-DD` |
+| `note` | string? | Free-text description |
+| `done` | boolean? | Marked complete; default false |
+| `contextData` | `Record<string, string>`? | Structured preset-specific fields (see below) |
+
+**`contextData` keys per preset** (all values optional; non-empty entries are saved):
+
+| Preset | Keys stored | Source DB |
+|--------|-------------|-----------|
+| `offer` | `firmenname`, `kunden_nr`, `angebot_nr` | Kunden + Angebote |
+| `handover` | `firmenname`, `fabrikat`, `typ`, `fahrgestellnummer` | Kunden + Angebote + Abholauftraege |
+| `invoice` | `rechn_nr`, `firmenname`, `kunden_nr` | Rechnungen + Kunden |
+| `wash` | `firmenname`, `kennzeichen`, `wasch_programm` | Kunden + KundenWash |
+| `callback` | `firmenname`, `telefonnummer`, `ansprechpartner` | Kunden |
+| `parts` | `part_name`, `fabrikat`, `firmenname` | Angebote + Abholauftraege + Kunden |
+
+`taskDisplay()` now returns an additional `subtitle` field built from `contextData`, e.g.:
+- `offer` → `"Weber GmbH [A-2025-001]"`
+- `callback` → `"Schmidt GmbH · 0231-123456"`
+
+Auto-fill behaviour: selecting a `firmenname` from the datalist auto-populates linked fields (e.g. `telefonnummer`, `kunden_nr`, `kennzeichen`) from the live DB when an exact match is found.
+
+**`TaskNotification` fields** (`dema-task-notifications`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | Unique notification ID |
+| `taskTitle` | string | Resolved task title at time of assignment |
+| `assignedBy` | string | Assigner email |
+| `assignedByName` | string | Assigner display name |
+| `assignedTo` | string | Recipient email |
+| `timestamp` | string | ISO-8601 creation time |
+| `read` | boolean | False until dismissed |
+
+**Default widgets:** `getDefaultWidgets()` — welcome + kpi locked; `tasks` pinned; core business widgets positioned on first run  
 
 ### 5.2 Logical entity model (ER-style)
 
@@ -155,6 +279,7 @@ erDiagram
     int grid_w
     int grid_h
     bool locked
+    bool pinned
     json config
   }
 
@@ -164,8 +289,32 @@ erDiagram
     bool addable
   }
 
+  TASK_STORED {
+    string id PK
+    string titlePresetId
+    string priority
+    string customTitle
+    string assignedTo
+    string assignedToName
+    string assignedBy
+    string assignedByName
+    string dueDate
+    string note
+  }
+
+  TASK_NOTIFICATION {
+    string id PK
+    string taskTitle
+    string assignedBy
+    string assignedByName
+    string assignedTo
+    string timestamp
+    bool read
+  }
+
   DASHBOARD_LAYOUT ||--o{ WIDGET_INSTANCE : contains
   WIDGET_INSTANCE }o--|| WIDGET_TYPE : "type"
+  WIDGET_INSTANCE ||--o{ TASK_STORED : "config.taskItems (tasks widget)"
 ```
 
 **Target (server) extension:** `USER`, `ROLE_TEMPLATE`, `DASHBOARD_SHARE`, `AUDIT_EVENT` — see API §10.
@@ -182,9 +331,11 @@ flowchart TB
   Dash --> Persist[LayoutPersistence]
   Dash --> Palette[AddWidgetPalette]
   Dash --> Reg[WidgetRegistry]
+  Dash --> TaskFeature[Tasks & Reminders]
 
   Shell --> Drag[DragResize]
   Shell --> Lock[LockedWidgets]
+  Shell --> Pinned[PinnedWidgets - movable but not removable]
 
   Persist --> LS[localStorage]
   Persist --> API[TargetSettingsAPI]
@@ -195,6 +346,12 @@ flowchart TB
   Reg --> WTables[TableTodoPicture]
   Reg --> WBiz[SalesInventoryFinances]
   Reg --> WPlan[CalendarAppointmentsMeetings]
+
+  TaskFeature --> TaskList[Task List with Assignment Badges]
+  TaskFeature --> TaskForm[Assignment Form - type/priority/due/assignee/note]
+  TaskFeature --> NotifStore[taskNotifications store]
+  NotifStore --> HeaderBell[Header Bell - live unread count]
+  HeaderBell --> NotifPanel[Notification Dropdown Panel]
 ```
 
 ---
@@ -209,6 +366,9 @@ flowchart LR
   LS[(localStorage)]
   REG[widgets registry]
   W[Widget components]
+  TW[TasksWidget]
+  TN[taskNotifications store]
+  H[Header]
 
   U -->|interacts| DD
   DD --> REG
@@ -217,6 +377,11 @@ flowchart LR
   DL -->|load save| LS
   W -->|config patch| DD
   DD -->|render| U
+
+  TW -->|assign task| TN
+  TN -->|write + event| LS
+  TN -->|CustomEvent| H
+  H -->|show unread badge + panel| U
 
   API[WidgetDataAPI target]
   W -.->|future fetch| API
@@ -259,7 +424,34 @@ flowchart LR
 ### 8.6 Widget config update
 
 1. Widget calls `onUpdateConfig(patch)`  
-2. `updateWidgetConfig` merges into `config`; persist  
+2. `updateWidgetConfig` merges into `config`; persist
+
+### 8.7 Assign a task to a team member
+
+1. User opens Tasks & Reminders and clicks "Aufgabe hinzufügen"  
+2. Form displays: task type, optional custom title, priority, due date, **Assign to** dropdown (all registered users), note  
+3. User selects a colleague from the "Assign to" dropdown  
+4. A hint "Die zugewiesene Person erhält eine Benachrichtigung" appears  
+5. User clicks Speichern → `TaskStored` is written with `assignedTo`, `assignedBy`, `dueDate`, `note` fields  
+6. `addTaskNotification` writes a `TaskNotification` to `dema-task-notifications` and dispatches `dema-task-notifications-changed`  
+7. Task appears in list with a `→ [Assignee name]` badge (violet) for the assigner
+
+### 8.8 Receive a task notification
+
+1. Assignee logs in or is already active in the same browser session  
+2. Header bell re-reads unread count on every `dema-task-notifications-changed` event  
+3. Blue badge on bell shows count  
+4. User clicks bell → notification panel opens listing all assignments  
+5. Each item shows: assigner name, task title, relative time ("vor 5 Min.")  
+6. User clicks ✕ on an item → `markNotificationRead(id)` marks it read  
+7. Or user clicks "Alle lesen" → `markAllReadForUser(email)` bulk-clears badge  
+8. Assigned task appears in the Tasks widget highlighted in blue with "von [Assigner name]" badge
+
+### 8.9 Pinned widget — attempt to remove blocked
+
+1. User opens "remove" action on Tasks widget → remove button is **not rendered** (hidden in chrome)  
+2. Even if `removeWidget` is called directly, `widget.pinned === true` guard returns layout unchanged  
+3. If user resets layout, `getDefaultWidgets()` restores the tasks widget with `pinned: true`  
 
 ---
 
@@ -276,10 +468,19 @@ flowchart LR
 | Sales widget | Live | `frontend/src/widgets/SalesWidget.tsx` | Sales API |
 | Inventory widget | Live | `frontend/src/widgets/InventoryWidget.tsx` | Inventory API |
 | Quick actions | Live | `frontend/src/widgets/QuickActionsWidget.tsx` | Actions / deep links |
-| Tasks widget | Live | `frontend/src/widgets/TasksWidget.tsx` | Tasks API |
+| Tasks widget — pinned, unmovable | Live | `frontend/src/widgets/TasksWidget.tsx`, `frontend/src/store/dashboardLayout.ts` | Tasks API |
+| Tasks widget — team assignment form | Live | `frontend/src/widgets/TasksWidget.tsx`, `frontend/src/widgets/dynamicWidgetLists.ts` | Tasks API |
+| Tasks widget — assignment badges + sorting | Live | `frontend/src/widgets/TasksWidget.tsx` | Tasks API |
+| Tasks widget — date-bucket filter tabs (Today / Week / Overdue / No Date / All) | Live *(2026-03-25)* | `frontend/src/widgets/TasksWidget.tsx` | Tasks API |
+| Tasks widget — grouped "All" view with collapsible sections | Live *(2026-03-25)* | `frontend/src/widgets/TasksWidget.tsx` | Tasks API |
+| Tasks widget — done checkbox, strikethrough, done counter toggle | Live *(2026-03-25)* | `frontend/src/widgets/TasksWidget.tsx`, `frontend/src/widgets/dynamicWidgetLists.ts` | Tasks API |
+| Task notification store | Live | `frontend/src/store/taskNotifications.ts` | Notification API (target) |
+| Header bell — live unread count | Live | `frontend/src/components/Header.tsx`, `frontend/src/store/taskNotifications.ts` | Notification API (target) |
+| Header bell — notification dropdown panel | Live | `frontend/src/components/Header.tsx` | Notification API (target) |
+| Pinned widget concept (WidgetInstance.pinned) | Live | `frontend/src/types/dashboard.ts`, `frontend/src/store/dashboardLayout.ts`, `frontend/src/pages/DynamicDashboard.tsx` | Dashboard layout API |
 | Finances widget | Live | `frontend/src/widgets/FinancesWidget.tsx` | Finance API |
 | Profile / user-card | Live | `frontend/src/widgets/ProfileModuleWidget.tsx` | User profile API |
-| Calendar | Live | `frontend/src/widgets/CalendarWidget.tsx` | Calendar API |
+| Calendar — fully dynamic (month/year navigation, picker overlay, today, date selection, weekend colouring) | Live *(updated 2026-03-25)* | `frontend/src/widgets/CalendarWidget.tsx` | Calendar API |
 | Appointments | Live | `frontend/src/widgets/AppointmentsWidget.tsx` | Scheduling API |
 | Meetings | Live | `frontend/src/widgets/MeetingsWidget.tsx` | Meetings API |
 | Notes | Live | `frontend/src/widgets/NotesWidget.tsx` | Notes API |
@@ -397,12 +598,12 @@ flowchart LR
 
 | Layer | Focus |
 |-------|--------|
-| Unit | `sanitizeWidgets`, `applyGridLayout`, locked widget rules, config merge |
-| Component | Grid renders, palette, remove/disable for locked |
-| Integration | Language switch remounts widgets; persistence round-trip |
-| E2E | Add widget, drag, refresh, expect positions |
-| Security | AuthZ on layout API; no cross-user reads |
-| Performance | Many widgets, chart render time, layout thrashing |
+| Unit | `sanitizeWidgets`, `applyGridLayout`, locked/pinned widget rules, config merge, `addTaskNotification`, `getUnreadCountForUser`, `markAllReadForUser` |
+| Component | Grid renders, palette, remove button hidden for pinned/locked, "Fixiert" badge shown, task form fields, notification panel render |
+| Integration | Language switch remounts widgets; persistence round-trip; task assignment dispatches notification event; header bell re-renders on event |
+| E2E | Add widget, drag, refresh, expect positions; assign task → bell badge increments; mark all read → badge clears |
+| Security | AuthZ on layout API; no cross-user reads; notifications scoped to `assignedTo` email |
+| Performance | Many widgets, chart render time, layout thrashing; notification list with many entries |
 
 ---
 
@@ -422,12 +623,18 @@ flowchart LR
 
 - `frontend/src/pages/DynamicDashboard.tsx`  
 - `frontend/src/store/dashboardLayout.ts`  
+- `frontend/src/store/taskNotifications.ts` *(added 2026-03-25)*  
 - `frontend/src/types/dashboard.ts`  
 - `frontend/src/widgets/registry.tsx`  
+- `frontend/src/widgets/TasksWidget.tsx` *(updated 2026-03-25 — pinned, assignment, notifications)*  
+- `frontend/src/widgets/dynamicWidgetLists.ts` *(updated 2026-03-25 — extended `TaskStored`)*  
 - `frontend/src/widgets/*.tsx`  
 - `frontend/src/widgets/useWidgetLanguage.ts`  
 - `frontend/src/widgets/useDashboardChartData.ts`  
 - `frontend/src/contexts/LanguageContext.tsx`  
+- `frontend/src/contexts/AuthContext.tsx`  
+- `frontend/src/auth/authStorage.ts`  
+- `frontend/src/components/Header.tsx` *(updated 2026-03-25 — live notification bell)*  
 - `frontend/src/App.tsx`  
 - `frontend/src/components/Sidebar.tsx`  
 - `frontend/src/pages/Dashboard.tsx` (legacy, not routed)  

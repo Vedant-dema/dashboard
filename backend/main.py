@@ -37,10 +37,50 @@ import sys
 from contextlib import asynccontextmanager
 from typing import Any
 
+import unicodedata
+
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
+
+try:
+    from deep_translator import GoogleTranslator as _GoogleTranslator
+    _TRANSLATOR_AVAILABLE = True
+except ImportError:
+    _TRANSLATOR_AVAILABLE = False
+
+def _has_non_latin_alpha(text: str) -> bool:
+    """Return True when text contains alphabetic chars outside Basic/Extended Latin."""
+    for ch in text:
+        if ch.isalpha() and ord(ch) > 0x024F:
+            return True
+    return False
+
+
+def _to_de_title(text: str | None) -> str | None:
+    """Translate non-Latin text to German and reformat to Title Case.
+
+    Steps:
+    1. Replace VIES double-pipe company-name separator with ' / '.
+    2. If non-Latin characters are present, try Google Translate → German.
+    3. Apply Python title-case (first letter of each word capitalised).
+    Falls back to title-case of the original if translation is unavailable.
+    """
+    if not text:
+        return None
+    text = text.replace("||", " / ").strip()
+    if _has_non_latin_alpha(text) and _TRANSLATOR_AVAILABLE:
+        try:
+            translated = _GoogleTranslator(source="auto", target="de").translate(text)
+            if translated:
+                text = translated
+        except Exception:
+            pass  # network error / rate-limit — keep original
+    # Normalise runs of whitespace introduced during translation
+    text = re.sub(r" {2,}", " ", text).strip()
+    return text.title() if text else None
+
 
 def _vies_rest_base_str() -> str:
     return os.environ.get(
@@ -447,6 +487,10 @@ def _map_vies_check_response(data: dict[str, Any], cc: str, vat: str) -> VatChec
     addr = "\n".join(x for x in (street, line2) if x) or None
     if not addr:
         addr = _vies_address_or_none(data.get("address"))
+
+    # Translate non-Latin text (e.g. Greek) to German and apply Title Case.
+    trader_name = _to_de_title(trader_name)
+    addr = _to_de_title(addr)
 
     details = bool(trader_name or addr)
 

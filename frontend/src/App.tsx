@@ -6,6 +6,7 @@ import { CustomersPage } from "./pages/CustomersPage";
 import { AngebotePage } from "./pages/AngebotePage";
 import { AnfragenPage } from "./pages/AnfragenPage";
 import { VerkaufterBestandPage } from "./pages/VerkaufterBestandPage";
+import { BestandPage } from "./pages/BestandPage";
 import { AbholauftraegePage } from "./pages/AbholauftraegePage";
 import { KennzeichenSuchePage } from "./pages/KennzeichenSuchePage";
 import { DoppelteKundenPage } from "./pages/DoppelteKundenPage";
@@ -45,6 +46,11 @@ const ANFRAGEN_PAGE_ROUTES = new Set([
   "sales/anfragen",
   "purchase/anfragen",
   "werkstatt/anfragen",
+]);
+const BESTAND_ROUTES = new Set([
+  "sales/bestand",
+  "purchase/bestand",
+  "werkstatt/bestand",
 ]);
 const VERKAUFTER_BESTAND_ROUTES = new Set([
   "sales/verkaufter-bestand",
@@ -184,6 +190,7 @@ export default function App() {
   const isCustomers = CUSTOMER_PAGE_ROUTES.has(pageRoute) || CUSTOMER_PAGE_ROUTES.has(route);
   const isAngebote = ANGEBOTE_PAGE_ROUTES.has(pageRoute) || ANGEBOTE_PAGE_ROUTES.has(route);
   const isAnfragen = ANFRAGEN_PAGE_ROUTES.has(pageRoute) || ANFRAGEN_PAGE_ROUTES.has(route);
+  const isBestand = BESTAND_ROUTES.has(pageRoute) || BESTAND_ROUTES.has(route);
   const isVerkaufterBestand = VERKAUFTER_BESTAND_ROUTES.has(pageRoute) || VERKAUFTER_BESTAND_ROUTES.has(route);
   const isAbholauftraege = ABHOLAUFTRAEGE_ROUTES.has(pageRoute) || ABHOLAUFTRAEGE_ROUTES.has(route);
   const isKennzeichenSuche = KENNZEICHEN_SUCHEN_ROUTES.has(pageRoute) || KENNZEICHEN_SUCHEN_ROUTES.has(route);
@@ -199,7 +206,9 @@ export default function App() {
       <div className="flex min-h-screen min-w-0 flex-col md:pl-[260px]">
         <Header onMenuClick={() => setSidebarOpen((v) => !v)} />
         <main className="flex min-h-0 flex-1 flex-col">
-          {isCustomers ? (
+          {isBestand ? (
+            <BestandPage department={customerDepartmentFromRoute(route)} />
+          ) : isCustomers ? (
             <CustomersPage department={customerDepartmentFromRoute(route)} />
           ) : isAngebote ? (
             <AngebotePage department={customerDepartmentFromRoute(route)} />

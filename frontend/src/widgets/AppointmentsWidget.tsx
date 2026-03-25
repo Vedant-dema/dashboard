@@ -23,9 +23,9 @@ function isoAddDays(base: string, n: number): string {
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 }
-function formatDayHeader(iso: string): string {
+function formatDayHeader(iso: string, localeTag: string): string {
   const d = new Date(iso + "T12:00:00");
-  return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(localeTag, { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }
 function parseHour(time: string): number {
   return parseInt(time.split(":")[0] ?? "9", 10);
@@ -51,8 +51,8 @@ function activityStyle(id: string) {
   return ACTIVITY_STYLE[id] ?? DEFAULT_STYLE;
 }
 
-function activityLabel(id: string): string {
-  return APPOINTMENT_ACTIVITIES.find((a) => a.id === id)?.label ?? "Termin";
+function activityLabel(id: string, activities: readonly { id: string; label: string }[], fallback: string): string {
+  return activities.find((a) => a.id === id)?.label ?? fallback;
 }
 
 // ─── Form CSS helpers ─────────────────────────────────────────────────────────
@@ -65,8 +65,20 @@ const labelCls = "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
-  const { t } = useWidgetLanguage();
-  const widgetTitle = cfgString(config, "customTitle", t("appointmentsTitle", "Termine"));
+  const { t, language } = useWidgetLanguage();
+
+  const localeTag = language === "de" ? "de-DE" : language === "fr" ? "fr-FR"
+    : language === "es" ? "es-ES" : language === "it" ? "it-IT"
+    : language === "pt" ? "pt-PT" : language === "tr" ? "tr-TR"
+    : language === "ru" ? "ru-RU" : language === "ar" ? "ar-SA"
+    : language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP"
+    : language === "hi" ? "hi-IN" : "en-GB";
+
+  const translatedActivities = useMemo(() =>
+    APPOINTMENT_ACTIVITIES.map((a) => ({ ...a, label: t(a.labelKey, a.label) })),
+  [t]);
+
+  const widgetTitle = cfgString(config, "customTitle", t("appointmentsTitle", "Appointments"));
 
   // ── Kunden DB ──
   const [dbTick, setDbTick] = useState(0);
@@ -183,7 +195,7 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
   // ── Build display name ──
   const displayName = (row: AppointmentStored) => {
     if (row.legacyTitle) return row.legacyTitle;
-    return appointmentTitle(row.activityId, row.customerNr, kunden);
+    return appointmentTitle(row.activityId, row.customerNr, kunden, translatedActivities, t("activityDefault", "Appointment"));
   };
 
   const customerName = (nr: string) => {
@@ -205,14 +217,14 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
               onClick={() => setViewDate(isoToday())}
               className="rounded-lg px-2 py-1 text-[10px] font-semibold text-blue-600 hover:bg-blue-50"
             >
-              Heute
+              {t("appointmentsToday", "Today")}
             </button>
           )}
           <button
             type="button"
             onClick={() => setViewDate((d) => isoAddDays(d, -1))}
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            title="Vorheriger Tag"
+            title={t("appointmentsPrevDay", "Previous day")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -227,7 +239,7 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
             type="button"
             onClick={() => setViewDate((d) => isoAddDays(d, 1))}
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            title="Nächster Tag"
+            title={t("appointmentsNextDay", "Next day")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -241,9 +253,9 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
               <Clock className="h-6 w-6 text-slate-400" />
             </div>
-            <p className="text-sm font-semibold text-slate-600">Keine Termine</p>
+            <p className="text-sm font-semibold text-slate-600">{t("appointmentsEmpty", "No appointments")}</p>
             <p className="text-xs text-slate-400">
-              {isToday ? "Heute sind keine Termine eingetragen." : "Für diesen Tag sind keine Termine eingetragen."}
+              {isToday ? t("appointmentsEmptyToday", "No appointments scheduled for today.") : t("appointmentsEmptyDay", "No appointments scheduled for this day.")}
             </p>
           </div>
         ) : (
@@ -292,9 +304,9 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
                                     {min > 0 && ""}
                                   </span>
                                   <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${st.badge}`}>
-                                    {activityLabel(ap.activityId)}
+                                    {activityLabel(ap.activityId, translatedActivities, t("activityDefault", "Appointment"))}
                                   </span>
-                                  <span className="text-[9px] text-slate-400">{dur} Min.</span>
+                                  <span className="text-[9px] text-slate-400">{t("appointmentsDurationMin", "{n} min.").replace("{n}", String(dur))}</span>
                                 </div>
 
                                 {/* Customer / title */}
@@ -326,7 +338,7 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
                                     type="button"
                                     onClick={() => openEdit(ap)}
                                     className="rounded-lg p-1 text-slate-400 hover:bg-white/70 hover:text-blue-600"
-                                    title={t("appointmentsEdit", "Bearbeiten")}
+                                    title={t("appointmentsEdit", "Edit")}
                                   >
                                     <Pencil className="h-3.5 w-3.5" />
                                   </button>
@@ -334,7 +346,7 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
                                     type="button"
                                     onClick={() => remove(ap.id)}
                                     className="rounded-lg p-1 text-slate-400 hover:bg-white/70 hover:text-red-600"
-                                    title={t("appointmentsRemove", "Entfernen")}
+                                    title={t("appointmentsRemove", "Remove")}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -357,23 +369,22 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
       {isFormOpen && canEdit && (
         <div className="shrink-0 border-t border-blue-100 bg-gradient-to-b from-blue-50/60 to-slate-50/40 px-4 py-3">
           <p className="mb-2.5 text-xs font-bold text-slate-700">
-            {editingId ? t("appointmentsFormEdit", "Termin bearbeiten") : t("appointmentsFormNew", "Neuer Termin")}
+            {editingId ? t("appointmentsFormEdit", "Edit appointment") : t("appointmentsFormNew", "New appointment")}
           </p>
 
           <div className="space-y-2">
             {/* Row 1: Date + Time */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className={labelCls}>{t("appointmentsDate", "Datum")}</label>
+                <label className={labelCls}>{t("appointmentsDate", "Date")}</label>
                 <DatePickerInput
                   value={formDate}
                   onChange={setFormDate}
-                  placeholder="Datum wählen…"
                   clearable={false}
                 />
               </div>
               <div>
-                <label className={labelCls}>{t("appointmentsTime", "Uhrzeit")}</label>
+                <label className={labelCls}>{t("appointmentsTime", "Time")}</label>
                 <select className={inputCls} value={formTime} onChange={(e) => setFormTime(e.target.value)}>
                   {slots.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -385,18 +396,18 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
             {/* Row 2: Activity + Duration */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className={labelCls}>{t("appointmentsActivity", "Art")}</label>
+                <label className={labelCls}>{t("appointmentsActivity", "Type")}</label>
                 <select className={inputCls} value={formActivity} onChange={(e) => setFormActivity(e.target.value)}>
-                  {APPOINTMENT_ACTIVITIES.map((a) => (
+                  {translatedActivities.map((a) => (
                     <option key={a.id} value={a.id}>{a.label}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelCls}>{t("appointmentsDuration", "Dauer (Min.)")}</label>
+                <label className={labelCls}>{t("appointmentsDuration", "Duration (min.)")}</label>
                 <select className={inputCls} value={formDuration} onChange={(e) => setFormDuration(Number(e.target.value))}>
                   {[15, 30, 45, 60, 90, 120, 180, 240].map((m) => (
-                    <option key={m} value={m}>{m} Min.</option>
+                    <option key={m} value={m}>{t("appointmentsDurationMin", "{n} min.").replace("{n}", String(m))}</option>
                   ))}
                 </select>
               </div>
@@ -404,9 +415,9 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
 
             {/* Row 3: Customer */}
             <div>
-              <label className={labelCls}>{t("appointmentsCustomer", "Kunde")}</label>
+              <label className={labelCls}>{t("appointmentsCustomer", "Customer")}</label>
               <select className={inputCls} value={formCustomer} onChange={(e) => setFormCustomer(e.target.value)}>
-                <option value="">{t("appointmentsNoCustomer", "— ohne Kundenbezug —")}</option>
+                <option value="">{t("appointmentsNoCustomer", "— no customer —")}</option>
                 {customerOpts.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
@@ -416,13 +427,13 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
             {/* Row 4: Note */}
             <div>
               <label className={labelCls}>
-                {t("appointmentsNote", "Notiz")}{" "}
+                {t("appointmentsNote", "Note")}{" "}
                 <span className="font-normal normal-case text-slate-400">(optional)</span>
               </label>
               <input
                 type="text"
                 className={inputCls}
-                placeholder={t("appointmentsNotePlaceholder", "z. B. Bitte Unterlagen mitbringen…")}
+                placeholder={t("appointmentsNotePlaceholder", "e.g. Please bring documents…")}
                 value={formNote}
                 onChange={(e) => setFormNote(e.target.value)}
               />
@@ -435,14 +446,14 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
                 onClick={saveForm}
                 className="flex-1 rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
               >
-                {t("commonSave", "Speichern")}
+                {t("commonSave", "Save")}
               </button>
               <button
                 type="button"
                 onClick={cancelForm}
                 className="flex-1 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
               >
-                {t("commonCancel", "Abbrechen")}
+                {t("commonCancel", "Cancel")}
               </button>
             </div>
           </div>
@@ -458,7 +469,7 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
             className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-2 text-xs font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-50/50"
           >
             <Plus className="h-3.5 w-3.5" />
-            {t("appointmentsNew", "Neuer Termin")}
+            {t("appointmentsNew", "New appointment")}
           </button>
         </div>
       )}

@@ -1,101 +1,224 @@
 ---
-description: Enforce i18n on every frontend file — no hardcoded UI text allowed
+description: Enforce i18n on every frontend file — every user-visible string must respond to the language selected in settings
 globs: frontend/src/**/*.{tsx,ts}
 alwaysApply: true
 ---
 
-# i18n Rule — All UI Text Must Be Translated
+# i18n Rule — Every Visible String Must Use the Translation System
 
-This project supports 12 languages. **Every user-visible string must come through the translation system.** Never write a raw string literal where the user can see it.
+This project supports 12 languages. Switching language in Settings must instantly update **every** visible character in the UI — labels, placeholders, tooltips, empty states, date names, error messages, section headers, dropdown options, everything.
 
-## How the system works
+**Never write a raw string literal where the user can read it.**
 
-- **Single source of truth**: `frontend/src/contexts/LanguageContext.tsx`
-  - `MESSAGES.de` — German (default/primary)
-  - `MESSAGES.en` — English
-  - `MESSAGES.fr` — French
-  - `LANGUAGE_OVERRIDES.{es,it,pt,tr,ru,hi,ar,zh,ja}` — merge over `en`
+---
 
-- **In pages / components**: use `useLanguage()`
-- **In widgets**: use `useWidgetLanguage()`
+## 1. How the Translation System Works
+
+| File | Role |
+|---|---|
+| `frontend/src/contexts/LanguageContext.tsx` | Single source of truth — all keys live here |
+| `MESSAGES.de` | German (primary/default) |
+| `MESSAGES.en` | English |
+| `MESSAGES.fr` | French |
+| `LANGUAGE_OVERRIDES.{es,it,pt,tr,ru,hi,ar,zh,ja}` | Merge over `en` for 9 other languages |
+
+### Hook usage
+
+```tsx
+// In pages, components, widgets — always call the hook at the top
+const { t, language } = useLanguage();
+
+// In widgets that might need the active language tag (e.g. for Intl)
+const { t, language } = useWidgetLanguage(); // equivalent, use either
+```
+
+---
+
+## 2. Core Rules (apply to every file you touch)
+
+### Rule 1 — No hardcoded text in JSX
+
+Every string the user sees must go through `t()`.
 
 ```tsx
 // ✅ CORRECT
-const { t } = useLanguage();
-<p>{t("myNewKey", "Fallback in English")}</p>
+<p>{t("tasksEmpty", "No tasks yet")}</p>
+<input placeholder={t("searchPlaceholder", "Search…")} />
+<button title={t("commonClose", "Close")} />
 
-// ❌ WRONG — hardcoded text
+// ❌ WRONG
 <p>No tasks yet</p>
-<p>Noch keine Aufgaben</p>
+<p>Keine Aufgaben</p>
+<input placeholder="Suchen…" />
 ```
 
-## Rules to follow every time you add or edit a file
+### Rule 2 — Always add keys to all 3 primary languages
 
-### 1. No hardcoded strings in JSX or return values
-Any text the user can see — labels, placeholders, titles, tooltips, `aria-label`, empty states, error messages — must call `t("key", "English fallback")`.
-
-### 2. Always add the key to ALL three primary languages
-When you add a new key, add it to **`MESSAGES.de`**, **`MESSAGES.en`**, and **`MESSAGES.fr`** in `LanguageContext.tsx`. The other 9 languages inherit from `en` automatically.
+When you add a new key, add it to **`MESSAGES.de`**, **`MESSAGES.en`**, and **`MESSAGES.fr`** in `LanguageContext.tsx`. The other 9 languages inherit from `en` automatically (add overrides if a specific translation is needed).
 
 ```ts
 // In MESSAGES.de:
-myNewKey: "Deutsch",
+myNewKey: "Deutscher Text",
 
 // In MESSAGES.en:
-myNewKey: "English",
+myNewKey: "English text",
 
 // In MESSAGES.fr:
-myNewKey: "Français",
+myNewKey: "Texte français",
 ```
 
-### 3. Use English as the fallback, never German
-```tsx
-// ✅ English fallback
-t("tabOverdue", "Overdue")
+### Rule 3 — Always use English as the fallback, never German
 
-// ❌ German fallback — will show German when key is missing
+The second argument to `t()` is the fallback shown when the key is missing. It must be English.
+
+```tsx
+// ✅
+t("tabOverdue", "Overdue")
+t("commonSave", "Save")
+
+// ❌ German fallback = German shown for missing keys
 t("tabOverdue", "Überfällig")
 ```
 
-### 4. Static arrays/constants with labels must be inside the component (useMemo)
-If a constant has user-visible labels (like tab lists, section headers, dropdown options), define it inside the component with `useMemo` so labels react to language changes.
+### Rule 4 — Label arrays must live inside `useMemo`, never as module-level constants
+
+Any array or object that contains user-visible labels must be created inside the component using `useMemo` so it re-evaluates when the language changes.
 
 ```tsx
-// ✅ CORRECT — reactive to language
+// ✅ CORRECT — reactive
 const tabs = useMemo(() => [
   { id: "today", label: t("tabToday", "Today") },
-  { id: "overdue", label: t("tabOverdue", "Overdue") },
+  { id: "week",  label: t("tabWeek",  "This week") },
 ], [t]);
 
-// ❌ WRONG — static, language never updates
+// ❌ WRONG — static, never updates
 const TABS = [
   { id: "today", label: "Heute" },
 ];
 ```
 
-### 5. Relative time and date strings must use t()
+### Rule 5 — Relative time and formatted date strings must use `t()`
+
 ```tsx
-// ✅ CORRECT
+// ✅
 t("relTimeJustNow", "Just now")
 t("relTimeMins", "{n} min ago").replace("{n}", String(mins))
 
-// ❌ WRONG
-`vor ${mins} Min.`
+// ❌
 "Gerade eben"
+`vor ${mins} Min.`
 ```
 
-### 6. Key naming convention
-Use camelCase, grouped by feature prefix:
-- `tab*` — filter tabs (tabToday, tabOverdue, tabAll…)
-- `tasks*` — task widget strings
-- `notif*` — notification panel
-- `settings*` — settings page
-- `common*` — shared actions (commonSave, commonCancel, commonEdit…)
-- `relTime*` — relative timestamps
-- `dueDate*` — due date display labels
+---
 
-### 7. When editing TasksWidget or adding new widgets
-- Task preset labels → add `taskPreset{Name}` keys to MESSAGES
-- Priority labels → use existing `tasksHigh`, `tasksMedium`, `tasksNew` keys
-- Section/group headers → add `tasksSection{Name}` or reuse `tab*` keys
-- Always pass `t` to sub-components that render user text
+## 3. Locale-Aware Date/Time Formatting
+
+Never hardcode locale strings like `"de-DE"`. Derive the BCP-47 locale tag from `language`:
+
+```tsx
+const { language } = useLanguage();
+
+const localeTag = language === "de" ? "de-DE"
+  : language === "fr" ? "fr-FR"
+  : language === "es" ? "es-ES"
+  : language === "it" ? "it-IT"
+  : language === "pt" ? "pt-PT"
+  : language === "tr" ? "tr-TR"
+  : language === "ru" ? "ru-RU"
+  : language === "ar" ? "ar-SA"
+  : language === "zh" ? "zh-CN"
+  : language === "ja" ? "ja-JP"
+  : language === "hi" ? "hi-IN"
+  : "en-GB";
+```
+
+Use `Intl.DateTimeFormat` with `localeTag` for month/weekday names — never hardcode them:
+
+```tsx
+// ✅ CORRECT — automatically adapts to selected language
+const monthNames = useMemo(() =>
+  Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(localeTag, { month: "long" }).format(new Date(2000, i, 1))
+  ), [localeTag]);
+
+// ❌ WRONG — only ever shows German
+const MONTHS_DE = ["Januar", "Februar", "März", …];
+```
+
+Pass `localeTag` to `toLocaleDateString()` calls too:
+
+```tsx
+// ✅
+new Date(iso).toLocaleDateString(localeTag, { weekday: "short", day: "2-digit", month: "short" })
+
+// ❌
+new Date(iso).toLocaleDateString("de-DE", …)
+```
+
+---
+
+## 4. Component-Specific Patterns
+
+### DatePickerInput (`src/components/DatePickerInput.tsx`)
+- Uses `useLanguage()` internally — do **not** pass locale as a prop
+- Month names, short month names, and weekday names are all generated via `Intl.DateTimeFormat`
+- UI strings ("Today", "Clear", placeholder) must use `t()` with keys `datePickerToday`, `datePickerClear`, `datePickerPlaceholder`, `datePickerTitle`
+
+### AssigneePicker (`src/widgets/AssigneePicker.tsx`)
+- Uses `useLanguage()` internally
+- All dropdown header text, workload labels, "Fully booked", "You", footer note → use `t()` with `assign*` key prefix
+- Workload level labels come from `WORKLOAD_CONFIG[level].labelKey` — use `t(cfg.labelKey, cfg.label)`
+- Workload detail strings use `workload*` key prefix with `{n}` placeholder replacement
+
+### TaskContextFields (`src/widgets/TaskContextFields.tsx`)
+- Uses `useLanguage()` internally
+- `buildFields()` receives `t` as a parameter and uses it for all `label` and `placeholder` strings
+- Keys follow `ctxLabel*` (labels) and `ctxPh*` (placeholders) naming
+
+### TaskFormModal (`src/widgets/TaskFormModal.tsx`)
+- Receives `t` as a prop — do not call `useLanguage()` here; use the passed `t`
+- All form labels, subtitles, button text must use `t()`
+
+### TasksWidget (`src/widgets/TasksWidget.tsx`)
+- Filter tab labels → inside `useMemo`, use `tab*` keys
+- Section group headers → inside `useMemo`, use `tasksSection*` keys
+- `formatDueDate` receives `t` and uses `dueDateToday` / `dueDateTomorrow` keys
+- Task preset labels → `translatedTaskPresets` useMemo using `taskPreset*` keys
+- Priority labels → `translatedPriorities` useMemo using `tasksHigh`, `tasksMedium`, `tasksNew`
+
+### workloadStore (`src/store/workloadStore.ts`)
+- `WORKLOAD_CONFIG` entries must have a `labelKey` (string) field pointing to a key in MESSAGES
+- Never put the translated label directly in the store — translation happens in the component
+
+---
+
+## 5. Key Naming Conventions
+
+Use camelCase with a feature prefix:
+
+| Prefix | Used for |
+|---|---|
+| `tab*` | Filter tab labels (`tabToday`, `tabOverdue`, `tabAll`) |
+| `tasks*` | Task widget strings (`tasksEmpty`, `tasksFieldTitle`) |
+| `taskPreset*` | Task type preset names |
+| `tasksSection*` | Group/section headers in task lists |
+| `notif*` | Notification panel |
+| `settings*` | Settings page |
+| `common*` | Shared actions (`commonSave`, `commonCancel`, `commonEdit`) |
+| `relTime*` | Relative timestamps (`relTimeJustNow`, `relTimeMins`) |
+| `dueDate*` | Due date display labels |
+| `assign*` | AssigneePicker dropdown strings |
+| `workload*` | Workload bar labels and counts |
+| `datePicker*` | DatePickerInput UI strings |
+| `ctx*` | TaskContextFields field labels and placeholders |
+
+---
+
+## 6. Checklist — Before You Finish Any Edit
+
+- [ ] Every JSX string literal replaced with `t("key", "English fallback")`
+- [ ] New keys added to `MESSAGES.de`, `MESSAGES.en`, `MESSAGES.fr`
+- [ ] No `"de-DE"` hardcoded anywhere — derive from `language`
+- [ ] Label arrays built inside `useMemo`, not as module constants
+- [ ] No German text in fallback arguments
+- [ ] `toLocaleDateString()` uses `localeTag`, not a hardcoded locale string

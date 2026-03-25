@@ -4,20 +4,31 @@ import type { WidgetRenderProps } from "../types/dashboard";
 import { cfgString } from "./widgetConfigHelpers";
 import { getMeetingsFromConfig, type MeetingStored } from "./dynamicWidgetLists";
 import { MEETING_ROOMS, MEETING_TOPICS, meetingDisplay, timeSlotOptions } from "./widgetListPresets";
+import { useWidgetLanguage } from "./useWidgetLanguage";
 
 const selectCls =
   "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20";
 
-function displayMeeting(row: MeetingStored): { title: string; room: string } {
+function displayMeeting(
+  row: MeetingStored,
+  topics: readonly { id: string; label: string }[],
+  rooms: readonly { id: string; label: string }[],
+): { title: string; room: string } {
   if (row.legacyTitle) {
     return { title: row.legacyTitle, room: row.legacyRoom ?? "—" };
   }
-  return meetingDisplay(row.topicId, row.roomId);
+  return meetingDisplay(row.topicId, row.roomId, topics, rooms);
 }
 
 export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
-  const title = cfgString(config, "customTitle", "Meetings");
-  const newLabel = cfgString(config, "newMeetingLabel", "Neues Meeting");
+  const { t } = useWidgetLanguage();
+  const title = cfgString(config, "customTitle", t("meetingsTitle", "Meetings"));
+  const newLabel = cfgString(config, "newMeetingLabel", t("meetingsNewLabel", "New meeting"));
+
+  const translatedTopics = useMemo(() =>
+    MEETING_TOPICS.map((tp) => ({ ...tp, label: t(tp.labelKey, tp.label) })), [t]);
+  const translatedRooms = useMemo(() =>
+    MEETING_ROOMS.map((r) => ({ ...r, label: r.labelKey ? t(r.labelKey, r.label) : r.label })), [t]);
 
   const slots = useMemo(() => timeSlotOptions(), []);
   const list = useMemo(() => {
@@ -90,7 +101,7 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
       <h2 className="mb-4 text-lg font-bold text-slate-800">{title}</h2>
       <ul className="min-h-0 flex-1 space-y-3 overflow-auto">
         {list.map((m) => {
-          const d = displayMeeting(m);
+          const d = displayMeeting(m, translatedTopics, translatedRooms);
           return (
             <li
               key={m.id}
@@ -111,7 +122,7 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
                     type="button"
                     onClick={() => openEdit(m)}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-blue-600"
-                    title="Bearbeiten"
+                    title={t("meetingsEdit", "Edit")}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -119,7 +130,7 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
                     type="button"
                     onClick={() => remove(m.id)}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                    title="Entfernen"
+                    title={t("meetingsRemove", "Remove")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -133,10 +144,10 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
       {(adding || editingId) && canEdit && (
         <div className="mt-3 space-y-2 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
           <p className="text-xs font-semibold text-slate-600">
-            {editingId ? "Meeting bearbeiten" : "Neues Meeting"}
+            {editingId ? t("meetingsFormEdit", "Edit meeting") : t("meetingsFormNew", "New meeting")}
           </p>
           <div>
-            <label className="mb-0.5 block text-[10px] font-medium uppercase text-slate-500">Uhrzeit</label>
+            <label className="mb-0.5 block text-[10px] font-medium uppercase text-slate-500">{t("meetingsTime", "Time")}</label>
             <select className={selectCls} value={formTime} onChange={(e) => setFormTime(e.target.value)}>
               {slots.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -146,9 +157,9 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
             </select>
           </div>
           <div>
-            <label className="mb-0.5 block text-[10px] font-medium uppercase text-slate-500">Thema</label>
+            <label className="mb-0.5 block text-[10px] font-medium uppercase text-slate-500">{t("meetingsTopic", "Topic")}</label>
             <select className={selectCls} value={formTopic} onChange={(e) => setFormTopic(e.target.value)}>
-              {MEETING_TOPICS.map((t) => (
+              {translatedTopics.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.label}
                 </option>
@@ -156,9 +167,9 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
             </select>
           </div>
           <div>
-            <label className="mb-0.5 block text-[10px] font-medium uppercase text-slate-500">Ort / Tool</label>
+            <label className="mb-0.5 block text-[10px] font-medium uppercase text-slate-500">{t("meetingsRoom", "Location / Tool")}</label>
             <select className={selectCls} value={formRoom} onChange={(e) => setFormRoom(e.target.value)}>
-              {MEETING_ROOMS.map((r) => (
+              {translatedRooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.label}
                 </option>
@@ -171,14 +182,14 @@ export function MeetingsWidget({ config, onUpdateConfig }: WidgetRenderProps) {
               onClick={saveForm}
               className="flex-1 rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
             >
-              Speichern
+              {t("commonSave", "Save")}
             </button>
             <button
               type="button"
               onClick={cancelForm}
               className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-white"
             >
-              Abbrechen
+              {t("commonCancel", "Cancel")}
             </button>
           </div>
         </div>

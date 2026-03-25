@@ -15,29 +15,29 @@ export function timeSlotOptions(): { value: string; label: string }[] {
 }
 
 export const APPOINTMENT_ACTIVITIES = [
-  { id: "consult", label: "Kundenberatung" },
-  { id: "pickup", label: "Fahrzeugabholung" },
-  { id: "delivery", label: "Lieferung / Übergabe" },
-  { id: "internal", label: "Internes Meeting" },
-  { id: "call", label: "Telefonat / Rückruf" },
-  { id: "workshop", label: "Werkstatt-Termin" },
+  { id: "consult",  label: "Kundenberatung",     labelKey: "activityConsult"   },
+  { id: "pickup",   label: "Fahrzeugabholung",    labelKey: "activityPickup"    },
+  { id: "delivery", label: "Lieferung / Übergabe",labelKey: "activityDelivery"  },
+  { id: "internal", label: "Internes Meeting",    labelKey: "activityInternal"  },
+  { id: "call",     label: "Telefonat / Rückruf", labelKey: "activityCall"      },
+  { id: "workshop", label: "Werkstatt-Termin",    labelKey: "activityWorkshop"  },
 ] as const;
 
 export const MEETING_TOPICS = [
-  { id: "sprint", label: "Sprint Planning" },
-  { id: "sales", label: "Verkaufs-Review" },
-  { id: "customer", label: "Kunden-Call" },
-  { id: "1on1", label: "1:1 Gespräch" },
-  { id: "training", label: "Schulung" },
-  { id: "other", label: "Sonstiges" },
+  { id: "sprint",   label: "Sprint Planning", labelKey: "meetingTopicSprint"   },
+  { id: "sales",    label: "Verkaufs-Review", labelKey: "meetingTopicSales"    },
+  { id: "customer", label: "Kunden-Call",     labelKey: "meetingTopicCustomer" },
+  { id: "1on1",     label: "1:1 Gespräch",   labelKey: "meetingTopic1on1"     },
+  { id: "training", label: "Schulung",        labelKey: "meetingTopicTraining" },
+  { id: "other",    label: "Sonstiges",       labelKey: "meetingTopicOther"    },
 ] as const;
 
 export const MEETING_ROOMS = [
-  { id: "zoom", label: "Zoom" },
-  { id: "teams", label: "Microsoft Teams" },
-  { id: "meet", label: "Google Meet" },
-  { id: "office", label: "Vor-Ort Büro" },
-  { id: "phone", label: "Telefon" },
+  { id: "zoom",   label: "Zoom",            labelKey: ""               },
+  { id: "teams",  label: "Microsoft Teams", labelKey: ""               },
+  { id: "meet",   label: "Google Meet",     labelKey: ""               },
+  { id: "office", label: "Vor-Ort Büro",   labelKey: "meetingRoomOffice" },
+  { id: "phone",  label: "Telefon",         labelKey: "meetingRoomPhone"  },
 ] as const;
 
 export const TASK_TITLE_PRESETS = [
@@ -96,15 +96,29 @@ export function customerOptionsFromDb(kunden: KundenStamm[]): { value: string; l
   }));
 }
 
-export function appointmentTitle(activityId: string, customerNr: string, kunden: KundenStamm[]): string {
-  const act = APPOINTMENT_ACTIVITIES.find((a) => a.id === activityId)?.label ?? "Termin";
+export function appointmentTitle(
+  activityId: string,
+  customerNr: string,
+  kunden: KundenStamm[],
+  activities?: readonly { id: string; label: string }[],
+  defaultLabel = "Appointment",
+): string {
+  const arr = activities ?? APPOINTMENT_ACTIVITIES;
+  const act = arr.find((a) => a.id === activityId)?.label ?? defaultLabel;
   if (!customerNr) return act;
   const k = kunden.find((x) => x.kunden_nr === customerNr);
   return k ? `${act} — ${k.firmenname}` : act;
 }
 
-export function meetingDisplay(topicId: string, roomId: string): { title: string; room: string } {
-  const title = MEETING_TOPICS.find((t) => t.id === topicId)?.label ?? "Meeting";
-  const room = MEETING_ROOMS.find((r) => r.id === roomId)?.label ?? "—";
+export function meetingDisplay(
+  topicId: string,
+  roomId: string,
+  topics?: readonly { id: string; label: string }[],
+  rooms?: readonly { id: string; label: string }[],
+): { title: string; room: string } {
+  const tArr = topics ?? MEETING_TOPICS;
+  const rArr = rooms ?? MEETING_ROOMS;
+  const title = tArr.find((t) => t.id === topicId)?.label ?? "Meeting";
+  const room = rArr.find((r) => r.id === roomId)?.label ?? "—";
   return { title, room };
 }

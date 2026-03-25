@@ -1,5 +1,11 @@
 import { useEffect, useState, useCallback, type ReactNode } from "react";
 import { X, Droplets, BadgeCheck } from "lucide-react";
+import {
+  DocExtractBanner,
+  KiBadge,
+  ExtractedFieldWrapper,
+  type ScanState,
+} from "./DocExtractBanner";
 import type { NewKundeInput, KundenWashUpsertFields } from "../store/kundenStore";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
@@ -367,6 +373,59 @@ export function NewCustomerModal({
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
   }, []);
+
+  // ── Document extraction state ──
+  const [docScanState, setDocScanState] = useState<ScanState>("idle");
+  const [docFileName, setDocFileName] = useState("");
+  const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+
+  /** Fields this mock extractor can fill — maps form keys to realistic demo values */
+  const MOCK_EXTRACTED: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
+    firmenname:      "Muster Automobil GmbH",
+    gesellschaftsform: "GmbH",
+    branche:         "Automobilhandel",
+    firmenvorsatz:   "Muster",
+    ansprache:       "Sehr geehrte Damen und Herren",
+    strasse:         "Hauptstraße 42",
+    plz:             "44137",
+    ort:             "Dortmund",
+    land_code:       "DE",
+    telefonnummer:   "+49 231 123456",
+    email:           "info@muster-auto.de",
+    internet_adr:    "www.muster-auto.de",
+  };
+
+  const handleDocUpload = (file: File) => {
+    setDocFileName(file.name);
+    setDocScanState("scanning");
+    setExtractedFields(new Set());
+
+    // Simulate OCR processing delay (2.5 s)
+    setTimeout(() => {
+      const filled = new Set<string>();
+      for (const [key, value] of Object.entries(MOCK_EXTRACTED) as [keyof FormState, FormState[keyof FormState]][]) {
+        // Only fill if field is currently empty
+        if (!form[key]) {
+          set(key, value);
+          filled.add(key as string);
+        }
+      }
+      setExtractedFields(filled);
+      setDocScanState("done");
+    }, 2500);
+  };
+
+  const clearDocExtraction = () => {
+    // Reset extracted fields to empty
+    for (const key of extractedFields) {
+      set(key as keyof FormState, "" as FormState[keyof FormState]);
+    }
+    setExtractedFields(new Set());
+    setDocScanState("idle");
+    setDocFileName("");
+  };
+
+  const isExtracted = (key: string) => extractedFields.has(key);
 
   const formatVatCheckDetail = (raw: unknown): string => {
     if (typeof raw === "string") return raw;
@@ -826,6 +885,16 @@ export function NewCustomerModal({
 
           {tab === "kunde" && (
             <div className="mx-auto max-w-4xl space-y-5">
+
+              {/* ── Document extraction banner ── */}
+              <DocExtractBanner
+                scanState={docScanState}
+                fileName={docFileName}
+                extractedCount={extractedFields.size}
+                onFileSelect={handleDocUpload}
+                onClear={clearDocExtraction}
+              />
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>KundenNr. (automatisch)</label>
@@ -840,15 +909,17 @@ export function NewCustomerModal({
                   </p>
                 </div>
                 <div>
-                  <label className={labelClass}>Branche</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.branche}
-                    onChange={(e) => set("branche", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.branche}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>Branche{isExtracted("branche") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("branche")}>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.branche}
+                      onChange={(e) => set("branche", e.target.value)}
+                      className={inputClass}
+                      suggestions={fieldSuggestions.branche}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
               </div>
 
@@ -899,55 +970,64 @@ export function NewCustomerModal({
               </div>
 
               <div>
-                <label className={labelClass}>Gesellschaftsform</label>
-                <SuggestTextInput
-                  type="text"
-                  value={form.gesellschaftsform}
-                  onChange={(e) => set("gesellschaftsform", e.target.value)}
-                  placeholder="z. B. GmbH, AG"
-                  className={inputClass}
-                  suggestions={fieldSuggestions.gesellschaftsform}
-                  title="Vorschläge aus gespeicherten Kunden"
-                />
+                <label className={labelClass}>Gesellschaftsform{isExtracted("gesellschaftsform") && <KiBadge />}</label>
+                <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
+                  <SuggestTextInput
+                    type="text"
+                    value={form.gesellschaftsform}
+                    onChange={(e) => set("gesellschaftsform", e.target.value)}
+                    placeholder="z. B. GmbH, AG"
+                    className={inputClass}
+                    suggestions={fieldSuggestions.gesellschaftsform}
+                    title="Vorschläge aus gespeicherten Kunden"
+                  />
+                </ExtractedFieldWrapper>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>Ansprache</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.ansprache}
-                    onChange={(e) => set("ansprache", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.ansprache}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>Ansprache{isExtracted("ansprache") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("ansprache")}>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.ansprache}
+                      onChange={(e) => set("ansprache", e.target.value)}
+                      className={inputClass}
+                      suggestions={fieldSuggestions.ansprache}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
                 <div>
-                  <label className={labelClass}>Firmenvorsatz</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.firmenvorsatz}
-                    onChange={(e) => set("firmenvorsatz", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.firmenvorsatz}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>Firmenvorsatz{isExtracted("firmenvorsatz") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("firmenvorsatz")}>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.firmenvorsatz}
+                      onChange={(e) => set("firmenvorsatz", e.target.value)}
+                      className={inputClass}
+                      suggestions={fieldSuggestions.firmenvorsatz}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
               </div>
 
               <div>
                 <label className={labelClass}>
                   Firmenname <span className="text-red-500">*</span>
+                  {isExtracted("firmenname") && <KiBadge />}
                 </label>
-                <SuggestTextInput
-                  type="text"
-                  value={form.firmenname}
-                  onChange={(e) => set("firmenname", e.target.value)}
-                  className={inputClass}
-                  suggestions={fieldSuggestions.firmenname}
-                  title="Vorschläge aus gespeicherten Kunden"
-                />
+                <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
+                  <SuggestTextInput
+                    type="text"
+                    value={form.firmenname}
+                    onChange={(e) => set("firmenname", e.target.value)}
+                    className={inputClass}
+                    suggestions={fieldSuggestions.firmenname}
+                    title="Vorschläge aus gespeicherten Kunden"
+                  />
+                </ExtractedFieldWrapper>
               </div>
 
               <div>
@@ -984,39 +1064,45 @@ export function NewCustomerModal({
                   Adresse
                 </p>
                 <div>
-                  <label className={labelClass}>Strasse</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.strasse}
-                    onChange={(e) => set("strasse", e.target.value)}
-                    placeholder="nicht bekannt"
-                    className={inputClass}
-                    suggestions={fieldSuggestions.strasse}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>Strasse{isExtracted("strasse") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.strasse}
+                      onChange={(e) => set("strasse", e.target.value)}
+                      placeholder="nicht bekannt"
+                      className={inputClass}
+                      suggestions={fieldSuggestions.strasse}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>PLZ</label>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.plz}
-                      onChange={(e) => set("plz", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.plz}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
+                    <label className={labelClass}>PLZ{isExtracted("plz") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("plz")}>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.plz}
+                        onChange={(e) => set("plz", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.plz}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </ExtractedFieldWrapper>
                   </div>
                   <div>
-                    <label className={labelClass}>Ort</label>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.ort}
-                      onChange={(e) => set("ort", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.ort}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
+                    <label className={labelClass}>Ort{isExtracted("ort") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("ort")}>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.ort}
+                        onChange={(e) => set("ort", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.ort}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </ExtractedFieldWrapper>
                   </div>
                 </div>
                 <div>
@@ -1098,15 +1184,17 @@ export function NewCustomerModal({
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Telefonnummer</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.telefonnummer}
-                    onChange={(e) => set("telefonnummer", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.telefonnummer}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>Telefonnummer{isExtracted("telefonnummer") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("telefonnummer")}>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.telefonnummer}
+                      onChange={(e) => set("telefonnummer", e.target.value)}
+                      className={inputClass}
+                      suggestions={fieldSuggestions.telefonnummer}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
                 <div>
                   <label className={labelClass}>Faxnummer</label>
@@ -1120,27 +1208,31 @@ export function NewCustomerModal({
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>E-Mail</label>
-                  <SuggestTextInput
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => set("email", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.email}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>E-Mail{isExtracted("email") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("email")}>
+                    <SuggestTextInput
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => set("email", e.target.value)}
+                      className={inputClass}
+                      suggestions={fieldSuggestions.email}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
                 <div>
-                  <label className={labelClass}>Internet Adr.</label>
-                  <SuggestTextInput
-                    type="url"
-                    value={form.internet_adr}
-                    onChange={(e) => set("internet_adr", e.target.value)}
-                    placeholder="https://…"
-                    className={inputClass}
-                    suggestions={fieldSuggestions.internet_adr}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <label className={labelClass}>Internet Adr.{isExtracted("internet_adr") && <KiBadge />}</label>
+                  <ExtractedFieldWrapper extracted={isExtracted("internet_adr")}>
+                    <SuggestTextInput
+                      type="url"
+                      value={form.internet_adr}
+                      onChange={(e) => set("internet_adr", e.target.value)}
+                      placeholder="https://…"
+                      className={inputClass}
+                      suggestions={fieldSuggestions.internet_adr}
+                      title="Vorschläge aus gespeicherten Kunden"
+                    />
+                  </ExtractedFieldWrapper>
                 </div>
                 <div>
                   <label className={labelClass}>Bemerkungen (Kontakt)</label>

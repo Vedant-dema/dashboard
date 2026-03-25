@@ -9,6 +9,7 @@ import { loadKundenDb } from "../store/kundenStore";
 import { loadAngeboteDb } from "../store/angeboteStore";
 import { loadRechnungenDb } from "../store/rechnungenStore";
 import { loadAbholauftraegeDb } from "../store/abholauftraegeStore";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,19 +40,20 @@ function uniq(arr: (string | undefined | null)[]): string[] {
     const t = v?.trim();
     if (t) s.add(t);
   }
-  return [...s].sort((a, b) => a.localeCompare(b, "de"));
+  return [...s].sort((a, b) => a.localeCompare(b));
 }
 
 // ─── Per-preset field definitions (built lazily from dbs) ────────────────────
 
-function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
+type TFn = (key: string, fallback?: string) => string;
+
+function buildFields(preset: string, dbs: AllDbs, t: TFn): FieldDef[] {
   const k = dbs.kunden.kunden;
   const w = dbs.kunden.kundenWash;
   const a = dbs.angebote.angebote;
   const r = dbs.rechnungen.rows;
   const ab = dbs.abholauftraege.rows;
 
-  // Shared customer name suggestions (firmenname + kunden_nr combined for rich matching)
   const firmennamen = uniq(k.map((x) => x.firmenname));
   const kundenNrs = uniq(k.map((x) => x.kunden_nr));
 
@@ -61,8 +63,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
       return [
         {
           key: "firmenname",
-          label: "Kundenname",
-          placeholder: "Firmenname oder Kunden-Nr. eingeben…",
+          label: t("ctxLabelCustomerName", "Customer name"),
+          placeholder: t("ctxPhCustomerName", "Enter company name or customer no…"),
           suggestions: uniq([...firmennamen, ...kundenNrs]),
           autoFill: (val, dbs) => {
             const match =
@@ -81,8 +83,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "kunden_nr",
-          label: "Kunden-Nr.",
-          placeholder: "z. B. KU-0001",
+          label: t("ctxLabelCustomerNr", "Customer no."),
+          placeholder: t("ctxPhCustomerNr", "e.g. KU-0001"),
           suggestions: kundenNrs,
           autoFill: (val, dbs) => {
             const match = dbs.kunden.kunden.find(
@@ -93,8 +95,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "angebot_nr",
-          label: "Angebotsnummer",
-          placeholder: "z. B. A-2025-001",
+          label: t("ctxLabelOfferNr", "Offer no."),
+          placeholder: t("ctxPhOfferNr", "e.g. A-2025-001"),
           suggestions: uniq(a.map((x) => x.angebot_nr)),
           autoFill: (val, dbs) => {
             const match = dbs.angebote.angebote.find(
@@ -110,15 +112,15 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
       return [
         {
           key: "firmenname",
-          label: "Kundenname",
-          placeholder: "Firmenname eingeben…",
+          label: t("ctxLabelCustomerName", "Customer name"),
+          placeholder: t("ctxPhCustomerName", "Enter company name or customer no…"),
           suggestions: firmennamen,
           required: true,
         },
         {
           key: "fabrikat",
-          label: "Fabrikat / Marke",
-          placeholder: "z. B. Mercedes, BMW…",
+          label: t("ctxLabelBrand", "Brand / Make"),
+          placeholder: t("ctxPhBrand", "e.g. Mercedes, BMW…"),
           suggestions: uniq([
             ...a.map((x) => x.fabrikat),
             ...ab.map((x) => x.fabrikat),
@@ -126,8 +128,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "typ",
-          label: "Typ / Modell",
-          placeholder: "z. B. Sprinter 316, X3…",
+          label: t("ctxLabelType", "Type / Model"),
+          placeholder: t("ctxPhType", "e.g. Sprinter 316, X3…"),
           suggestions: uniq([
             ...a.map((x) => x.typ),
             ...ab.map((x) => x.typ),
@@ -135,8 +137,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "fahrgestellnummer",
-          label: "Fahrgestellnummer",
-          placeholder: "VIN / FGS-Nr. (optional)",
+          label: t("ctxLabelVin", "Chassis no."),
+          placeholder: t("ctxPhVin", "VIN / chassis no. (optional)"),
           suggestions: uniq([
             ...a.map((x) => x.fahrgestellnummer),
             ...ab.map((x) => x.fahrgestellnummer),
@@ -149,8 +151,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
       return [
         {
           key: "rechn_nr",
-          label: "Rechnungsnummer",
-          placeholder: "z. B. R-2025-0042",
+          label: t("ctxLabelInvoiceNr", "Invoice no."),
+          placeholder: t("ctxPhInvoiceNr", "e.g. R-2025-0042"),
           suggestions: uniq(r.map((x) => x.rechn_nr)),
           autoFill: (val, dbs) => {
             const match = dbs.rechnungen.rows.find(
@@ -164,14 +166,14 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "firmenname",
-          label: "Kunde",
-          placeholder: "Automatisch oder manuell",
+          label: t("ctxLabelCustomer", "Customer"),
+          placeholder: t("ctxPhCustomerAuto", "Auto-filled or manual"),
           suggestions: uniq([...r.map((x) => x.firmenname), ...firmennamen]),
         },
         {
           key: "kunden_nr",
-          label: "Kunden-Nr.",
-          placeholder: "z. B. KU-0001",
+          label: t("ctxLabelCustomerNr", "Customer no."),
+          placeholder: t("ctxPhCustomerNr", "e.g. KU-0001"),
           suggestions: uniq([...r.map((x) => x.kunden_nr), ...kundenNrs]),
         },
       ];
@@ -181,8 +183,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
       return [
         {
           key: "firmenname",
-          label: "Kundenname",
-          placeholder: "Firmenname eingeben…",
+          label: t("ctxLabelCustomerName", "Customer name"),
+          placeholder: t("ctxPhCustomerName", "Enter company name or customer no…"),
           suggestions: firmennamen,
           autoFill: (val, dbs) => {
             const kd = dbs.kunden.kunden.find(
@@ -200,8 +202,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "kennzeichen",
-          label: "Kennzeichen",
-          placeholder: "z. B. DO-AB 123",
+          label: t("ctxLabelLicensePlate", "License plate"),
+          placeholder: t("ctxPhLicensePlate", "e.g. DO-AB 123"),
           suggestions: uniq(w.map((x) => x.kennzeichen)),
           autoFill: (val, dbs) => {
             const wash = dbs.kunden.kundenWash.find(
@@ -217,8 +219,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "wasch_programm",
-          label: "Waschprogramm",
-          placeholder: "z. B. Basis, Premium…",
+          label: t("ctxLabelWashProgram", "Wash program"),
+          placeholder: t("ctxPhWashProgram", "e.g. Basic, Premium…"),
           suggestions: uniq(w.map((x) => x.wasch_programm)),
         },
       ];
@@ -228,8 +230,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
       return [
         {
           key: "firmenname",
-          label: "Kundenname",
-          placeholder: "Firmenname eingeben…",
+          label: t("ctxLabelCustomerName", "Customer name"),
+          placeholder: t("ctxPhCustomerName", "Enter company name or customer no…"),
           suggestions: firmennamen,
           autoFill: (val, dbs) => {
             const match = dbs.kunden.kunden.find(
@@ -247,14 +249,14 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "telefonnummer",
-          label: "Telefonnummer",
-          placeholder: "z. B. 0231-123456",
+          label: t("ctxLabelPhone", "Phone"),
+          placeholder: t("ctxPhPhone", "e.g. 0231-123456"),
           suggestions: uniq(k.map((x) => x.telefonnummer)),
         },
         {
           key: "ansprechpartner",
-          label: "Ansprechpartner",
-          placeholder: "z. B. Herr Müller",
+          label: t("ctxLabelContact", "Contact person"),
+          placeholder: t("ctxPhContact", "e.g. Mr. Müller"),
           suggestions: uniq(k.map((x) => x.ansprechpartner)),
         },
       ];
@@ -264,15 +266,15 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
       return [
         {
           key: "part_name",
-          label: "Ersatzteil / Artikel",
-          placeholder: "z. B. Bremsscheibe vorne, Filter…",
+          label: t("ctxLabelPartName", "Spare part / Article"),
+          placeholder: t("ctxPhPartName", "e.g. brake disc front, filter…"),
           suggestions: [],
           required: true,
         },
         {
           key: "fabrikat",
-          label: "Fahrzeug / Marke",
-          placeholder: "z. B. Mercedes Sprinter",
+          label: t("ctxLabelVehicle", "Vehicle / Brand"),
+          placeholder: t("ctxPhVehicle", "e.g. Mercedes Sprinter"),
           suggestions: uniq([
             ...a.map((x) => `${x.fabrikat} ${x.typ}`.trim()),
             ...ab.map((x) => `${x.fabrikat} ${x.typ}`.trim()),
@@ -280,8 +282,8 @@ function buildFields(preset: string, dbs: AllDbs): FieldDef[] {
         },
         {
           key: "firmenname",
-          label: "Lieferant / Kunde",
-          placeholder: "Optional — Firmenname",
+          label: t("ctxLabelSupplier", "Supplier / Customer"),
+          placeholder: t("ctxPhSupplier", "Optional — company name"),
           suggestions: firmennamen,
         },
       ];
@@ -308,6 +310,8 @@ export function TaskContextFields({
   inputCls,
   labelCls,
 }: TaskContextFieldsProps) {
+  const { t } = useLanguage();
+
   // Load all DBs once
   const dbs = useMemo<AllDbs>(
     () => ({
@@ -320,18 +324,16 @@ export function TaskContextFields({
     [preset]
   );
 
-  const fields = useMemo(() => buildFields(preset, dbs), [preset, dbs]);
+  const fields = useMemo(() => buildFields(preset, dbs, t), [preset, dbs, t]);
 
   if (fields.length === 0) return null;
 
   const handleChange = (field: FieldDef, value: string) => {
     const next: ContextData = { ...contextData, [field.key]: value };
-    // Apply auto-fill when value is set
     if (value.trim() && field.autoFill) {
       const fills = field.autoFill(value, dbs);
       for (const [k, v] of Object.entries(fills)) {
         if (v !== undefined && !next[k]) {
-          // Only auto-fill if not already manually set
           next[k] = v;
         }
       }
@@ -339,13 +341,12 @@ export function TaskContextFields({
     onChange(next);
   };
 
-  // Determine layout: 2-column grid for fields 2+3, full-width for field 1
   const [first, ...rest] = fields;
 
   return (
     <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-        Aufgabendetails
+        {t("taskDetailsLabel", "Task details")}
       </p>
 
       {/* First field always full-width */}

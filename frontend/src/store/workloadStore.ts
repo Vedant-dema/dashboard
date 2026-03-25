@@ -35,17 +35,17 @@ export function getWorkloadLevel(stats: WorkloadStats): WorkloadLevel {
 
 export const WORKLOAD_CONFIG: Record<WorkloadLevel, {
   label: string;
-  labelDe: string;
+  labelKey: string;
   bar: string;
   badge: string;
   text: string;
   dot: string;
   pct: number;
 }> = {
-  free:     { label: "Available",          labelDe: "Verfügbar",           bar: "bg-emerald-400", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200",  text: "text-emerald-700", dot: "bg-emerald-400", pct: 5  },
-  light:    { label: "Lightly loaded",     labelDe: "Leicht ausgelastet",  bar: "bg-green-400",   badge: "bg-green-50 text-green-700 ring-green-200",        text: "text-green-700",   dot: "bg-green-400",   pct: 30 },
-  moderate: { label: "Moderately loaded",  labelDe: "Mäßig ausgelastet",   bar: "bg-amber-400",   badge: "bg-amber-50 text-amber-700 ring-amber-200",        text: "text-amber-700",   dot: "bg-amber-400",   pct: 65 },
-  busy:     { label: "Heavily loaded",     labelDe: "Stark ausgelastet",   bar: "bg-red-400",     badge: "bg-red-50 text-red-700 ring-red-200",              text: "text-red-700",     dot: "bg-red-400",     pct: 100 },
+  free:     { label: "Available",          labelKey: "workloadFree",     bar: "bg-emerald-400", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200",  text: "text-emerald-700", dot: "bg-emerald-400", pct: 5  },
+  light:    { label: "Lightly loaded",     labelKey: "workloadLight",    bar: "bg-green-400",   badge: "bg-green-50 text-green-700 ring-green-200",        text: "text-green-700",   dot: "bg-green-400",   pct: 30 },
+  moderate: { label: "Moderately loaded",  labelKey: "workloadModerate", bar: "bg-amber-400",   badge: "bg-amber-50 text-amber-700 ring-amber-200",        text: "text-amber-700",   dot: "bg-amber-400",   pct: 65 },
+  busy:     { label: "Heavily loaded",     labelKey: "workloadBusy",     bar: "bg-red-400",     badge: "bg-red-50 text-red-700 ring-red-200",              text: "text-red-700",     dot: "bg-red-400",     pct: 100 },
 };
 
 // ─── Date helpers (duplicated to keep this file dependency-free) ──────────────

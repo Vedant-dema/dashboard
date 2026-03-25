@@ -15,6 +15,7 @@ import {
   WORKLOAD_CONFIG,
   type WorkloadStats,
 } from "../store/workloadStore";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,8 +57,8 @@ function avatarColour(email: string): string {
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
-  return new Date(iso + "T12:00:00").toLocaleDateString("de-DE", {
+function formatDate(iso: string, localeTag: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString(localeTag, {
     weekday: "short", day: "2-digit", month: "short",
   });
 }
@@ -68,10 +69,14 @@ function WorkloadBar({
   stats,
   dueDate,
   compact = false,
+  t,
+  localeTag,
 }: {
   stats: WorkloadStats;
   dueDate?: string;
   compact?: boolean;
+  t: (key: string, fallback?: string) => string;
+  localeTag: string;
 }) {
   const level = getWorkloadLevel(stats);
   const cfg = WORKLOAD_CONFIG[level];
@@ -88,7 +93,7 @@ function WorkloadBar({
         )}
         <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 ${cfg.badge}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-          {stats.total > 0 ? `${stats.total}` : "Frei"}
+          {stats.total > 0 ? `${stats.total}` : t("workloadFreeCompact", "Free")}
         </span>
       </div>
     );
@@ -101,8 +106,10 @@ function WorkloadBar({
     <div className="space-y-1">
       {/* Level label + total count */}
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-[10px] font-semibold ${cfg.text}`}>{cfg.labelDe}</span>
-        <span className="text-[10px] text-slate-400">{stats.total} aktive Tasks</span>
+        <span className={`text-[10px] font-semibold ${cfg.text}`}>{t(cfg.labelKey, cfg.label)}</span>
+        <span className="text-[10px] text-slate-400">
+          {t("workloadActiveTasks", "{n} active tasks").replace("{n}", String(stats.total))}
+        </span>
       </div>
 
       {/* Progress bar */}
@@ -118,17 +125,17 @@ function WorkloadBar({
         {stats.overdue > 0 && (
           <span className="flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-600 ring-1 ring-red-200">
             <AlertTriangle className="h-2.5 w-2.5" />
-            {stats.overdue} überfällig
+            {t("workloadOverdue", "{n} overdue").replace("{n}", String(stats.overdue))}
           </span>
         )}
         {stats.today > 0 && (
           <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 ring-1 ring-amber-200">
-            {stats.today} heute fällig
+            {t("workloadDueToday", "{n} due today").replace("{n}", String(stats.today))}
           </span>
         )}
         {stats.total === 0 && (
           <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600 ring-1 ring-emerald-200">
-            Keine aktiven Tasks
+            {t("workloadNoTasks", "No active tasks")}
           </span>
         )}
       </div>
@@ -144,10 +151,10 @@ function WorkloadBar({
         }`}>
           <CalendarDays className="h-3 w-3 shrink-0" />
           <span>
-            Am {formatDate(dueDate)}:{" "}
+            {formatDate(dueDate, localeTag)}:{" "}
             {dateCount === 0
-              ? "Keine Tasks — Datum verfügbar"
-              : `${dateCount} Task${dateCount !== 1 ? "s" : ""} bereits geplant`}
+              ? t("workloadFreeOnDate", "No tasks — date available")
+              : t("workloadBusyOnDate", "{n} task(s) already scheduled").replace("{n}", String(dateCount))}
           </span>
         </div>
       )}
@@ -220,12 +227,29 @@ export function AssigneePicker({
   onChange,
   currentUserEmail,
   dueDate,
-  selfLabel = "— Myself —",
-  notifHint = "The assigned person will receive a notification.",
+  selfLabel,
+  notifHint,
 }: AssigneePickerProps) {
+  const { t, language } = useLanguage();
   const [open, setOpen] = useState(false);
   const [workloadMap, setWorkloadMap] = useState<Map<string, WorkloadStats>>(new Map());
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const localeTag = language === "de" ? "de-DE"
+    : language === "fr" ? "fr-FR"
+    : language === "es" ? "es-ES"
+    : language === "it" ? "it-IT"
+    : language === "pt" ? "pt-PT"
+    : language === "tr" ? "tr-TR"
+    : language === "ru" ? "ru-RU"
+    : language === "ar" ? "ar-SA"
+    : language === "zh" ? "zh-CN"
+    : language === "ja" ? "ja-JP"
+    : language === "hi" ? "hi-IN"
+    : "en-GB";
+
+  const resolvedSelfLabel = selfLabel ?? t("tasksAssignSelf", "— Myself —");
+  const resolvedNotifHint = notifHint ?? t("tasksAssignNotif", "The assigned person will receive a notification.");
 
   // Refresh workload whenever dropdown opens
   useEffect(() => {
@@ -263,11 +287,11 @@ export function AssigneePicker({
         )}
 
         <span className={`flex-1 truncate font-medium ${selectedMember ? "text-slate-700" : "text-slate-500"}`}>
-          {selectedMember ? selectedMember.name : selfLabel}
+          {selectedMember ? selectedMember.name : resolvedSelfLabel}
         </span>
 
         {selectedMember && selectedStats && (
-          <WorkloadBar stats={selectedStats} dueDate={dueDate} compact />
+          <WorkloadBar stats={selectedStats} dueDate={dueDate} compact t={t} localeTag={localeTag} />
         )}
 
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -278,15 +302,19 @@ export function AssigneePicker({
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15">
           {/* Header */}
           <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Aufgabe zuweisen</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              {t("assignTitle", "Assign task")}
+            </p>
             {dueDate ? (
               <p className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500">
                 <CalendarDays className="h-3 w-3" />
-                Fälligkeit: <span className="font-semibold text-slate-700">{formatDate(dueDate)}</span>
-                — Tasks pro Person für dieses Datum werden angezeigt
+                {t("assignDueLabel", "Due:")} <span className="font-semibold text-slate-700">{formatDate(dueDate, localeTag)}</span>
+                — {t("assignDateHint", "Tasks per person for this date are shown")}
               </p>
             ) : (
-              <p className="text-[10px] text-slate-400">Wählen Sie ein Fälligkeitsdatum, um Terminkonflikte zu sehen.</p>
+              <p className="text-[10px] text-slate-400">
+                {t("assignNoDueHint", "Select a due date to see scheduling conflicts.")}
+              </p>
             )}
           </div>
 
@@ -303,8 +331,8 @@ export function AssigneePicker({
                   : "Me"}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-slate-700">{selfLabel}</p>
-                <p className="text-[10px] text-slate-400">Kein Benachrichtigungs-Versand</p>
+                <p className="text-xs font-semibold text-slate-700">{resolvedSelfLabel}</p>
+                <p className="text-[10px] text-slate-400">{t("assignSelfNoNotif", "No notification sent")}</p>
               </div>
               {value === "__self__" && <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" />}
             </button>
@@ -340,18 +368,20 @@ export function AssigneePicker({
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-xs font-bold text-slate-700">{member.name}</span>
                       {isSelf && (
-                        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[8px] font-medium text-slate-500">Du</span>
+                        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[8px] font-medium text-slate-500">
+                          {t("assignSelfBadge", "You")}
+                        </span>
                       )}
                       {/* Urgent date conflict warning */}
                       {dueDate && dateCount >= 3 && (
                         <span className="flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-600 ring-1 ring-red-200">
                           <AlertTriangle className="h-2.5 w-2.5" />
-                          Voll ausgelastet
+                          {t("assignFullyBooked", "Fully booked")}
                         </span>
                       )}
                     </div>
                     <p className="truncate text-[10px] text-slate-400">{member.email}</p>
-                    <WorkloadBar stats={stats} dueDate={dueDate} />
+                    <WorkloadBar stats={stats} dueDate={dueDate} t={t} localeTag={localeTag} />
                   </div>
 
                   {isSelected && <Check className="mt-1 h-4 w-4 shrink-0 text-blue-600" />}
@@ -361,7 +391,7 @@ export function AssigneePicker({
 
             {members.length === 0 && (
               <p className="px-3 py-6 text-center text-xs text-slate-400">
-                Keine weiteren Teammitglieder registriert.
+                {t("assignNoMembers", "No other team members registered.")}
               </p>
             )}
           </div>
@@ -369,7 +399,7 @@ export function AssigneePicker({
           {/* Footer */}
           <div className="border-t border-slate-100 bg-slate-50/60 px-3 py-2">
             <p className="text-[9px] text-slate-400">
-              Auslastung basiert auf aktiven (nicht erledigten) Aufgaben im Dashboard.
+              {t("assignFooter", "Workload based on active (not completed) tasks in the dashboard.")}
             </p>
           </div>
         </div>
@@ -379,7 +409,7 @@ export function AssigneePicker({
       {value !== "__self__" && (
         <p className="mt-1 flex items-center gap-1 text-[10px] text-blue-600">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
-          {notifHint}
+          {resolvedNotifHint}
         </p>
       )}
     </div>

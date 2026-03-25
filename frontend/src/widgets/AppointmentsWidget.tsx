@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Clock, Pencil, Plus, Trash2, User, FileText } from "lucide-react";
+import { DatePickerInput } from "../components/DatePickerInput";
 import { loadKundenDb } from "../store/kundenStore";
 import type { WidgetRenderProps } from "../types/dashboard";
 import { useWidgetLanguage } from "./useWidgetLanguage";
@@ -215,9 +216,13 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className={`text-xs font-semibold ${isToday ? "text-blue-600" : "text-slate-700"}`}>
-            {formatDayHeader(viewDate)}
-          </span>
+          <DatePickerInput
+            value={viewDate}
+            onChange={setViewDate}
+            variant="ghost"
+            clearable={false}
+            triggerClassName={isToday ? "text-blue-600 hover:bg-blue-50" : "text-slate-700"}
+          />
           <button
             type="button"
             onClick={() => setViewDate((d) => isoAddDays(d, 1))}
@@ -360,11 +365,11 @@ export function AppointmentsWidget({ config, onUpdateConfig }: WidgetRenderProps
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className={labelCls}>{t("appointmentsDate", "Datum")}</label>
-                <input
-                  type="date"
-                  className={inputCls}
+                <DatePickerInput
                   value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
+                  onChange={setFormDate}
+                  placeholder="Datum wählen…"
+                  clearable={false}
                 />
               </div>
               <div>

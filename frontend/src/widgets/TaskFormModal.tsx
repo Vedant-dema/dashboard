@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { X, ClipboardList } from "lucide-react";
 import { TaskContextFields, type ContextData } from "./TaskContextFields";
 import { AssigneePicker, type TeamMember } from "./AssigneePicker";
+import { DatePickerInput } from "../components/DatePickerInput";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,11 +157,10 @@ export function TaskFormModal({
               </div>
               <div>
                 <label className={labelCls}>{t("tasksDueDate", "Due date")}</label>
-                <input
-                  type="date"
-                  className={inputCls}
+                <DatePickerInput
                   value={values.dueDate}
-                  onChange={(e) => onChange({ dueDate: e.target.value })}
+                  onChange={(iso) => onChange({ dueDate: iso })}
+                  placeholder={t("tasksDueDatePlaceholder", "Due date…")}
                 />
               </div>
             </div>
@@ -169,7 +169,7 @@ export function TaskFormModal({
             <div>
               <label className={labelCls}>
                 {t("tasksCustomTitle", "Custom title")}{" "}
-                <span className="font-normal normal-case text-slate-400">(optional — überschreibt Aufgabentyp)</span>
+                <span className="font-normal normal-case text-slate-400">{t("tasksCustomTitleHint", "(optional — overrides task type)")}</span>
               </label>
               <input
                 type="text"

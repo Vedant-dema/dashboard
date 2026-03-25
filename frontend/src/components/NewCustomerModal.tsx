@@ -545,9 +545,11 @@ export function NewCustomerModal({
         }
         // Empty body — show the HTTP status code clearly.
         if (!body || Object.keys(body).length === 0) {
-          setVatCheckError(
-            `HTTP ${res.status} — leere Antwort vom Server. Mögliche Ursachen: Proxy-Timeout, Cold-Start des Backends oder fehlende CORS_ORIGINS-Konfiguration.`
-          );
+          const hint =
+            res.status === 405
+              ? `HTTP 405 — der Server verbietet POST auf diesem Pfad. Im Cloud-Deployment fehlt wahrscheinlich die Umgebungsvariable VITE_API_BASE_URL (Build-Zeit). Ohne sie landen Anfragen beim Frontend-Host statt beim Python-Backend. Setzen Sie VITE_API_BASE_URL=https://ihr-backend.example.com in den Build-Einstellungen und bauen Sie das Frontend neu.`
+              : `HTTP ${res.status} — leere Antwort vom Server. Mögliche Ursachen: Proxy-Timeout, Cold-Start des Backends oder fehlende CORS_ORIGINS-Konfiguration.`;
+          setVatCheckError(hint);
           return;
         }
         setVatCheckError(formatVatCheckDetail(body));
@@ -557,14 +559,18 @@ export function NewCustomerModal({
       setVatCheckResult(body);
     } catch {
       setVatCheckError(
-        "Netzwerkfehler. Läuft das Python-Backend (Port 8000) und ist der Vite-Proxy aktiv?"
+        API_BASE
+          ? "Netzwerkfehler. Das Backend ist nicht erreichbar — CORS-Block oder Backend nicht gestartet?"
+          : "Netzwerkfehler. Lokal: Läuft das Python-Backend (Port 8000)? Cloud: VITE_API_BASE_URL als Build-Variable setzen und Frontend neu bauen."
       );
       setVatBackendResponseJson(
         JSON.stringify(
           {
             error: "fetch failed — keine Antwort vom Server",
-            hint: "Backend starten: cd backend && python -m uvicorn main:app --host 127.0.0.1 --port 8000",
-            apiBase: API_BASE || "(leer — nutzt gleichen Host /api)",
+            hint: API_BASE
+              ? "Backend prüfen: CORS_ORIGINS muss die Frontend-Domain enthalten"
+              : "VITE_API_BASE_URL ist leer — in Cloud-Build-Einstellungen auf Backend-URL setzen, z. B. https://dema-backend.onrender.com",
+            apiBase: API_BASE || "(leer — VITE_API_BASE_URL nicht gesetzt)",
           },
           null,
           2

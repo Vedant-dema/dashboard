@@ -575,3 +575,58 @@ Presets are compile-time static. Admin-editable presets stored server-side are a
 ---
 
 <!-- NEW ENTRIES GO BELOW THIS LINE -->
+
+---
+
+## [FEATURE-013] VAT Check Cloud Timeout & Error Handling Fix
+**Date:** 2026-03-25
+**Author/Agent:** Cursor AI
+**Status:** Modified
+
+### What Was Added
+Fixed two related bugs that caused the VAT-ID validation feature to silently fail on cloud deployments with the unhelpful message "Prüfung fehlgeschlagen". The backend now respects a configurable total-time budget (`VIES_MAX_TOTAL_SEC`, default 24 s) so the retry loop always completes before a cloud reverse proxy (typically 30 s timeout) kills the connection. The frontend now produces meaningful error messages for every failure mode: CORS blocks (HTTP status 0), proxy timeout/gateway errors (non-JSON body), and alternative error JSON shapes (`error`/`message` keys instead of FastAPI's `detail`).
+
+### Where It Was Added
+- `backend/main.py` — added `VIES_MAX_TOTAL_SEC` env-var, wall-clock guard at loop top, sleep capped by remaining budget, updated module docstring
+- `frontend/src/components/NewCustomerModal.tsx` — improved `formatVatCheckDetail` to handle proxy error shapes; added explicit status-0 (CORS) guard and non-JSON-body guard in `runVatCheck`
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. On every retry-loop iteration the backend computes `elapsed = now - loop_start`.
+2. If `elapsed >= VIES_MAX_TOTAL_SEC` (default 24 s) an HTTP 503 is raised immediately with a descriptive message, ensuring the response arrives before a 30 s proxy cuts the connection.
+3. Each backoff sleep is capped at `min(normal_sleep, remaining_budget - 1 s)` so it never overshoots the budget.
+4. In the frontend, before reading the body, `res.status === 0` is caught as a CORS error with an actionable hint.
+5. If `JSON.parse` throws (proxy returned HTML), the raw text is stored and an explicit proxy-timeout error message is shown (including the HTTP status code).
+6. `formatVatCheckDetail` now also extracts `error`, `message`, `error_description` keys from the response object before falling back to the generic text.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| VIES_MAX_TOTAL_SEC | env var (float) | No | Wall-clock budget in seconds for the full VIES retry loop (default: 24.0) |
+
+### Database
+- **Engine:** N/A
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | /api/v1/vat/check | None | VatCheckRequest | VatCheckResponse (unchanged shape) |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- If `VIES_MAX_TOTAL_SEC` is lower than a single VIES call's response time (usually < 2 s), only one attempt will be made. Recommended minimum: 10 s.
+- Cloud platforms with timeouts shorter than 24 s (e.g. Vercel Hobby at 10 s) require `VIES_MAX_TOTAL_SEC` to be lowered accordingly.
+- The `_vies_serial` lock serialises all VIES calls; on a busy server a request may wait behind another request's full budget before it even starts.

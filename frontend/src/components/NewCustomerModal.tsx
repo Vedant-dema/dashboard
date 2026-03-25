@@ -428,7 +428,7 @@ export function NewCustomerModal({
   const isExtracted = (key: string) => extractedFields.has(key);
 
   const formatVatCheckDetail = (raw: unknown): string => {
-    if (typeof raw === "string") return raw;
+    if (typeof raw === "string" && raw.trim()) return raw.trim();
     if (Array.isArray(raw)) {
       return raw
         .map((e) => {
@@ -439,7 +439,15 @@ export function NewCustomerModal({
         })
         .join("; ");
     }
-    return "Prüfung fehlgeschlagen";
+    // Handle proxy / gateway error shapes that don't use FastAPI's {"detail": ...} format.
+    if (raw && typeof raw === "object") {
+      const obj = raw as Record<string, unknown>;
+      const candidate =
+        obj["detail"] ?? obj["error"] ?? obj["message"] ?? obj["error_description"];
+      if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+      if (typeof candidate === "number") return String(candidate);
+    }
+    return "Prüfung fehlgeschlagen — keine Detail-Antwort vom Server (möglicherweise Proxy-Timeout oder CORS-Problem).";
   };
 
   const runVatCheck = async () => {
@@ -484,12 +492,25 @@ export function NewCustomerModal({
             : {}),
         }),
       });
+      // status 0 means the browser blocked the request (CORS / network).
+      if (res.status === 0) {
+        const corsHint = {
+          error: "CORS oder Netzwerkfehler (HTTP-Status 0)",
+          hint: "Das Backend hat geantwortet, aber der Browser blockiert die Antwort. Stellen Sie sicher, dass CORS_ORIGINS auf dem Server die Cloud-Domain enthält.",
+        };
+        setVatBackendResponseJson(JSON.stringify(corsHint, null, 2));
+        setVatCheckError(
+          "CORS-Fehler: Der Browser blockiert die Antwort des Backends. Bitte CORS_ORIGINS in der Cloud-Konfiguration prüfen."
+        );
+        return;
+      }
       const textBody = await res.text();
       let raw: unknown = {};
       try {
         raw = textBody ? JSON.parse(textBody) : {};
       } catch {
-        raw = { _parseError: "Response was not JSON", _rawText: textBody.slice(0, 4000) };
+        // Proxy returned HTML or plain text — surface it directly so the user can diagnose.
+        raw = { _parseError: "Antwort war kein gültiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)", _rawText: textBody.slice(0, 4000) };
       }
       try {
         setVatBackendResponseJson(JSON.stringify(raw, null, 2));
@@ -497,8 +518,15 @@ export function NewCustomerModal({
         setVatBackendResponseJson(String(raw));
       }
       if (!res.ok) {
-        const body = raw as { detail?: unknown };
-        setVatCheckError(formatVatCheckDetail(body?.detail));
+        const body = raw as Record<string, unknown>;
+        // Check for _parseError first — proxy returned non-JSON.
+        if (body._parseError) {
+          setVatCheckError(
+            `HTTP ${res.status} — ${String(body._parseError)}. Proxy-Timeout? Prüfen Sie VIES_MAX_TOTAL_SEC in der Backend-Konfiguration.`
+          );
+          return;
+        }
+        setVatCheckError(formatVatCheckDetail(body));
         return;
       }
       const body = raw as ViesCheckResult;

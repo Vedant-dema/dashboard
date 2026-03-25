@@ -15,6 +15,9 @@ Environment:
   VIES_PRINT_RAW           If not 0/false/no/off: log full VIES JSON to stderr (default: on for debugging).
                            Set to 0 in production to avoid logging VAT numbers.
   VIES_OMIT_RAW_IN_JSON    If 1/true: do not include vies_raw in the HTTP JSON response (default: off).
+  VIES_MAX_TOTAL_SEC       Hard wall-clock budget for one check (retries + sleeps, default: 24 s).
+                           Must be below the cloud reverse-proxy timeout (typically 30 s on Render/Railway/
+                           Heroku). Increase only if your platform allows long-running requests.
 
 Note: MS_MAX_CONCURRENT_REQ is enforced by the Commission/member states. We cannot remove it;
 this app serializes outbound VIES calls and retries with backoff so many checks still succeed.
@@ -391,21 +394,43 @@ async def _vies_call_with_retries(
     json_body: dict[str, Any] | None = None,
     require_valid_field: bool = False,
 ) -> dict[str, Any]:
-    """Call VoW REST (GET or POST). Same queue + retry behaviour as the Commission documents."""
+    """Call VoW REST (GET or POST). Same queue + retry behaviour as the Commission documents.
+
+    VIES_MAX_TOTAL_SEC caps total wall-clock time so cloud reverse proxies (which typically
+    have a 25–30 s request timeout) don't kill the connection before we return.  Default is
+    24 s, which fits comfortably under a 30 s proxy limit.  Raise it (or set VIES_MAX_RETRIES
+    higher) only if your cloud platform explicitly supports long-running requests.
+    """
     max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
     base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
     cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
+    # Hard wall-clock budget for the whole retry loop (including sleeps + VIES call time).
+    # Keeps us well inside the 30 s window most cloud reverse proxies enforce.
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
 
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
     client: httpx.AsyncClient = _vies_http
     last_detail = "VIES temporarily unavailable"
     m = method.upper()
+    loop_start = asyncio.get_event_loop().time()
     async with _vies_serial:
         for attempt in range(max_retries):
+            elapsed = asyncio.get_event_loop().time() - loop_start
+            if elapsed >= max_total_sec:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        f"VIES check timed out after {elapsed:.0f} s "
+                        f"(budget: {max_total_sec:.0f} s). "
+                        "VIES may be temporarily overloaded — please try again in a moment."
+                    ),
+                )
             if attempt > 0:
-                raw = base_wait * (2 ** (attempt - 1)) + random.uniform(0, 0.55)
-                await asyncio.sleep(min(raw, cap_wait))
+                sleep_sec = base_wait * (2 ** (attempt - 1)) + random.uniform(0, 0.55)
+                sleep_sec = min(sleep_sec, cap_wait, max_total_sec - elapsed - 1.0)
+                if sleep_sec > 0:
+                    await asyncio.sleep(sleep_sec)
             try:
                 if m == "POST":
                     r = await client.post(url, json=json_body)

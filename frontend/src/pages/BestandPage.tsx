@@ -1,13 +1,13 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Search, X, Plus, ChevronDown, ChevronUp,
-  Truck, AlertTriangle, CheckCircle2, Clock,
-  RefreshCw, Car, Tag, Info, SlidersHorizontal,
-  Hash, Calendar, Wrench, MapPin, ArrowUpDown,
+  Truck, CheckCircle2, Clock,
+  RefreshCw, Car, Tag, Info,
 } from "lucide-react";
 import type { BestandRow } from "../types/bestand";
 import { loadBestandDb } from "../store/bestandStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
+import { NeuesFahrzeugModal } from "./NeuesFahrzeugModal";
 import type { DepartmentArea } from "../types/departmentArea";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -93,8 +93,9 @@ function flagPill(color: string) {
 export function BestandPage({ department }: { department?: DepartmentArea }) {
   const [db] = useState(() => loadBestandDb());
   const [activeTab,   setActiveTab]   = useState<"haupt" | "ersatz">("haupt");
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [showFlags,   setShowFlags]   = useState(false);
+  const [quickSearch, setQuickSearch] = useState("");
 
   // ── Filters ──
   const [positionsNr,    setPositionsNr]    = useState("");
@@ -120,6 +121,7 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
   const [sortierung,     setSortierung]      = useState<string>(SORT_OPTIONS[0]);
   const [flagFilters,    setFlagFilters]     = useState<Partial<Record<FlagKey, boolean>>>({});
   const [selectedId,     setSelectedId]      = useState<number | null>(null);
+  const [showNewModal,   setShowNewModal]    = useState(false);
 
   const setFlag = useCallback((key: FlagKey, value: boolean) => {
     setFlagFilters((prev) => {
@@ -130,16 +132,16 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
   }, []);
 
   const showAll = () => {
-    setPositionsNr(""); setKaufVon(""); setKaufBis(""); setFahrzeugart("");
-    setAufbauArt(""); setFabrikat(""); setModellTyp(""); setMaxAlterJahre("");
-    setFahrgestell(""); setPsVon(""); setPsBis(""); setStandtageVon("");
-    setStandtageBis(""); setKreditorNr(""); setFirmenname(""); setPlz("");
-    setOrt(""); setLand(""); setBeteiligter(""); setImportNr(""); setFlagFilters({});
+    setQuickSearch(""); setPositionsNr(""); setKaufVon(""); setKaufBis("");
+    setFahrzeugart(""); setAufbauArt(""); setFabrikat(""); setModellTyp("");
+    setMaxAlterJahre(""); setFahrgestell(""); setPsVon(""); setPsBis("");
+    setStandtageVon(""); setStandtageBis(""); setKreditorNr(""); setFirmenname("");
+    setPlz(""); setOrt(""); setLand(""); setBeteiligter(""); setImportNr(""); setFlagFilters({});
   };
 
   const activeFilterCount = [
-    positionsNr, kaufVon, kaufBis, fahrzeugart, aufbauArt, fabrikat, modellTyp,
-    maxAlterJahre, fahrgestell, psVon, psBis, standtageVon, standtageBis,
+    quickSearch, positionsNr, kaufVon, kaufBis, fahrzeugart, aufbauArt, fabrikat,
+    modellTyp, maxAlterJahre, fahrgestell, psVon, psBis, standtageVon, standtageBis,
     kreditorNr, firmenname, plz, ort, land, beteiligter, importNr,
   ].filter(Boolean).length + Object.keys(flagFilters).length;
 
@@ -166,6 +168,18 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
       : db.rows.filter((r) => r.ersatzschluessel);
 
     let list = [...baseRows];
+
+    if (quickSearch.trim()) {
+      const q = quickSearch.toLowerCase();
+      list = list.filter((r) =>
+        r.fabrikat.toLowerCase().includes(q) ||
+        r.typ.toLowerCase().includes(q) ||
+        (r.firmenname ?? "").toLowerCase().includes(q) ||
+        r.fahrgestellnummer.toLowerCase().includes(q) ||
+        r.positions_nr.includes(q)
+      );
+    }
+
     if (positionsNr.trim()) list = list.filter((r) => r.positions_nr.includes(positionsNr.trim()));
     if (kaufVon)  list = list.filter((r) => r.kaufdatum >= kaufVon);
     if (kaufBis)  list = list.filter((r) => r.kaufdatum <= kaufBis);
@@ -225,8 +239,8 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
     });
     return list;
   }, [
-    db.rows, activeTab, positionsNr, kaufVon, kaufBis, fahrzeugart, aufbauArt,
-    fabrikat, modellTyp, maxAlterJahre, fahrgestell, psVon, psBis,
+    db.rows, activeTab, quickSearch, positionsNr, kaufVon, kaufBis, fahrzeugart,
+    aufbauArt, fabrikat, modellTyp, maxAlterJahre, fahrgestell, psVon, psBis,
     standtageVon, standtageBis, kreditorNr, firmenname, plz, ort, land,
     beteiligter, importNr, flagFilters, sortierung,
   ]);
@@ -240,11 +254,6 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
     total:          db.rows.length,
   }), [db.rows]);
 
-  // ── Expired reservations ──
-  const expiredReservations = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return db.rows.filter((r) => r.reserviert && r.reserviert_bis && r.reserviert_bis < today);
-  }, [db.rows]);
 
   const selected = selectedId != null ? db.rows.find((r) => r.id === selectedId) : null;
 
@@ -269,6 +278,16 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
             <p className="mt-0.5 text-sm text-slate-500">Fahrzeugbestand verwalten und suchen</p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowNewModal(true)}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              Neues Fahrzeug
+            </button>
+
           {/* Stat pills */}
           <div className="flex flex-wrap gap-2">
             <StatPill icon={<Truck className="h-3.5 w-3.5" />}     label="Gesamt"        value={stats.total}          color="slate"  />
@@ -276,6 +295,7 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
             <StatPill icon={<RefreshCw className="h-3.5 w-3.5" />} label="Aufbereitung"  value={stats.inAufbereitung} color="blue"   />
             <StatPill icon={<Tag className="h-3.5 w-3.5" />}       label="Reserviert"    value={stats.reserviert}     color="purple" />
             <StatPill icon={<Car className="h-3.5 w-3.5" />}       label="Mobile.de"     value={stats.inMobile}       color="teal"   />
+          </div>
           </div>
         </div>
 
@@ -298,250 +318,193 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
         </div>
       </div>
 
-      {/* ── Expired reservation warning ───────────────────────────────────── */}
-      {expiredReservations.length > 0 && (
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-          <p className="flex-1 text-sm text-amber-800">
-            <span className="font-bold">
-              {expiredReservations.length} Reservierung{expiredReservations.length > 1 ? "en" : ""} abgelaufen
-            </span>
-            {" — "}Bitte prüfen und ggf. freigeben.{" "}
-            <button
-              type="button"
-              onClick={() => setFlag("reserviert", true)}
-              className="font-semibold underline hover:text-amber-900"
-            >
-              Reservierte anzeigen
-            </button>
-          </p>
-        </div>
-      )}
 
-      {/* ── Filter card ───────────────────────────────────────────────────── */}
-      <div className="glass-card mb-4 overflow-hidden border-slate-200/80 shadow-sm">
+      {/* ── Filter card ── exact same pattern as CustomersPage ─────────────── */}
+      <div className="glass-card mb-4 space-y-4 p-4">
 
-        {/* ── Toolbar row ── */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5">
-          <SlidersHorizontal className="h-4 w-4 shrink-0 text-slate-400" />
-          <span className="text-sm font-semibold text-slate-600">Filter</span>
-
-          {/* Active filter chips */}
-          {activeFilterCount > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 ml-1">
-              {positionsNr  && <ActiveChip label={`Nr: ${positionsNr}`}   onClear={() => setPositionsNr("")} />}
-              {fahrzeugart  && <ActiveChip label={fahrzeugart}             onClear={() => setFahrzeugart("")} />}
-              {aufbauArt    && <ActiveChip label={aufbauArt}               onClear={() => setAufbauArt("")} />}
-              {fabrikat     && <ActiveChip label={fabrikat}                onClear={() => setFabrikat("")} />}
-              {modellTyp    && <ActiveChip label={modellTyp}               onClear={() => setModellTyp("")} />}
-              {firmenname   && <ActiveChip label={firmenname}              onClear={() => setFirmenname("")} />}
-              {plz          && <ActiveChip label={`PLZ ${plz}`}           onClear={() => setPlz("")} />}
-              {ort          && <ActiveChip label={ort}                     onClear={() => setOrt("")} />}
-              {(kaufVon || kaufBis) && (
-                <ActiveChip
-                  label={`Kauf: ${kaufVon || "…"} – ${kaufBis || "…"}`}
-                  onClear={() => { setKaufVon(""); setKaufBis(""); }}
-                />
-              )}
-              {Object.keys(flagFilters).length > 0 && (
-                <ActiveChip
-                  label={`${Object.keys(flagFilters).length} Status-Flag${Object.keys(flagFilters).length > 1 ? "s" : ""}`}
-                  onClear={() => setFlagFilters({})}
-                />
-              )}
-            </div>
-          )}
-
-          <div className="flex-1" />
-
+        {/* Row 1: quick search + reset */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={quickSearch}
+              onChange={(e) => setQuickSearch(e.target.value)}
+              placeholder="Schnellsuche — Fabrikat, Typ, Firma…"
+              className="h-10 w-72 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
           {activeFilterCount > 0 && (
             <button
               type="button"
               onClick={showAll}
-              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
-              <X className="h-3.5 w-3.5" />
-              Zurücksetzen
+              alle
             </button>
           )}
+        </div>
 
-          <div className="h-4 w-px bg-slate-200" />
-
-          {/* Sort */}
-          <div className="flex items-center gap-1.5">
-            <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
-            <select
-              value={sortierung}
-              onChange={(e) => setSortierung(e.target.value)}
-              className="h-7 rounded-lg border-0 bg-transparent pr-6 text-xs font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-400/30"
-            >
+        {/* Row 2: main filter grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          <div>
+            <label className={labelCls}>PositionsNr</label>
+            <SuggestTextInput value={positionsNr} onChange={(e) => setPositionsNr(e.target.value)}
+              suggestions={suggestions.position} type="text" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Fahrzeugart</label>
+            <select value={fahrzeugart} onChange={(e) => setFahrzeugart(e.target.value)} className={inputCls}>
+              {FAHRZEUGART_OPTIONS.map((o) => <option key={o || "_"} value={o}>{o || "Alle"}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>AufbauArt</label>
+            <select value={aufbauArt} onChange={(e) => setAufbauArt(e.target.value)} className={inputCls}>
+              {AUFBAU_OPTIONS.map((o) => <option key={o || "_"} value={o}>{o || "Alle"}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Fabrikat</label>
+            <SuggestTextInput value={fabrikat} onChange={(e) => setFabrikat(e.target.value)}
+              suggestions={suggestions.fabrikat} type="text" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Modell, Typ</label>
+            <input type="text" value={modellTyp} onChange={(e) => setModellTyp(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>von Kaufdatum</label>
+            <input type="date" value={kaufVon} onChange={(e) => setKaufVon(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>bis Kaufdatum</label>
+            <input type="date" value={kaufBis} onChange={(e) => setKaufBis(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Firmenname</label>
+            <SuggestTextInput value={firmenname} onChange={(e) => setFirmenname(e.target.value)}
+              suggestions={suggestions.firmenname} type="text" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>PLZ</label>
+            <input type="text" value={plz} onChange={(e) => setPlz(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Ort</label>
+            <input type="text" value={ort} onChange={(e) => setOrt(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>KreditorNr</label>
+            <SuggestTextInput value={kreditorNr} onChange={(e) => setKreditorNr(e.target.value)}
+              suggestions={suggestions.kreditor} type="text" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Sortierung</label>
+            <select value={sortierung} onChange={(e) => setSortierung(e.target.value)} className={inputCls}>
               {SORT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
+        </div>
 
-          <div className="h-4 w-px bg-slate-200" />
-
+        {/* Row 3: more filters toggle */}
+        <div>
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-              showFilters
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
+            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600"
           >
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {showFilters ? "Einklappen" : "Filter"}
+            {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Weitere Filter
           </button>
+
+          {showFilters && (
+            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              <div>
+                <label className={labelCls}>Fahrgestellnummer</label>
+                <input type="text" value={fahrgestell} onChange={(e) => setFahrgestell(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Max. Alter (Jahre)</label>
+                <input type="number" value={maxAlterJahre} onChange={(e) => setMaxAlterJahre(e.target.value)}
+                  placeholder="z. B. 10" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>PS von</label>
+                <input type="number" value={psVon} onChange={(e) => setPsVon(e.target.value)}
+                  placeholder="min" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>PS bis</label>
+                <input type="number" value={psBis} onChange={(e) => setPsBis(e.target.value)}
+                  placeholder="max" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Standtage von</label>
+                <input type="number" value={standtageVon} onChange={(e) => setStandtageVon(e.target.value)}
+                  placeholder="min" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Standtage bis</label>
+                <input type="number" value={standtageBis} onChange={(e) => setStandtageBis(e.target.value)}
+                  placeholder="max" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Land</label>
+                <input type="text" value={land} onChange={(e) => setLand(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Beteiligter</label>
+                <input type="text" value={beteiligter} onChange={(e) => setBeteiligter(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>ImportNr</label>
+                <input type="text" value={importNr} onChange={(e) => setImportNr(e.target.value)} className={inputCls} />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ── Filter fields ── */}
-        {showFilters && (
-          <div className="px-4 py-4 space-y-0 divide-y divide-slate-100">
+        {/* Row 4: status flags */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowFlags((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600"
+          >
+            {showFlags ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Status-Filter
+            {Object.keys(flagFilters).length > 0 && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                {Object.keys(flagFilters).length} aktiv
+              </span>
+            )}
+          </button>
 
-            {/* Group 1: Identifikation */}
-            <div className="pb-4">
-              <FilterGroupLabel icon={<Hash className="h-3.5 w-3.5" />} label="Identifikation" />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                <FF label="PositionsNr">
-                  <SuggestTextInput value={positionsNr} onChange={(e) => setPositionsNr(e.target.value)}
-                    suggestions={suggestions.position} type="text" className={inputCls} />
-                </FF>
-                <FF label="Fahrgestellnummer" className="lg:col-span-2">
-                  <input type="text" value={fahrgestell} onChange={(e) => setFahrgestell(e.target.value)} className={inputCls} />
-                </FF>
-                <FF label="Kaufdatum von">
-                  <input type="date" value={kaufVon} onChange={(e) => setKaufVon(e.target.value)} className={inputCls} />
-                </FF>
-                <FF label="bis">
-                  <input type="date" value={kaufBis} onChange={(e) => setKaufBis(e.target.value)} className={inputCls} />
-                </FF>
-                <FF label="ImportNr">
-                  <input type="text" value={importNr} onChange={(e) => setImportNr(e.target.value)} className={inputCls} />
-                </FF>
-              </div>
+          {showFlags && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-3">
+              {FLAG_FILTERS.map(({ key, label, color }) => (
+                <label
+                  key={key}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition ${
+                    flagFilters[key]
+                      ? `${flagPill(color)} border-transparent`
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(flagFilters[key])}
+                    onChange={(e) => setFlag(key, e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600"
+                  />
+                  {label}
+                </label>
+              ))}
             </div>
+          )}
+        </div>
 
-            {/* Group 2: Fahrzeug */}
-            <div className="py-4">
-              <FilterGroupLabel icon={<Wrench className="h-3.5 w-3.5" />} label="Fahrzeug" />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                <FF label="Fahrzeugart">
-                  <select value={fahrzeugart} onChange={(e) => setFahrzeugart(e.target.value)} className={inputCls}>
-                    {FAHRZEUGART_OPTIONS.map((o) => <option key={o || "_"} value={o}>{o || "Alle"}</option>)}
-                  </select>
-                </FF>
-                <FF label="AufbauArt">
-                  <select value={aufbauArt} onChange={(e) => setAufbauArt(e.target.value)} className={inputCls}>
-                    {AUFBAU_OPTIONS.map((o) => <option key={o || "_"} value={o}>{o || "Alle"}</option>)}
-                  </select>
-                </FF>
-                <FF label="Fabrikat">
-                  <SuggestTextInput value={fabrikat} onChange={(e) => setFabrikat(e.target.value)}
-                    suggestions={suggestions.fabrikat} type="text" className={inputCls} />
-                </FF>
-                <FF label="Modell / Typ">
-                  <input type="text" value={modellTyp} onChange={(e) => setModellTyp(e.target.value)} className={inputCls} />
-                </FF>
-                <FF label="Max. Alter (J.)">
-                  <input type="number" value={maxAlterJahre} onChange={(e) => setMaxAlterJahre(e.target.value)}
-                    placeholder="z. B. 10" className={inputCls} />
-                </FF>
-                <FF label="PS von / bis">
-                  <div className="flex gap-1.5">
-                    <input type="number" value={psVon} onChange={(e) => setPsVon(e.target.value)}
-                      placeholder="min" className={inputCls} />
-                    <input type="number" value={psBis} onChange={(e) => setPsBis(e.target.value)}
-                      placeholder="max" className={inputCls} />
-                  </div>
-                </FF>
-              </div>
-            </div>
-
-            {/* Group 3: Standort */}
-            <div className="py-4">
-              <FilterGroupLabel icon={<MapPin className="h-3.5 w-3.5" />} label="Standort &amp; Kreditor" />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                <FF label="KreditorNr">
-                  <SuggestTextInput value={kreditorNr} onChange={(e) => setKreditorNr(e.target.value)}
-                    suggestions={suggestions.kreditor} type="text" className={inputCls} />
-                </FF>
-                <FF label="Firmenname" className="lg:col-span-2">
-                  <SuggestTextInput value={firmenname} onChange={(e) => setFirmenname(e.target.value)}
-                    suggestions={suggestions.firmenname} type="text" className={inputCls} />
-                </FF>
-                <FF label="PLZ">
-                  <input type="text" value={plz} onChange={(e) => setPlz(e.target.value)} className={inputCls} />
-                </FF>
-                <FF label="Ort">
-                  <input type="text" value={ort} onChange={(e) => setOrt(e.target.value)} className={inputCls} />
-                </FF>
-                <FF label="Land">
-                  <input type="text" value={land} onChange={(e) => setLand(e.target.value)} className={inputCls} />
-                </FF>
-              </div>
-            </div>
-
-            {/* Group 4: Sonstige + Standtage */}
-            <div className="py-4">
-              <FilterGroupLabel icon={<Calendar className="h-3.5 w-3.5" />} label="Sonstige" />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-8">
-                <FF label="Standtage von">
-                  <input type="number" value={standtageVon} onChange={(e) => setStandtageVon(e.target.value)}
-                    placeholder="min" className={inputCls} />
-                </FF>
-                <FF label="bis">
-                  <input type="number" value={standtageBis} onChange={(e) => setStandtageBis(e.target.value)}
-                    placeholder="max" className={inputCls} />
-                </FF>
-                <FF label="Beteiligter">
-                  <input type="text" value={beteiligter} onChange={(e) => setBeteiligter(e.target.value)} className={inputCls} />
-                </FF>
-              </div>
-            </div>
-
-            {/* Group 5: Status flags */}
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => setShowFlags((v) => !v)}
-                className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-blue-600"
-              >
-                <Tag className="h-3.5 w-3.5" />
-                Status-Flags
-                {Object.keys(flagFilters).length > 0 && (
-                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">
-                    {Object.keys(flagFilters).length}
-                  </span>
-                )}
-                {showFlags ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              </button>
-              {showFlags && (
-                <div className="flex flex-wrap gap-2">
-                  {FLAG_FILTERS.map(({ key, label, color }) => {
-                    const active = Boolean(flagFilters[key]);
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setFlag(key, !active)}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
-                          active
-                            ? `${flagPill(color)} border-transparent shadow-sm`
-                            : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                        }`}
-                      >
-                        {active && <X className="h-3 w-3 opacity-70" />}
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-          </div>
-        )}
       </div>
 
       {/* ── Table card ────────────────────────────────────────────────────── */}
@@ -653,16 +616,6 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
         </div>
       </div>
 
-      {/* ── Add vehicle button (floating) ─────────────────────────────────── */}
-      <div className="mt-4 flex justify-end">
-        <button
-          type="button"
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Neues Fahrzeug erfassen
-        </button>
-      </div>
 
       {/* ── Detail drawer ─────────────────────────────────────────────────── */}
       {selected && (
@@ -766,6 +719,10 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
           </div>
         </div>
       )}
+
+      {/* ── New vehicle modal ──────────────────────────────────────────────── */}
+      <NeuesFahrzeugModal open={showNewModal} onClose={() => setShowNewModal(false)} />
+
     </div>
   );
 }
@@ -784,7 +741,7 @@ function StatPill({ icon, label, value, color }: {
       {icon}
       <span className="tabular-nums font-bold">{value}</span>
       <span className="font-normal opacity-75">{label}</span>
-    </div>
+      </div>
   );
 }
 
@@ -796,40 +753,3 @@ function StatusChip({ label, color }: { label: string; color: string }) {
   );
 }
 
-/** Small dismissable chip shown in the toolbar for each active filter. */
-function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 pl-2.5 pr-1.5 py-0.5 text-xs font-medium text-blue-700">
-      {label}
-      <button type="button" onClick={onClear} className="rounded-full p-0.5 hover:bg-blue-200">
-        <X className="h-2.5 w-2.5" />
-      </button>
-    </span>
-  );
-}
-
-/** Labelled section header inside the filter panel. */
-function FilterGroupLabel({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="text-slate-400">{icon}</span>
-      <span className="text-xs font-semibold text-slate-500"
-        dangerouslySetInnerHTML={{ __html: label }} />
-      <span className="flex-1 border-t border-slate-100" />
-    </div>
-  );
-}
-
-/** Single labelled field wrapper. */
-function FF({
-  label, children, className = "",
-}: {
-  label: string; children: React.ReactNode; className?: string;
-}) {
-  return (
-    <div className={className}>
-      <label className="mb-1.5 block text-xs font-medium text-slate-400">{label}</label>
-      {children}
-    </div>
-  );
-}

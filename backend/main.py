@@ -826,11 +826,11 @@ def _map_vies_check_response(data: dict[str, Any], cc: str, vat: str) -> VatChec
     raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(dict(data))
 
     def _m(key: str) -> str | None:
-        v = data.get(key)
-        if v is None:
+        """Normalize VIES match flags and suppress placeholder 'NOT_PROCESSED'."""
+        match_value = _soap_match_to_rest(data.get(key))
+        if not match_value or match_value == "NOT_PROCESSED":
             return None
-        s = str(v).strip()
-        return s or None
+        return match_value
 
     req_id = (data.get("requestIdentifier") or "").strip() or None
 

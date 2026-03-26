@@ -19,6 +19,7 @@
 | [FEATURE-009](#feature-009) | Header Component | Added | 2026-03-25 |
 | [FEATURE-010](#feature-010) | Dynamic Widget Lists / Presets | Added | 2026-03-25 |
 | [FEATURE-015](#feature-015) | VIES trader match fields in API + form fallback | Modified | 2026-03-26 |
+| [FEATURE-016](#feature-016) | Persist requester context for VIES checks | Extended | 2026-03-26 |
 
 ---
 
@@ -740,3 +741,59 @@ None.
 ### Notes / Known Limitations
 - Many member states still return `NOT_PROCESSED` for approximate matching or omit trader details; this change does not change VIES behaviour, only preserves and forwards its match fields.
 - Real cross-field matching may still require requester context (`VIES_REQUESTER_*` or explicit requester fields) per member-state rules.
+
+---
+
+## [FEATURE-016]
+## FEATURE-016: Persist requester context for VIES checks
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended the customer VAT-check modal so requester information no longer resets to empty on each open. The modal now restores requester member-state and requester VAT from browser storage (or optional build-time defaults), and keeps those values persisted. This makes VIES checks in deployed environments behave consistently with localhost workflows where requester context was already configured.
+
+### Where It Was Added
+- `frontend/src/components/NewCustomerModal.tsx` — added requester persistence helpers, env defaults (`VITE_VIES_REQUESTER_CC`, `VITE_VIES_REQUESTER_VAT`), state initialization from storage/defaults, and persistence effects
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Defines storage keys for requester country and VAT.
+2. Reads stored requester values safely from `localStorage` with fallback to empty strings.
+3. Initializes modal requester state from stored values, then from optional build-time defaults.
+4. On modal open, restores requester values instead of clearing them.
+5. Persists requester field changes back to `localStorage` so subsequent checks reuse the same requester context.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `VITE_VIES_REQUESTER_CC` | env var (string) | No | Optional default requester member-state code used when no stored value exists |
+| `VITE_VIES_REQUESTER_VAT` | env var (string) | No | Optional default requester VAT used when no stored value exists |
+| `dema-vies-requester-cc` | localStorage key | No | Persisted requester member-state for VAT checks |
+| `dema-vies-requester-vat` | localStorage key | No | Persisted requester VAT for VAT checks |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` (requester values now consistently reused if previously entered) | `VatCheckResponse` |
+
+### State / Store (if applicable)
+- **Store file:** N/A (component-local state + `localStorage`)
+- **Actions/Selectors added:** N/A
+- **Persisted:** Yes (`localStorage` requester keys)
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- Persisted requester values are browser-local; users on a different browser/device must enter them once there.
+- Member-state rules still apply; some countries may continue returning `NOT_PROCESSED` despite requester context.

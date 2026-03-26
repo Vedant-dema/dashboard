@@ -14,6 +14,33 @@ import type { DepartmentArea } from "../types/departmentArea";
 type TabId = "vat" | "kunde" | "adresse" | "art" | "waschanlage";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+const VIES_DEFAULT_REQUESTER_CC =
+  ((import.meta.env.VITE_VIES_REQUESTER_CC as string | undefined) ?? "").trim().toUpperCase();
+const VIES_DEFAULT_REQUESTER_VAT =
+  ((import.meta.env.VITE_VIES_REQUESTER_VAT as string | undefined) ?? "").trim();
+const VIES_REQUESTER_CC_STORAGE_KEY = "dema-vies-requester-cc";
+const VIES_REQUESTER_VAT_STORAGE_KEY = "dema-vies-requester-vat";
+
+function readStoredRequester(storageKey: string): string {
+  try {
+    return localStorage.getItem(storageKey)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStoredRequester(storageKey: string, value: string): void {
+  try {
+    const trimmed = value.trim();
+    if (trimmed) {
+      localStorage.setItem(storageKey, trimmed);
+    } else {
+      localStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Ignore storage failures (private mode / quota)
+  }
+}
 
 /** EU / Northern Ireland codes accepted by VIES (VoW). */
 const VIES_MS_OPTIONS: { code: string; label: string }[] = [
@@ -331,8 +358,12 @@ export function NewCustomerModal({
   const [aufnahmePreview, setAufnahmePreview] = useState("");
   const [viesCountry, setViesCountry] = useState("DE");
   const [viesVatInput, setViesVatInput] = useState("");
-  const [viesReqCountry, setViesReqCountry] = useState("");
-  const [viesReqNumber, setViesReqNumber] = useState("");
+  const [viesReqCountry, setViesReqCountry] = useState(
+    () => readStoredRequester(VIES_REQUESTER_CC_STORAGE_KEY).toUpperCase() || VIES_DEFAULT_REQUESTER_CC
+  );
+  const [viesReqNumber, setViesReqNumber] = useState(
+    () => readStoredRequester(VIES_REQUESTER_VAT_STORAGE_KEY) || VIES_DEFAULT_REQUESTER_VAT
+  );
   const [viesTraderName, setViesTraderName] = useState("");
   const [viesTraderStreet, setViesTraderStreet] = useState("");
   const [viesTraderPlz, setViesTraderPlz] = useState("");
@@ -353,8 +384,10 @@ export function NewCustomerModal({
       setTab("vat");
       setViesCountry("DE");
       setViesVatInput("");
-      setViesReqCountry("");
-      setViesReqNumber("");
+      setViesReqCountry(
+        readStoredRequester(VIES_REQUESTER_CC_STORAGE_KEY).toUpperCase() || VIES_DEFAULT_REQUESTER_CC
+      );
+      setViesReqNumber(readStoredRequester(VIES_REQUESTER_VAT_STORAGE_KEY) || VIES_DEFAULT_REQUESTER_VAT);
       setViesTraderName("");
       setViesTraderStreet("");
       setViesTraderPlz("");
@@ -369,6 +402,14 @@ export function NewCustomerModal({
       );
     }
   }, [open, department]);
+
+  useEffect(() => {
+    writeStoredRequester(VIES_REQUESTER_CC_STORAGE_KEY, viesReqCountry.toUpperCase());
+  }, [viesReqCountry]);
+
+  useEffect(() => {
+    writeStoredRequester(VIES_REQUESTER_VAT_STORAGE_KEY, viesReqNumber);
+  }, [viesReqNumber]);
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));

@@ -15,7 +15,6 @@ type TabId = "vat" | "kunde" | "art" | "waschanlage";
 
 type KontaktEntry = {
   id: string;
-  rolle: string;
   name: string;
   telefon: string;
   fax: string;
@@ -24,22 +23,9 @@ type KontaktEntry = {
   faxen: boolean;
 };
 
-const KONTAKT_ROLLEN = [
-  "Ansprechpartner",
-  "Geschäftsführer",
-  "Einkauf",
-  "Verkauf",
-  "Buchhaltung",
-  "Techniker",
-  "Lager",
-  "Disposition",
-  "Sonstiges",
-];
-
 function emptyKontakt(): KontaktEntry {
   return {
     id: Math.random().toString(36).slice(2),
-    rolle: "Ansprechpartner",
     name: "",
     telefon: "",
     fax: "",
@@ -390,18 +376,16 @@ const ART_LAND_OPTIONS = ["IL", "EU", "Drittland"];
 
 const FAHRZEUG_TYPEN = ["", "PKW", "LKW", "Transporter", "Bus", "Sonstiges"];
 
-const ROLLE_COLORS: Record<string, { from: string; to: string; badge: string; dot: string; dotActive: string }> = {
-  Ansprechpartner: { from: "from-blue-500",    to: "to-indigo-500",  badge: "bg-blue-100 text-blue-700",       dot: "bg-blue-300",    dotActive: "bg-blue-500"    },
-  Geschäftsführer: { from: "from-slate-700",   to: "to-slate-900",   badge: "bg-slate-200 text-slate-700",     dot: "bg-slate-400",   dotActive: "bg-slate-700"   },
-  Einkauf:         { from: "from-pink-500",    to: "to-rose-500",    badge: "bg-pink-100 text-pink-700",       dot: "bg-pink-300",    dotActive: "bg-pink-500"    },
-  Verkauf:         { from: "from-emerald-500", to: "to-teal-500",    badge: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-300", dotActive: "bg-emerald-500" },
-  Buchhaltung:     { from: "from-violet-500",  to: "to-purple-500",  badge: "bg-violet-100 text-violet-700",   dot: "bg-violet-300",  dotActive: "bg-violet-500"  },
-  Techniker:       { from: "from-orange-500",  to: "to-amber-500",   badge: "bg-orange-100 text-orange-700",   dot: "bg-orange-300",  dotActive: "bg-orange-500"  },
-  Lager:           { from: "from-cyan-500",    to: "to-sky-500",     badge: "bg-cyan-100 text-cyan-700",       dot: "bg-cyan-300",    dotActive: "bg-cyan-500"    },
-  Disposition:     { from: "from-sky-500",     to: "to-indigo-500",  badge: "bg-sky-100 text-sky-700",         dot: "bg-sky-300",     dotActive: "bg-sky-500"     },
-  Sonstiges:       { from: "from-stone-400",   to: "to-stone-600",   badge: "bg-stone-100 text-stone-600",     dot: "bg-stone-300",   dotActive: "bg-stone-500"   },
-};
-const ROLLE_COLORS_DEFAULT = { from: "from-blue-500", to: "to-indigo-600", badge: "bg-blue-100 text-blue-700", dot: "bg-blue-300", dotActive: "bg-blue-600" };
+const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string; activePill: string }[] = [
+  { from: "from-blue-500",    to: "to-indigo-500",  dot: "bg-blue-300",    dotActive: "bg-blue-500",    activePill: "bg-blue-500"    },
+  { from: "from-emerald-500", to: "to-teal-500",    dot: "bg-emerald-300", dotActive: "bg-emerald-500", activePill: "bg-emerald-500" },
+  { from: "from-violet-500",  to: "to-purple-500",  dot: "bg-violet-300",  dotActive: "bg-violet-500",  activePill: "bg-violet-500"  },
+  { from: "from-orange-500",  to: "to-amber-500",   dot: "bg-orange-300",  dotActive: "bg-orange-500",  activePill: "bg-orange-500"  },
+  { from: "from-pink-500",    to: "to-rose-500",    dot: "bg-pink-300",    dotActive: "bg-pink-500",    activePill: "bg-pink-500"    },
+  { from: "from-cyan-500",    to: "to-sky-500",     dot: "bg-cyan-300",    dotActive: "bg-cyan-500",    activePill: "bg-cyan-500"    },
+  { from: "from-slate-600",   to: "to-slate-800",   dot: "bg-slate-400",   dotActive: "bg-slate-600",   activePill: "bg-slate-600"   },
+  { from: "from-sky-500",     to: "to-indigo-500",  dot: "bg-sky-300",     dotActive: "bg-sky-500",     activePill: "bg-sky-500"     },
+];
 
 const WASCH_PROGRAMME = [
   "",
@@ -426,7 +410,6 @@ function initialForm() {
     juristische_person: false,
     natuerliche_person: false,
     gesellschaftsform: "",
-    ansprache: "",
     firmenvorsatz: "",
     firmenname: "",
     bemerkungen: "",
@@ -480,7 +463,6 @@ function formToPayload(form: FormState): NewKundeInput {
     juristische_person: form.juristische_person,
     natuerliche_person: form.natuerliche_person,
     gesellschaftsform: emptyToUndef(form.gesellschaftsform),
-    ansprache: emptyToUndef(form.ansprache),
     firmenvorsatz: emptyToUndef(form.firmenvorsatz),
     bemerkungen: emptyToUndef(form.bemerkungen),
     zustaendige_person_name,
@@ -607,7 +589,6 @@ export function NewCustomerModal({
     gesellschaftsform: "GmbH",
     branche:         "Automobilhandel",
     firmenvorsatz:   "Muster",
-    ansprache:       "Sehr geehrte Damen und Herren",
     strasse:         "Hauptstraße 42",
     plz:             "44137",
     ort:             "Dortmund",
@@ -1097,28 +1078,44 @@ export function NewCustomerModal({
                     </div>
                   </div>
 
-                  <div>
-                    <span className={labelClass}>FZG-Händler</span>
-                    <div className="mt-1 flex gap-2">
-                      {(["ja", "nein"] as const).map((v) => (
-                        <label
-                          key={v}
-                          className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                            form.fzgHandel === v
-                              ? "border-blue-500 bg-blue-50 text-blue-800"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="fzg"
-                            checked={form.fzgHandel === v}
-                            onChange={() => set("fzgHandel", v)}
-                            className="border-slate-300 text-blue-600"
-                          />
-                          {v.toUpperCase()}
-                        </label>
-                      ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className={labelClass}>FZG-Händler</span>
+                      <div className="mt-1 flex gap-2">
+                        {(["ja", "nein"] as const).map((v) => (
+                          <label
+                            key={v}
+                            className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                              form.fzgHandel === v
+                                ? "border-blue-500 bg-blue-50 text-blue-800"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="fzg"
+                              checked={form.fzgHandel === v}
+                              onChange={() => set("fzgHandel", v)}
+                              className="border-slate-300 text-blue-600"
+                            />
+                            {v.toUpperCase()}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Gesellschaftsform{isExtracted("gesellschaftsform") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.gesellschaftsform}
+                          onChange={(e) => set("gesellschaftsform", e.target.value)}
+                          placeholder="z. B. GmbH, AG"
+                          className={inputClass}
+                          suggestions={fieldSuggestions.gesellschaftsform}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
                     </div>
                   </div>
 
@@ -1141,36 +1138,6 @@ export function NewCustomerModal({
                       />
                       Natürliche Person
                     </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>Gesellschaftsform{isExtracted("gesellschaftsform") && <KiBadge />}</label>
-                      <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.gesellschaftsform}
-                          onChange={(e) => set("gesellschaftsform", e.target.value)}
-                          placeholder="z. B. GmbH, AG"
-                          className={inputClass}
-                          suggestions={fieldSuggestions.gesellschaftsform}
-                          title="Vorschläge aus gespeicherten Kunden"
-                        />
-                      </ExtractedFieldWrapper>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Ansprache{isExtracted("ansprache") && <KiBadge />}</label>
-                      <ExtractedFieldWrapper extracted={isExtracted("ansprache")}>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.ansprache}
-                          onChange={(e) => set("ansprache", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.ansprache}
-                          title="Vorschläge aus gespeicherten Kunden"
-                        />
-                      </ExtractedFieldWrapper>
-                    </div>
                   </div>
 
                   <div>
@@ -1352,7 +1319,7 @@ export function NewCustomerModal({
                 {(() => {
                   const k = form.kontakte[activeKontaktIdx] ?? form.kontakte[0]!;
                   const safeIdx = Math.min(activeKontaktIdx, form.kontakte.length - 1);
-                  const col = ROLLE_COLORS[k.rolle] ?? ROLLE_COLORS_DEFAULT;
+                  const col = KONTAKT_COLORS[safeIdx % KONTAKT_COLORS.length]!;
                   const initials = k.name ? k.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : String(safeIdx + 1);
 
                   return (
@@ -1377,9 +1344,9 @@ export function NewCustomerModal({
                       {/* ── Pill tabs (one per contact) ── */}
                       <div className="flex flex-wrap gap-1.5">
                         {form.kontakte.map((c, i) => {
-                          const dc = ROLLE_COLORS[c.rolle] ?? ROLLE_COLORS_DEFAULT;
+                          const dc = KONTAKT_COLORS[i % KONTAKT_COLORS.length]!;
                           const isActive = i === safeIdx;
-                          const label = c.name || c.rolle;
+                          const label = c.name || `Kontakt ${i + 1}`;
                           return (
                             <button
                               key={c.id}
@@ -1387,8 +1354,8 @@ export function NewCustomerModal({
                               onClick={() => setActiveKontaktIdx(i)}
                               className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
                                 isActive
-                                  ? `${dc.dotActive} text-white shadow-sm`
-                                  : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                  ? `${dc.activePill} text-white shadow-sm`
+                                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                               }`}
                             >
                               <span className={`h-2 w-2 rounded-full ${isActive ? "bg-white/60" : dc.dotActive}`} />
@@ -1423,34 +1390,10 @@ export function NewCustomerModal({
                           <p className="mt-2 truncate text-sm font-semibold text-white">
                             {k.name || "— Kein Name —"}
                           </p>
-                          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${col.badge}`}>
-                            {k.rolle}
-                          </span>
                         </div>
 
                         {/* Card body */}
                         <div className="space-y-2.5 bg-white p-3">
-                          <div>
-                            <label className={labelClass}>Rolle</label>
-                            <select
-                              value={k.rolle}
-                              onChange={(e) => {
-                                const rolle = e.target.value;
-                                setForm((f) => ({
-                                  ...f,
-                                  kontakte: f.kontakte.map((c, i) =>
-                                    i === safeIdx ? { ...c, rolle, name: "", telefon: "", email: "" } : c
-                                  ),
-                                }));
-                              }}
-                              className={inputClass}
-                            >
-                              {KONTAKT_ROLLEN.map((r) => (
-                                <option key={r} value={r}>{r}</option>
-                              ))}
-                            </select>
-                          </div>
-
                           <div>
                             <label className={labelClass}>Name</label>
                             <input

@@ -25,6 +25,7 @@
 | [FEATURE-019](#feature-019) | Website-style VIES ms lookup enrichment | Extended | 2026-03-26 |
 | [FEATURE-019](#feature-019) | VAT response fallback from submitted trader details | Extended | 2026-03-26 |
 | [FEATURE-020](#feature-020) | Non-null VAT identity fallback strings | Extended | 2026-03-26 |
+| [FEATURE-021](#feature-021) | Mandatory-only VAT request and raw JSON display | Extended | 2026-03-26 |
 
 ---
 
@@ -1079,3 +1080,57 @@ None.
 ### Notes / Known Limitations
 - Placeholder strings indicate that identity data was not provided by VIES and should not be treated as verified legal name/address.
 - `trader_details_available=false` still signals that member-state trader details were unavailable.
+
+---
+
+## [FEATURE-021]
+## FEATURE-021: Mandatory-only VAT request and raw JSON display
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended the VAT check flow in the New Customer modal so the request is always sent in a website-style minimal form (only country and VAT number), and the response panel now shows the exact JSON body returned by the API without frontend reshaping. This makes the UI reflect the real payload returned from the backend call for each check.
+
+### Where It Was Added
+- `frontend/src/components/NewCustomerModal.tsx` — simplified VAT request body to mandatory fields and adjusted response panel JSON rendering to show the unmodified API body
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Removes requester and trader comparison fields from the `POST /api/v1/vat/check` request body in `runVatCheck`.
+2. Keeps only `country_code` and `vat_number` in outbound VAT checks.
+3. Preserves parse-error handling, but when response JSON is valid, stores and displays the parsed object exactly as returned.
+4. Stops injecting custom HTTP metadata into successful JSON display payloads.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| `country_code` | string | Yes | Two-letter VAT country code sent to backend |
+| `vat_number` | string | Yes | VAT number input sent to backend |
+| `vatBackendResponseJson` | string | Yes | Pretty-printed API JSON shown in the frontend response panel |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| POST | `/api/v1/vat/check` | None | `{ country_code, vat_number }` | Existing `VatCheckResponse` JSON, now displayed unchanged in panel |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- Backend environment defaults (`VIES_REQUESTER_CC`, `VIES_REQUESTER_VAT`) may still auto-attach requester data server-side if configured.
+- Upstream VIES behavior remains member-state dependent; some countries still omit trader details in valid checks.

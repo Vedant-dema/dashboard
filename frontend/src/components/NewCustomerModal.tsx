@@ -11,7 +11,7 @@ import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions
 import { SuggestTextInput } from "./SuggestTextInput";
 import type { DepartmentArea } from "../types/departmentArea";
 
-type TabId = "vat" | "kunde" | "adresse" | "art" | "waschanlage";
+type TabId = "vat" | "kunde" | "art" | "waschanlage";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 const VIES_DEFAULT_REQUESTER_CC =
@@ -321,13 +321,12 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
 
 const tabLabels: Record<TabId, string> = {
   vat: "USt-IdNr. prüfen",
-  kunde: "Kunde",
-  adresse: "Adresse (Tel/Fax)",
+  kunde: "Kunde & Adresse",
   art: "Art / Buchungskonto",
   waschanlage: "Waschanlage",
 };
 
-const TAB_ORDER: TabId[] = ["vat", "kunde", "adresse", "art", "waschanlage"];
+const TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
 
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
@@ -498,43 +497,18 @@ export function NewCustomerModal({
       setVatCheckResult(null);
       return;
     }
-    const rq = viesReqCountry.trim();
-    const rnum = viesReqNumber.trim();
-    if ((rq && !rnum) || (!rq && rnum)) {
-      setVatCheckError(
-        "Auskunftgeber: bitte Land und USt-IdNr. gemeinsam ausfüllen (oder beides leer lassen)."
-      );
-      setVatCheckResult(null);
-      return;
-    }
     setVatCheckLoading(true);
     setVatCheckError(null);
     setVatCheckResult(null);
     setVatBackendResponseJson(null);
     try {
-      const traderNameVal = viesTraderName.trim() || form.firmenname.trim();
-      const traderStreetVal = viesTraderStreet.trim() || form.strasse.trim();
-      const traderPlzVal = viesTraderPlz.trim() || form.plz.trim();
-      const traderCityVal = viesTraderCity.trim() || form.ort.trim();
-      const traderCompanyTypeVal =
-        viesTraderCompanyType.trim() || form.gesellschaftsform.trim();
+      // Keep the request website-style: only mandatory fields.
       const res = await fetch(`${API_BASE}/api/v1/vat/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           country_code: viesCountry,
           vat_number: trimmed,
-          ...(viesReqCountry.trim() && viesReqNumber.trim()
-            ? {
-                requester_member_state_code: viesReqCountry.trim().toUpperCase(),
-                requester_number: viesReqNumber.trim(),
-              }
-            : {}),
-          ...(traderNameVal ? { trader_name: traderNameVal } : {}),
-          ...(traderStreetVal ? { trader_street: traderStreetVal } : {}),
-          ...(traderPlzVal ? { trader_postal_code: traderPlzVal } : {}),
-          ...(traderCityVal ? { trader_city: traderCityVal } : {}),
-          ...(traderCompanyTypeVal ? { trader_company_type: traderCompanyTypeVal } : {}),
         }),
       });
       // status 0 means the browser blocked the request (CORS / network).
@@ -558,21 +532,25 @@ export function NewCustomerModal({
         parseError = "Antwort war kein gültiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)";
       }
 
-      // Always inject the HTTP status into the displayed panel so the user can see it.
-      const displayMeta: Record<string, unknown> = {
-        _httpStatus: res.status,
-        _httpStatusText: res.statusText || "(kein Statustext)",
-      };
       let displayJson: unknown;
       if (parseError) {
-        displayJson = { ...displayMeta, _parseError: parseError, _rawText: textBody.slice(0, 4000) };
+        displayJson = {
+          _httpStatus: res.status,
+          _httpStatusText: res.statusText || "(kein Statustext)",
+          _parseError: parseError,
+          _rawText: textBody.slice(0, 4000),
+        };
       } else if (parsedBody !== null && typeof parsedBody === "object") {
-        displayJson = { ...displayMeta, ...(parsedBody as Record<string, unknown>) };
+        displayJson = parsedBody;
       } else if (parsedBody !== null) {
-        displayJson = { ...displayMeta, _body: parsedBody };
+        displayJson = parsedBody;
       } else {
         // Empty body.
-        displayJson = { ...displayMeta, _body: "(leer)" };
+        displayJson = {
+          _httpStatus: res.status,
+          _httpStatusText: res.statusText || "(kein Statustext)",
+          _body: "(leer)",
+        };
       }
       try {
         setVatBackendResponseJson(JSON.stringify(displayJson, null, 2));

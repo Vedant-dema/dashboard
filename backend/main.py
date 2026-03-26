@@ -31,6 +31,10 @@ this app serializes outbound VIES calls and retries with backoff so many checks 
 Official background (why name/address are often missing): EU Your Europe — check VAT (VIES);
 VIES FAQ Q17 / Q22 — https://ec.europa.eu/taxation_customs/vies/faq.html
 
+SOAP vs REST naming: the WSDL for checkVatApprox uses traderPostcode, requesterCountryCode, and
+requesterVatNumber (see checkVatService.wsdl), while the public REST Swagger uses traderPostalCode,
+requesterMemberStateCode, requesterNumber. This proxy maps REST-shaped payloads to WSDL element names.
+
 REST VoW endpoints (see Technical information): live check, test service, status — proxied as
 GET /api/v1/vat/status, POST /api/v1/vat/check-test, POST /api/v1/vat/check.
 """
@@ -481,26 +485,32 @@ def _normalize_ms_lookup_data(data: dict[str, Any], cc: str, vat: str) -> dict[s
     }
 
 
+def _vies_soap_http_headers() -> dict[str, str]:
+    """WSDL checkVatBinding sets soapAction=\"\" for checkVat and checkVatApprox (empty URI)."""
+    return {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": ""}
+
+
 def _build_vies_soap_approx_envelope(payload: dict[str, Any]) -> str:
+    # Element names and order follow checkVatApprox in checkVatService.wsdl (not REST Swagger).
     parts = [
         "<s11:Envelope xmlns:s11='http://schemas.xmlsoap.org/soap/envelope/'>",
         "<s11:Body>",
         "<tns1:checkVatApprox xmlns:tns1='urn:ec.europa.eu:taxud:vies:services:checkVat:types'>",
     ]
-    for key in (
-        "countryCode",
-        "vatNumber",
-        "requesterMemberStateCode",
-        "requesterNumber",
-        "traderName",
-        "traderCompanyType",
-        "traderStreet",
-        "traderPostalCode",
-        "traderCity",
-    ):
-        value = _soap_text(payload.get(key))
+    seq: list[tuple[str, str | None]] = [
+        ("countryCode", _soap_text(payload.get("countryCode"))),
+        ("vatNumber", _soap_text(payload.get("vatNumber"))),
+        ("traderName", _soap_text(payload.get("traderName"))),
+        ("traderCompanyType", _soap_text(payload.get("traderCompanyType"))),
+        ("traderStreet", _soap_text(payload.get("traderStreet"))),
+        ("traderPostcode", _soap_text(payload.get("traderPostalCode"))),
+        ("traderCity", _soap_text(payload.get("traderCity"))),
+        ("requesterCountryCode", _soap_text(payload.get("requesterMemberStateCode"))),
+        ("requesterVatNumber", _soap_text(payload.get("requesterNumber"))),
+    ]
+    for el_name, value in seq:
         if value:
-            parts.append(f"<tns1:{key}>{_xml_escape(value)}</tns1:{key}>")
+            parts.append(f"<tns1:{el_name}>{_xml_escape(value)}</tns1:{el_name}>")
     parts.extend(("</tns1:checkVatApprox>", "</s11:Body>", "</s11:Envelope>"))
     return "".join(parts)
 
@@ -544,12 +554,14 @@ def _parse_vies_soap_approx_response(xml_text: str) -> dict[str, Any]:
         "traderCompanyType": "traderCompanyType",
         "traderStreet": "traderStreet",
         "traderPostalCode": "traderPostalCode",
+        "traderPostcode": "traderPostalCode",
         "traderCity": "traderCity",
         "traderAddress": "address",
         "traderNameMatch": "traderNameMatch",
         "traderCompanyTypeMatch": "traderCompanyTypeMatch",
         "traderStreetMatch": "traderStreetMatch",
         "traderPostalCodeMatch": "traderPostalCodeMatch",
+        "traderPostcodeMatch": "traderPostalCodeMatch",
         "traderCityMatch": "traderCityMatch",
         "matchName": "traderNameMatch",
         "matchCompanyType": "traderCompanyTypeMatch",
@@ -592,7 +604,7 @@ async def _vies_soap_check_with_retries(payload: dict[str, Any]) -> dict[str, An
     client: httpx.AsyncClient = _vies_http
     url = _vies_soap_url() or "https://ec.europa.eu/taxation_customs/vies/services/checkVatService"
     body = _build_vies_soap_check_envelope(payload)
-    headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": "checkVat"}
+    headers = _vies_soap_http_headers()
     last_detail = "VIES SOAP checkVat temporarily unavailable"
     loop_start = asyncio.get_event_loop().time()
     label = "VIES SOAP checkVat"
@@ -663,7 +675,7 @@ async def _vies_soap_approx_with_retries(payload: dict[str, Any]) -> dict[str, A
     client: httpx.AsyncClient = _vies_http
     url = _vies_soap_url() or "https://ec.europa.eu/taxation_customs/vies/services/checkVatService"
     body = _build_vies_soap_approx_envelope(payload)
-    headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": "checkVatApprox"}
+    headers = _vies_soap_http_headers()
     last_detail = "VIES SOAP fallback temporarily unavailable"
     loop_start = asyncio.get_event_loop().time()
 

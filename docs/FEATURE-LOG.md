@@ -21,6 +21,7 @@
 | [FEATURE-015](#feature-015) | VIES trader match fields in API + form fallback | Modified | 2026-03-26 |
 | [FEATURE-016](#feature-016) | Persist requester context for VIES checks | Extended | 2026-03-26 |
 | [FEATURE-017](#feature-017) | VIES SOAP approx fallback for real trader data | Extended | 2026-03-26 |
+| [FEATURE-018](#feature-018) | Strict VIES timeout budget enforcement | Extended | 2026-03-26 |
 
 ---
 
@@ -853,3 +854,56 @@ None.
 ### Notes / Known Limitations
 - This still depends on what each member state exposes through the official VIES infrastructure; some countries may still not return trader identity data.
 - SOAP fallback adds one extra upstream VIES call when REST data is incomplete, so slow member states may increase end-to-end latency.
+
+---
+
+## [FEATURE-018]
+## FEATURE-018: Strict VIES timeout budget enforcement
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended the backend timeout handling so the configured VIES wall-clock budget is enforced per outbound request instead of only between retry iterations. This prevents single REST or SOAP calls from running past the configured budget and failing late with messages like “timed out after 32 s (budget: 24 s)”.
+
+### Where It Was Added
+- `backend/main.py` — added timeout helpers and per-request dynamic timeout enforcement for both REST and SOAP VIES calls
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Computes the remaining wall-clock budget before every outbound VIES request.
+2. Applies an `httpx.Timeout` capped to that remaining budget for REST and SOAP calls.
+3. Stops retrying once too little time remains for a meaningful request.
+4. Returns consistent timeout messages that reflect the configured budget.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `VIES_MAX_TOTAL_SEC` | env var (float) | No | Total wall-clock budget for one VAT check, now enforced on each outbound request |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | Same response shape, but timeout handling now respects `VIES_MAX_TOTAL_SEC` strictly |
+| POST | `/api/v1/vat/check-test` | None | `VatCheckRequest` | Same timeout enforcement for REST path |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- This improves timeout correctness, but it cannot make an overloaded upstream VIES node respond faster.
+- If your hosting platform allows longer request times, increasing `VIES_MAX_TOTAL_SEC` is still an operational choice you may want to make.

@@ -534,18 +534,33 @@ async def _vies_soap_approx_with_retries(payload: dict[str, Any]) -> dict[str, A
             if elapsed >= max_total_sec:
                 raise HTTPException(
                     status_code=503,
-                    detail=(
-                        f"VIES SOAP fallback timed out after {elapsed:.0f} s "
-                        f"(budget: {max_total_sec:.0f} s)."
-                    ),
+                    detail=_vies_timeout_detail("VIES SOAP fallback", elapsed, max_total_sec),
                 )
             if attempt > 0:
                 sleep_sec = base_wait * (2 ** (attempt - 1)) + random.uniform(0, 0.55)
                 sleep_sec = min(sleep_sec, cap_wait, max_total_sec - elapsed - 1.0)
                 if sleep_sec > 0:
                     await asyncio.sleep(sleep_sec)
+            request_budget_sec = _vies_remaining_request_sec(loop_start, max_total_sec)
+            if request_budget_sec <= 0.5:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                raise HTTPException(
+                    status_code=503,
+                    detail=_vies_timeout_detail("VIES SOAP fallback", elapsed, max_total_sec),
+                )
             try:
-                r = await client.post(url, content=body, headers=headers)
+                r = await client.post(
+                    url,
+                    content=body,
+                    headers=headers,
+                    timeout=_vies_request_timeout(request_budget_sec),
+                )
+            except httpx.TimeoutException as e:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                last_detail = _vies_timeout_detail("VIES SOAP fallback", elapsed, max_total_sec)
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=503, detail=last_detail) from e
             except httpx.RequestError as e:
                 last_detail = f"VIES SOAP fallback request failed: {e!s}"
                 if attempt < max_retries - 1 and _vies_failure_retryable({}, 503):
@@ -596,6 +611,24 @@ def _merge_soap_approx_into_rest(rest_data: dict[str, Any], soap_data: dict[str,
     merged["soapApproxFallbackUsed"] = True
     merged["soapApproxRaw"] = soap_data
     return merged
+
+
+def _vies_timeout_detail(prefix: str, elapsed_sec: float, budget_sec: float) -> str:
+    return (
+        f"{prefix} timed out after {elapsed_sec:.0f} s "
+        f"(budget: {budget_sec:.0f} s). "
+        "VIES may be temporarily overloaded — please try again in a moment."
+    )
+
+
+def _vies_remaining_request_sec(loop_start: float, max_total_sec: float, reserve_sec: float = 0.75) -> float:
+    return max_total_sec - (asyncio.get_event_loop().time() - loop_start) - reserve_sec
+
+
+def _vies_request_timeout(remaining_sec: float) -> httpx.Timeout:
+    total_sec = max(1.0, remaining_sec)
+    connect_sec = min(8.0, max(1.0, total_sec / 3))
+    return httpx.Timeout(total_sec, connect=connect_sec)
 
 
 @app.get("/api/health")
@@ -681,24 +714,33 @@ async def _vies_call_with_retries(
             if elapsed >= max_total_sec:
                 raise HTTPException(
                     status_code=503,
-                    detail=(
-                        f"VIES check timed out after {elapsed:.0f} s "
-                        f"(budget: {max_total_sec:.0f} s). "
-                        "VIES may be temporarily overloaded — please try again in a moment."
-                    ),
+                    detail=_vies_timeout_detail("VIES check", elapsed, max_total_sec),
                 )
             if attempt > 0:
                 sleep_sec = base_wait * (2 ** (attempt - 1)) + random.uniform(0, 0.55)
                 sleep_sec = min(sleep_sec, cap_wait, max_total_sec - elapsed - 1.0)
                 if sleep_sec > 0:
                     await asyncio.sleep(sleep_sec)
+            request_budget_sec = _vies_remaining_request_sec(loop_start, max_total_sec)
+            if request_budget_sec <= 0.5:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                raise HTTPException(
+                    status_code=503,
+                    detail=_vies_timeout_detail("VIES check", elapsed, max_total_sec),
+                )
             try:
                 if m == "POST":
-                    r = await client.post(url, json=json_body)
+                    r = await client.post(url, json=json_body, timeout=_vies_request_timeout(request_budget_sec))
                 elif m == "GET":
-                    r = await client.get(url)
+                    r = await client.get(url, timeout=_vies_request_timeout(request_budget_sec))
                 else:
                     raise HTTPException(status_code=500, detail=f"Unsupported HTTP method: {method}")
+            except httpx.TimeoutException as e:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                last_detail = _vies_timeout_detail("VIES check", elapsed, max_total_sec)
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=503, detail=last_detail) from e
             except httpx.RequestError as e:
                 last_detail = f"VIES request failed: {e!s}"
                 if attempt < max_retries - 1 and _vies_failure_retryable({}, 503):

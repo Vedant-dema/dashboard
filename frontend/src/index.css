@@ -928,3 +928,20 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
 .react-grid-item > .react-resizable-handle {
   z-index: 30;
 }
+
+/* Kontakt horizontal scrollbar — always visible, indigo-themed */
+.kontakt-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.kontakt-scroll::-webkit-scrollbar-track {
+  background: #e0e7ff;
+  border-radius: 999px;
+}
+.kontakt-scroll::-webkit-scrollbar-thumb {
+  background: #6366f1;
+  border-radius: 999px;
+  border: 2px solid #e0e7ff;
+}
+.kontakt-scroll::-webkit-scrollbar-thumb:hover {
+  background: #4f46e5;
+}

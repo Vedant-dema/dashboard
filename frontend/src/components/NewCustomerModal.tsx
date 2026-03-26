@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, type ReactNode } from "react";
-import { X, Droplets, BadgeCheck } from "lucide-react";
+import { X, Droplets, BadgeCheck, Plus, Trash2 } from "lucide-react";
 import {
   DocExtractBanner,
   KiBadge,
@@ -10,8 +10,45 @@ import type { NewKundeInput, KundenWashUpsertFields } from "../store/kundenStore
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import type { DepartmentArea } from "../types/departmentArea";
+import { getStaffByRolle } from "../store/staffStore";
 
 type TabId = "vat" | "kunde" | "art" | "waschanlage";
+
+type KontaktEntry = {
+  id: string;
+  rolle: string;
+  name: string;
+  telefon: string;
+  fax: string;
+  email: string;
+  bemerkung: string;
+  faxen: boolean;
+};
+
+const KONTAKT_ROLLEN = [
+  "Allgemein",
+  "Mechaniker",
+  "Autowäsche",
+  "Verkauf",
+  "Buchhaltung",
+  "Einkauf",
+  "Disposition",
+  "Geschäftsführung",
+  "Sonstiges",
+];
+
+function emptyKontakt(): KontaktEntry {
+  return {
+    id: Math.random().toString(36).slice(2),
+    rolle: "Allgemein",
+    name: "",
+    telefon: "",
+    fax: "",
+    email: "",
+    bemerkung: "",
+    faxen: false,
+  };
+}
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
@@ -143,17 +180,228 @@ const ZUSTAENDIGE_OPTIONS = [
 ];
 
 const LAND_OPTIONS: { code: string; label: string }[] = [
+  // Germany always first
   { code: "DE", label: "Deutschland" },
-  { code: "AT", label: "Österreich" },
-  { code: "CH", label: "Schweiz" },
+  // All other countries — alphabetical by German name
+  { code: "AF", label: "Afghanistan" },
+  { code: "EG", label: "Ägypten" },
+  { code: "AL", label: "Albanien" },
+  { code: "DZ", label: "Algerien" },
+  { code: "AD", label: "Andorra" },
+  { code: "AO", label: "Angola" },
+  { code: "AG", label: "Antigua und Barbuda" },
+  { code: "GQ", label: "Äquatorialguinea" },
+  { code: "AR", label: "Argentinien" },
+  { code: "AM", label: "Armenien" },
+  { code: "AZ", label: "Aserbaidschan" },
+  { code: "ET", label: "Äthiopien" },
+  { code: "AU", label: "Australien" },
+  { code: "BS", label: "Bahamas" },
+  { code: "BH", label: "Bahrain" },
+  { code: "BD", label: "Bangladesch" },
+  { code: "BB", label: "Barbados" },
+  { code: "BE", label: "Belgien" },
+  { code: "BZ", label: "Belize" },
+  { code: "BJ", label: "Benin" },
+  { code: "BT", label: "Bhutan" },
+  { code: "BO", label: "Bolivien" },
+  { code: "BA", label: "Bosnien und Herzegowina" },
+  { code: "BW", label: "Botswana" },
+  { code: "BR", label: "Brasilien" },
+  { code: "BN", label: "Brunei" },
+  { code: "BG", label: "Bulgarien" },
+  { code: "BF", label: "Burkina Faso" },
+  { code: "BI", label: "Burundi" },
+  { code: "CL", label: "Chile" },
+  { code: "CN", label: "China" },
+  { code: "CR", label: "Costa Rica" },
+  { code: "DK", label: "Dänemark" },
+  { code: "CD", label: "Demokratische Republik Kongo" },
+  { code: "DJ", label: "Dschibuti" },
+  { code: "DM", label: "Dominica" },
+  { code: "DO", label: "Dominikanische Republik" },
+  { code: "EC", label: "Ecuador" },
+  { code: "SV", label: "El Salvador" },
+  { code: "CI", label: "Elfenbeinküste" },
+  { code: "ER", label: "Eritrea" },
+  { code: "EE", label: "Estland" },
+  { code: "SZ", label: "Eswatini" },
+  { code: "FJ", label: "Fidschi" },
+  { code: "FI", label: "Finnland" },
+  { code: "FR", label: "Frankreich" },
+  { code: "GA", label: "Gabun" },
+  { code: "GM", label: "Gambia" },
+  { code: "GE", label: "Georgien" },
+  { code: "GH", label: "Ghana" },
+  { code: "GD", label: "Grenada" },
+  { code: "GR", label: "Griechenland" },
+  { code: "GT", label: "Guatemala" },
+  { code: "GN", label: "Guinea" },
+  { code: "GW", label: "Guinea-Bissau" },
+  { code: "GY", label: "Guyana" },
+  { code: "HT", label: "Haiti" },
+  { code: "HN", label: "Honduras" },
+  { code: "IN", label: "Indien" },
+  { code: "ID", label: "Indonesien" },
+  { code: "IQ", label: "Irak" },
+  { code: "IR", label: "Iran" },
+  { code: "IE", label: "Irland" },
+  { code: "IS", label: "Island" },
+  { code: "IL", label: "Israel" },
+  { code: "IT", label: "Italien" },
+  { code: "JM", label: "Jamaika" },
+  { code: "JP", label: "Japan" },
+  { code: "YE", label: "Jemen" },
+  { code: "JO", label: "Jordanien" },
+  { code: "KH", label: "Kambodscha" },
+  { code: "CM", label: "Kamerun" },
+  { code: "CA", label: "Kanada" },
+  { code: "CV", label: "Kap Verde" },
+  { code: "KZ", label: "Kasachstan" },
+  { code: "QA", label: "Katar" },
+  { code: "KE", label: "Kenia" },
+  { code: "KG", label: "Kirgisistan" },
+  { code: "KI", label: "Kiribati" },
+  { code: "CO", label: "Kolumbien" },
+  { code: "KM", label: "Komoren" },
+  { code: "CG", label: "Republik Kongo" },
+  { code: "KP", label: "Nordkorea" },
+  { code: "KR", label: "Südkorea" },
+  { code: "HR", label: "Kroatien" },
+  { code: "CU", label: "Kuba" },
+  { code: "KW", label: "Kuwait" },
+  { code: "LA", label: "Laos" },
+  { code: "LS", label: "Lesotho" },
+  { code: "LV", label: "Lettland" },
+  { code: "LB", label: "Libanon" },
+  { code: "LR", label: "Liberia" },
+  { code: "LY", label: "Libyen" },
+  { code: "LI", label: "Liechtenstein" },
+  { code: "LT", label: "Litauen" },
+  { code: "LU", label: "Luxemburg" },
+  { code: "MG", label: "Madagaskar" },
+  { code: "MW", label: "Malawi" },
+  { code: "MY", label: "Malaysia" },
+  { code: "MV", label: "Malediven" },
+  { code: "ML", label: "Mali" },
+  { code: "MT", label: "Malta" },
+  { code: "MA", label: "Marokko" },
+  { code: "MH", label: "Marshallinseln" },
+  { code: "MR", label: "Mauretanien" },
+  { code: "MU", label: "Mauritius" },
+  { code: "MX", label: "Mexiko" },
+  { code: "FM", label: "Mikronesien" },
+  { code: "MD", label: "Moldau" },
+  { code: "MC", label: "Monaco" },
+  { code: "MN", label: "Mongolei" },
+  { code: "ME", label: "Montenegro" },
+  { code: "MZ", label: "Mosambik" },
+  { code: "MM", label: "Myanmar" },
+  { code: "NA", label: "Namibia" },
+  { code: "NR", label: "Nauru" },
+  { code: "NP", label: "Nepal" },
+  { code: "NZ", label: "Neuseeland" },
+  { code: "NI", label: "Nicaragua" },
   { code: "NL", label: "Niederlande" },
+  { code: "NE", label: "Niger" },
+  { code: "NG", label: "Nigeria" },
+  { code: "MK", label: "Nordmazedonien" },
+  { code: "NO", label: "Norwegen" },
+  { code: "AT", label: "Österreich" },
+  { code: "OM", label: "Oman" },
+  { code: "PK", label: "Pakistan" },
+  { code: "PW", label: "Palau" },
+  { code: "PA", label: "Panama" },
+  { code: "PG", label: "Papua-Neuguinea" },
+  { code: "PY", label: "Paraguay" },
+  { code: "PE", label: "Peru" },
+  { code: "PH", label: "Philippinen" },
   { code: "PL", label: "Polen" },
-  { code: "OTHER", label: "Sonstiges" },
+  { code: "PT", label: "Portugal" },
+  { code: "RW", label: "Ruanda" },
+  { code: "RO", label: "Rumänien" },
+  { code: "RU", label: "Russland" },
+  { code: "SB", label: "Salomonen" },
+  { code: "ZM", label: "Sambia" },
+  { code: "WS", label: "Samoa" },
+  { code: "SM", label: "San Marino" },
+  { code: "ST", label: "São Tomé und Príncipe" },
+  { code: "SA", label: "Saudi-Arabien" },
+  { code: "SE", label: "Schweden" },
+  { code: "CH", label: "Schweiz" },
+  { code: "SN", label: "Senegal" },
+  { code: "RS", label: "Serbien" },
+  { code: "SC", label: "Seychellen" },
+  { code: "SL", label: "Sierra Leone" },
+  { code: "ZW", label: "Simbabwe" },
+  { code: "SG", label: "Singapur" },
+  { code: "SK", label: "Slowakei" },
+  { code: "SI", label: "Slowenien" },
+  { code: "SO", label: "Somalia" },
+  { code: "ES", label: "Spanien" },
+  { code: "LK", label: "Sri Lanka" },
+  { code: "KN", label: "St. Kitts und Nevis" },
+  { code: "LC", label: "St. Lucia" },
+  { code: "VC", label: "St. Vincent und die Grenadinen" },
+  { code: "ZA", label: "Südafrika" },
+  { code: "SS", label: "Südsudan" },
+  { code: "SD", label: "Sudan" },
+  { code: "SR", label: "Suriname" },
+  { code: "SY", label: "Syrien" },
+  { code: "TJ", label: "Tadschikistan" },
+  { code: "TW", label: "Taiwan" },
+  { code: "TZ", label: "Tansania" },
+  { code: "TH", label: "Thailand" },
+  { code: "TL", label: "Timor-Leste" },
+  { code: "TG", label: "Togo" },
+  { code: "TO", label: "Tonga" },
+  { code: "TT", label: "Trinidad und Tobago" },
+  { code: "TD", label: "Tschad" },
+  { code: "CZ", label: "Tschechien" },
+  { code: "TN", label: "Tunesien" },
+  { code: "TR", label: "Türkei" },
+  { code: "TM", label: "Turkmenistan" },
+  { code: "TV", label: "Tuvalu" },
+  { code: "UG", label: "Uganda" },
+  { code: "UA", label: "Ukraine" },
+  { code: "HU", label: "Ungarn" },
+  { code: "UY", label: "Uruguay" },
+  { code: "UZ", label: "Usbekistan" },
+  { code: "VU", label: "Vanuatu" },
+  { code: "VE", label: "Venezuela" },
+  { code: "AE", label: "Vereinigte Arabische Emirate" },
+  { code: "US", label: "Vereinigte Staaten" },
+  { code: "GB", label: "Vereinigtes Königreich" },
+  { code: "VN", label: "Vietnam" },
+  { code: "BY", label: "Weißrussland (Belarus)" },
+  { code: "CF", label: "Zentralafrikanische Republik" },
+  { code: "CY", label: "Zypern" },
 ];
 
-const ART_LAND_OPTIONS = ["IL", "EU", "Drittland", "Inland", "—"];
+/** EU member state codes (excluding DE which maps to IL). GR and EL both included (ISO vs. VIES). */
+const EU_LAND_CODES = new Set(["AT", "BE", "BG", "CY", "CZ", "DK", "EE", "EL", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK", "XI"]);
+
+function landCodeToArtLand(landCode: string): string {
+  if (landCode === "DE") return "IL";
+  if (EU_LAND_CODES.has(landCode)) return "EU";
+  return "Drittland";
+}
+
+const ART_LAND_OPTIONS = ["IL", "EU", "Drittland"];
 
 const FAHRZEUG_TYPEN = ["", "PKW", "LKW", "Transporter", "Bus", "Sonstiges"];
+
+const ROLLE_COLORS: Record<string, { from: string; to: string; badge: string; dot: string; dotActive: string }> = {
+  Mechaniker:       { from: "from-orange-500",  to: "to-amber-500",   badge: "bg-orange-100 text-orange-700",   dot: "bg-orange-300",  dotActive: "bg-orange-500"  },
+  Autowäsche:       { from: "from-cyan-500",    to: "to-blue-500",    badge: "bg-cyan-100 text-cyan-700",       dot: "bg-cyan-300",    dotActive: "bg-cyan-500"    },
+  Verkauf:          { from: "from-emerald-500", to: "to-teal-500",    badge: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-300", dotActive: "bg-emerald-500" },
+  Buchhaltung:      { from: "from-violet-500",  to: "to-purple-500",  badge: "bg-violet-100 text-violet-700",   dot: "bg-violet-300",  dotActive: "bg-violet-500"  },
+  Einkauf:          { from: "from-pink-500",    to: "to-rose-500",    badge: "bg-pink-100 text-pink-700",       dot: "bg-pink-300",    dotActive: "bg-pink-500"    },
+  Disposition:      { from: "from-sky-500",     to: "to-indigo-500",  badge: "bg-sky-100 text-sky-700",         dot: "bg-sky-300",     dotActive: "bg-sky-500"     },
+  Geschäftsführung: { from: "from-slate-700",   to: "to-slate-900",   badge: "bg-slate-200 text-slate-700",     dot: "bg-slate-400",   dotActive: "bg-slate-700"   },
+  Sonstiges:        { from: "from-stone-400",   to: "to-stone-600",   badge: "bg-stone-100 text-stone-600",     dot: "bg-stone-300",   dotActive: "bg-stone-500"   },
+};
+const ROLLE_COLORS_DEFAULT = { from: "from-blue-500", to: "to-indigo-600", badge: "bg-blue-100 text-blue-700", dot: "bg-blue-300", dotActive: "bg-blue-600" };
 
 const WASCH_PROGRAMME = [
   "",
@@ -191,13 +439,8 @@ function initialForm() {
     ust_id_nr: "",
     steuer_nr: "",
     branchen_nr: "",
-    ansprechpartner: "",
-    telefonnummer: "",
-    faxnummer: "",
-    email: "",
     internet_adr: "",
-    bemerkungen_kontakt: "",
-    faxen_flag: false,
+    kontakte: [emptyKontakt()] as KontaktEntry[],
     art_kunde: "",
     buchungskonto_haupt: "",
     includeWashProfile: false,
@@ -249,13 +492,13 @@ function formToPayload(form: FormState): NewKundeInput {
     ust_id_nr: emptyToUndef(form.ust_id_nr),
     steuer_nr: emptyToUndef(form.steuer_nr),
     branchen_nr: emptyToUndef(form.branchen_nr),
-    ansprechpartner: emptyToUndef(form.ansprechpartner),
-    telefonnummer: emptyToUndef(form.telefonnummer),
-    faxnummer: emptyToUndef(form.faxnummer),
-    email: emptyToUndef(form.email),
+    ansprechpartner: emptyToUndef(form.kontakte[0]?.name ?? ""),
+    telefonnummer: emptyToUndef(form.kontakte[0]?.telefon ?? ""),
+    faxnummer: emptyToUndef(form.kontakte[0]?.fax ?? ""),
+    email: emptyToUndef(form.kontakte[0]?.email ?? ""),
     internet_adr: emptyToUndef(form.internet_adr),
-    bemerkungen_kontakt: emptyToUndef(form.bemerkungen_kontakt),
-    faxen_flag: form.faxen_flag,
+    bemerkungen_kontakt: emptyToUndef(form.kontakte[0]?.bemerkung ?? ""),
+    faxen_flag: form.kontakte[0]?.faxen ?? false,
     art_kunde: emptyToUndef(form.art_kunde),
     buchungskonto_haupt: emptyToUndef(form.buchungskonto_haupt),
   };
@@ -319,6 +562,7 @@ export function NewCustomerModal({
 }: Props) {
   const [tab, setTab] = useState<TabId>("vat");
   const [form, setForm] = useState<FormState>(initialForm);
+  const [activeKontaktIdx, setActiveKontaktIdx] = useState(0);
   const [aufnahmePreview, setAufnahmePreview] = useState("");
   const [viesCountry, setViesCountry] = useState("DE");
   const [viesVatInput, setViesVatInput] = useState("");
@@ -335,6 +579,7 @@ export function NewCustomerModal({
         includeWashProfile: department === "waschanlage",
       });
       setTab("vat");
+      setActiveKontaktIdx(0);
       setViesCountry("DE");
       setViesVatInput("");
       setVatCheckLoading(false);
@@ -367,8 +612,6 @@ export function NewCustomerModal({
     plz:             "44137",
     ort:             "Dortmund",
     land_code:       "DE",
-    telefonnummer:   "+49 231 123456",
-    email:           "info@muster-auto.de",
     internet_adr:    "www.muster-auto.de",
   };
 
@@ -550,10 +793,12 @@ export function NewCustomerModal({
       ? parseViesAddress(vatCheckResult.address)
       : {};
     const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
+    const derivedLandCode = viesLandToFormLand(cc);
     setForm((f) => ({
       ...f,
       ust_id_nr: ust,
-      land_code: viesLandToFormLand(cc),
+      land_code: derivedLandCode,
+      art_land_code: landCodeToArtLand(derivedLandCode),
       ...(nm ? { firmenname: nm } : {}),
       ...(addr.strasse ? { strasse: addr.strasse } : {}),
       ...(addr.plz ? { plz: addr.plz } : {}),
@@ -1036,7 +1281,14 @@ export function NewCustomerModal({
                       <label className={labelClass}>Land</label>
                       <select
                         value={form.land_code}
-                        onChange={(e) => set("land_code", e.target.value)}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          setForm((f) => ({
+                            ...f,
+                            land_code: code,
+                            art_land_code: landCodeToArtLand(code),
+                          }));
+                        }}
                         className={inputClass}
                       >
                         {LAND_OPTIONS.map((l) => (
@@ -1097,97 +1349,213 @@ export function NewCustomerModal({
                 </div>
 
                 {/* ── Col 3: Kontakt ── */}
-                <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Kontakt</p>
+                {(() => {
+                  const k = form.kontakte[activeKontaktIdx] ?? form.kontakte[0]!;
+                  const safeIdx = Math.min(activeKontaktIdx, form.kontakte.length - 1);
+                  const col = ROLLE_COLORS[k.rolle] ?? ROLLE_COLORS_DEFAULT;
+                  const initials = k.name ? k.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : String(safeIdx + 1);
+                  const isAutoFilled = k.name ? getStaffByRolle(k.rolle).some((s) => s.name === k.name) : false;
+                  const staffList = getStaffByRolle(k.rolle);
 
-                  <div>
-                    <label className={labelClass}>Ansprechpartner</label>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.ansprechpartner}
-                      onChange={(e) => set("ansprechpartner", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.ansprechpartner}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
-                  </div>
+                  return (
+                    <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>Telefon{isExtracted("telefonnummer") && <KiBadge />}</label>
-                      <ExtractedFieldWrapper extracted={isExtracted("telefonnummer")}>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.telefonnummer}
-                          onChange={(e) => set("telefonnummer", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.telefonnummer}
-                          title="Vorschläge aus gespeicherten Kunden"
-                        />
-                      </ExtractedFieldWrapper>
+                      {/* ── Header ── */}
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Kontakte</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm((f) => ({ ...f, kontakte: [...f.kontakte, emptyKontakt()] }));
+                            setActiveKontaktIdx(form.kontakte.length);
+                          }}
+                          className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition-all"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Neu
+                        </button>
+                      </div>
+
+                      {/* ── Pill tabs (one per contact) ── */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {form.kontakte.map((c, i) => {
+                          const dc = ROLLE_COLORS[c.rolle] ?? ROLLE_COLORS_DEFAULT;
+                          const isActive = i === safeIdx;
+                          const label = c.name || c.rolle;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setActiveKontaktIdx(i)}
+                              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                                isActive
+                                  ? `${dc.dotActive} text-white shadow-sm`
+                                  : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                              }`}
+                            >
+                              <span className={`h-2 w-2 rounded-full ${isActive ? "bg-white/60" : dc.dotActive}`} />
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* ── Active card ── */}
+                      <div className="overflow-hidden rounded-2xl border border-slate-200/60 shadow-md">
+                        {/* Gradient header */}
+                        <div className={`bg-gradient-to-br ${col.from} ${col.to} px-4 pt-4 pb-5`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-sm font-bold text-white ring-2 ring-white/40">
+                              {initials}
+                            </div>
+                            {form.kontakte.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setForm((f) => ({ ...f, kontakte: f.kontakte.filter((_, i) => i !== safeIdx) }));
+                                  setActiveKontaktIdx(Math.max(0, safeIdx - 1));
+                                }}
+                                className="rounded-lg p-1 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                                title="Kontakt entfernen"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="mt-2 truncate text-sm font-semibold text-white">
+                            {k.name || "— Kein Name —"}
+                          </p>
+                          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${col.badge}`}>
+                            {k.rolle}
+                          </span>
+                        </div>
+
+                        {/* Card body */}
+                        <div className="space-y-2.5 bg-white p-3">
+                          <div>
+                            <label className={labelClass}>Rolle</label>
+                            <select
+                              value={k.rolle}
+                              onChange={(e) => {
+                                const rolle = e.target.value;
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, rolle, name: "", telefon: "", email: "" } : c
+                                  ),
+                                }));
+                              }}
+                              className={inputClass}
+                            >
+                              {KONTAKT_ROLLEN.map((r) => (
+                                <option key={r} value={r}>{r}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>Name</label>
+                            {staffList.length > 0 ? (
+                              <select
+                                value={k.name}
+                                onChange={(e) => {
+                                  const selected = staffList.find((s) => s.name === e.target.value);
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx
+                                        ? { ...c, name: e.target.value, telefon: selected?.telefon ?? c.telefon, email: selected?.email ?? c.email }
+                                        : c
+                                    ),
+                                  }));
+                                }}
+                                className={inputClass}
+                              >
+                                <option value="">— Person wählen —</option>
+                                {staffList.map((s) => (
+                                  <option key={s.id} value={s.name}>{s.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={k.name}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, name: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                className={inputClass}
+                                placeholder="Name eingeben"
+                              />
+                            )}
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>
+                              Telefon
+                              {isAutoFilled && <span className="ml-1 rounded bg-emerald-100 px-1 py-px text-[9px] font-semibold text-emerald-700">AUTO</span>}
+                            </label>
+                            <input
+                              type="text"
+                              value={k.telefon}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, telefon: e.target.value } : c
+                                  ),
+                                }))
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>
+                              E-Mail
+                              {isAutoFilled && <span className="ml-1 rounded bg-emerald-100 px-1 py-px text-[9px] font-semibold text-emerald-700">AUTO</span>}
+                            </label>
+                            <input
+                              type="email"
+                              value={k.email}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, email: e.target.value } : c
+                                  ),
+                                }))
+                              }
+                              className={inputClass}
+                            />
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>Bemerkung</label>
+                            <textarea
+                              value={k.bemerkung}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, bemerkung: e.target.value } : c
+                                  ),
+                                }))
+                              }
+                              rows={2}
+                              className={`${inputClass} resize-none py-2`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
-                    <div>
-                      <label className={labelClass}>Fax</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.faxnummer}
-                        onChange={(e) => set("faxnummer", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.faxnummer}
-                        title="Vorschläge aus gespeicherten Kunden"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>E-Mail{isExtracted("email") && <KiBadge />}</label>
-                    <ExtractedFieldWrapper extracted={isExtracted("email")}>
-                      <SuggestTextInput
-                        type="email"
-                        value={form.email}
-                        onChange={(e) => set("email", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.email}
-                        title="Vorschläge aus gespeicherten Kunden"
-                      />
-                    </ExtractedFieldWrapper>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Internet Adr.{isExtracted("internet_adr") && <KiBadge />}</label>
-                    <ExtractedFieldWrapper extracted={isExtracted("internet_adr")}>
-                      <SuggestTextInput
-                        type="url"
-                        value={form.internet_adr}
-                        onChange={(e) => set("internet_adr", e.target.value)}
-                        placeholder="https://…"
-                        className={inputClass}
-                        suggestions={fieldSuggestions.internet_adr}
-                        title="Vorschläge aus gespeicherten Kunden"
-                      />
-                    </ExtractedFieldWrapper>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Bemerkungen (Kontakt)</label>
-                    <textarea
-                      value={form.bemerkungen_kontakt}
-                      onChange={(e) => set("bemerkungen_kontakt", e.target.value)}
-                      rows={2}
-                      className={`${inputClass} resize-none py-2`}
-                    />
-                  </div>
-
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={form.faxen_flag}
-                      onChange={(e) => set("faxen_flag", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600"
-                    />
-                    faxen
-                  </label>
-                </div>
+                  );
+                })()}
               </div>
             </div>
           )}

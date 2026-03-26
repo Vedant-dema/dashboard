@@ -804,7 +804,24 @@ def _sanitize_raw_for_display(data: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _map_vies_check_response(data: dict[str, Any], cc: str, vat: str) -> VatCheckResponse:
+def _request_fallback_name_address(body: VatCheckRequest) -> tuple[str | None, str | None]:
+    """Build name/address fallback from submitted trader fields when VIES omits details."""
+    fallback_name = _vies_text_or_none(body.trader_name)
+    street = _vies_text_or_none(body.trader_street)
+    postal = _vies_text_or_none(body.trader_postal_code)
+    city = _vies_text_or_none(body.trader_city)
+    line2 = " ".join(x for x in (postal, city) if x).strip() or None
+    fallback_addr = "\n".join(x for x in (street, line2) if x) or None
+    return fallback_name, fallback_addr
+
+
+def _map_vies_check_response(
+    data: dict[str, Any],
+    cc: str,
+    vat: str,
+    fallback_name: str | None = None,
+    fallback_address: str | None = None,
+) -> VatCheckResponse:
     valid = bool(data.get("valid"))
     trader_name = _vies_text_or_none(data.get("traderName")) or _vies_text_or_none(data.get("name"))
 
@@ -821,6 +838,10 @@ def _map_vies_check_response(data: dict[str, Any], cc: str, vat: str) -> VatChec
     addr = _to_de_title(addr)
 
     details = bool(trader_name or addr)
+    if valid and not trader_name and fallback_name:
+        trader_name = fallback_name
+    if valid and not addr and fallback_address:
+        addr = fallback_address
 
     omit_raw = os.environ.get("VIES_OMIT_RAW_IN_JSON", "").strip().lower() in ("1", "true", "yes", "on")
     raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(dict(data))
@@ -882,7 +903,14 @@ async def vies_check_test_service(body: VatCheckRequest) -> VatCheckResponse:
         json_body=payload,
         require_valid_field=True,
     )
-    return _map_vies_check_response(data, cc, vat)
+    fallback_name, fallback_address = _request_fallback_name_address(body)
+    return _map_vies_check_response(
+        data,
+        cc,
+        vat,
+        fallback_name=fallback_name,
+        fallback_address=fallback_address,
+    )
 
 
 @app.post("/api/v1/vat/check", response_model=VatCheckResponse)
@@ -910,4 +938,11 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
             soap_data = {}
         if soap_data:
             data = _merge_soap_approx_into_rest(data, soap_data)
-    return _map_vies_check_response(data, cc, vat)
+    fallback_name, fallback_address = _request_fallback_name_address(body)
+    return _map_vies_check_response(
+        data,
+        cc,
+        vat,
+        fallback_name=fallback_name,
+        fallback_address=fallback_address,
+    )

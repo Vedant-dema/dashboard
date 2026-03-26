@@ -22,6 +22,7 @@
 | [FEATURE-016](#feature-016) | Persist requester context for VIES checks | Extended | 2026-03-26 |
 | [FEATURE-017](#feature-017) | VIES SOAP approx fallback for real trader data | Extended | 2026-03-26 |
 | [FEATURE-018](#feature-018) | Strict VIES timeout budget enforcement | Extended | 2026-03-26 |
+| [FEATURE-019](#feature-019) | VAT response fallback from submitted trader details | Extended | 2026-03-26 |
 
 ---
 
@@ -907,3 +908,61 @@ None.
 ### Notes / Known Limitations
 - This improves timeout correctness, but it cannot make an overloaded upstream VIES node respond faster.
 - If your hosting platform allows longer request times, increasing `VIES_MAX_TOTAL_SEC` is still an operational choice you may want to make.
+
+---
+
+## [FEATURE-019]
+## FEATURE-019: VAT response fallback from submitted trader details
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended the VAT check response mapping so customer-facing fields are no longer returned as `null` when VIES confirms a VAT number as valid but omits trader identity data. In these cases, the API now falls back to the trader/customer values that were submitted in the request, allowing the New Customer flow to keep meaningful details in the customer section instead of empty values.
+
+### Where It Was Added
+- `backend/main.py` — added request-derived fallback helper and wired fallback values into VAT response mapping for both live and test VAT check endpoints
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Builds fallback name/address from incoming `VatCheckRequest` trader fields (`trader_name`, `trader_street`, `trader_postal_code`, `trader_city`).
+2. Keeps existing VIES parsing and placeholder cleanup as the primary source.
+3. If VIES result is `valid` and parsed `name` and/or `address` are missing, substitutes the response values from submitted fallback data.
+4. Preserves `trader_details_available` semantics so clients can still detect whether details came from VIES itself.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trader_name` | string (nullable) | No | Request fallback source for response `name` when VIES omits trader name |
+| `trader_street` | string (nullable) | No | Request fallback source for response `address` line 1 when VIES omits address |
+| `trader_postal_code` | string (nullable) | No | Request fallback source for response `address` line 2 |
+| `trader_city` | string (nullable) | No | Request fallback source for response `address` line 2 |
+| `name` | string (nullable) | No | Response field, now falls back to submitted trader name for valid VAT checks |
+| `address` | string (nullable) | No | Response field, now falls back to submitted trader address for valid VAT checks |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | `VatCheckResponse.name/address` may now be request-derived fallback for valid checks with missing VIES trader details |
+| POST | `/api/v1/vat/check-test` | None | `VatCheckRequest` | Same fallback behavior in synthetic test path |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- If both VIES trader details and submitted trader fallback fields are empty, `name` and `address` remain `null`.
+- `trader_details_available` remains based on upstream VIES details, not on fallback values, so UIs can distinguish source quality.

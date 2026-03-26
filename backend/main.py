@@ -20,6 +20,10 @@ Environment:
   VIES_MAX_TOTAL_SEC       Hard wall-clock budget for one check (retries + sleeps, default: 24 s).
                            Must be below the cloud reverse-proxy timeout (typically 30 s on Render/Railway/
                            Heroku). Increase only if your platform allows long-running requests.
+  VIES_SOAP_APPROX_FALLBACK If 0/false: skip SOAP checkVatApprox when REST omits fields (default: on).
+  VIES_SOAP_CHECK_FALLBACK  If 0/false: skip SOAP checkVat before checkVatApprox (default: on).
+                           checkVat is the classic operation and sometimes returns name/address when
+                           checkVatApprox does not for a minimal request.
 
 Note: MS_MAX_CONCURRENT_REQ is enforced by the Commission/member states. We cannot remove it;
 this app serializes outbound VIES calls and retries with backoff so many checks still succeed.
@@ -104,6 +108,10 @@ def _default_live_check_url() -> str:
     return _vies_rest_url("check-vat-number")
 
 
+def _vies_ms_lookup_url(country_code: str, vat_number: str) -> str:
+    return _vies_rest_url(f"ms/{country_code.strip().upper()}/vat/{vat_number.strip()}")
+
+
 def _vies_soap_url() -> str:
     return os.environ.get(
         "VIES_SOAP_URL",
@@ -113,6 +121,11 @@ def _vies_soap_url() -> str:
 
 def _vies_soap_approx_fallback_enabled() -> bool:
     v = os.environ.get("VIES_SOAP_APPROX_FALLBACK", "1").strip().lower()
+    return v not in ("0", "false", "no", "off")
+
+
+def _vies_soap_check_fallback_enabled() -> bool:
+    v = os.environ.get("VIES_SOAP_CHECK_FALLBACK", "1").strip().lower()
     return v not in ("0", "false", "no", "off")
 
 
@@ -428,6 +441,46 @@ def _rest_missing_trader_details(data: dict[str, Any]) -> bool:
     return not trader_name or not trader_addr
 
 
+def _payload_has_approx_inputs(payload: dict[str, Any]) -> bool:
+    return any(
+        _soap_text(payload.get(key))
+        for key in (
+            "requesterMemberStateCode",
+            "requesterNumber",
+            "traderName",
+            "traderStreet",
+            "traderPostalCode",
+            "traderCity",
+            "traderCompanyType",
+        )
+    )
+
+
+def _normalize_ms_lookup_data(data: dict[str, Any], cc: str, vat: str) -> dict[str, Any]:
+    approx = data.get("viesApproximate")
+    approx_dict = approx if isinstance(approx, dict) else {}
+    return {
+        "countryCode": cc,
+        "vatNumber": str(data.get("vatNumber") or vat),
+        "requestDate": data.get("requestDate"),
+        "valid": bool(data.get("isValid")),
+        "requestIdentifier": data.get("requestIdentifier"),
+        "name": data.get("name"),
+        "address": data.get("address"),
+        "traderName": approx_dict.get("name"),
+        "traderStreet": approx_dict.get("street"),
+        "traderPostalCode": approx_dict.get("postalCode"),
+        "traderCity": approx_dict.get("city"),
+        "traderCompanyType": approx_dict.get("companyType"),
+        "traderNameMatch": _soap_match_to_rest(approx_dict.get("matchName")),
+        "traderStreetMatch": _soap_match_to_rest(approx_dict.get("matchStreet")),
+        "traderPostalCodeMatch": _soap_match_to_rest(approx_dict.get("matchPostalCode")),
+        "traderCityMatch": _soap_match_to_rest(approx_dict.get("matchCity")),
+        "traderCompanyTypeMatch": _soap_match_to_rest(approx_dict.get("matchCompanyType")),
+        "msLookupRaw": data,
+    }
+
+
 def _build_vies_soap_approx_envelope(payload: dict[str, Any]) -> str:
     parts = [
         "<s11:Envelope xmlns:s11='http://schemas.xmlsoap.org/soap/envelope/'>",
@@ -450,6 +503,21 @@ def _build_vies_soap_approx_envelope(payload: dict[str, Any]) -> str:
             parts.append(f"<tns1:{key}>{_xml_escape(value)}</tns1:{key}>")
     parts.extend(("</tns1:checkVatApprox>", "</s11:Body>", "</s11:Envelope>"))
     return "".join(parts)
+
+
+def _build_vies_soap_check_envelope(payload: dict[str, Any]) -> str:
+    cc = _soap_text(payload.get("countryCode"))
+    vn = _soap_text(payload.get("vatNumber"))
+    if not cc or not vn:
+        raise HTTPException(status_code=400, detail="countryCode and vatNumber required for SOAP checkVat")
+    return (
+        "<s11:Envelope xmlns:s11='http://schemas.xmlsoap.org/soap/envelope/'>"
+        "<s11:Body>"
+        "<tns1:checkVat xmlns:tns1='urn:ec.europa.eu:taxud:vies:services:checkVat:types'>"
+        f"<tns1:countryCode>{_xml_escape(cc)}</tns1:countryCode>"
+        f"<tns1:vatNumber>{_xml_escape(vn)}</tns1:vatNumber>"
+        "</tns1:checkVat></s11:Body></s11:Envelope>"
+    )
 
 
 def _parse_vies_soap_approx_response(xml_text: str) -> dict[str, Any]:
@@ -510,6 +578,77 @@ def _parse_vies_soap_approx_response(xml_text: str) -> dict[str, Any]:
         if key in values:
             values[key] = _soap_match_to_rest(values[key])
     return values
+
+
+async def _vies_soap_check_with_retries(payload: dict[str, Any]) -> dict[str, Any]:
+    """Retry official SOAP checkVat (classic); often returns name/address when REST/approx omit them."""
+    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
+    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
+    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
+
+    if _vies_http is None:
+        raise HTTPException(status_code=503, detail="HTTP client not initialised")
+    client: httpx.AsyncClient = _vies_http
+    url = _vies_soap_url() or "https://ec.europa.eu/taxation_customs/vies/services/checkVatService"
+    body = _build_vies_soap_check_envelope(payload)
+    headers = {"Content-Type": "text/xml; charset=utf-8", "SOAPAction": "checkVat"}
+    last_detail = "VIES SOAP checkVat temporarily unavailable"
+    loop_start = asyncio.get_event_loop().time()
+    label = "VIES SOAP checkVat"
+
+    async with _vies_serial:
+        for attempt in range(max_retries):
+            elapsed = asyncio.get_event_loop().time() - loop_start
+            if elapsed >= max_total_sec:
+                raise HTTPException(
+                    status_code=503,
+                    detail=_vies_timeout_detail(label, elapsed, max_total_sec),
+                )
+            if attempt > 0:
+                sleep_sec = base_wait * (2 ** (attempt - 1)) + random.uniform(0, 0.55)
+                sleep_sec = min(sleep_sec, cap_wait, max_total_sec - elapsed - 1.0)
+                if sleep_sec > 0:
+                    await asyncio.sleep(sleep_sec)
+            request_budget_sec = _vies_remaining_request_sec(loop_start, max_total_sec)
+            if request_budget_sec <= 0.5:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                raise HTTPException(
+                    status_code=503,
+                    detail=_vies_timeout_detail(label, elapsed, max_total_sec),
+                )
+            try:
+                r = await client.post(
+                    url,
+                    content=body,
+                    headers=headers,
+                    timeout=_vies_request_timeout(request_budget_sec),
+                )
+            except httpx.TimeoutException as e:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                last_detail = _vies_timeout_detail(label, elapsed, max_total_sec)
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=503, detail=last_detail) from e
+            except httpx.RequestError as e:
+                last_detail = f"{label} request failed: {e!s}"
+                if attempt < max_retries - 1 and _vies_failure_retryable({}, 503):
+                    continue
+                raise HTTPException(status_code=502, detail=last_detail) from e
+
+            if r.status_code >= 500 and attempt < max_retries - 1 and _vies_failure_retryable({}, r.status_code):
+                last_detail = f"{label} HTTP {r.status_code}"
+                continue
+
+            parsed = _parse_vies_soap_approx_response(r.text)
+            if "valid" not in parsed:
+                last_detail = f"Unexpected {label} response shape (expected valid field)"
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=502, detail=last_detail)
+            return parsed
+
+    raise HTTPException(status_code=503, detail=last_detail)
 
 
 async def _vies_soap_approx_with_retries(payload: dict[str, Any]) -> dict[str, Any]:
@@ -582,7 +721,13 @@ async def _vies_soap_approx_with_retries(payload: dict[str, Any]) -> dict[str, A
     raise HTTPException(status_code=503, detail=last_detail)
 
 
-def _merge_soap_approx_into_rest(rest_data: dict[str, Any], soap_data: dict[str, Any]) -> dict[str, Any]:
+def _merge_soap_trader_into_rest(
+    rest_data: dict[str, Any],
+    soap_data: dict[str, Any],
+    *,
+    fallback_used_key: str = "soapApproxFallbackUsed",
+    raw_key: str = "soapApproxRaw",
+) -> dict[str, Any]:
     merged = dict(rest_data)
 
     for key in ("traderName", "traderStreet", "traderPostalCode", "traderCity", "traderCompanyType", "name", "address"):
@@ -608,9 +753,89 @@ def _merge_soap_approx_into_rest(rest_data: dict[str, Any], soap_data: dict[str,
         if not rest_match or rest_match == "NOT_PROCESSED":
             merged[key] = soap_match
 
-    merged["soapApproxFallbackUsed"] = True
-    merged["soapApproxRaw"] = soap_data
+    merged[fallback_used_key] = True
+    merged[raw_key] = soap_data
     return merged
+
+
+def _merge_soap_approx_into_rest(rest_data: dict[str, Any], soap_data: dict[str, Any]) -> dict[str, Any]:
+    return _merge_soap_trader_into_rest(rest_data, soap_data)
+
+
+async def _vies_ms_lookup_with_retries(payload: dict[str, str]) -> dict[str, Any]:
+    """Call the same website-style ms/{country}/vat/{vat} endpoint used by the VIES UI."""
+    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
+    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
+    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
+
+    if _vies_http is None:
+        raise HTTPException(status_code=503, detail="HTTP client not initialised")
+    client: httpx.AsyncClient = _vies_http
+    url = _vies_ms_lookup_url(payload["countryCode"], payload["vatNumber"])
+    params = {
+        key: value
+        for key, value in {
+            "requesterMemberStateCode": _soap_text(payload.get("requesterMemberStateCode")),
+            "requesterNumber": _soap_text(payload.get("requesterNumber")),
+            "traderName": _soap_text(payload.get("traderName")),
+            "traderStreet": _soap_text(payload.get("traderStreet")),
+            "traderPostalCode": _soap_text(payload.get("traderPostalCode")),
+            "traderCity": _soap_text(payload.get("traderCity")),
+            "traderCompanyType": _soap_text(payload.get("traderCompanyType")),
+        }.items()
+        if value
+    }
+    last_detail = "VIES ms lookup temporarily unavailable"
+    loop_start = asyncio.get_event_loop().time()
+
+    async with _vies_serial:
+        for attempt in range(max_retries):
+            elapsed = asyncio.get_event_loop().time() - loop_start
+            if elapsed >= max_total_sec:
+                raise HTTPException(status_code=503, detail=_vies_timeout_detail("VIES ms lookup", elapsed, max_total_sec))
+            if attempt > 0:
+                sleep_sec = base_wait * (2 ** (attempt - 1)) + random.uniform(0, 0.55)
+                sleep_sec = min(sleep_sec, cap_wait, max_total_sec - elapsed - 1.0)
+                if sleep_sec > 0:
+                    await asyncio.sleep(sleep_sec)
+            request_budget_sec = _vies_remaining_request_sec(loop_start, max_total_sec)
+            if request_budget_sec <= 0.5:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                raise HTTPException(status_code=503, detail=_vies_timeout_detail("VIES ms lookup", elapsed, max_total_sec))
+            try:
+                r = await client.get(url, params=params, timeout=_vies_request_timeout(request_budget_sec))
+            except httpx.TimeoutException as e:
+                elapsed = asyncio.get_event_loop().time() - loop_start
+                last_detail = _vies_timeout_detail("VIES ms lookup", elapsed, max_total_sec)
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=503, detail=last_detail) from e
+            except httpx.RequestError as e:
+                last_detail = f"VIES ms lookup request failed: {e!s}"
+                if attempt < max_retries - 1 and _vies_failure_retryable({}, 503):
+                    continue
+                raise HTTPException(status_code=502, detail=last_detail) from e
+
+            try:
+                data: dict[str, Any] = r.json()
+            except ValueError as e:
+                raise HTTPException(status_code=502, detail="VIES ms lookup returned a non-JSON body") from e
+
+            if r.status_code >= 400:
+                last_detail = _vies_error_message(data) or r.text
+                if attempt < max_retries - 1 and _vies_failure_retryable(data, r.status_code):
+                    continue
+                raise HTTPException(status_code=502, detail=last_detail)
+
+            if "isValid" not in data:
+                last_detail = "Unexpected VIES ms lookup response shape (expected isValid field)"
+                if attempt < max_retries - 1:
+                    continue
+                raise HTTPException(status_code=502, detail=last_detail)
+            return data
+
+    raise HTTPException(status_code=503, detail=last_detail)
 
 
 def _vies_timeout_detail(prefix: str, elapsed_sec: float, budget_sec: float) -> str:
@@ -842,16 +1067,22 @@ def _map_vies_check_response(
         trader_name = fallback_name
     if valid and not addr and fallback_address:
         addr = fallback_address
+    if valid and not trader_name:
+        trader_name = "Not provided by VIES"
+    if valid and not addr:
+        addr = "Not provided by VIES"
 
     omit_raw = os.environ.get("VIES_OMIT_RAW_IN_JSON", "").strip().lower() in ("1", "true", "yes", "on")
     raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(dict(data))
 
     def _m(key: str) -> str | None:
-        """Normalize VIES match flags and suppress placeholder 'NOT_PROCESSED'."""
+        """Expose VIES/SOAP match enum at top level (VALID / INVALID / NOT_PROCESSED).
+
+        Must match vies_raw: previously NOT_PROCESSED was mapped to None, which contradicted
+        the raw payload and confused clients.
+        """
         match_value = _soap_match_to_rest(data.get(key))
-        if not match_value or match_value == "NOT_PROCESSED":
-            return None
-        return match_value
+        return match_value or None
 
     req_id = (data.get("requestIdentifier") or "").strip() or None
 
@@ -931,7 +1162,35 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
         json_body=payload,
         require_valid_field=True,
     )
-    if _vies_soap_approx_fallback_enabled() and (_rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)):
+    need_ms_lookup = _payload_has_approx_inputs(payload) or (
+        bool(data.get("valid")) and _rest_missing_trader_details(data)
+    )
+    if need_ms_lookup:
+        try:
+            ms_lookup_data = await _vies_ms_lookup_with_retries(payload)
+        except HTTPException:
+            ms_lookup_data = {}
+        if ms_lookup_data:
+            data = _merge_soap_approx_into_rest(
+                data,
+                _normalize_ms_lookup_data(ms_lookup_data, cc, vat),
+            )
+    soap_wanted = _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
+    if soap_wanted and _vies_soap_check_fallback_enabled():
+        try:
+            soap_check = await _vies_soap_check_with_retries(payload)
+        except HTTPException:
+            soap_check = {}
+        if soap_check:
+            data = _merge_soap_trader_into_rest(
+                data,
+                soap_check,
+                fallback_used_key="soapCheckFallbackUsed",
+                raw_key="soapCheckRaw",
+            )
+    if _vies_soap_approx_fallback_enabled() and (
+        _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
+    ):
         try:
             soap_data = await _vies_soap_approx_with_retries(payload)
         except HTTPException:

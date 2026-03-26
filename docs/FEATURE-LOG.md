@@ -22,7 +22,9 @@
 | [FEATURE-016](#feature-016) | Persist requester context for VIES checks | Extended | 2026-03-26 |
 | [FEATURE-017](#feature-017) | VIES SOAP approx fallback for real trader data | Extended | 2026-03-26 |
 | [FEATURE-018](#feature-018) | Strict VIES timeout budget enforcement | Extended | 2026-03-26 |
+| [FEATURE-019](#feature-019) | Website-style VIES ms lookup enrichment | Extended | 2026-03-26 |
 | [FEATURE-019](#feature-019) | VAT response fallback from submitted trader details | Extended | 2026-03-26 |
+| [FEATURE-020](#feature-020) | Non-null VAT identity fallback strings | Extended | 2026-03-26 |
 
 ---
 
@@ -912,6 +914,60 @@ None.
 ---
 
 ## [FEATURE-019]
+## FEATURE-019: Website-style VIES ms lookup enrichment
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended the live VAT check flow with an additional call to the same website-style VIES endpoint pattern used by the public UI (`rest-api/ms/{country}/vat/{vat}`) when requester/trader fields are present. This helps the backend mirror the official VIES website more closely and capture `viesApproximate` match results where that endpoint returns richer association data than the existing `check-vat-number` path.
+
+### Where It Was Added
+- `backend/main.py` — added ms lookup URL helper, approximate-input detection, ms lookup retry function, ms response normalization, and merge into `/api/v1/vat/check`
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Detects whether the outgoing request includes requester and/or trader approximation fields.
+2. Calls `rest-api/ms/{country}/vat/{vat}` with those values as query parameters.
+3. Normalizes `isValid`, `requestIdentifier`, and `viesApproximate.match*` data into the backend’s existing response shape.
+4. Merges the website-style VIES result into the primary REST response before SOAP fallback runs.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `VatCheckRequest.requester_*` | string | No | Forwarded to the website-style VIES lookup when present |
+| `VatCheckRequest.trader_*` | string | No | Forwarded to the website-style VIES lookup when present |
+| `VatCheckResponse.trader_*_match` | string (nullable) | No | Can now be enriched from `viesApproximate.match*` returned by the website-style endpoint |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | `VatCheckResponse` enriched by website-style ms lookup when approximation fields are present |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- This still depends on what the member state returns through the website-style VIES endpoint; Germany may still return `NOT_PROCESSED` for some VAT numbers.
+- The extra lookup adds another upstream request, which can slightly increase latency for VAT checks with approximation inputs.
+
+---
+
+## [FEATURE-019]
 ## FEATURE-019: VAT response fallback from submitted trader details
 **Date:** 2026-03-26
 **Author/Agent:** Cursor AI
@@ -966,3 +1022,60 @@ None.
 ### Notes / Known Limitations
 - If both VIES trader details and submitted trader fallback fields are empty, `name` and `address` remain `null`.
 - `trader_details_available` remains based on upstream VIES details, not on fallback values, so UIs can distinguish source quality.
+
+---
+
+## [FEATURE-020]
+## FEATURE-020: Non-null VAT identity fallback strings
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended VAT response mapping to guarantee non-null `name` and `address` values for valid VIES checks, even when both upstream VIES data and submitted trader fallback fields are absent. The API now emits explicit placeholder strings so customer-facing details are never `null` in valid-result scenarios.
+
+### Where It Was Added
+- `backend/main.py` — `_map_vies_check_response` now sets explicit non-null defaults for `name` and `address` when `valid=true` and no other source data exists
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Attempts primary trader details from VIES response.
+2. Applies request-derived fallback trader fields when VIES omits details.
+3. If VAT is valid and both sources are missing, sets:
+   - `name = "Not provided by VIES"`
+   - `address = "Not provided by VIES"`
+4. Keeps `trader_details_available` behavior unchanged (still based on actual VIES-provided details).
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `valid` | boolean | Yes | When true, fallback placeholder strings can be emitted for missing identity details |
+| `name` | string | Yes (for valid checks) | Never null in valid checks after this change |
+| `address` | string | Yes (for valid checks) | Never null in valid checks after this change |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | For valid VAT, `name/address` now always non-null |
+| POST | `/api/v1/vat/check-test` | None | `VatCheckRequest` | Same behavior in test path |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- Placeholder strings indicate that identity data was not provided by VIES and should not be treated as verified legal name/address.
+- `trader_details_available=false` still signals that member-state trader details were unavailable.

@@ -20,6 +20,7 @@
 | [FEATURE-010](#feature-010) | Dynamic Widget Lists / Presets | Added | 2026-03-25 |
 | [FEATURE-015](#feature-015) | VIES trader match fields in API + form fallback | Modified | 2026-03-26 |
 | [FEATURE-016](#feature-016) | Persist requester context for VIES checks | Extended | 2026-03-26 |
+| [FEATURE-017](#feature-017) | VIES SOAP approx fallback for real trader data | Extended | 2026-03-26 |
 
 ---
 
@@ -797,3 +798,58 @@ None.
 ### Notes / Known Limitations
 - Persisted requester values are browser-local; users on a different browser/device must enter them once there.
 - Member-state rules still apply; some countries may continue returning `NOT_PROCESSED` despite requester context.
+
+---
+
+## [FEATURE-017]
+## FEATURE-017: VIES SOAP approx fallback for real trader data
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended the backend VAT check so it no longer relies only on the VIES REST response when REST returns no useful trader identity details or only `NOT_PROCESSED` match statuses. The backend now makes a second attempt against the official free VIES SOAP `checkVatApprox` service and merges any richer trader details and match statuses back into the existing API response shape.
+
+### Where It Was Added
+- `backend/main.py` — added SOAP fallback URL/config helpers, SOAP XML request builder, SOAP XML response parser, retry wrapper, and merge logic into `/api/v1/vat/check`
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Detects when the REST check result is missing trader details or all `trader*Match` fields are `NOT_PROCESSED`.
+2. Builds an official VIES SOAP `checkVatApprox` request using the same VAT, requester, and trader fields already sent to REST.
+3. Retries the SOAP call with the same timeout/backoff strategy used for REST requests.
+4. Parses SOAP response fields (`traderName`, `traderStreet`, `traderPostalCode`, `traderCity`, `traderCompanyType`, match fields, request identifier).
+5. Merges richer SOAP data into the original REST result without changing the frontend contract.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `VIES_SOAP_URL` | env var (string) | No | Override for the official VIES SOAP endpoint |
+| `VIES_SOAP_APPROX_FALLBACK` | env var (boolean-like) | No | Enables/disables SOAP fallback when REST is incomplete |
+| `VatCheckResponse` | JSON object | Yes | Existing response shape, potentially enriched with SOAP trader details |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | `VatCheckResponse` enriched by SOAP fallback when REST is incomplete |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- This still depends on what each member state exposes through the official VIES infrastructure; some countries may still not return trader identity data.
+- SOAP fallback adds one extra upstream VIES call when REST data is incomplete, so slow member states may increase end-to-end latency.

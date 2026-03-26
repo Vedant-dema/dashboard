@@ -18,6 +18,7 @@
 | [FEATURE-008](#feature-008) | i18n Multi-Language System (12 languages) | Added | 2026-03-25 |
 | [FEATURE-009](#feature-009) | Header Component | Added | 2026-03-25 |
 | [FEATURE-010](#feature-010) | Dynamic Widget Lists / Presets | Added | 2026-03-25 |
+| [FEATURE-015](#feature-015) | VIES trader match fields in API + form fallback | Modified | 2026-03-26 |
 
 ---
 
@@ -683,3 +684,59 @@ None.
 ### Notes / Known Limitations
 - This cannot force VIES to return `name`/`address`; member-state privacy policy still controls exposed fields.
 - Some countries may continue to return only validity (`valid`) even with requester context.
+
+---
+
+## [FEATURE-015]
+## FEATURE-015: VIES trader match fields surfaced + customer form fallback
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Modified
+
+### What Was Added
+VAT check responses now expose the same trader `*Match` statuses from VIES in the top-level `trader_*_match` fields (including `NOT_PROCESSED`), so clients are not forced to parse `vies_raw`. The new-customer VAT request also reuses **Kunde** tab data (name, street, PLZ, city, legal form) as VIES `trader*` comparison fields when the advanced VIES inputs are empty, improving the chance of real match results where the member state supports approximate checks.
+
+### Where It Was Added
+- `backend/main.py` — `_map_vies_check_response` no longer maps VIES match sentinels to `null`
+- `frontend/src/components/NewCustomerModal.tsx` — `runVatCheck` builds trader_* payload from form fallbacks
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. `_m()` returns the trimmed VIES string for `traderNameMatch` etc., or `null` only when the field is missing or blank.
+2. Before `POST /api/v1/vat/check`, the modal sets each `trader_*` body field from the VIES advanced field if set, otherwise from `form` (`firmenname`, `strasse`, `plz`, `ort`, `gesellschaftsform`).
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trader_name_match` | string (nullable) | No | VIES `traderNameMatch` (e.g. `NOT_PROCESSED`, member-state-specific match codes) |
+| `trader_street_match` | string (nullable) | No | Same for street |
+| `trader_postal_code_match` | string (nullable) | No | Same for postal code |
+| `trader_city_match` | string (nullable) | No | Same for city |
+| `trader_company_type_match` | string (nullable) | No | Same for company type |
+
+### Database
+- **Engine:** N/A
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | `VatCheckResponse.trader_*_match` may be non-null for all VIES match codes |
+| POST | `/api/v1/vat/check-test` | None | `VatCheckRequest` | Same |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- Many member states still return `NOT_PROCESSED` for approximate matching or omit trader details; this change does not change VIES behaviour, only preserves and forwards its match fields.
+- Real cross-field matching may still require requester context (`VIES_REQUESTER_*` or explicit requester fields) per member-state rules.

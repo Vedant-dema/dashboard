@@ -471,6 +471,12 @@ export function NewCustomerModal({
     setVatCheckResult(null);
     setVatBackendResponseJson(null);
     try {
+      const traderNameVal = viesTraderName.trim() || form.firmenname.trim();
+      const traderStreetVal = viesTraderStreet.trim() || form.strasse.trim();
+      const traderPlzVal = viesTraderPlz.trim() || form.plz.trim();
+      const traderCityVal = viesTraderCity.trim() || form.ort.trim();
+      const traderCompanyTypeVal =
+        viesTraderCompanyType.trim() || form.gesellschaftsform.trim();
       const res = await fetch(`${API_BASE}/api/v1/vat/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -483,13 +489,11 @@ export function NewCustomerModal({
                 requester_number: viesReqNumber.trim(),
               }
             : {}),
-          ...(viesTraderName.trim() ? { trader_name: viesTraderName.trim() } : {}),
-          ...(viesTraderStreet.trim() ? { trader_street: viesTraderStreet.trim() } : {}),
-          ...(viesTraderPlz.trim() ? { trader_postal_code: viesTraderPlz.trim() } : {}),
-          ...(viesTraderCity.trim() ? { trader_city: viesTraderCity.trim() } : {}),
-          ...(viesTraderCompanyType.trim()
-            ? { trader_company_type: viesTraderCompanyType.trim() }
-            : {}),
+          ...(traderNameVal ? { trader_name: traderNameVal } : {}),
+          ...(traderStreetVal ? { trader_street: traderStreetVal } : {}),
+          ...(traderPlzVal ? { trader_postal_code: traderPlzVal } : {}),
+          ...(traderCityVal ? { trader_city: traderCityVal } : {}),
+          ...(traderCompanyTypeVal ? { trader_company_type: traderCompanyTypeVal } : {}),
         }),
       });
       // status 0 means the browser blocked the request (CORS / network).

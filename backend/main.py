@@ -554,17 +554,12 @@ def _map_vies_check_response(data: dict[str, Any], cc: str, vat: str) -> VatChec
     omit_raw = os.environ.get("VIES_OMIT_RAW_IN_JSON", "").strip().lower() in ("1", "true", "yes", "on")
     raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(dict(data))
 
-    # VIES returns "NOT_PROCESSED" when no trader fields were sent for matching — treat as null.
-    _MATCH_SKIP = frozenset({"NOT_PROCESSED", "N/A", "NA", "UNKNOWN", "NOT_APPLICABLE"})
-
     def _m(key: str) -> str | None:
         v = data.get(key)
         if v is None:
             return None
         s = str(v).strip()
-        if not s or s.upper() in _MATCH_SKIP:
-            return None
-        return s
+        return s or None
 
     req_id = (data.get("requestIdentifier") or "").strip() or None
 

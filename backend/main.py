@@ -8,6 +8,8 @@ Environment:
   VIES_REST_API_BASE       REST prefix (default: https://ec.europa.eu/taxation_customs/vies/rest-api).
   VIES_STATUS_URL          Full URL for GET check-status (default: {base}/check-status).
   VIES_TEST_SERVICE_URL    Full URL for POST check-vat-test-service (default: {base}/check-vat-test-service).
+  VIES_REQUESTER_CC        Optional default requester member state code (e.g. DE/EU).
+  VIES_REQUESTER_VAT       Optional default requester VAT number (used with VIES_REQUESTER_CC).
   CORS_ORIGINS             Comma-separated origins (default: http://localhost:5173,http://127.0.0.1:5173).
   VIES_MAX_RETRIES         Retries for transient / concurrent-cap errors (default: 8).
   VIES_RETRY_BASE_SEC      Initial backoff before first retry, seconds (default: 0.8).
@@ -140,6 +142,31 @@ def _cors_origins() -> list[str]:
     if raw:
         return [o.strip() for o in raw.split(",") if o.strip()]
     return ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+def _default_requester_from_env() -> tuple[str, str] | None:
+    """Return configured requester identity for VIES approximate checks, if complete."""
+    req_cc = os.environ.get("VIES_REQUESTER_CC", "").strip().upper()
+    req_raw = os.environ.get("VIES_REQUESTER_VAT", "").strip()
+    if not req_cc and not req_raw:
+        return None
+    if not req_cc or not req_raw:
+        raise HTTPException(
+            status_code=500,
+            detail="VIES_REQUESTER_CC and VIES_REQUESTER_VAT must either both be set or both be empty.",
+        )
+    if req_cc not in REQUESTER_COUNTRY_CODES:
+        raise HTTPException(
+            status_code=500,
+            detail=f"VIES_REQUESTER_CC not supported: {req_cc}",
+        )
+    req_num = _normalize_vat(req_cc, req_raw) if req_cc != "EU" else req_raw.upper().replace(" ", "")
+    if not req_num:
+        raise HTTPException(
+            status_code=500,
+            detail="VIES_REQUESTER_VAT is empty after normalization.",
+        )
+    return req_cc, req_num
 
 
 def _vies_raw_print_enabled() -> bool:
@@ -356,6 +383,11 @@ def _build_vies_check_payload(body: VatCheckRequest) -> dict[str, str]:
 
     req_cc = (body.requester_member_state_code or "").strip().upper()
     req_raw = (body.requester_number or "").strip()
+    if not req_cc and not req_raw:
+        default_req = _default_requester_from_env()
+        if default_req:
+            req_cc, req_raw = default_req
+
     if req_cc or req_raw:
         if not req_cc or not req_raw:
             raise HTTPException(

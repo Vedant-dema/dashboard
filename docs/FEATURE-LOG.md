@@ -630,3 +630,56 @@ None.
 - If `VIES_MAX_TOTAL_SEC` is lower than a single VIES call's response time (usually < 2 s), only one attempt will be made. Recommended minimum: 10 s.
 - Cloud platforms with timeouts shorter than 24 s (e.g. Vercel Hobby at 10 s) require `VIES_MAX_TOTAL_SEC` to be lowered accordingly.
 - The `_vies_serial` lock serialises all VIES calls; on a busy server a request may wait behind another request's full budget before it even starts.
+
+---
+
+## [FEATURE-014] Default VIES Requester Fallback
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Extended
+
+### What Was Added
+Extended VAT validation so the backend can automatically attach a configured requester identity to VIES checks when the frontend does not provide requester fields. This improves the chance of receiving additional trader detail metadata in jurisdictions that only process richer checks when requester context is present, while keeping response shape unchanged.
+
+### Where It Was Added
+- `backend/main.py` — added optional env-based requester fallback (`VIES_REQUESTER_CC`, `VIES_REQUESTER_VAT`), validation, normalization, and integration into payload construction
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Reads optional env vars `VIES_REQUESTER_CC` and `VIES_REQUESTER_VAT`.
+2. Validates they are both present together, checks the requester country code against supported VIES requester codes, and normalizes requester VAT format.
+3. During `/api/v1/vat/check` and `/api/v1/vat/check-test` payload build, if requester fields are not sent in the request body, injects the validated env defaults.
+4. If env defaults are invalid or incomplete, returns a clear server error instead of sending malformed payloads to VIES.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| VIES_REQUESTER_CC | env var (string) | No | Default requester member-state code (e.g. `DE`, `EU`) |
+| VIES_REQUESTER_VAT | env var (string) | No | Default requester VAT number used with `VIES_REQUESTER_CC` |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|---|---|---|---|---|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` (requester fields optional) | `VatCheckResponse` (unchanged) |
+| POST | `/api/v1/vat/check-test` | None | `VatCheckRequest` (requester fields optional) | `VatCheckResponse` (unchanged) |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- This cannot force VIES to return `name`/`address`; member-state privacy policy still controls exposed fields.
+- Some countries may continue to return only validity (`valid`) even with requester context.

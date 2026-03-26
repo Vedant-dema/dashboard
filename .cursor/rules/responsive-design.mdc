@@ -1,0 +1,153 @@
+---
+description: Enforce responsive design in all React/TSX components — audit every file touched and fix non-responsive patterns immediately.
+globs: frontend/src/**/*.tsx
+alwaysApply: false
+---
+
+# Responsive Design — Always Enforce
+
+This project must work correctly on **mobile (≥320px)**, **tablet (≥768px)**, and **desktop (≥1280px)**. Every `.tsx` file you touch must pass the checklist below before you finish.
+
+---
+
+## Breakpoint Reference (Tailwind)
+
+| Prefix | Min-width | Target device |
+|--------|-----------|---------------|
+| *(none)* | 0px | Mobile (base, always start here) |
+| `sm:` | 640px | Large phone / small tablet |
+| `md:` | 768px | Tablet |
+| `lg:` | 1024px | Small laptop |
+| `xl:` | 1280px | Desktop |
+
+---
+
+## Rules
+
+### 1 — Mobile-first: base classes target mobile, breakpoint prefixes opt-in to larger screens
+
+```tsx
+// ✅ CORRECT — stacks on mobile, side-by-side on tablet+
+<div className="flex flex-col md:flex-row gap-4">
+
+// ❌ WRONG — only works on desktop
+<div className="flex flex-row gap-4">
+```
+
+### 2 — Never use fixed pixel widths for containers or layout elements
+
+```tsx
+// ✅
+<div className="w-full max-w-5xl mx-auto px-4">
+
+// ❌
+<div style={{ width: '1200px' }}>
+<div className="w-[1200px]">
+```
+
+### 3 — Grids must be responsive
+
+```tsx
+// ✅
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+// ❌
+<div className="grid grid-cols-4 gap-4">
+```
+
+### 4 — Text must scale down on small screens
+
+```tsx
+// ✅
+<h1 className="text-xl md:text-3xl font-bold">
+
+// ❌
+<h1 className="text-3xl font-bold">
+```
+
+### 5 — Padding/margin must reduce on mobile
+
+```tsx
+// ✅
+<div className="px-4 md:px-8 lg:px-12 py-4 md:py-8">
+
+// ❌
+<div className="px-12 py-8">
+```
+
+### 6 — Sidebar and nav must collapse or hide on mobile
+
+```tsx
+// ✅ — hide on mobile, show on desktop
+<aside className="hidden lg:flex lg:flex-col w-64 ...">
+
+// ✅ — toggle-based mobile drawer (overlay)
+<aside className={`fixed inset-y-0 left-0 z-40 w-64 lg:static lg:block ${open ? 'block' : 'hidden'}`}>
+```
+
+### 7 — Tables must scroll horizontally on mobile, never overflow the viewport
+
+```tsx
+// ✅
+<div className="overflow-x-auto w-full">
+  <table className="min-w-full ...">
+
+// ❌
+<table className="w-full ...">  {/* no scroll wrapper */}
+```
+
+### 8 — Modals must be full-screen or near-full on mobile
+
+```tsx
+// ✅
+<div className="w-full max-w-lg mx-4 md:mx-auto rounded-2xl ...">
+
+// ❌
+<div className="w-[560px] rounded-2xl ...">
+```
+
+### 9 — Touch targets must be ≥44px tall on mobile
+
+```tsx
+// ✅
+<button className="h-11 px-4 ...">
+
+// ❌
+<button className="h-6 px-2 ...">
+```
+
+### 10 — Overflow must be controlled — never let content spill horizontally
+
+```tsx
+// ✅ — truncate long text
+<p className="truncate max-w-xs">
+
+// ✅ — allow wrapping
+<p className="break-words">
+
+// ❌ — can overflow on mobile
+<p className="whitespace-nowrap">  {/* without overflow-x-auto parent */}
+```
+
+---
+
+## Audit Checklist — Run on Every File You Touch
+
+Before finishing any edit, check each of these:
+
+- [ ] No fixed-pixel widths on layout containers
+- [ ] All grids use `grid-cols-1` as the mobile base
+- [ ] All `flex-row` have a mobile fallback (`flex-col` on base)
+- [ ] Padding / margin scales down on mobile (`px-4 md:px-8`)
+- [ ] Text sizes scale down on mobile (`text-base md:text-xl`)
+- [ ] Tables wrapped in `overflow-x-auto`
+- [ ] Modals use `w-full max-w-X` not fixed widths
+- [ ] All buttons / interactive elements are `h-11` or taller on mobile
+- [ ] Sidebars hidden or collapsible on mobile (`hidden lg:flex`)
+- [ ] No `whitespace-nowrap` without an `overflow-x-auto` ancestor
+
+---
+
+## When You Spot a Violation
+
+Fix it immediately — do not leave it in place. Apply the mobile-first Tailwind pattern from the examples above. If a layout needs significant restructuring (e.g., a sidebar drawer), add the `lg:hidden` hamburger button and overlay panel in the same edit.

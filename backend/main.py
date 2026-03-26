@@ -24,6 +24,7 @@ Environment:
   VIES_SOAP_CHECK_FALLBACK  If 0/false: skip SOAP checkVat before checkVatApprox (default: on).
                            checkVat is the classic operation and sometimes returns name/address when
                            checkVatApprox does not for a minimal request.
+  VIES_SIMPLE_TIMEOUT_SEC   Timeout in seconds for simplified one-shot live check (default: 8).
 
 Note: MS_MAX_CONCURRENT_REQ is enforced by the Commission/member states. We cannot remove it;
 this app serializes outbound VIES calls and retries with backoff so many checks still succeed.
@@ -1028,12 +1029,47 @@ async def _vies_call_with_retries(
     raise HTTPException(status_code=503, detail=last_detail)
 
 
+async def _vies_call_simple_once(url: str, json_body: dict[str, Any]) -> dict[str, Any]:
+    """Simple one-shot VIES REST call (no retries, no SOAP/MS fallbacks)."""
+    if _vies_http is None:
+        raise HTTPException(status_code=503, detail="HTTP client not initialised")
+    timeout_sec = float(os.environ.get("VIES_SIMPLE_TIMEOUT_SEC", "8.0"))
+    try:
+        r = await _vies_http.post(url, json=json_body, timeout=httpx.Timeout(timeout_sec, connect=min(4.0, timeout_sec)))
+    except httpx.TimeoutException as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"VIES check timed out after {timeout_sec:.0f} s. Please try again.",
+        ) from e
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"VIES request failed: {e!s}") from e
+
+    try:
+        data: dict[str, Any] = r.json()
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail="VIES returned a non-JSON body") from e
+
+    _dump_vies_response(r.status_code, 0, data)
+
+    if data.get("actionSucceed") is False:
+        raise HTTPException(status_code=503 if r.status_code < 400 else r.status_code, detail=_vies_error_message(data))
+    if r.status_code >= 400:
+        raise HTTPException(status_code=502, detail=_vies_error_message(data) or r.text)
+    if "valid" not in data:
+        raise HTTPException(status_code=502, detail="Unexpected VIES response shape (expected check-vat response)")
+    return data
+
+
 def _sanitize_raw_for_display(data: dict[str, Any]) -> dict[str, Any]:
     """Replace VIES placeholder values ('---' etc.) with None in the raw payload for clean display."""
     out: dict[str, Any] = {}
     for k, v in data.items():
         if isinstance(v, str):
-            out[k] = _vies_text_or_none(v)
+            if k.endswith("Match"):
+                match_value = _soap_match_to_rest(v)
+                out[k] = None if (not match_value or match_value == "NOT_PROCESSED") else match_value
+            else:
+                out[k] = _vies_text_or_none(v)
         elif isinstance(v, dict):
             out[k] = _sanitize_raw_for_display(v)
         else:
@@ -1050,6 +1086,71 @@ def _request_fallback_name_address(body: VatCheckRequest) -> tuple[str | None, s
     line2 = " ".join(x for x in (postal, city) if x).strip() or None
     fallback_addr = "\n".join(x for x in (street, line2) if x) or None
     return fallback_name, fallback_addr
+
+
+async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data: dict[str, Any]) -> dict[str, Any]:
+    """Try extra VIES sources in a bounded loop until details/matches are no longer unresolved."""
+    data = dict(initial_data)
+    cc = payload.get("countryCode", "")
+    vat = payload.get("vatNumber", "")
+    for _ in range(2):
+        needs_more = _rest_missing_trader_details(data) or _rest_matches_all_not_processed(data)
+        if not needs_more:
+            break
+        changed = False
+
+        run_ms_lookup = _payload_has_approx_inputs(payload) or (
+            bool(data.get("valid")) and _rest_missing_trader_details(data)
+        )
+        if run_ms_lookup:
+            try:
+                ms_raw = await _vies_ms_lookup_with_retries(payload)
+            except HTTPException:
+                ms_raw = {}
+            if ms_raw:
+                ms_data = _normalize_ms_lookup_data(ms_raw, cc, vat)
+                merged = _merge_soap_trader_into_rest(
+                    data,
+                    ms_data,
+                    fallback_used_key="msLookupFallbackUsed",
+                    raw_key="msLookupRaw",
+                )
+                if merged != data:
+                    data = merged
+                    changed = True
+
+        if _vies_soap_check_fallback_enabled() and _rest_missing_trader_details(data):
+            try:
+                soap_check = await _vies_soap_check_with_retries(payload)
+            except HTTPException:
+                soap_check = {}
+            if soap_check:
+                merged = _merge_soap_trader_into_rest(
+                    data,
+                    soap_check,
+                    fallback_used_key="soapCheckFallbackUsed",
+                    raw_key="soapCheckRaw",
+                )
+                if merged != data:
+                    data = merged
+                    changed = True
+
+        if _vies_soap_approx_fallback_enabled() and (
+            _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
+        ):
+            try:
+                soap_approx = await _vies_soap_approx_with_retries(payload)
+            except HTTPException:
+                soap_approx = {}
+            if soap_approx:
+                merged = _merge_soap_approx_into_rest(data, soap_approx)
+                if merged != data:
+                    data = merged
+                    changed = True
+
+        if not changed:
+            break
+    return data
 
 
 def _map_vies_check_response(
@@ -1088,13 +1189,11 @@ def _map_vies_check_response(
     raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(dict(data))
 
     def _m(key: str) -> str | None:
-        """Expose VIES/SOAP match enum at top level (VALID / INVALID / NOT_PROCESSED).
-
-        Must match vies_raw: previously NOT_PROCESSED was mapped to None, which contradicted
-        the raw payload and confused clients.
-        """
+        """Expose only meaningful match values at top level."""
         match_value = _soap_match_to_rest(data.get(key))
-        return match_value or None
+        if not match_value or match_value == "NOT_PROCESSED":
+            return None
+        return match_value
 
     req_id = (data.get("requestIdentifier") or "").strip() or None
 
@@ -1174,41 +1273,7 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
         json_body=payload,
         require_valid_field=True,
     )
-    need_ms_lookup = _payload_has_approx_inputs(payload) or (
-        bool(data.get("valid")) and _rest_missing_trader_details(data)
-    )
-    if need_ms_lookup:
-        try:
-            ms_lookup_data = await _vies_ms_lookup_with_retries(payload)
-        except HTTPException:
-            ms_lookup_data = {}
-        if ms_lookup_data:
-            data = _merge_soap_approx_into_rest(
-                data,
-                _normalize_ms_lookup_data(ms_lookup_data, cc, vat),
-            )
-    soap_wanted = _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
-    if soap_wanted and _vies_soap_check_fallback_enabled():
-        try:
-            soap_check = await _vies_soap_check_with_retries(payload)
-        except HTTPException:
-            soap_check = {}
-        if soap_check:
-            data = _merge_soap_trader_into_rest(
-                data,
-                soap_check,
-                fallback_used_key="soapCheckFallbackUsed",
-                raw_key="soapCheckRaw",
-            )
-    if _vies_soap_approx_fallback_enabled() and (
-        _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
-    ):
-        try:
-            soap_data = await _vies_soap_approx_with_retries(payload)
-        except HTTPException:
-            soap_data = {}
-        if soap_data:
-            data = _merge_soap_approx_into_rest(data, soap_data)
+    data = await _enrich_vies_data_with_fallbacks(payload, data)
     fallback_name, fallback_address = _request_fallback_name_address(body)
     return _map_vies_check_response(
         data,

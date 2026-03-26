@@ -24,8 +24,11 @@
 | [FEATURE-018](#feature-018) | Strict VIES timeout budget enforcement | Extended | 2026-03-26 |
 | [FEATURE-019](#feature-019) | Website-style VIES ms lookup enrichment | Extended | 2026-03-26 |
 | [FEATURE-019](#feature-019) | VAT response fallback from submitted trader details | Extended | 2026-03-26 |
+| [FEATURE-023](#feature-023) | VIES auto-enrichment loop and match cleanup | Extended | 2026-03-26 |
 | [FEATURE-020](#feature-020) | Non-null VAT identity fallback strings | Extended | 2026-03-26 |
 | [FEATURE-021](#feature-021) | Mandatory-only VAT request and raw JSON display | Extended | 2026-03-26 |
+| [FEATURE-022](#feature-022) | Simplified one-shot live VAT check | Modified | 2026-03-26 |
+| [FEATURE-024](#feature-024) | Always-run ms lookup when details missing | Extended | 2026-03-26 |
 
 ---
 
@@ -1134,3 +1137,222 @@ None.
 ### Notes / Known Limitations
 - Backend environment defaults (`VIES_REQUESTER_CC`, `VIES_REQUESTER_VAT`) may still auto-attach requester data server-side if configured.
 - Upstream VIES behavior remains member-state dependent; some countries still omit trader details in valid checks.
+
+---
+
+## [FEATURE-022]
+## FEATURE-022: Simplified one-shot live VAT check
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Modified
+
+### What Was Added
+Modified the live VAT endpoint to use a simple one-shot VIES REST check so responses return faster and no longer wait through long multi-step retries/fallback chains. The endpoint now performs a direct `check-vat-number` call with a short timeout and returns immediately with either the VIES payload mapping or a clear timeout/network error.
+
+### Where It Was Added
+- `backend/main.py` — added `_vies_call_simple_once` helper and switched `POST /api/v1/vat/check` to this simplified path without ms-lookup or SOAP fallback stages
+- `docs/FEATURE-LOG.md` — this entry
+
+### What It Does (Technical)
+1. Adds a new one-shot helper that performs a single `POST` request to the live VIES endpoint.
+2. Applies a short configurable timeout via `VIES_SIMPLE_TIMEOUT_SEC` (default `8` seconds).
+3. Removes retry-loop, ms-lookup enrichment, and SOAP fallback execution from the live check endpoint.
+4. Keeps existing response mapping/output contract so frontend integration remains unchanged.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| `VIES_SIMPLE_TIMEOUT_SEC` | env var (float) | No | Timeout budget for one-shot live VAT call (default 8.0 s) |
+| `country_code` | string | Yes | VAT member-state code in request body |
+| `vat_number` | string | Yes | VAT number in request body |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | `VatCheckResponse` from a single VIES REST call |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** N/A
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- Because retries and fallbacks are disabled for the live endpoint, transient upstream VIES outages may surface faster instead of being retried.
+- Member-state-specific missing fields are still expected behavior from VIES and are not changed by this simplification.
+
+---
+
+## [FEATURE-022] Merge Kunde & Adresse Tabs in NewCustomerModal
+**Date:** 2026-03-26
+**Author/Agent:** Cursor AI
+**Status:** Modified
+
+### What Was Added
+The previously separate "Kunde" and "Adresse (Tel/Fax)" tabs in the new-customer modal have been merged into a single "Kunde & Adresse" tab. All fields from both tabs are now presented in one view: company details at the top in a card, followed by a two-column grid with an "Adresse & Steuer" card on the left and a "Kontakt" card on the right.
+
+### Where It Was Added
+- `frontend/src/components/NewCustomerModal.tsx` — removed `"adresse"` from `TabId`, updated `tabLabels` and `TAB_ORDER`, merged both tab content blocks into a single unified `tab === "kunde"` section, updated hint text references
+
+### What It Does (Technical)
+1. `TabId` union type no longer includes `"adresse"`.
+2. `TAB_ORDER` array changed from `["vat","kunde","adresse","art","waschanlage"]` to `["vat","kunde","art","waschanlage"]`.
+3. `tabLabels["kunde"]` renamed to `"Kunde & Adresse"`.
+4. The `tab === "kunde"` JSX block now renders three stacked sections: a "Firmendaten" card (all original Kunde fields), then a two-column grid with "Adresse & Steuer" and "Kontakt" cards (all original Adresse tab fields).
+5. Two hint strings in the VAT tab that previously referenced `<strong>Kunde</strong>` and `<strong>Adresse</strong>` separately now reference `<strong>Kunde &amp; Adresse</strong>`.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| N/A | — | — | No new fields; all existing form state fields unchanged |
+
+### Database
+- **Engine:** N/A
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+None.
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** None
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- The `applyViesResultToForm` function already navigates to `"kunde"` after applying VIES data, so that behaviour is unchanged.
+- `handleSave` already validated by checking `firmenname` and redirecting to `"kunde"`, which remains correct.
+
+---
+
+## [FEATURE-023] VIES auto-enrichment loop and match cleanup
+**Date:** 2026-03-26 
+**Author/Agent:** Cursor AI 
+**Status:** Extended 
+
+### What Was Added
+The live VAT validation flow now performs a bounded automatic enrichment loop when VIES returns incomplete trader data or only `NOT_PROCESSED` match flags. Instead of returning unresolved match placeholders to the UI, the backend retries via configured VIES paths and emits only meaningful match values at the top level. This keeps customer-facing results cleaner and reduces noisy responses that look like internal status codes.
+
+### Where It Was Added
+List every file touched or created:
+- `backend/main.py` — restored retry-based live call, added fallback enrichment loop, and suppressed `NOT_PROCESSED` in match fields/raw display
+- `docs/FEATURE-LOG.md` — reason: documented the feature extension
+
+### What It Does (Technical)
+Step-by-step description of the logic flow:
+1. Live `POST /api/v1/vat/check` now uses `_vies_call_with_retries(...)` again instead of the one-shot call.
+2. A new `_enrich_vies_data_with_fallbacks(...)` loop runs up to 2 passes while trader data is missing or all match flags are unresolved.
+3. In each pass, it tries ms lookup (when approximation inputs exist), SOAP `checkVat`, and SOAP `checkVatApprox` and merges improved data.
+4. `_map_vies_check_response(...)` now maps `NOT_PROCESSED` match statuses to `null` for top-level `trader_*_match`.
+5. `_sanitize_raw_for_display(...)` also cleans `*Match` entries so unresolved `NOT_PROCESSED` values do not clutter `vies_raw`.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| `trader_name_match` | string \| null | No | Returns only meaningful values (e.g. `VALID`/`INVALID`), unresolved `NOT_PROCESSED` is suppressed |
+| `trader_street_match` | string \| null | No | Same cleanup behavior as above |
+| `trader_postal_code_match` | string \| null | No | Same cleanup behavior as above |
+| `trader_city_match` | string \| null | No | Same cleanup behavior as above |
+| `trader_company_type_match` | string \| null | No | Same cleanup behavior as above |
+| `vies_raw.*Match` | string \| null | No | Raw display payload now sanitizes unresolved match placeholders |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | Retry + enrichment loop with cleaned top-level match fields and sanitized raw match output |
+
+### State / Store (if applicable)
+- **Store file:** `N/A`
+- **Actions/Selectors added:** None
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+Any caveats, TODOs, or follow-up items.
+- VIES member states can still omit legal name/address entirely; the loop improves chances but cannot guarantee trader identity data.
+- Extra fallback attempts may add latency when upstream VIES is slow or overloaded.
+
+---
+
+## [FEATURE-024] Always-run ms lookup when details missing
+**Date:** 2026-03-26 
+**Author/Agent:** Cursor AI 
+**Status:** Extended 
+
+### What Was Added
+Extended the VAT enrichment loop so the website-style VIES member-state lookup is attempted not only when approximation/requester fields are present, but also whenever a valid VAT check still lacks trader identity details. This increases the chance of receiving real company name/address from VIES before returning the final response.
+
+### Where It Was Added
+List every file touched or created:
+- `backend/main.py` — updated `_enrich_vies_data_with_fallbacks` to trigger ms lookup on valid checks with missing trader details
+- `docs/FEATURE-LOG.md` — reason: documented this fallback extension
+
+### What It Does (Technical)
+Step-by-step description of the logic flow:
+1. Computes `run_ms_lookup` per enrichment pass.
+2. Runs ms lookup when either approximation inputs are present **or** current data is `valid` but still missing trader details.
+3. Normalizes and merges ms lookup output into the current VIES data snapshot.
+4. Continues existing SOAP fallbacks if data remains incomplete.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| `valid` | boolean | Yes | Used to decide whether missing trader details should trigger ms lookup |
+| `name` | string \| null | No | More likely to be populated after ms lookup merge |
+| `address` | string \| null | No | More likely to be populated after ms lookup merge |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| POST | `/api/v1/vat/check` | None | `VatCheckRequest` | Same schema, but ms lookup now also runs for valid results with missing trader details |
+
+### State / Store (if applicable)
+- **Store file:** `N/A`
+- **Actions/Selectors added:** None
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+Any caveats, TODOs, or follow-up items.
+- If VIES upstream does not expose trader identity for a VAT number, name/address can still remain unavailable.
+- Additional fallback requests may increase end-to-end response time during VIES congestion.

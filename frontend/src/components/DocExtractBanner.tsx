@@ -129,9 +129,9 @@ export function DocExtractBanner({
   if (scanState === "idle") {
     return (
       <div
-        className={`relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed transition-all ${
+        className={`relative cursor-pointer overflow-hidden rounded-xl border border-dashed transition-all ${
           isDragging
-            ? "border-blue-400 bg-blue-50/80 shadow-lg shadow-blue-100"
+            ? "border-blue-400 bg-blue-50/80 shadow-md shadow-blue-100"
             : "border-slate-200 bg-slate-50/40 hover:border-blue-300 hover:bg-blue-50/30"
         }`}
         onDragOver={onDragOver}
@@ -151,30 +151,27 @@ export function DocExtractBanner({
           onClick={(e) => ((e.target as HTMLInputElement).value = "")}
         />
 
-        <div className="flex flex-col items-center gap-3 px-6 py-8 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-violet-100">
-            <Upload className="h-6 w-6 text-blue-600" />
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-100 to-violet-100">
+            <Upload className="h-4 w-4 text-blue-600" />
           </div>
 
-          <div>
-            <p className="text-sm font-bold text-slate-700">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-slate-700">
               Dokument hochladen
-              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                <Sparkles className="h-2.5 w-2.5" />
+              <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                <Sparkles className="h-2 w-2" />
                 KI-Extraktion
               </span>
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Felder werden automatisch aus dem Dokument erkannt und ausgefüllt.
-            </p>
-            <p className="mt-0.5 text-[10px] text-slate-400">
-              PDF, DOCX, PNG, JPG — max. {MAX_MB} MB
+            <p className="text-[10px] text-slate-400">
+              PDF, DOCX, PNG, JPG — max. {MAX_MB} MB · Felder werden automatisch erkannt
             </p>
           </div>
 
           <button
             type="button"
-            className="rounded-xl border border-blue-200 bg-white px-4 py-1.5 text-xs font-semibold text-blue-600 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
+            className="shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-1 text-[11px] font-semibold text-blue-600 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
             onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
           >
             Datei auswählen

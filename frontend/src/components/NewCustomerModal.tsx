@@ -14,33 +14,6 @@ import type { DepartmentArea } from "../types/departmentArea";
 type TabId = "vat" | "kunde" | "art" | "waschanlage";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
-const VIES_DEFAULT_REQUESTER_CC =
-  ((import.meta.env.VITE_VIES_REQUESTER_CC as string | undefined) ?? "").trim().toUpperCase();
-const VIES_DEFAULT_REQUESTER_VAT =
-  ((import.meta.env.VITE_VIES_REQUESTER_VAT as string | undefined) ?? "").trim();
-const VIES_REQUESTER_CC_STORAGE_KEY = "dema-vies-requester-cc";
-const VIES_REQUESTER_VAT_STORAGE_KEY = "dema-vies-requester-vat";
-
-function readStoredRequester(storageKey: string): string {
-  try {
-    return localStorage.getItem(storageKey)?.trim() ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeStoredRequester(storageKey: string, value: string): void {
-  try {
-    const trimmed = value.trim();
-    if (trimmed) {
-      localStorage.setItem(storageKey, trimmed);
-    } else {
-      localStorage.removeItem(storageKey);
-    }
-  } catch {
-    // Ignore storage failures (private mode / quota)
-  }
-}
 
 /** EU / Northern Ireland codes accepted by VIES (VoW). */
 const VIES_MS_OPTIONS: { code: string; label: string }[] = [
@@ -79,15 +52,7 @@ const VIES_OFFICIAL = {
   yourEuropeDe:
     "https://europa.eu/youreurope/business/taxation/vat/check-vat-number-vies/index_de.htm",
   faq: "https://ec.europa.eu/taxation_customs/vies/faq.html",
-  swaggerYaml:
-    "https://ec.europa.eu/assets/taxud/vow-information/swagger_publicVAT.yaml",
 } as const;
-
-/** Requester dropdown = member states + EU (MOSS), per EU CheckVatRequest. */
-const VIES_REQUESTER_MS_OPTIONS: { code: string; label: string }[] = [
-  ...VIES_MS_OPTIONS,
-  { code: "EU", label: "EU (MOSS)" },
-];
 
 function ExternalDocLink({
   href,
@@ -357,17 +322,6 @@ export function NewCustomerModal({
   const [aufnahmePreview, setAufnahmePreview] = useState("");
   const [viesCountry, setViesCountry] = useState("DE");
   const [viesVatInput, setViesVatInput] = useState("");
-  const [viesReqCountry, setViesReqCountry] = useState(
-    () => readStoredRequester(VIES_REQUESTER_CC_STORAGE_KEY).toUpperCase() || VIES_DEFAULT_REQUESTER_CC
-  );
-  const [viesReqNumber, setViesReqNumber] = useState(
-    () => readStoredRequester(VIES_REQUESTER_VAT_STORAGE_KEY) || VIES_DEFAULT_REQUESTER_VAT
-  );
-  const [viesTraderName, setViesTraderName] = useState("");
-  const [viesTraderStreet, setViesTraderStreet] = useState("");
-  const [viesTraderPlz, setViesTraderPlz] = useState("");
-  const [viesTraderCity, setViesTraderCity] = useState("");
-  const [viesTraderCompanyType, setViesTraderCompanyType] = useState("");
   const [vatCheckLoading, setVatCheckLoading] = useState(false);
   const [vatCheckResult, setVatCheckResult] = useState<ViesCheckResult | null>(null);
   const [vatCheckError, setVatCheckError] = useState<string | null>(null);
@@ -383,15 +337,6 @@ export function NewCustomerModal({
       setTab("vat");
       setViesCountry("DE");
       setViesVatInput("");
-      setViesReqCountry(
-        readStoredRequester(VIES_REQUESTER_CC_STORAGE_KEY).toUpperCase() || VIES_DEFAULT_REQUESTER_CC
-      );
-      setViesReqNumber(readStoredRequester(VIES_REQUESTER_VAT_STORAGE_KEY) || VIES_DEFAULT_REQUESTER_VAT);
-      setViesTraderName("");
-      setViesTraderStreet("");
-      setViesTraderPlz("");
-      setViesTraderCity("");
-      setViesTraderCompanyType("");
       setVatCheckLoading(false);
       setVatCheckResult(null);
       setVatCheckError(null);
@@ -401,14 +346,6 @@ export function NewCustomerModal({
       );
     }
   }, [open, department]);
-
-  useEffect(() => {
-    writeStoredRequester(VIES_REQUESTER_CC_STORAGE_KEY, viesReqCountry.toUpperCase());
-  }, [viesReqCountry]);
-
-  useEffect(() => {
-    writeStoredRequester(VIES_REQUESTER_VAT_STORAGE_KEY, viesReqNumber);
-  }, [viesReqNumber]);
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -639,12 +576,12 @@ export function NewCustomerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-[2px] sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4 backdrop-blur-[2px] sm:p-6"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="flex max-h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
+        className="flex w-full max-w-7xl max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -708,9 +645,9 @@ export function NewCustomerModal({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/40 px-4 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/40 px-4 py-3 sm:px-5">
           {tab === "vat" && (
-            <div className="mx-auto max-w-4xl space-y-5">
+            <div className="space-y-5">
               <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
@@ -739,98 +676,6 @@ export function NewCustomerModal({
                     />
                   </div>
                 </div>
-                <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-                    Erweitert — vollständiger EU-<code className="text-xs">CheckVatRequest</code>{" "}
-                    (optional)
-                  </summary>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                    Laut{" "}
-                    <ExternalDocLink href={VIES_OFFICIAL.swaggerYaml}>swagger_publicVAT.yaml</ExternalDocLink>{" "}
-                    können Sie <strong>requesterMemberStateCode</strong> +{" "}
-                    <strong>requesterNumber</strong> (Ihre eigene USt-IdNr.) mitschicken — u. a. für{" "}
-                    <strong>requestIdentifier</strong> und Näherungsabgleich. Zusätzlich optionale{" "}
-                    <strong>trader*</strong>-Felder für den Abgleich.
-                  </p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className={labelClass}>Auskunftgeber — Land</label>
-                      <select
-                        value={viesReqCountry}
-                        onChange={(e) => setViesReqCountry(e.target.value)}
-                        className={inputClass}
-                      >
-                        <option value="">— nicht mitsenden —</option>
-                        {VIES_REQUESTER_MS_OPTIONS.map((o) => (
-                          <option key={o.code} value={o.code}>
-                            {o.code} — {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Auskunftgeber — USt-IdNr.</label>
-                      <input
-                        type="text"
-                        value={viesReqNumber}
-                        onChange={(e) => setViesReqNumber(e.target.value)}
-                        placeholder="Ihre DE… / AT… (wenn Land gewählt)"
-                        className={inputClass}
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className={labelClass}>traderName (laut Schema)</label>
-                      <input
-                        type="text"
-                        value={viesTraderName}
-                        onChange={(e) => setViesTraderName(e.target.value)}
-                        className={inputClass}
-                        placeholder="optional"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className={labelClass}>traderStreet</label>
-                      <input
-                        type="text"
-                        value={viesTraderStreet}
-                        onChange={(e) => setViesTraderStreet(e.target.value)}
-                        className={inputClass}
-                        placeholder="optional"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>traderPostalCode</label>
-                      <input
-                        type="text"
-                        value={viesTraderPlz}
-                        onChange={(e) => setViesTraderPlz(e.target.value)}
-                        className={inputClass}
-                        placeholder="optional"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>traderCity</label>
-                      <input
-                        type="text"
-                        value={viesTraderCity}
-                        onChange={(e) => setViesTraderCity(e.target.value)}
-                        className={inputClass}
-                        placeholder="optional"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className={labelClass}>traderCompanyType</label>
-                      <input
-                        type="text"
-                        value={viesTraderCompanyType}
-                        onChange={(e) => setViesTraderCompanyType(e.target.value)}
-                        className={inputClass}
-                        placeholder="optional"
-                      />
-                    </div>
-                  </div>
-                </details>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
@@ -904,8 +749,8 @@ export function NewCustomerModal({
                         </ExternalDocLink>
                         , <ExternalDocLink href={VIES_OFFICIAL.faq}>FAQ</ExternalDocLink> (u. a.{" "}
                         <strong>Q17</strong>, <strong>Q22</strong>). Für Zuordnung Name/Adresse wenden Sie
-                        sich an die <strong>Finanzbehörden</strong> des Unternehmens. Hier: Name/Adresse
-                        unter <strong>Kunde</strong> / <strong>Adresse</strong> eintragen.
+                        sich an die <strong>Finanzbehörden</strong> des Unternehmens.                         Hier: Name/Adresse
+                        unter <strong>Kunde &amp; Adresse</strong> eintragen.
                       </p>
                     ) : null}
                     {isMeaningfulViesText(vatCheckResult.name) ? (
@@ -958,14 +803,13 @@ export function NewCustomerModal({
               </div>
               <p className="text-xs text-slate-500">
                 Hinweis: VIES kann auslastungsbedingt kurzzeitig antworten — ggf. später erneut
-                versuchen. Geprüfte Daten können Sie im Tab <strong>Kunde</strong> und{" "}
-                <strong>Adresse</strong> anpassen.
+                versuchen.                 Geprüfte Daten können Sie im Tab <strong>Kunde &amp; Adresse</strong> anpassen.
               </p>
             </div>
           )}
 
           {tab === "kunde" && (
-            <div className="mx-auto max-w-4xl space-y-5">
+            <div className="flex flex-col gap-3">
 
               {/* ── Document extraction banner ── */}
               <DocExtractBanner
@@ -976,369 +820,380 @@ export function NewCustomerModal({
                 onClear={clearDocExtraction}
               />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={labelClass}>KundenNr. (automatisch)</label>
-                  <div
-                    className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-semibold text-slate-800"
-                    title="Wird beim Speichern vergeben"
-                  >
-                    {nextKundenNrPreview}
-                  </div>
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    Fortlaufende Nummer — keine Eingabe nötig.
-                  </p>
-                </div>
-                <div>
-                  <label className={labelClass}>Branche{isExtracted("branche") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("branche")}>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.branche}
-                      onChange={(e) => set("branche", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.branche}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
-                  </ExtractedFieldWrapper>
-                </div>
-              </div>
+              {/* ── 3-column grid: Firmendaten | Adresse & Steuer | Kontakt ── */}
+              <div className="grid grid-cols-3 gap-4">
 
-              <div>
-                <span className={labelClass}>FZG-Händler</span>
-                <div className="mt-1 flex flex-wrap gap-3">
-                  {(["ja", "nein"] as const).map((v) => (
-                    <label
-                      key={v}
-                      className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                        form.fzgHandel === v
-                          ? "border-blue-500 bg-blue-50 text-blue-800"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
+                {/* ── Col 1: Firmendaten ── */}
+                <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Firmendaten</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>KundenNr.</label>
+                      <div
+                        className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-semibold text-slate-800"
+                        title="Wird beim Speichern vergeben"
+                      >
+                        {nextKundenNrPreview}
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Branche{isExtracted("branche") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("branche")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.branche}
+                          onChange={(e) => set("branche", e.target.value)}
+                          className={inputClass}
+                          suggestions={fieldSuggestions.branche}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className={labelClass}>FZG-Händler</span>
+                    <div className="mt-1 flex gap-2">
+                      {(["ja", "nein"] as const).map((v) => (
+                        <label
+                          key={v}
+                          className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            form.fzgHandel === v
+                              ? "border-blue-500 bg-blue-50 text-blue-800"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="fzg"
+                            checked={form.fzgHandel === v}
+                            onChange={() => set("fzgHandel", v)}
+                            className="border-slate-300 text-blue-600"
+                          />
+                          {v.toUpperCase()}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-700">
                       <input
-                        type="radio"
-                        name="fzg"
-                        checked={form.fzgHandel === v}
-                        onChange={() => set("fzgHandel", v)}
-                        className="border-slate-300 text-blue-600"
+                        type="checkbox"
+                        checked={form.juristische_person}
+                        onChange={(e) => set("juristische_person", e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600"
                       />
-                      {v.toUpperCase()}
+                      Juristische Person
                     </label>
-                  ))}
-                </div>
-              </div>
+                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.natuerliche_person}
+                        onChange={(e) => set("natuerliche_person", e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600"
+                      />
+                      Natürliche Person
+                    </label>
+                  </div>
 
-              <div className="flex flex-wrap gap-6">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={form.juristische_person}
-                    onChange={(e) => set("juristische_person", e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600"
-                  />
-                  Juristische Person / Personengesellschaft
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={form.natuerliche_person}
-                    onChange={(e) => set("natuerliche_person", e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600"
-                  />
-                  Natürliche Person
-                </label>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Gesellschaftsform{isExtracted("gesellschaftsform") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.gesellschaftsform}
+                          onChange={(e) => set("gesellschaftsform", e.target.value)}
+                          placeholder="z. B. GmbH, AG"
+                          className={inputClass}
+                          suggestions={fieldSuggestions.gesellschaftsform}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Ansprache{isExtracted("ansprache") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("ansprache")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.ansprache}
+                          onChange={(e) => set("ansprache", e.target.value)}
+                          className={inputClass}
+                          suggestions={fieldSuggestions.ansprache}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
+                    </div>
+                  </div>
 
-              <div>
-                <label className={labelClass}>Gesellschaftsform{isExtracted("gesellschaftsform") && <KiBadge />}</label>
-                <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.gesellschaftsform}
-                    onChange={(e) => set("gesellschaftsform", e.target.value)}
-                    placeholder="z. B. GmbH, AG"
-                    className={inputClass}
-                    suggestions={fieldSuggestions.gesellschaftsform}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
-                </ExtractedFieldWrapper>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={labelClass}>Ansprache{isExtracted("ansprache") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("ansprache")}>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.ansprache}
-                      onChange={(e) => set("ansprache", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.ansprache}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
-                  </ExtractedFieldWrapper>
-                </div>
-                <div>
-                  <label className={labelClass}>Firmenvorsatz{isExtracted("firmenvorsatz") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("firmenvorsatz")}>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.firmenvorsatz}
-                      onChange={(e) => set("firmenvorsatz", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.firmenvorsatz}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
-                  </ExtractedFieldWrapper>
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>
-                  Firmenname <span className="text-red-500">*</span>
-                  {isExtracted("firmenname") && <KiBadge />}
-                </label>
-                <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.firmenname}
-                    onChange={(e) => set("firmenname", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.firmenname}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
-                </ExtractedFieldWrapper>
-              </div>
-
-              <div>
-                <label className={labelClass}>Bemerkungen</label>
-                <textarea
-                  value={form.bemerkungen}
-                  onChange={(e) => set("bemerkungen", e.target.value)}
-                  rows={4}
-                  className={`${inputClass} min-h-[100px] resize-y py-2`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Zuständige Person für Kunden</label>
-                <select
-                  value={form.zustaendige_person_name}
-                  onChange={(e) => set("zustaendige_person_name", e.target.value)}
-                  className={inputClass}
-                >
-                  {ZUSTAENDIGE_OPTIONS.map((z) => (
-                    <option key={z} value={z}>
-                      {z}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {tab === "adresse" && (
-            <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-2">
-              <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Adresse
-                </p>
-                <div>
-                  <label className={labelClass}>Strasse{isExtracted("strasse") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.strasse}
-                      onChange={(e) => set("strasse", e.target.value)}
-                      placeholder="nicht bekannt"
-                      className={inputClass}
-                      suggestions={fieldSuggestions.strasse}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
-                  </ExtractedFieldWrapper>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>PLZ{isExtracted("plz") && <KiBadge />}</label>
-                    <ExtractedFieldWrapper extracted={isExtracted("plz")}>
+                    <label className={labelClass}>Firmenvorsatz{isExtracted("firmenvorsatz") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("firmenvorsatz")}>
                       <SuggestTextInput
                         type="text"
-                        value={form.plz}
-                        onChange={(e) => set("plz", e.target.value)}
+                        value={form.firmenvorsatz}
+                        onChange={(e) => set("firmenvorsatz", e.target.value)}
                         className={inputClass}
-                        suggestions={fieldSuggestions.plz}
+                        suggestions={fieldSuggestions.firmenvorsatz}
                         title="Vorschläge aus gespeicherten Kunden"
                       />
                     </ExtractedFieldWrapper>
                   </div>
+
                   <div>
-                    <label className={labelClass}>Ort{isExtracted("ort") && <KiBadge />}</label>
-                    <ExtractedFieldWrapper extracted={isExtracted("ort")}>
+                    <label className={labelClass}>
+                      Firmenname <span className="text-red-500">*</span>
+                      {isExtracted("firmenname") && <KiBadge />}
+                    </label>
+                    <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
                       <SuggestTextInput
                         type="text"
-                        value={form.ort}
-                        onChange={(e) => set("ort", e.target.value)}
+                        value={form.firmenname}
+                        onChange={(e) => set("firmenname", e.target.value)}
                         className={inputClass}
-                        suggestions={fieldSuggestions.ort}
+                        suggestions={fieldSuggestions.firmenname}
                         title="Vorschläge aus gespeicherten Kunden"
                       />
                     </ExtractedFieldWrapper>
                   </div>
-                </div>
-                <div>
-                  <label className={labelClass}>Land</label>
-                  <select
-                    value={form.land_code}
-                    onChange={(e) => set("land_code", e.target.value)}
-                    className={inputClass}
-                  >
-                    {LAND_OPTIONS.map((l) => (
-                      <option key={l.code} value={l.code}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>Art_Land</label>
-                  <select
-                    value={form.art_land_code}
-                    onChange={(e) => set("art_land_code", e.target.value)}
-                    className={inputClass}
-                  >
-                    {ART_LAND_OPTIONS.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>UST-ID-Nr.</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.ust_id_nr}
-                    onChange={(e) => set("ust_id_nr", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.ust_id_nr}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Steuer-Nr.</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.steuer_nr}
-                    onChange={(e) => set("steuer_nr", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.steuer_nr}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Branchen-Nr.</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.branchen_nr}
-                    onChange={(e) => set("branchen_nr", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.branchen_nr}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Kontakt
-                </p>
-                <div>
-                  <label className={labelClass}>Ansprechpartner</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.ansprechpartner}
-                    onChange={(e) => set("ansprechpartner", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.ansprechpartner}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
+                  <div>
+                    <label className={labelClass}>Zuständige Person</label>
+                    <select
+                      value={form.zustaendige_person_name}
+                      onChange={(e) => set("zustaendige_person_name", e.target.value)}
+                      className={inputClass}
+                    >
+                      {ZUSTAENDIGE_OPTIONS.map((z) => (
+                        <option key={z} value={z}>{z}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Bemerkungen</label>
+                    <textarea
+                      value={form.bemerkungen}
+                      onChange={(e) => set("bemerkungen", e.target.value)}
+                      rows={2}
+                      className={`${inputClass} resize-none py-2`}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className={labelClass}>Telefonnummer{isExtracted("telefonnummer") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("telefonnummer")}>
+
+                {/* ── Col 2: Adresse & Steuer ── */}
+                <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Adresse &amp; Steuer</p>
+
+                  <div>
+                    <label className={labelClass}>Strasse{isExtracted("strasse") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.strasse}
+                        onChange={(e) => set("strasse", e.target.value)}
+                        placeholder="nicht bekannt"
+                        className={inputClass}
+                        suggestions={fieldSuggestions.strasse}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </ExtractedFieldWrapper>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>PLZ{isExtracted("plz") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("plz")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.plz}
+                          onChange={(e) => set("plz", e.target.value)}
+                          className={inputClass}
+                          suggestions={fieldSuggestions.plz}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Ort{isExtracted("ort") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("ort")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.ort}
+                          onChange={(e) => set("ort", e.target.value)}
+                          className={inputClass}
+                          suggestions={fieldSuggestions.ort}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Land</label>
+                      <select
+                        value={form.land_code}
+                        onChange={(e) => set("land_code", e.target.value)}
+                        className={inputClass}
+                      >
+                        {LAND_OPTIONS.map((l) => (
+                          <option key={l.code} value={l.code}>{l.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Art_Land</label>
+                      <select
+                        value={form.art_land_code}
+                        onChange={(e) => set("art_land_code", e.target.value)}
+                        className={inputClass}
+                      >
+                        {ART_LAND_OPTIONS.map((a) => (
+                          <option key={a} value={a}>{a}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>UST-ID-Nr.</label>
                     <SuggestTextInput
                       type="text"
-                      value={form.telefonnummer}
-                      onChange={(e) => set("telefonnummer", e.target.value)}
+                      value={form.ust_id_nr}
+                      onChange={(e) => set("ust_id_nr", e.target.value)}
                       className={inputClass}
-                      suggestions={fieldSuggestions.telefonnummer}
+                      suggestions={fieldSuggestions.ust_id_nr}
                       title="Vorschläge aus gespeicherten Kunden"
                     />
-                  </ExtractedFieldWrapper>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Steuer-Nr.</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.steuer_nr}
+                        onChange={(e) => set("steuer_nr", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.steuer_nr}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Branchen-Nr.</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.branchen_nr}
+                        onChange={(e) => set("branchen_nr", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.branchen_nr}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className={labelClass}>Faxnummer</label>
-                  <SuggestTextInput
-                    type="text"
-                    value={form.faxnummer}
-                    onChange={(e) => set("faxnummer", e.target.value)}
-                    className={inputClass}
-                    suggestions={fieldSuggestions.faxnummer}
-                    title="Vorschläge aus gespeicherten Kunden"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>E-Mail{isExtracted("email") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("email")}>
+
+                {/* ── Col 3: Kontakt ── */}
+                <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Kontakt</p>
+
+                  <div>
+                    <label className={labelClass}>Ansprechpartner</label>
                     <SuggestTextInput
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => set("email", e.target.value)}
+                      type="text"
+                      value={form.ansprechpartner}
+                      onChange={(e) => set("ansprechpartner", e.target.value)}
                       className={inputClass}
-                      suggestions={fieldSuggestions.email}
+                      suggestions={fieldSuggestions.ansprechpartner}
                       title="Vorschläge aus gespeicherten Kunden"
                     />
-                  </ExtractedFieldWrapper>
-                </div>
-                <div>
-                  <label className={labelClass}>Internet Adr.{isExtracted("internet_adr") && <KiBadge />}</label>
-                  <ExtractedFieldWrapper extracted={isExtracted("internet_adr")}>
-                    <SuggestTextInput
-                      type="url"
-                      value={form.internet_adr}
-                      onChange={(e) => set("internet_adr", e.target.value)}
-                      placeholder="https://…"
-                      className={inputClass}
-                      suggestions={fieldSuggestions.internet_adr}
-                      title="Vorschläge aus gespeicherten Kunden"
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Telefon{isExtracted("telefonnummer") && <KiBadge />}</label>
+                      <ExtractedFieldWrapper extracted={isExtracted("telefonnummer")}>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.telefonnummer}
+                          onChange={(e) => set("telefonnummer", e.target.value)}
+                          className={inputClass}
+                          suggestions={fieldSuggestions.telefonnummer}
+                          title="Vorschläge aus gespeicherten Kunden"
+                        />
+                      </ExtractedFieldWrapper>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Fax</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.faxnummer}
+                        onChange={(e) => set("faxnummer", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.faxnummer}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>E-Mail{isExtracted("email") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("email")}>
+                      <SuggestTextInput
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => set("email", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.email}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </ExtractedFieldWrapper>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Internet Adr.{isExtracted("internet_adr") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("internet_adr")}>
+                      <SuggestTextInput
+                        type="url"
+                        value={form.internet_adr}
+                        onChange={(e) => set("internet_adr", e.target.value)}
+                        placeholder="https://…"
+                        className={inputClass}
+                        suggestions={fieldSuggestions.internet_adr}
+                        title="Vorschläge aus gespeicherten Kunden"
+                      />
+                    </ExtractedFieldWrapper>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Bemerkungen (Kontakt)</label>
+                    <textarea
+                      value={form.bemerkungen_kontakt}
+                      onChange={(e) => set("bemerkungen_kontakt", e.target.value)}
+                      rows={2}
+                      className={`${inputClass} resize-none py-2`}
                     />
-                  </ExtractedFieldWrapper>
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={form.faxen_flag}
+                      onChange={(e) => set("faxen_flag", e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600"
+                    />
+                    faxen
+                  </label>
                 </div>
-                <div>
-                  <label className={labelClass}>Bemerkungen (Kontakt)</label>
-                  <textarea
-                    value={form.bemerkungen_kontakt}
-                    onChange={(e) => set("bemerkungen_kontakt", e.target.value)}
-                    rows={3}
-                    className={`${inputClass} min-h-[80px] resize-y py-2`}
-                  />
-                </div>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={form.faxen_flag}
-                    onChange={(e) => set("faxen_flag", e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600"
-                  />
-                  faxen
-                </label>
               </div>
             </div>
           )}
 
           {tab === "art" && (
-            <div className="mx-auto max-w-4xl space-y-4">
+            <div className="space-y-4">
               <div>
                 <label className={labelClass}>Art (Kunde)</label>
                 <SuggestTextInput
@@ -1369,7 +1224,7 @@ export function NewCustomerModal({
           )}
 
           {tab === "waschanlage" && (
-            <div className="mx-auto max-w-4xl space-y-5">
+            <div className="space-y-5">
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-cyan-200/80 bg-cyan-50/50 p-4 text-sm text-slate-800 shadow-sm">
                 <input
                   type="checkbox"
@@ -1609,7 +1464,7 @@ export function NewCustomerModal({
 
         {/* Footer */}
         <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
-          <div className="mx-auto flex max-w-5xl justify-end gap-2">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}

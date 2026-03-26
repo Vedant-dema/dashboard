@@ -10,7 +10,6 @@ import type { NewKundeInput, KundenWashUpsertFields } from "../store/kundenStore
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import type { DepartmentArea } from "../types/departmentArea";
-import { getStaffByRolle } from "../store/staffStore";
 
 type TabId = "vat" | "kunde" | "art" | "waschanlage";
 
@@ -26,21 +25,21 @@ type KontaktEntry = {
 };
 
 const KONTAKT_ROLLEN = [
-  "Allgemein",
-  "Mechaniker",
-  "Autowäsche",
+  "Ansprechpartner",
+  "Geschäftsführer",
+  "Einkauf",
   "Verkauf",
   "Buchhaltung",
-  "Einkauf",
+  "Techniker",
+  "Lager",
   "Disposition",
-  "Geschäftsführung",
   "Sonstiges",
 ];
 
 function emptyKontakt(): KontaktEntry {
   return {
     id: Math.random().toString(36).slice(2),
-    rolle: "Allgemein",
+    rolle: "Ansprechpartner",
     name: "",
     telefon: "",
     fax: "",
@@ -392,14 +391,15 @@ const ART_LAND_OPTIONS = ["IL", "EU", "Drittland"];
 const FAHRZEUG_TYPEN = ["", "PKW", "LKW", "Transporter", "Bus", "Sonstiges"];
 
 const ROLLE_COLORS: Record<string, { from: string; to: string; badge: string; dot: string; dotActive: string }> = {
-  Mechaniker:       { from: "from-orange-500",  to: "to-amber-500",   badge: "bg-orange-100 text-orange-700",   dot: "bg-orange-300",  dotActive: "bg-orange-500"  },
-  Autowäsche:       { from: "from-cyan-500",    to: "to-blue-500",    badge: "bg-cyan-100 text-cyan-700",       dot: "bg-cyan-300",    dotActive: "bg-cyan-500"    },
-  Verkauf:          { from: "from-emerald-500", to: "to-teal-500",    badge: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-300", dotActive: "bg-emerald-500" },
-  Buchhaltung:      { from: "from-violet-500",  to: "to-purple-500",  badge: "bg-violet-100 text-violet-700",   dot: "bg-violet-300",  dotActive: "bg-violet-500"  },
-  Einkauf:          { from: "from-pink-500",    to: "to-rose-500",    badge: "bg-pink-100 text-pink-700",       dot: "bg-pink-300",    dotActive: "bg-pink-500"    },
-  Disposition:      { from: "from-sky-500",     to: "to-indigo-500",  badge: "bg-sky-100 text-sky-700",         dot: "bg-sky-300",     dotActive: "bg-sky-500"     },
-  Geschäftsführung: { from: "from-slate-700",   to: "to-slate-900",   badge: "bg-slate-200 text-slate-700",     dot: "bg-slate-400",   dotActive: "bg-slate-700"   },
-  Sonstiges:        { from: "from-stone-400",   to: "to-stone-600",   badge: "bg-stone-100 text-stone-600",     dot: "bg-stone-300",   dotActive: "bg-stone-500"   },
+  Ansprechpartner: { from: "from-blue-500",    to: "to-indigo-500",  badge: "bg-blue-100 text-blue-700",       dot: "bg-blue-300",    dotActive: "bg-blue-500"    },
+  Geschäftsführer: { from: "from-slate-700",   to: "to-slate-900",   badge: "bg-slate-200 text-slate-700",     dot: "bg-slate-400",   dotActive: "bg-slate-700"   },
+  Einkauf:         { from: "from-pink-500",    to: "to-rose-500",    badge: "bg-pink-100 text-pink-700",       dot: "bg-pink-300",    dotActive: "bg-pink-500"    },
+  Verkauf:         { from: "from-emerald-500", to: "to-teal-500",    badge: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-300", dotActive: "bg-emerald-500" },
+  Buchhaltung:     { from: "from-violet-500",  to: "to-purple-500",  badge: "bg-violet-100 text-violet-700",   dot: "bg-violet-300",  dotActive: "bg-violet-500"  },
+  Techniker:       { from: "from-orange-500",  to: "to-amber-500",   badge: "bg-orange-100 text-orange-700",   dot: "bg-orange-300",  dotActive: "bg-orange-500"  },
+  Lager:           { from: "from-cyan-500",    to: "to-sky-500",     badge: "bg-cyan-100 text-cyan-700",       dot: "bg-cyan-300",    dotActive: "bg-cyan-500"    },
+  Disposition:     { from: "from-sky-500",     to: "to-indigo-500",  badge: "bg-sky-100 text-sky-700",         dot: "bg-sky-300",     dotActive: "bg-sky-500"     },
+  Sonstiges:       { from: "from-stone-400",   to: "to-stone-600",   badge: "bg-stone-100 text-stone-600",     dot: "bg-stone-300",   dotActive: "bg-stone-500"   },
 };
 const ROLLE_COLORS_DEFAULT = { from: "from-blue-500", to: "to-indigo-600", badge: "bg-blue-100 text-blue-700", dot: "bg-blue-300", dotActive: "bg-blue-600" };
 
@@ -1354,8 +1354,6 @@ export function NewCustomerModal({
                   const safeIdx = Math.min(activeKontaktIdx, form.kontakte.length - 1);
                   const col = ROLLE_COLORS[k.rolle] ?? ROLLE_COLORS_DEFAULT;
                   const initials = k.name ? k.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : String(safeIdx + 1);
-                  const isAutoFilled = k.name ? getStaffByRolle(k.rolle).some((s) => s.name === k.name) : false;
-                  const staffList = getStaffByRolle(k.rolle);
 
                   return (
                     <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
@@ -1455,50 +1453,24 @@ export function NewCustomerModal({
 
                           <div>
                             <label className={labelClass}>Name</label>
-                            {staffList.length > 0 ? (
-                              <select
-                                value={k.name}
-                                onChange={(e) => {
-                                  const selected = staffList.find((s) => s.name === e.target.value);
-                                  setForm((f) => ({
-                                    ...f,
-                                    kontakte: f.kontakte.map((c, i) =>
-                                      i === safeIdx
-                                        ? { ...c, name: e.target.value, telefon: selected?.telefon ?? c.telefon, email: selected?.email ?? c.email }
-                                        : c
-                                    ),
-                                  }));
-                                }}
-                                className={inputClass}
-                              >
-                                <option value="">— Person wählen —</option>
-                                {staffList.map((s) => (
-                                  <option key={s.id} value={s.name}>{s.name}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type="text"
-                                value={k.name}
-                                onChange={(e) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    kontakte: f.kontakte.map((c, i) =>
-                                      i === safeIdx ? { ...c, name: e.target.value } : c
-                                    ),
-                                  }))
-                                }
-                                className={inputClass}
-                                placeholder="Name eingeben"
-                              />
-                            )}
+                            <input
+                              type="text"
+                              value={k.name}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, name: e.target.value } : c
+                                  ),
+                                }))
+                              }
+                              className={inputClass}
+                              placeholder="Vor- und Nachname"
+                            />
                           </div>
 
                           <div>
-                            <label className={labelClass}>
-                              Telefon
-                              {isAutoFilled && <span className="ml-1 rounded bg-emerald-100 px-1 py-px text-[9px] font-semibold text-emerald-700">AUTO</span>}
-                            </label>
+                            <label className={labelClass}>Telefon</label>
                             <input
                               type="text"
                               value={k.telefon}
@@ -1511,14 +1483,12 @@ export function NewCustomerModal({
                                 }))
                               }
                               className={inputClass}
+                              placeholder="+49 …"
                             />
                           </div>
 
                           <div>
-                            <label className={labelClass}>
-                              E-Mail
-                              {isAutoFilled && <span className="ml-1 rounded bg-emerald-100 px-1 py-px text-[9px] font-semibold text-emerald-700">AUTO</span>}
-                            </label>
+                            <label className={labelClass}>E-Mail</label>
                             <input
                               type="email"
                               value={k.email}
@@ -1531,6 +1501,7 @@ export function NewCustomerModal({
                                 }))
                               }
                               className={inputClass}
+                              placeholder="name@firma.de"
                             />
                           </div>
 

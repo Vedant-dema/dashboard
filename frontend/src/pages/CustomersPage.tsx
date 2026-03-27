@@ -1548,9 +1548,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-500">Waschprogramm</label>
                       <select
-                        value={draftWash.wasch_programm ?? ""}
+                        value={draftWash?.wasch_programm ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, wasch_programm: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, wasch_programm: e.target.value } : prev
+                          )
                         }
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                       >
@@ -1565,9 +1567,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">Intervall</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.wasch_intervall ?? ""}
+                        value={draftWash?.wasch_intervall ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, wasch_intervall: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, wasch_intervall: e.target.value } : prev
+                          )
                         }
                         suggestions={fieldSuggestions.wasch_intervall}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
@@ -1579,9 +1583,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">Rechnung-Zusatz</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.rechnung_zusatz ?? ""}
+                        value={draftWash?.rechnung_zusatz ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, rechnung_zusatz: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, rechnung_zusatz: e.target.value } : prev
+                          )
                         }
                         suggestions={fieldSuggestions.wash_rechnung_zusatz}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
@@ -1592,9 +1598,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">Rechnung-PLZ</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.rechnung_plz ?? ""}
+                        value={draftWash?.rechnung_plz ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, rechnung_plz: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, rechnung_plz: e.target.value } : prev
+                          )
                         }
                         suggestions={fieldSuggestions.wash_rechnung_plz}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
@@ -1605,9 +1613,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">Rechnung-Ort</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.rechnung_ort ?? ""}
+                        value={draftWash?.rechnung_ort ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, rechnung_ort: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, rechnung_ort: e.target.value } : prev
+                          )
                         }
                         suggestions={fieldSuggestions.wash_rechnung_ort}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
@@ -1618,9 +1628,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">Rechnung-Strasse</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.rechnung_strasse ?? ""}
+                        value={draftWash?.rechnung_strasse ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, rechnung_strasse: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, rechnung_strasse: e.target.value } : prev
+                          )
                         }
                         suggestions={fieldSuggestions.wash_rechnung_strasse}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"

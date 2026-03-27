@@ -1,11 +1,39 @@
 ---
-description: Auto-document every new feature added to the project in docs/FEATURE-LOG.md
+description: Auto-document every new feature in a daily dated file inside docs/feature-logs/
 alwaysApply: true
 ---
 
-# Feature Documentation Rule — Always Log New Features
+# Feature Documentation Rule — Daily Dated Log Files
 
-**Every time you add, modify, or extend a feature**, you MUST update `docs/FEATURE-LOG.md` with a full entry. This applies to any change that is more than a bug fix or minor style tweak.
+**Every time you add, modify, or extend a feature**, you MUST write a full entry into the correct daily file in `docs/feature-logs/`. A new file is created for each calendar day automatically.
+
+## File Structure
+
+```
+docs/
+  FEATURE-LOG.md          ← master index (update the table here too)
+  feature-logs/
+    2026-03-23.md         ← all features added on that date
+    2026-03-25.md
+    2026-03-26.md
+    YYYY-MM-DD.md         ← today's file (create if it doesn't exist)
+```
+
+## Step-by-Step — What to Do After Every Feature
+
+1. **Get today's date** in `YYYY-MM-DD` format.
+2. **Check if `docs/feature-logs/YYYY-MM-DD.md` exists.**
+   - If it does NOT exist → create it with this header:
+     ```markdown
+     # Feature Log — YYYY-MM-DD
+     
+     > Features added or modified on this date.
+     
+     ---
+     ```
+3. **Append the new feature entry** to the bottom of today's daily file.
+4. **Add a new row** to the table in `docs/FEATURE-LOG.md` (both the "Daily Log Files" table and the "Full Feature Index" table).
+5. **Confirm** to the user: "Feature logged in `docs/feature-logs/YYYY-MM-DD.md` as [FEATURE-NNN]."
 
 ## When to Write a Log Entry
 
@@ -17,18 +45,12 @@ Write an entry whenever you:
 - Add new API integrations or data flows
 - Add any user-visible feature or setting
 
-## Where to Append
-
-Always **append** a new entry to the bottom of `docs/FEATURE-LOG.md`. Never delete or overwrite existing entries.
-
 ## Mandatory Entry Format
 
 Each entry must follow this exact template:
 
 ```markdown
----
-
-## [FEATURE-NNN] Feature Name
+## FEATURE-NNN: Feature Name
 **Date:** YYYY-MM-DD  
 **Author/Agent:** Cursor AI  
 **Status:** Added | Modified | Extended  
@@ -40,7 +62,6 @@ One-paragraph description of exactly what this feature does from the user's pers
 List every file touched or created:
 - `frontend/src/...` — reason
 - `backend/main.py` — reason
-- `docs/...` — reason
 
 ### What It Does (Technical)
 Step-by-step description of the logic flow:
@@ -53,7 +74,7 @@ Step-by-step description of the logic flow:
 | ...   | ...  | ...      | ...         |
 
 ### Database
-- **Engine:** SQLite (`dema.db`) / None
+- **Engine:** SQLite (`dema.db`) / Browser `localStorage` / None
 - **Tables Affected:** List table names or "N/A"
 - **Schema Changes:** Describe any new columns/tables or "None"
 - **Key Queries:** Describe the main SQL patterns used or "None"
@@ -76,12 +97,14 @@ List any new npm packages or pip packages installed, or "None".
 
 ### Notes / Known Limitations
 Any caveats, TODOs, or follow-up items.
+
+---
 ```
 
 ## Rules
 
-1. **FEATURE-NNN** — increment the number from the last entry in the file. Start at FEATURE-001 if the file is empty.
-2. Fill in every section. Write "N/A" or "None" if a section does not apply — never skip a section.
-3. Do not use vague language like "updated some files". Be specific with file paths and function names.
-4. If a feature spans multiple sessions, add a new entry with status `Extended` and reference the original entry number.
-5. After appending the entry, confirm to the user: "Feature logged in docs/FEATURE-LOG.md as [FEATURE-NNN]."
+1. **FEATURE-NNN** — look at the last entry number in `docs/FEATURE-LOG.md` and increment by 1.
+2. Fill every section. Write "N/A" or "None" if a section does not apply — never skip a section.
+3. Be specific: use exact file paths and function names. Never write "updated some files".
+4. If a feature spans multiple days/sessions, create a new entry with status `Extended` in today's daily file and reference the original FEATURE number.
+5. Always update `docs/FEATURE-LOG.md` index — both the "Daily Log Files" table and the "Full Feature Index" table.

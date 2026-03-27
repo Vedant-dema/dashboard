@@ -117,3 +117,61 @@ None.
 
 ### Notes / Known Limitations
 The system provides structure and templates, but daily quality still depends on consistent execution discipline. Metrics logging is manual at this stage and can be automated later through scripts or dashboard tooling.
+
+---
+
+## [FEATURE-026] Weekday-Only Office Cadence for Solo Operating System
+**Date:** 2026-03-27 
+**Author/Agent:** Cursor AI 
+**Status:** Extended 
+
+### What Was Added
+The solo operating system was extended to use a strict Monday-Friday office cadence so daily planning and learning files are generated only on workdays, while weekends are treated as optional review/catch-up periods unless urgent production work is required.
+
+### Where It Was Added
+List every file touched or created:
+- `.cursor/rules/time-management-ops.mdc` — enforced weekday-only daily file creation and weekend behavior
+- `todo/README.md` — updated naming and workflow to office-day cadence
+- `learner/README.md` — updated learning cadence to Monday-Friday baseline
+- `docs/solo-it-operating-model.md` — added weekday cadence and weekend policy
+- `docs/FEATURE-LOG.md` — feature extension entry
+
+### What It Does (Technical)
+Step-by-step description of the logic flow:
+1. Checks whether current day is Monday-Friday before requiring daily file generation.
+2. Skips mandatory daily file generation on Saturday/Sunday unless explicitly requested or urgent.
+3. Keeps weekend activity in low-load mode (review/catch-up) by default.
+4. Aligns todo and learning systems to the same weekday schedule for consistent tracking.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| workdayPolicy | string | Yes | Defines office cadence (`Monday-Friday`) |
+| currentDay | string | Yes | Day-of-week used to decide required daily file generation |
+| weekendMode | string | Yes | Weekend behavior mode (`optional_review`) |
+| urgentFlag | boolean | No | Allows weekend execution when urgent production work exists |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| N/A | N/A | N/A | N/A | N/A |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** None
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+Weekday cadence reduces burnout risk, but urgent weekend production incidents still require manual override and explicit logging in backlog delta.

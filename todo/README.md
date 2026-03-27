@@ -4,7 +4,7 @@ Use this folder as the daily execution control center.
 
 ## Naming convention
 - Daily file: `YYYY-MM-DD.md` (example: `2026-03-27.md`)
-- One file per day, no duplicates.
+- One file per office day (Monday-Friday), no duplicates.
 
 ## Daily flow
 1. Copy `templates/daily-task-template.md` into today's file.
@@ -12,6 +12,7 @@ Use this folder as the daily execution control center.
 3. Keep active work to 3 tasks max.
 4. End day with review and carry-forward list.
 5. Update `backlog.md` after end-of-day review.
+6. On weekends, skip normal daily file creation unless there is urgent production work.
 
 ## Rules
 - Track both "what to do" and "what not to do."

@@ -8,9 +8,11 @@ alwaysApply: true
 ## Session Start Protocol
 - Start by checking latest files in `todo/` and `learner/`.
 - Summarize: top 3 priorities, top 3 risks, blockers, and backlog delta.
-- If no daily file exists for today, create:
+- If no daily file exists for today, create files only on Monday-Friday:
   - `todo/YYYY-MM-DD.md`
   - `learner/YYYY-MM-DD.md`
+- On Saturday or Sunday, do not create a normal daily file unless explicitly requested.
+- Weekend default mode: optional light review only (no full sprint load).
 
 ## Task Definition Standard
 - Every task must include: impact, estimate, deadline, owner (`you` or `agent`), and status.
@@ -21,6 +23,7 @@ alwaysApply: true
 - Plan using 3 focus blocks only (high-value tasks first).
 - Keep work in progress <= 3 items.
 - End of day must include: done list, not-done list, carry-forward, and tomorrow first task.
+- Office schedule baseline: Monday-Friday execution days.
 
 ## Backlog and Timeline Control
 - Keep one source of truth: `todo/backlog.md`.

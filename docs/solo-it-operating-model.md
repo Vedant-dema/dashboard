@@ -22,6 +22,8 @@ flowchart TD
 - Execute in 3 focus blocks with WIP limit <= 3.
 - Log blockers within 15 minutes of discovery.
 - End: done/not-done, carry-forward, tomorrow first task.
+- Cadence: Monday-Friday office execution schedule.
+- Weekend policy: optional review/catch-up only unless production incident or planned release.
 
 ## 3) Production readiness gate (must pass before live)
 - Code quality: lint + tests pass in CI.

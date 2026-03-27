@@ -16,22 +16,95 @@ type TabId = "vat" | "kunde" | "art" | "waschanlage";
 type KontaktEntry = {
   id: string;
   name: string;
+  telefonCode: string;
   telefon: string;
-  fax: string;
+  handyCode: string;
+  handy: string;
   email: string;
   bemerkung: string;
-  faxen: boolean;
 };
+
+const COUNTRY_CODES: { code: string; label: string }[] = [
+  { code: "+49", label: "🇩🇪 +49" },
+  { code: "+43", label: "🇦🇹 +43" },
+  { code: "+41", label: "🇨🇭 +41" },
+  { code: "+31", label: "🇳🇱 +31" },
+  { code: "+48", label: "🇵🇱 +48" },
+  { code: "+33", label: "🇫🇷 +33" },
+  { code: "+39", label: "🇮🇹 +39" },
+  { code: "+34", label: "🇪🇸 +34" },
+  { code: "+44", label: "🇬🇧 +44" },
+  { code: "+1",  label: "🇺🇸 +1"  },
+  { code: "+90", label: "🇹🇷 +90" },
+  { code: "+7",  label: "🇷🇺 +7"  },
+  { code: "+32", label: "🇧🇪 +32" },
+  { code: "+45", label: "🇩🇰 +45" },
+  { code: "+46", label: "🇸🇪 +46" },
+  { code: "+47", label: "🇳🇴 +47" },
+  { code: "+358", label: "🇫🇮 +358" },
+  { code: "+420", label: "🇨🇿 +420" },
+  { code: "+36", label: "🇭🇺 +36" },
+  { code: "+40", label: "🇷🇴 +40" },
+  { code: "+30", label: "🇬🇷 +30" },
+  { code: "+351", label: "🇵🇹 +351" },
+  { code: "+380", label: "🇺🇦 +380" },
+  { code: "+971", label: "🇦🇪 +971" },
+  { code: "+86",  label: "🇨🇳 +86"  },
+  { code: "+81",  label: "🇯🇵 +81"  },
+  { code: "+91",  label: "🇮🇳 +91"  },
+];
 
 function emptyKontakt(): KontaktEntry {
   return {
     id: Math.random().toString(36).slice(2),
     name: "",
+    telefonCode: "+49",
     telefon: "",
-    fax: "",
+    handyCode: "+49",
+    handy: "",
     email: "",
     bemerkung: "",
-    faxen: false,
+  };
+}
+
+// ── Adresse ────────────────────────────────────────────────────────────────
+type AdresseEntry = {
+  id: string;
+  typ: string;
+  strasse: string;
+  plz: string;
+  ort: string;
+  land_code: string;
+  art_land_code: string;
+  ust_id_nr: string;
+  steuer_nr: string;
+  branchen_nr: string;
+};
+
+const ADRESSE_TYPEN = ["Hauptadresse", "Rechnungsadresse", "Lieferadresse", "Filiale", "Alte Hauptadresse", "Sonstiges"];
+
+const ADRESSE_COLORS: { dot: string; dotActive: string; activePill: string }[] = [
+  { dot: "bg-indigo-300",  dotActive: "bg-indigo-500",  activePill: "bg-indigo-500"  },
+  { dot: "bg-teal-300",    dotActive: "bg-teal-500",    activePill: "bg-teal-500"    },
+  { dot: "bg-violet-300",  dotActive: "bg-violet-500",  activePill: "bg-violet-500"  },
+  { dot: "bg-amber-300",   dotActive: "bg-amber-500",   activePill: "bg-amber-500"   },
+  { dot: "bg-rose-300",    dotActive: "bg-rose-500",    activePill: "bg-rose-500"    },
+  { dot: "bg-cyan-300",    dotActive: "bg-cyan-500",    activePill: "bg-cyan-500"    },
+  { dot: "bg-slate-400",   dotActive: "bg-slate-600",   activePill: "bg-slate-600"   },
+];
+
+function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
+  return {
+    id: Math.random().toString(36).slice(2),
+    typ,
+    strasse: "",
+    plz: "",
+    ort: "",
+    land_code: "DE",
+    art_land_code: "IL",
+    ust_id_nr: "",
+    steuer_nr: "",
+    branchen_nr: "",
   };
 }
 
@@ -414,14 +487,7 @@ function initialForm() {
     firmenname: "",
     bemerkungen: "",
     zustaendige_person_name: "nicht zugeordnet",
-    strasse: "",
-    plz: "",
-    ort: "",
-    land_code: "DE",
-    art_land_code: "IL",
-    ust_id_nr: "",
-    steuer_nr: "",
-    branchen_nr: "",
+    adressen: [emptyAdresse()] as AdresseEntry[],
     internet_adr: "",
     kontakte: [emptyKontakt()] as KontaktEntry[],
     art_kunde: "",
@@ -466,21 +532,29 @@ function formToPayload(form: FormState): NewKundeInput {
     firmenvorsatz: emptyToUndef(form.firmenvorsatz),
     bemerkungen: emptyToUndef(form.bemerkungen),
     zustaendige_person_name,
-    strasse: emptyToUndef(form.strasse),
-    plz: emptyToUndef(form.plz),
-    ort: emptyToUndef(form.ort),
-    land_code: form.land_code,
-    art_land_code: emptyToUndef(form.art_land_code),
-    ust_id_nr: emptyToUndef(form.ust_id_nr),
-    steuer_nr: emptyToUndef(form.steuer_nr),
-    branchen_nr: emptyToUndef(form.branchen_nr),
+    strasse: emptyToUndef(form.adressen[0]?.strasse ?? ""),
+    plz: emptyToUndef(form.adressen[0]?.plz ?? ""),
+    ort: emptyToUndef(form.adressen[0]?.ort ?? ""),
+    land_code: form.adressen[0]?.land_code ?? "DE",
+    art_land_code: emptyToUndef(form.adressen[0]?.art_land_code ?? ""),
+    ust_id_nr: emptyToUndef(form.adressen[0]?.ust_id_nr ?? ""),
+    steuer_nr: emptyToUndef(form.adressen[0]?.steuer_nr ?? ""),
+    branchen_nr: emptyToUndef(form.adressen[0]?.branchen_nr ?? ""),
     ansprechpartner: emptyToUndef(form.kontakte[0]?.name ?? ""),
-    telefonnummer: emptyToUndef(form.kontakte[0]?.telefon ?? ""),
-    faxnummer: emptyToUndef(form.kontakte[0]?.fax ?? ""),
+    telefonnummer: emptyToUndef(
+      form.kontakte[0]?.telefon
+        ? `${form.kontakte[0].telefonCode} ${form.kontakte[0].telefon}`
+        : ""
+    ),
+    faxnummer: emptyToUndef(
+      form.kontakte[0]?.handy
+        ? `${form.kontakte[0].handyCode} ${form.kontakte[0].handy}`
+        : ""
+    ),
     email: emptyToUndef(form.kontakte[0]?.email ?? ""),
     internet_adr: emptyToUndef(form.internet_adr),
     bemerkungen_kontakt: emptyToUndef(form.kontakte[0]?.bemerkung ?? ""),
-    faxen_flag: form.kontakte[0]?.faxen ?? false,
+    faxen_flag: false,
     art_kunde: emptyToUndef(form.art_kunde),
     buchungskonto_haupt: emptyToUndef(form.buchungskonto_haupt),
   };
@@ -545,6 +619,7 @@ export function NewCustomerModal({
   const [tab, setTab] = useState<TabId>("vat");
   const [form, setForm] = useState<FormState>(initialForm);
   const [activeKontaktIdx, setActiveKontaktIdx] = useState(0);
+  const [activeAdresseIdx, setActiveAdresseIdx] = useState(0);
   const [aufnahmePreview, setAufnahmePreview] = useState("");
   const [viesCountry, setViesCountry] = useState("DE");
   const [viesVatInput, setViesVatInput] = useState("");
@@ -562,6 +637,7 @@ export function NewCustomerModal({
       });
       setTab("vat");
       setActiveKontaktIdx(0);
+      setActiveAdresseIdx(0);
       setViesCountry("DE");
       setViesVatInput("");
       setVatCheckLoading(false);
@@ -584,16 +660,18 @@ export function NewCustomerModal({
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
 
   /** Fields this mock extractor can fill — maps form keys to realistic demo values */
-  const MOCK_EXTRACTED: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
-    firmenname:      "Muster Automobil GmbH",
+  const MOCK_EXTRACTED_FIRMA: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
+    firmenname:        "Muster Automobil GmbH",
     gesellschaftsform: "GmbH",
-    branche:         "Automobilhandel",
-    firmenvorsatz:   "Muster",
-    strasse:         "Hauptstraße 42",
-    plz:             "44137",
-    ort:             "Dortmund",
-    land_code:       "DE",
-    internet_adr:    "www.muster-auto.de",
+    branche:           "Automobilhandel",
+    firmenvorsatz:     "Muster",
+    internet_adr:      "www.muster-auto.de",
+  };
+  const MOCK_EXTRACTED_ADRESSE = {
+    strasse:    "Hauptstraße 42",
+    plz:        "44137",
+    ort:        "Dortmund",
+    land_code:  "DE",
   };
 
   const handleDocUpload = (file: File) => {
@@ -604,22 +682,52 @@ export function NewCustomerModal({
     // Simulate OCR processing delay (2.5 s)
     setTimeout(() => {
       const filled = new Set<string>();
-      for (const [key, value] of Object.entries(MOCK_EXTRACTED) as [keyof FormState, FormState[keyof FormState]][]) {
-        // Only fill if field is currently empty
+
+      // Fill top-level firma fields
+      for (const [key, value] of Object.entries(MOCK_EXTRACTED_FIRMA) as [keyof FormState, FormState[keyof FormState]][]) {
         if (!form[key]) {
           set(key, value);
           filled.add(key as string);
         }
       }
+
+      // Fill address fields into adressen[0]
+      setForm((f) => ({
+        ...f,
+        adressen: f.adressen.map((a, i) => {
+          if (i !== 0) return a;
+          const patch: Partial<AdresseEntry> = {};
+          if (!a.strasse && MOCK_EXTRACTED_ADRESSE.strasse) { patch.strasse = MOCK_EXTRACTED_ADRESSE.strasse; filled.add("strasse"); }
+          if (!a.plz    && MOCK_EXTRACTED_ADRESSE.plz)     { patch.plz    = MOCK_EXTRACTED_ADRESSE.plz;     filled.add("plz");    }
+          if (!a.ort    && MOCK_EXTRACTED_ADRESSE.ort)     { patch.ort    = MOCK_EXTRACTED_ADRESSE.ort;     filled.add("ort");    }
+          if (!a.land_code && MOCK_EXTRACTED_ADRESSE.land_code) {
+            patch.land_code    = MOCK_EXTRACTED_ADRESSE.land_code;
+            patch.art_land_code = landCodeToArtLand(MOCK_EXTRACTED_ADRESSE.land_code);
+            filled.add("land_code");
+          }
+          return { ...a, ...patch };
+        }),
+      }));
+
       setExtractedFields(filled);
       setDocScanState("done");
     }, 2500);
   };
 
   const clearDocExtraction = () => {
-    // Reset extracted fields to empty
     for (const key of extractedFields) {
-      set(key as keyof FormState, "" as FormState[keyof FormState]);
+      if (["strasse", "plz", "ort", "land_code"].includes(key)) {
+        setForm((f) => ({
+          ...f,
+          adressen: f.adressen.map((a, i) =>
+            i === 0
+              ? { ...a, [key]: key === "land_code" ? "DE" : "", ...(key === "land_code" ? { art_land_code: "IL" } : {}) }
+              : a
+          ),
+        }));
+      } else {
+        set(key as keyof FormState, "" as FormState[keyof FormState]);
+      }
     }
     setExtractedFields(new Set());
     setDocScanState("idle");
@@ -777,13 +885,20 @@ export function NewCustomerModal({
     const derivedLandCode = viesLandToFormLand(cc);
     setForm((f) => ({
       ...f,
-      ust_id_nr: ust,
-      land_code: derivedLandCode,
-      art_land_code: landCodeToArtLand(derivedLandCode),
       ...(nm ? { firmenname: nm } : {}),
-      ...(addr.strasse ? { strasse: addr.strasse } : {}),
-      ...(addr.plz ? { plz: addr.plz } : {}),
-      ...(addr.ort ? { ort: addr.ort } : {}),
+      adressen: f.adressen.map((a, i) =>
+        i === 0
+          ? {
+              ...a,
+              ust_id_nr: ust,
+              land_code: derivedLandCode,
+              art_land_code: landCodeToArtLand(derivedLandCode),
+              ...(addr.strasse ? { strasse: addr.strasse } : {}),
+              ...(addr.plz ? { plz: addr.plz } : {}),
+              ...(addr.ort ? { ort: addr.ort } : {}),
+            }
+          : a
+      ),
     }));
     setTab("kunde");
   };
@@ -1171,149 +1286,227 @@ export function NewCustomerModal({
                     </ExtractedFieldWrapper>
                   </div>
 
-                  <div>
-                    <label className={labelClass}>Zuständige Person</label>
-                    <select
-                      value={form.zustaendige_person_name}
-                      onChange={(e) => set("zustaendige_person_name", e.target.value)}
-                      className={inputClass}
-                    >
-                      {ZUSTAENDIGE_OPTIONS.map((z) => (
-                        <option key={z} value={z}>{z}</option>
-                      ))}
-                    </select>
-                  </div>
 
                   <div>
                     <label className={labelClass}>Bemerkungen</label>
                     <textarea
                       value={form.bemerkungen}
                       onChange={(e) => set("bemerkungen", e.target.value)}
-                      rows={2}
-                      className={`${inputClass} resize-none py-2`}
+                      rows={8}
+                      className={`${inputClass} resize-y py-2 min-h-[120px]`}
                     />
                   </div>
                 </div>
 
                 {/* ── Col 2: Adresse & Steuer ── */}
-                <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Adresse &amp; Steuer</p>
+                {(() => {
+                  const safeAdresseIdx = Math.min(activeAdresseIdx, form.adressen.length - 1);
+                  const a = form.adressen[safeAdresseIdx] ?? form.adressen[0]!;
+                  const adCol = ADRESSE_COLORS[safeAdresseIdx % ADRESSE_COLORS.length]!;
+                  const adInitials = a.ort ? a.ort.slice(0, 2).toUpperCase() : String(safeAdresseIdx + 1);
 
-                  <div>
-                    <label className={labelClass}>Strasse{isExtracted("strasse") && <KiBadge />}</label>
-                    <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.strasse}
-                        onChange={(e) => set("strasse", e.target.value)}
-                        placeholder="nicht bekannt"
-                        className={inputClass}
-                        suggestions={fieldSuggestions.strasse}
-                        title="Vorschläge aus gespeicherten Kunden"
-                      />
-                    </ExtractedFieldWrapper>
-                  </div>
+                  const patchAdresse = (patch: Partial<AdresseEntry>) =>
+                    setForm((f) => ({
+                      ...f,
+                      adressen: f.adressen.map((ad, i) =>
+                        i === safeAdresseIdx ? { ...ad, ...patch } : ad
+                      ),
+                    }));
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>PLZ{isExtracted("plz") && <KiBadge />}</label>
-                      <ExtractedFieldWrapper extracted={isExtracted("plz")}>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.plz}
-                          onChange={(e) => set("plz", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.plz}
-                          title="Vorschläge aus gespeicherten Kunden"
-                        />
-                      </ExtractedFieldWrapper>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Ort{isExtracted("ort") && <KiBadge />}</label>
-                      <ExtractedFieldWrapper extracted={isExtracted("ort")}>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.ort}
-                          onChange={(e) => set("ort", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.ort}
-                          title="Vorschläge aus gespeicherten Kunden"
-                        />
-                      </ExtractedFieldWrapper>
-                    </div>
-                  </div>
+                  return (
+                    <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>Land</label>
-                      <select
-                        value={form.land_code}
-                        onChange={(e) => {
-                          const code = e.target.value;
-                          setForm((f) => ({
-                            ...f,
-                            land_code: code,
-                            art_land_code: landCodeToArtLand(code),
-                          }));
-                        }}
-                        className={inputClass}
-                      >
-                        {LAND_OPTIONS.map((l) => (
-                          <option key={l.code} value={l.code}>{l.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Art_Land</label>
-                      <select
-                        value={form.art_land_code}
-                        onChange={(e) => set("art_land_code", e.target.value)}
-                        className={inputClass}
-                      >
-                        {ART_LAND_OPTIONS.map((a) => (
-                          <option key={a} value={a}>{a}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                      {/* Header row */}
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Adresse &amp; Steuer</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextTyp = ADRESSE_TYPEN[form.adressen.length] ?? "Sonstiges";
+                            setForm((f) => ({ ...f, adressen: [...f.adressen, emptyAdresse(nextTyp)] }));
+                            setActiveAdresseIdx(form.adressen.length);
+                          }}
+                          className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-600 transition-all"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Neu
+                        </button>
+                      </div>
 
-                  <div>
-                    <label className={labelClass}>UST-ID-Nr.</label>
-                    <SuggestTextInput
-                      type="text"
-                      value={form.ust_id_nr}
-                      onChange={(e) => set("ust_id_nr", e.target.value)}
-                      className={inputClass}
-                      suggestions={fieldSuggestions.ust_id_nr}
-                      title="Vorschläge aus gespeicherten Kunden"
-                    />
-                  </div>
+                      {/* Pill tabs */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {form.adressen.map((ad, i) => {
+                          const dc = ADRESSE_COLORS[i % ADRESSE_COLORS.length]!;
+                          const isActive = i === safeAdresseIdx;
+                          return (
+                            <button
+                              key={ad.id}
+                              type="button"
+                              onClick={() => setActiveAdresseIdx(i)}
+                              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                                isActive
+                                  ? `${dc.activePill} text-white shadow-sm`
+                                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                              }`}
+                            >
+                              <span className={`h-2 w-2 rounded-full ${isActive ? "bg-white/60" : dc.dotActive}`} />
+                              {ad.typ}
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>Steuer-Nr.</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.steuer_nr}
-                        onChange={(e) => set("steuer_nr", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.steuer_nr}
-                        title="Vorschläge aus gespeicherten Kunden"
-                      />
+                      {/* Active address card */}
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        {/* Card header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${adCol.activePill}`}>
+                              {adInitials}
+                            </div>
+                            <select
+                              value={a.typ}
+                              onChange={(e) => patchAdresse({ typ: e.target.value })}
+                              className="border-0 bg-transparent text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                            >
+                              {ADRESSE_TYPEN.map((t) => (
+                                <option key={t} value={t}>{t}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {form.adressen.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((f) => ({ ...f, adressen: f.adressen.filter((_, i) => i !== safeAdresseIdx) }));
+                                setActiveAdresseIdx(Math.max(0, safeAdresseIdx - 1));
+                              }}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                              title="Adresse entfernen"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Card body */}
+                        <div className="space-y-2 p-3">
+                          <div>
+                            <label className={labelClass}>Strasse{isExtracted("strasse") && <KiBadge />}</label>
+                            <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
+                              <SuggestTextInput
+                                type="text"
+                                value={a.strasse}
+                                onChange={(e) => patchAdresse({ strasse: e.target.value })}
+                                placeholder="nicht bekannt"
+                                className={inputClass}
+                                suggestions={fieldSuggestions.strasse}
+                                title="Vorschläge aus gespeicherten Kunden"
+                              />
+                            </ExtractedFieldWrapper>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className={labelClass}>PLZ{isExtracted("plz") && <KiBadge />}</label>
+                              <ExtractedFieldWrapper extracted={isExtracted("plz")}>
+                                <SuggestTextInput
+                                  type="text"
+                                  value={a.plz}
+                                  onChange={(e) => patchAdresse({ plz: e.target.value })}
+                                  className={inputClass}
+                                  suggestions={fieldSuggestions.plz}
+                                  title="Vorschläge aus gespeicherten Kunden"
+                                />
+                              </ExtractedFieldWrapper>
+                            </div>
+                            <div>
+                              <label className={labelClass}>Ort{isExtracted("ort") && <KiBadge />}</label>
+                              <ExtractedFieldWrapper extracted={isExtracted("ort")}>
+                                <SuggestTextInput
+                                  type="text"
+                                  value={a.ort}
+                                  onChange={(e) => patchAdresse({ ort: e.target.value })}
+                                  className={inputClass}
+                                  suggestions={fieldSuggestions.ort}
+                                  title="Vorschläge aus gespeicherten Kunden"
+                                />
+                              </ExtractedFieldWrapper>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className={labelClass}>Land{isExtracted("land_code") && <KiBadge />}</label>
+                              <select
+                                value={a.land_code}
+                                onChange={(e) => {
+                                  const code = e.target.value;
+                                  patchAdresse({ land_code: code, art_land_code: landCodeToArtLand(code) });
+                                }}
+                                className={inputClass}
+                              >
+                                {LAND_OPTIONS.map((l) => (
+                                  <option key={l.code} value={l.code}>{l.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className={labelClass}>Art_Land</label>
+                              <select
+                                value={a.art_land_code}
+                                onChange={(e) => patchAdresse({ art_land_code: e.target.value })}
+                                className={inputClass}
+                              >
+                                {ART_LAND_OPTIONS.map((opt) => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>UST-ID-Nr.</label>
+                            <SuggestTextInput
+                              type="text"
+                              value={a.ust_id_nr}
+                              onChange={(e) => patchAdresse({ ust_id_nr: e.target.value })}
+                              className={inputClass}
+                              suggestions={fieldSuggestions.ust_id_nr}
+                              title="Vorschläge aus gespeicherten Kunden"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className={labelClass}>Steuer-Nr.</label>
+                              <SuggestTextInput
+                                type="text"
+                                value={a.steuer_nr}
+                                onChange={(e) => patchAdresse({ steuer_nr: e.target.value })}
+                                className={inputClass}
+                                suggestions={fieldSuggestions.steuer_nr}
+                                title="Vorschläge aus gespeicherten Kunden"
+                              />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Branchen-Nr.</label>
+                              <SuggestTextInput
+                                type="text"
+                                value={a.branchen_nr}
+                                onChange={(e) => patchAdresse({ branchen_nr: e.target.value })}
+                                className={inputClass}
+                                suggestions={fieldSuggestions.branchen_nr}
+                                title="Vorschläge aus gespeicherten Kunden"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
-                    <div>
-                      <label className={labelClass}>Branchen-Nr.</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.branchen_nr}
-                        onChange={(e) => set("branchen_nr", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.branchen_nr}
-                        title="Vorschläge aus gespeicherten Kunden"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* ── Col 3: Kontakt ── */}
                 {(() => {
@@ -1366,34 +1559,36 @@ export function NewCustomerModal({
                       </div>
 
                       {/* ── Active card ── */}
-                      <div className="overflow-hidden rounded-2xl border border-slate-200/60 shadow-md">
-                        {/* Gradient header */}
-                        <div className={`bg-gradient-to-br ${col.from} ${col.to} px-4 pt-4 pb-5`}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-sm font-bold text-white ring-2 ring-white/40">
+                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        {/* Clean card header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${col.activePill}`}
+                            >
                               {initials}
                             </div>
-                            {form.kontakte.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setForm((f) => ({ ...f, kontakte: f.kontakte.filter((_, i) => i !== safeIdx) }));
-                                  setActiveKontaktIdx(Math.max(0, safeIdx - 1));
-                                }}
-                                className="rounded-lg p-1 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
-                                title="Kontakt entfernen"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
+                            <span className="truncate text-sm font-semibold text-slate-700">
+                              {k.name || `Kontakt ${safeIdx + 1}`}
+                            </span>
                           </div>
-                          <p className="mt-2 truncate text-sm font-semibold text-white">
-                            {k.name || "— Kein Name —"}
-                          </p>
+                          {form.kontakte.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((f) => ({ ...f, kontakte: f.kontakte.filter((_, i) => i !== safeIdx) }));
+                                setActiveKontaktIdx(Math.max(0, safeIdx - 1));
+                              }}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                              title="Kontakt entfernen"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
 
                         {/* Card body */}
-                        <div className="space-y-2.5 bg-white p-3">
+                        <div className="space-y-2 p-3">
                           <div>
                             <label className={labelClass}>Name</label>
                             <input
@@ -1412,22 +1607,78 @@ export function NewCustomerModal({
                             />
                           </div>
 
+                          {/* Telefon with country code */}
                           <div>
                             <label className={labelClass}>Telefon</label>
-                            <input
-                              type="text"
-                              value={k.telefon}
-                              onChange={(e) =>
-                                setForm((f) => ({
-                                  ...f,
-                                  kontakte: f.kontakte.map((c, i) =>
-                                    i === safeIdx ? { ...c, telefon: e.target.value } : c
-                                  ),
-                                }))
-                              }
-                              className={inputClass}
-                              placeholder="+49 …"
-                            />
+                            <div className="flex gap-1.5">
+                              <select
+                                value={k.telefonCode}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, telefonCode: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                className="h-9 w-24 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-xs text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              >
+                                {COUNTRY_CODES.map((cc) => (
+                                  <option key={cc.code} value={cc.code}>{cc.label}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="tel"
+                                value={k.telefon}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, telefon: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                className={`${inputClass} flex-1`}
+                                placeholder="030 1234567"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Handy with country code */}
+                          <div>
+                            <label className={labelClass}>Handy</label>
+                            <div className="flex gap-1.5">
+                              <select
+                                value={k.handyCode}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, handyCode: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                className="h-9 w-24 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-xs text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              >
+                                {COUNTRY_CODES.map((cc) => (
+                                  <option key={cc.code} value={cc.code}>{cc.label}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="tel"
+                                value={k.handy}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, handy: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                className={`${inputClass} flex-1`}
+                                placeholder="0170 1234567"
+                              />
+                            </div>
                           </div>
 
                           <div>
@@ -1460,8 +1711,8 @@ export function NewCustomerModal({
                                   ),
                                 }))
                               }
-                              rows={2}
-                              className={`${inputClass} resize-none py-2`}
+                              rows={8}
+                              className={`${inputClass} resize-y py-2 min-h-[120px]`}
                             />
                           </div>
                         </div>
@@ -1745,22 +1996,38 @@ export function NewCustomerModal({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
-            >
-              Speichern
-            </button>
+        <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                Zuständige Person
+              </label>
+              <select
+                value={form.zustaendige_person_name}
+                onChange={(e) => set("zustaendige_person_name", e.target.value)}
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                {ZUSTAENDIGE_OPTIONS.map((z) => (
+                  <option key={z} value={z}>{z}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
+              >
+                Speichern
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1090,22 +1090,9 @@ def _request_fallback_name_address(body: VatCheckRequest) -> tuple[str | None, s
 
 async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data: dict[str, Any]) -> dict[str, Any]:
     """Try extra VIES sources in a bounded loop until details/matches are no longer unresolved."""
-    import json as _json, time as _time
-    _log_path = "debug-057e86.log"
-    def _dbg(msg: str, hyp: str, d: Any) -> None:
-        try:
-            with open(_log_path, "a", encoding="utf-8") as _f:
-                _f.write(_json.dumps({"sessionId":"057e86","hypothesisId":hyp,"timestamp":int(_time.time()*1000),"location":"main.py:_enrich","message":msg,"data":d}) + "\n")
-        except Exception:
-            pass
-
     data = dict(initial_data)
     cc = payload.get("countryCode", "")
     vat = payload.get("vatNumber", "")
-
-    # #region agent log
-    _dbg("ENRICH_START: initial REST result", "B", {"cc": cc, "vat": vat, "valid": data.get("valid"), "name": data.get("name"), "address": data.get("address"), "traderName": data.get("traderName"), "needs_more": _rest_missing_trader_details(data) or _rest_matches_all_not_processed(data)})
-    # #endregion
 
     for _ in range(2):
         needs_more = _rest_missing_trader_details(data) or _rest_matches_all_not_processed(data)
@@ -1116,25 +1103,13 @@ async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data
         run_ms_lookup = _payload_has_approx_inputs(payload) or (
             bool(data.get("valid")) and _rest_missing_trader_details(data)
         )
-        # #region agent log
-        _dbg("MS_LOOKUP_DECISION", "A", {"run_ms_lookup": run_ms_lookup, "has_approx_inputs": _payload_has_approx_inputs(payload), "missing_trader_details": _rest_missing_trader_details(data)})
-        # #endregion
         if run_ms_lookup:
             try:
                 ms_raw = await _vies_ms_lookup_with_retries(payload)
-                # #region agent log
-                _dbg("MS_LOOKUP_SUCCESS", "A+C", {"ms_raw_name": ms_raw.get("name"), "ms_raw_address": ms_raw.get("address"), "ms_raw_isValid": ms_raw.get("isValid"), "ms_raw_keys": list(ms_raw.keys()) if ms_raw else []})
-                # #endregion
-            except HTTPException as _e:
+            except HTTPException:
                 ms_raw = {}
-                # #region agent log
-                _dbg("MS_LOOKUP_FAILED", "A", {"exception": str(_e.detail), "status_code": _e.status_code})
-                # #endregion
             if ms_raw:
                 ms_data = _normalize_ms_lookup_data(ms_raw, cc, vat)
-                # #region agent log
-                _dbg("MS_NORMALIZED", "C", {"name": ms_data.get("name"), "address": ms_data.get("address"), "traderName": ms_data.get("traderName")})
-                # #endregion
                 merged = _merge_soap_trader_into_rest(
                     data,
                     ms_data,
@@ -1148,14 +1123,8 @@ async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data
         if _vies_soap_check_fallback_enabled() and _rest_missing_trader_details(data):
             try:
                 soap_check = await _vies_soap_check_with_retries(payload)
-                # #region agent log
-                _dbg("SOAP_CHECK_SUCCESS", "B", {"name": soap_check.get("name"), "address": soap_check.get("address"), "valid": soap_check.get("valid")})
-                # #endregion
-            except HTTPException as _e:
+            except HTTPException:
                 soap_check = {}
-                # #region agent log
-                _dbg("SOAP_CHECK_FAILED", "A", {"exception": str(_e.detail)})
-                # #endregion
             if soap_check:
                 merged = _merge_soap_trader_into_rest(
                     data,
@@ -1172,14 +1141,8 @@ async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data
         ):
             try:
                 soap_approx = await _vies_soap_approx_with_retries(payload)
-                # #region agent log
-                _dbg("SOAP_APPROX_SUCCESS", "B", {"name": soap_approx.get("name"), "address": soap_approx.get("address"), "traderName": soap_approx.get("traderName"), "valid": soap_approx.get("valid")})
-                # #endregion
-            except HTTPException as _e:
+            except HTTPException:
                 soap_approx = {}
-                # #region agent log
-                _dbg("SOAP_APPROX_FAILED", "A", {"exception": str(_e.detail)})
-                # #endregion
             if soap_approx:
                 merged = _merge_soap_approx_into_rest(data, soap_approx)
                 if merged != data:
@@ -1188,10 +1151,6 @@ async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data
 
         if not changed:
             break
-
-    # #region agent log
-    _dbg("ENRICH_END: final data", "D+E", {"name": data.get("name"), "address": data.get("address"), "traderName": data.get("traderName"), "msLookupFallbackUsed": data.get("msLookupFallbackUsed"), "soapCheckFallbackUsed": data.get("soapCheckFallbackUsed"), "soapApproxFallbackUsed": data.get("soapApproxFallbackUsed")})
-    # #endregion
 
     return data
 

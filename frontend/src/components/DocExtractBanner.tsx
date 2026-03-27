@@ -151,12 +151,11 @@ export function DocExtractBanner({
           onClick={(e) => ((e.target as HTMLInputElement).value = "")}
         />
 
-        <div className="flex flex-col items-center justify-center gap-2 px-4 py-3 text-center">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-violet-100">
-            <Upload className="h-4 w-4 text-blue-600" />
+        <div className="flex items-center justify-center gap-3 px-4 py-2 text-center">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-100 to-violet-100">
+            <Upload className="h-3.5 w-3.5 text-blue-600" />
           </div>
-
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold text-slate-700">
               Dokument hochladen
               <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">
@@ -164,14 +163,13 @@ export function DocExtractBanner({
                 KI-Extraktion
               </span>
             </p>
-            <p className="mt-0.5 text-[10px] text-slate-400">
-              PDF, DOCX, PNG, JPG — max. {MAX_MB} MB · Felder werden automatisch erkannt
+            <p className="text-[10px] text-slate-400">
+              PDF, DOCX, PNG, JPG — max. {MAX_MB} MB
             </p>
           </div>
-
           <button
             type="button"
-            className="rounded-lg border border-blue-200 bg-white px-3 py-1 text-[11px] font-semibold text-blue-600 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
+            className="shrink-0 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-600 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
             onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
           >
             Datei auswählen

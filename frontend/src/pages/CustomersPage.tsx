@@ -1476,7 +1476,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         </p>
                       </div>
                       {(() => {
-                        const plates = (draftWash.kennzeichen ?? "")
+                        const plates = (draftWash?.kennzeichen ?? "")
                           .split(",")
                           .map((s) => s.trim())
                           .filter(Boolean);
@@ -1485,13 +1485,15 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                           const v = newPlateInput.trim().toUpperCase();
                           if (!v || plates.includes(v)) return;
                           const next = [...plates, v].join(", ");
-                          setDraftWash({ ...draftWash, kennzeichen: next });
+                          setDraftWash((prev) => (prev ? { ...prev, kennzeichen: next } : prev));
                           setNewPlateInput("");
                         };
 
                         const removePlate = (idx: number) => {
                           const next = plates.filter((_, i) => i !== idx).join(", ");
-                          setDraftWash({ ...draftWash, kennzeichen: next || undefined });
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, kennzeichen: next || undefined } : prev
+                          );
                         };
 
                         return (
@@ -1643,8 +1645,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">Bankname</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.bankname ?? ""}
-                        onChange={(e) => setDraftWash({ ...draftWash, bankname: e.target.value })}
+                        value={draftWash?.bankname ?? ""}
+                        onChange={(e) =>
+                          setDraftWash((prev) => (prev ? { ...prev, bankname: e.target.value } : prev))
+                        }
                         suggestions={fieldSuggestions.wash_bankname}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -1654,8 +1658,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">BIC</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.bic ?? ""}
-                        onChange={(e) => setDraftWash({ ...draftWash, bic: e.target.value })}
+                        value={draftWash?.bic ?? ""}
+                        onChange={(e) =>
+                          setDraftWash((prev) => (prev ? { ...prev, bic: e.target.value } : prev))
+                        }
                         suggestions={fieldSuggestions.wash_bic}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"

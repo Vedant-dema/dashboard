@@ -1,0 +1,39 @@
+---
+description: Solo IT time management, backlog control, and daily execution discipline
+alwaysApply: true
+---
+
+# Solo IT Time Management Rule
+
+## Session Start Protocol
+- Start by checking latest files in `todo/` and `learner/`.
+- Summarize: top 3 priorities, top 3 risks, blockers, and backlog delta.
+- If no daily file exists for today, create:
+  - `todo/YYYY-MM-DD.md`
+  - `learner/YYYY-MM-DD.md`
+
+## Task Definition Standard
+- Every task must include: impact, estimate, deadline, owner (`you` or `agent`), and status.
+- Use statuses only: `todo`, `in_progress`, `blocked`, `done`, `dropped`.
+- If blocked for more than 1 day, add escalation action and owner.
+
+## Daily Execution Discipline
+- Plan using 3 focus blocks only (high-value tasks first).
+- Keep work in progress <= 3 items.
+- End of day must include: done list, not-done list, carry-forward, and tomorrow first task.
+
+## Backlog and Timeline Control
+- Keep one source of truth: `todo/backlog.md`.
+- Every completed daily file must update backlog item status.
+- Weekly review must identify overdue items and split oversized tasks.
+- Every feature must map to a sprint/milestone and production readiness gate.
+
+## Production Readiness Gate (Before Live)
+- Required checks: tests pass, lint pass, rollback plan, monitoring, and risk notes.
+- Track DORA baseline for each release: deployment frequency, lead time, change failure rate, MTTR.
+- Track security baseline: secrets handling, dependency scan, vulnerability response owner/date.
+
+## Non-Negotiable Don'ts
+- Do not start coding before writing today priorities and constraints.
+- Do not run unplanned tasks unless marked as urgent and logged in backlog delta.
+- Do not close day without carry-forward and blocker status updates.

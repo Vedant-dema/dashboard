@@ -47,3 +47,73 @@
 | FEATURE-024 | Always-Run ms Lookup When Details Missing | Extended | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
+
+---
+
+## [FEATURE-025] Solo IT Delivery Operating System
+**Date:** 2026-03-27 
+**Author/Agent:** Cursor AI 
+**Status:** Added 
+
+### What Was Added
+A complete solo-delivery operating system was added to guide end-to-end execution for a one-person IT team, including a persistent time-management rule, daily execution templates, backlog governance, a daily learning workflow, and a production-readiness operating model that ties software delivery, cloud operations, AI automation, and learning into one repeatable process.
+
+### Where It Was Added
+List every file touched or created:
+- `.cursor/rules/time-management-ops.mdc` — always-applied governance rule for daily planning, backlog control, and release gates
+- `todo/README.md` — usage model and daily execution conventions
+- `todo/templates/daily-task-template.md` — standardized daily task template
+- `todo/backlog.md` — master backlog source of truth with status model
+- `todo/2026-03-27.md` — initial seeded day plan
+- `learner/README.md` — learning system guidance tied to backlog execution
+- `learner/templates/daily-learning-template.md` — standardized daily learning template
+- `learner/learning-roadmap.md` — staged learning roadmap linked to backlog IDs
+- `learner/2026-03-27.md` — initial seeded day learning plan with resources
+- `docs/solo-it-operating-model.md` — complete operating model, gates, metrics, and cadence
+- `docs/FEATURE-LOG.md` — feature log entry for this feature
+
+### What It Does (Technical)
+Step-by-step description of the logic flow:
+1. Enforces session-start discipline through an always-applied Cursor rule that requires priorities, risks, blockers, and backlog delta.
+2. Standardizes daily execution with a single template for mission, priorities, do/don't rules, time blocks, blockers, and end-of-day carry-forward.
+3. Centralizes backlog tracking in `todo/backlog.md` with explicit status states and weekly hygiene requirements.
+4. Adds a parallel learning system that maps each learning session to active backlog work and requires applied outputs.
+5. Defines production-readiness gates and operational review cadence in a dedicated operating model document.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| date | string (YYYY-MM-DD) | Yes | Daily file identity for `todo` and `learner` records |
+| taskId | string | Yes | Unique task identifier within daily plans/backlog |
+| priority | string | Yes | Task criticality level (P1/P2/etc.) |
+| status | enum | Yes | `todo`, `in_progress`, `blocked`, `done`, `dropped` |
+| owner | string | Yes | Responsible actor (`you` or `agent`) |
+| estimate | string | Yes | Time estimate (e.g., `2h`, `1d`) |
+| blocker | string | No | Active dependency or issue preventing progress |
+| learningObjective | string | Yes | Daily learning target linked to backlog |
+| resourceUrl | string | No | Learning reference URL used in the daily learner file |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| N/A | N/A | N/A | N/A | N/A |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** None
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+The system provides structure and templates, but daily quality still depends on consistent execution discipline. Metrics logging is manual at this stage and can be automated later through scripts or dashboard tooling.

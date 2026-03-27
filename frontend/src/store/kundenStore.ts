@@ -453,6 +453,8 @@ export type KundenWashUpsertFields = Partial<
     | "kennzeichen"
     | "wasch_fahrzeug_typ"
     | "wasch_programm"
+    | "netto_preis"
+    | "brutto_preis"
     | "wasch_intervall"
   >
 >;
@@ -496,6 +498,8 @@ export function upsertKundenWash(
     kennzeichen: fields.kennzeichen,
     wasch_fahrzeug_typ: fields.wasch_fahrzeug_typ,
     wasch_programm: fields.wasch_programm,
+    netto_preis: fields.netto_preis,
+    brutto_preis: fields.brutto_preis,
     wasch_intervall: fields.wasch_intervall,
     created_at: now,
     updated_at: now,

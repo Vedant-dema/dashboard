@@ -14,7 +14,7 @@
 | 2026-03-23 | [2026-03-23.md](feature-logs/2026-03-23.md) | FEATURE-001, FEATURE-007 |
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
-| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035 |
+| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046 |
 
 ---
 
@@ -57,6 +57,17 @@
 | FEATURE-033 | Separate Konto and Rechnungsadresse Cards | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-034 | Single Waschanlage Selection Field (Program Only) | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-035 | Unified Waschprogramm Dropdown with Expanded Tariff List | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-036 | VIES Request Date Applied to New Customer Aufnahme | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-037 | Remove Rechnungsadresse Address Tab in New Customer Modal | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-038 | Remove Rechnungsadresse Section from New Customer Waschanlage Tab | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-039 | Reorder Waschanlage Cards (Bank First, Konto Second) | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-040 | Three-Column Waschanlage Layout with Wide Wasch-Infos | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-041 | Balanced Three-Column Waschanlage Layout + Pricelist PDF Reference | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-042 | Move Pricelist Reference Above Fuhrpark Column | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-043 | Add Netto/Brutto Price Inputs to Wasch-Infos | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-044 | Auto-Fill Netto/Brutto Prices from Waschprogramm Selection | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-045 | Waschprogramm Label Simplification and Blank Default Option | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-046 | Remove "S* Sonstiges" from Waschprogramm Dropdown | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

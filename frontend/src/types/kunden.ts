@@ -69,6 +69,10 @@ export interface KundenWashStamm {
   wasch_fahrzeug_typ?: string;
   /** Standardprogramm, Tarif */
   wasch_programm?: string;
+  /** Optional netto price for selected wash program */
+  netto_preis?: number;
+  /** Optional brutto price for selected wash program */
+  brutto_preis?: number;
   /** z. B. wöchentlich, bei Bedarf */
   wasch_intervall?: string;
   created_at?: string;

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, type ReactNode } from "react";
-import { X, Droplets, BadgeCheck, Plus, Trash2, Car } from "lucide-react";
+import { X, Droplets, BadgeCheck, Plus, Trash2, Car, FileText, ExternalLink } from "lucide-react";
 import {
   DocExtractBanner,
   KiBadge,
@@ -81,7 +81,7 @@ type AdresseEntry = {
   branchen_nr: string;
 };
 
-const ADRESSE_TYPEN = ["Hauptadresse", "Rechnungsadresse", "Lieferadresse", "Filiale", "Alte Hauptadresse", "Sonstiges"];
+const ADRESSE_TYPEN = ["Hauptadresse", "Lieferadresse", "Filiale", "Alte Hauptadresse", "Sonstiges"];
 
 const ADRESSE_COLORS: { dot: string; dotActive: string; activePill: string }[] = [
   { dot: "bg-indigo-300",  dotActive: "bg-indigo-500",  activePill: "bg-indigo-500"  },
@@ -148,6 +148,8 @@ const VIES_OFFICIAL = {
     "https://europa.eu/youreurope/business/taxation/vat/check-vat-number-vies/index_de.htm",
   faq: "https://ec.europa.eu/taxation_customs/vies/faq.html",
 } as const;
+
+const WASH_PRICE_LIST_PDF_URL = "https://www.dema-nfz.de/de/Preisliste-Waschstrasse.pdf";
 
 function ExternalDocLink({
   href,
@@ -227,6 +229,17 @@ function parseViesAddress(block: string | null | undefined): {
     return { strasse, plz: plzOrt[1], ort: plzOrt[2] };
   }
   return { strasse, ort: lines.slice(1).join(", ") };
+}
+
+function normalizeViesRequestDate(raw: string | null | undefined): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const parsedMs = Date.parse(trimmed);
+  if (!Number.isNaN(parsedMs)) {
+    return new Date(parsedMs).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+  }
+  return trimmed;
 }
 
 const ZUSTAENDIGE_OPTIONS = [
@@ -458,29 +471,33 @@ const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string
   { from: "from-sky-500",     to: "to-indigo-500",  dot: "bg-sky-300",     dotActive: "bg-sky-500",     activePill: "bg-sky-500"     },
 ];
 
-const WASCH_PROGRAMME = [
-  "",
-  "S* Sonstiges",
-  "1* Kleinbus/Transporter Kasten (bis 3,5t)",
-  "2* LKW mit Aufbau (Koffer/Plane/Kuehlk.) ab 3,5t bis 7t",
-  "3* LKW mit Aufbau (Koffer/Plane) ab 7t",
-  "3* Anhaenger (Koffer/Plane/Lafette)",
-  "3* Omnibus bis 6m",
-  "4* Sattelzugmaschine",
-  "5* LKW ohne Aufbau (Fahrgestell oder BDF)",
-  "5* Auflieger (Koffer/Plane/Kipper)",
-  "6* LKW mit Aufbau (Koffer/Plane) und Anhaenger",
-  "6* Sattelzug komplett",
-  "6* Omnibus ueber 6m",
-  "6* Muellwagen",
-  "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Lafette",
-  "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Anhaenger",
-  "7* LKW mit Aufbau (Fahrgestell oder BDF) mit Lafette",
-  "7* Tank- und Silofahrzeuge",
-  "7* SZM mit Auflieger ohne Aufbau",
-  "8* Tank- und Silozuege",
-  "S1* Innenreinigung",
-  "S2* Innen + Aussen Polizei",
+type WashProgramOption = {
+  label: string;
+  netto: number;
+  brutto: number;
+};
+
+const WASCH_PROGRAMME: WashProgramOption[] = [
+  { label: "1* Kleinbus/Transporter Kasten (bis 3,5t)", netto: 21.85, brutto: 26.0 },
+  { label: "2* LKW mit Aufbau (Koffer/Plane/Kuehlk.) ab 3,5t bis 7t", netto: 28.57, brutto: 34.0 },
+  { label: "3* LKW mit Aufbau (Koffer/Plane) ab 7t", netto: 34.45, brutto: 41.0 },
+  { label: "3* Anhaenger (Koffer/Plane/Lafette)", netto: 34.45, brutto: 41.0 },
+  { label: "3* Omnibus bis 6m", netto: 34.45, brutto: 41.0 },
+  { label: "4* Sattelzugmaschine", netto: 41.18, brutto: 49.0 },
+  { label: "5* LKW ohne Aufbau (Fahrgestell oder BDF)", netto: 50.42, brutto: 60.0 },
+  { label: "5* Auflieger (Koffer/Plane/Kipper)", netto: 50.42, brutto: 60.0 },
+  { label: "6* LKW mit Aufbau (Koffer/Plane) und Anhaenger", netto: 68.91, brutto: 82.0 },
+  { label: "6* Sattelzug komplett", netto: 68.91, brutto: 82.0 },
+  { label: "6* Omnibus ueber 6m", netto: 68.91, brutto: 82.0 },
+  { label: "6* Muellwagen", netto: 68.91, brutto: 82.0 },
+  { label: "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Lafette", netto: 84.03, brutto: 100.0 },
+  { label: "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Anhaenger", netto: 84.03, brutto: 100.0 },
+  { label: "7* LKW mit Aufbau (Fahrgestell oder BDF) mit Lafette", netto: 84.03, brutto: 100.0 },
+  { label: "7* Tank- und Silofahrzeuge", netto: 84.03, brutto: 100.0 },
+  { label: "7* SZM mit Auflieger ohne Aufbau", netto: 84.03, brutto: 100.0 },
+  { label: "8* Tank- und Silozuege", netto: 103.36, brutto: 123.0 },
+  { label: "S1* Innenreinigung", netto: 40.0, brutto: 47.6 },
+  { label: "S2* Innen + Aussen Polizei", netto: 61.85, brutto: 73.6 },
 ];
 
 function emptyToUndef(s: string): string | undefined {
@@ -489,8 +506,21 @@ function emptyToUndef(s: string): string | undefined {
   return t;
 }
 
+function moneyToUndef(v: string): number | undefined {
+  const normalized = v.trim().replace(",", ".");
+  if (!normalized) return undefined;
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return undefined;
+  return n;
+}
+
+function priceToInput(v: number): string {
+  return v.toFixed(2).replace(".", ",");
+}
+
 function initialForm() {
   return {
+    aufnahme: "",
     branche: "",
     fzgHandel: "" as "" | "ja" | "nein",
     juristische_person: false,
@@ -516,6 +546,8 @@ function initialForm() {
     wash_kennzeichen_list: [] as string[],
     wash_kennzeichen_new: "",
     wasch_programm: "",
+    wash_netto_preis: "",
+    wash_brutto_preis: "",
     wasch_intervall: "",
     wash_bankname: "",
     wash_bic: "",
@@ -536,6 +568,7 @@ function formToPayload(form: FormState): NewKundeInput {
     z && z !== "nicht zugeordnet" ? z : undefined;
 
   return {
+    aufnahme: emptyToUndef(form.aufnahme),
     firmenname: form.firmenname.trim(),
     branche: emptyToUndef(form.branche),
     fzg_haendler,
@@ -593,6 +626,8 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
       ? form.wash_kennzeichen_list.join(", ")
       : undefined,
     wasch_programm: emptyToUndef(form.wasch_programm),
+    netto_preis: moneyToUndef(form.wash_netto_preis),
+    brutto_preis: moneyToUndef(form.wash_brutto_preis),
     wasch_intervall: emptyToUndef(form.wasch_intervall),
   };
 }
@@ -643,8 +678,10 @@ export function NewCustomerModal({
 
   useEffect(() => {
     if (open) {
+      const nowAufnahme = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
       setForm({
         ...initialForm(),
+        aufnahme: nowAufnahme,
         includeWashProfile: department === "waschanlage",
       });
       setTab("vat");
@@ -655,9 +692,7 @@ export function NewCustomerModal({
       setVatCheckLoading(false);
       setVatCheckResult(null);
       setVatCheckError(null);
-      setAufnahmePreview(
-        new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" })
-      );
+      setAufnahmePreview(nowAufnahme);
     }
   }, [open, department]);
 
@@ -852,9 +887,11 @@ export function NewCustomerModal({
       ? parseViesAddress(vatCheckResult.address)
       : {};
     const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
+    const viesRequestDate = normalizeViesRequestDate(vatCheckResult.request_date);
     const derivedLandCode = viesLandToFormLand(cc);
     setForm((f) => ({
       ...f,
+      ...(viesRequestDate ? { aufnahme: viesRequestDate } : {}),
       ...(nm ? { firmenname: nm } : {}),
       adressen: f.adressen.map((a, i) =>
         i === 0
@@ -870,6 +907,9 @@ export function NewCustomerModal({
           : a
       ),
     }));
+    if (viesRequestDate) {
+      setAufnahmePreview(viesRequestDate);
+    }
     setTab("kunde");
   };
 
@@ -1059,6 +1099,12 @@ export function NewCustomerModal({
                       <p className="mt-2 break-all font-mono text-[11px] text-slate-700">
                         <span className="font-sans font-medium text-slate-600">requestIdentifier: </span>
                         {vatCheckResult.request_identifier}
+                      </p>
+                    ) : null}
+                    {vatCheckResult.request_date ? (
+                      <p className="mt-1 break-all font-mono text-[11px] text-slate-700">
+                        <span className="font-sans font-medium text-slate-600">requestDate: </span>
+                        {normalizeViesRequestDate(vatCheckResult.request_date) ?? vatCheckResult.request_date}
                       </p>
                     ) : null}
                     {[
@@ -1721,104 +1767,12 @@ export function NewCustomerModal({
 
               {!form.includeWashProfile ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  Aktivieren Sie „Waschprofil anlegen“, um BUKto, Limit, Rechnungsadresse, Bank und
-                  Wasch-Infos zu speichern.
+                  Aktivieren Sie „Waschprofil anlegen“, um BUKto, Limit, Bank und Wasch-Infos zu
+                  speichern.
                 </p>
               ) : (
-                <div className="grid items-start gap-6 xl:grid-cols-3">
-                  <div className="space-y-6 xl:col-span-2">
-                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Konto
-                    </p>
-                    <div>
-                      <label className={labelClass}>BUKto</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.wash_bukto}
-                        onChange={(e) => set("wash_bukto", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.wash_bukto}
-                        title="Vorschläge aus Waschprofilen"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Limit (€)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={form.wash_limit}
-                        onChange={(e) => set("wash_limit", e.target.value)}
-                        className={inputClass}
-                      />
-                      <p className="mt-1 text-[10px] text-slate-500">
-                        Limit ist nur dann aktiv, wenn Betrag &gt; 0 ist.
-                      </p>
-                    </div>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.wash_kunde_gesperrt}
-                        onChange={(e) => set("wash_kunde_gesperrt", e.target.checked)}
-                        className="rounded border-slate-300 text-cyan-600"
-                      />
-                      Kunde gesperrt
-                    </label>
-                    </div>
-
-                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Rechnungsadresse
-                    </p>
-                    <div>
-                      <label className={labelClass}>Rechnung-Zusatz</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.wash_rechnung_zusatz}
-                        onChange={(e) => set("wash_rechnung_zusatz", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.wash_rechnung_zusatz}
-                        title="Vorschläge aus Waschprofilen"
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className={labelClass}>PLZ</label>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.wash_rechnung_plz}
-                          onChange={(e) => set("wash_rechnung_plz", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.wash_rechnung_plz}
-                          title="Vorschläge aus Waschprofilen"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className={labelClass}>Ort</label>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.wash_rechnung_ort}
-                          onChange={(e) => set("wash_rechnung_ort", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.wash_rechnung_ort}
-                          title="Vorschläge aus Waschprofilen"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Strasse</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.wash_rechnung_strasse}
-                        onChange={(e) => set("wash_rechnung_strasse", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.wash_rechnung_strasse}
-                        title="Vorschläge aus Waschprofilen"
-                      />
-                    </div>
-                    </div>
-
+                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,1.15fr)_minmax(0,1fr)]">
+                  <div className="space-y-6 xl:col-span-1">
                     {/* ── Bank & Zahlung ────────────────────────────── */}
                     <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                       <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
@@ -1869,9 +1823,72 @@ export function NewCustomerModal({
                         Lastschrift
                       </label>
                     </div>
+
+                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                      Konto
+                    </p>
+                    <div>
+                      <label className={labelClass}>BUKto</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.wash_bukto}
+                        onChange={(e) => set("wash_bukto", e.target.value)}
+                        className={inputClass}
+                        suggestions={fieldSuggestions.wash_bukto}
+                        title="Vorschläge aus Waschprofilen"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Limit (€)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={form.wash_limit}
+                        onChange={(e) => set("wash_limit", e.target.value)}
+                        className={inputClass}
+                      />
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        Limit ist nur dann aktiv, wenn Betrag &gt; 0 ist.
+                      </p>
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.wash_kunde_gesperrt}
+                        onChange={(e) => set("wash_kunde_gesperrt", e.target.checked)}
+                        className="rounded border-slate-300 text-cyan-600"
+                      />
+                      Kunde gesperrt
+                    </label>
+                    </div>
                   </div>
 
                   <div className="space-y-6 xl:col-span-1">
+                    <div className="rounded-xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 to-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                            Preisliste Referenz
+                          </p>
+                          <p className="mt-1 text-sm text-slate-700">
+                            Offizielle DEMA Preisliste Waschstrasse (PDF) fuer schnelle Rueckfragen.
+                          </p>
+                        </div>
+                        <FileText className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
+                      </div>
+                      <a
+                        href={WASH_PRICE_LIST_PDF_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-semibold text-cyan-900 transition hover:border-cyan-400 hover:bg-cyan-50"
+                      >
+                        Preisliste als PDF oeffnen
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+
                     {/* ── Fuhrpark / Kennzeichen ────────────────────── */}
                     <div className="space-y-3 self-start rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-2">
@@ -1943,24 +1960,63 @@ export function NewCustomerModal({
                     )}
                     </div>
 
+                  </div>
+
+                  <div className="space-y-6 xl:col-span-1">
                     {/* ── Wasch-Infos ───────────────────────────────── */}
                     <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
                       Wasch-Infos
                     </p>
                     <div>
-                      <label className={labelClass}>Waschprogramm / Tarif</label>
+                      <label className={labelClass}>Waschprogramm</label>
                       <select
                         value={form.wasch_programm}
-                        onChange={(e) => set("wasch_programm", e.target.value)}
+                        onChange={(e) => {
+                          const selected = e.target.value;
+                          set("wasch_programm", selected);
+                          const cfg = WASCH_PROGRAMME.find((opt) => opt.label === selected);
+                          if (!cfg) {
+                            set("wash_netto_preis", "");
+                            set("wash_brutto_preis", "");
+                            return;
+                          }
+                          set("wash_netto_preis", priceToInput(cfg.netto));
+                          set("wash_brutto_preis", priceToInput(cfg.brutto));
+                        }}
                         className={inputClass}
                       >
-                        {WASCH_PROGRAMME.map((v) => (
-                          <option key={v || "\u2014"} value={v}>
-                            {v || "\u2014"}
+                        <option value=""></option>
+                        {WASCH_PROGRAMME.map((opt) => (
+                          <option key={opt.label} value={opt.label}>
+                            {opt.label}
                           </option>
                         ))}
                       </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Netto preis</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={form.wash_netto_preis}
+                          onChange={(e) => set("wash_netto_preis", e.target.value)}
+                          placeholder="z. B. 29,90"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Brutto preis</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={form.wash_brutto_preis}
+                          onChange={(e) => set("wash_brutto_preis", e.target.value)}
+                          placeholder="z. B. 35,58"
+                          className={inputClass}
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className={labelClass}>Intervall / Rhythmus</label>

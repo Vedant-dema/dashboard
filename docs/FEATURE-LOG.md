@@ -14,7 +14,7 @@
 | 2026-03-23 | [2026-03-23.md](feature-logs/2026-03-23.md) | FEATURE-001, FEATURE-007 |
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
-| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046 |
+| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046, FEATURE-047, FEATURE-048, FEATURE-049, FEATURE-050, FEATURE-051, FEATURE-052, FEATURE-053, FEATURE-054, FEATURE-055, FEATURE-056, FEATURE-057, FEATURE-058, FEATURE-059, FEATURE-060, FEATURE-061 |
 
 ---
 
@@ -68,6 +68,21 @@
 | FEATURE-044 | Auto-Fill Netto/Brutto Prices from Waschprogramm Selection | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-045 | Waschprogramm Label Simplification and Blank Default Option | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-046 | Remove "S* Sonstiges" from Waschprogramm Dropdown | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-047 | Remove Waschanlage Guidance Text from Art/Buchungskonto Tab | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-048 | Align Customer Detail View UI with New Customer Modal Shell | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-049 | Create-Style Form Tabs in Customer Detail with Preserved Extra Modules | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-050 | Reuse Create Customer UI in View/Edit with Additional Tab | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-051 | Attach Scanned Prefill Document to Customer Files on Save | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-052 | Show Customer Documents in Edit Additional Tab | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-053 | Replace Edit AI Banner with Customer Documents Option | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-054 | Add Fourth Edit Column for Relationships and Invoices | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-055 | Widen Customer Modal Form Container | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-056 | Add Appointments Table in Edit Termine Section | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-057 | Make Edit Side Tables Scalable for Large Data | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-058 | Separate Invoices Section Under Appointments | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-059 | Move Invoices Under Adresse Area in Edit Tab | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-060 | Align Compact New Appointment Button with Title | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-061 | Shared Demo Customers Backend Sync (Vercel-visible) | Added | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

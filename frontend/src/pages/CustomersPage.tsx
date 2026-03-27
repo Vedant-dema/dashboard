@@ -30,8 +30,12 @@ import {
   addKundenUnterlage,
   removeKundenUnterlage,
   listUnterlagenForKunde,
+  isCustomersApiMode,
+  loadSharedKundenDb,
+  saveSharedKundenDb,
   type KundenListRow,
   type NewKundeInput,
+  type NewKundenUnterlageInput,
   type KundenWashUpsertFields,
 } from "../store/kundenStore";
 import { NewCustomerModal } from "../components/NewCustomerModal";
@@ -107,6 +111,7 @@ const WASH_PROGRAM_OPTIONS = [
 ];
 
 type DetailDrawerTab = "kundendetail" | "fzg" | "info";
+type CustomerEditTab = "vat" | "kunde" | "art" | "waschanlage" | "extras";
 
 function emptyWashDraft(kundenId: number): KundenWashStamm {
   return {
@@ -141,6 +146,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [draftKunde, setDraftKunde] = useState<KundenStamm | null>(null);
   const [draftWash, setDraftWash] = useState<KundenWashStamm | null>(null);
   const [detailDrawerTab, setDetailDrawerTab] = useState<DetailDrawerTab>("kundendetail");
+  const [customerEditTab, setCustomerEditTab] = useState<CustomerEditTab>("kunde");
   const [newPlateInput, setNewPlateInput] = useState("");
 
   useEffect(() => {
@@ -151,10 +157,46 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isCustomersApiMode()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const remote = await loadSharedKundenDb();
+        if (cancelled) return;
+        if (remote) {
+          setDb(remote);
+          saveKundenDb(remote);
+          return;
+        }
+        const seeded = loadKundenDb();
+        const saved = await saveSharedKundenDb(seeded);
+        if (cancelled) return;
+        setDb(saved);
+        saveKundenDb(saved);
+      } catch {
+        // Keep local mode behavior if shared demo backend is unavailable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const persist = useCallback((next: typeof db) => {
     saveKundenDb(next);
     setDb(next);
-  }, []);
+    if (!isCustomersApiMode()) return;
+    void saveSharedKundenDb(next).then(
+      (saved) => {
+        saveKundenDb(saved);
+        setDb(saved);
+      },
+      () => {
+        alert(t("customersSyncFailed", "Could not sync with shared demo backend."));
+      }
+    );
+  }, [t]);
 
   const unterlagenForCustomer = useMemo(
     () => (draftKunde ? listUnterlagenForKunde(db, draftKunde.id) : []),
@@ -244,6 +286,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       if (!detail) return;
       setSelectedRowId(kuNr);
       setDetailDrawerTab("kundendetail");
+      setCustomerEditTab("kunde");
       setDraftKunde({ ...detail.kunden });
       if (detail.kunden_wash) {
         setDraftWash({ ...detail.kunden_wash });
@@ -261,6 +304,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       setDraftKunde(null);
       setDraftWash(null);
       setDetailDrawerTab("kundendetail");
+      setCustomerEditTab("kunde");
       return;
     }
     const detail = getDetailByKundenNr(db, selectedRowId);
@@ -308,13 +352,38 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     setSelectedRowId(null);
   };
 
-  const handleNewCustomerSubmit = useCallback(
+  const handleEditCustomerSubmit = useCallback(
     (data: NewKundeInput, wash: KundenWashUpsertFields | null) => {
+      if (!draftKunde) return;
+      let next = updateKunde(db, {
+        ...draftKunde,
+        ...data,
+        id: draftKunde.id,
+        kunden_nr: draftKunde.kunden_nr,
+      });
+      if (wash) {
+        next = upsertKundenWash(next, draftKunde.id, wash);
+      }
+      persist(next);
+      setSelectedRowId(null);
+    },
+    [db, draftKunde, persist]
+  );
+
+  const handleNewCustomerSubmit = useCallback(
+    (
+      data: NewKundeInput,
+      wash: KundenWashUpsertFields | null,
+      scannedAttachment?: NewKundenUnterlageInput | null
+    ) => {
       try {
         let next = createKunde(db, data);
         const created = next.kunden[next.kunden.length - 1];
         if (wash) {
           next = upsertKundenWash(next, created.id, wash);
+        }
+        if (scannedAttachment) {
+          next = addKundenUnterlage(next, created.id, scannedAttachment);
         }
         persist(next);
         setShowAddCustomer(false);
@@ -614,57 +683,52 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         </div>
       </div>
 
-      {selectedRowId && (
+      {false && selectedRowId && (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4 backdrop-blur-[2px] sm:p-6"
           onClick={() => setSelectedRowId(null)}
           role="presentation"
         >
           <div
-            className="flex h-full w-full max-w-[min(100vw-12px,92rem)] shrink-0 flex-col border-l border-slate-200 bg-white shadow-2xl"
+            className="flex w-full max-w-7xl max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="customer-drawer-title"
           >
-            <div className="shrink-0 border-b border-slate-200 bg-white">
-              <div className="flex items-start justify-between gap-4 px-5 py-4 sm:px-6">
+            <div className="shrink-0">
+              <div className="relative flex shrink-0 flex-wrap items-start justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-4 pr-14 text-white sm:flex-nowrap sm:px-6 sm:pr-6">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Kunde</p>
-                  {draftKunde ? (
-                    <>
-                      <h2
-                        id="customer-drawer-title"
-                        className="truncate text-xl font-bold text-slate-800 sm:text-2xl"
-                      >
-                        {draftKunde.firmenname}
-                      </h2>
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {t("customersDrawerNrLabel", "Customer no.")}{" "}
-                        <span className="font-mono font-medium">{draftKunde.kunden_nr}</span>
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h2 id="customer-drawer-title" className="text-xl font-bold text-slate-400">
-                        {t("customersLoading", "Loading…")}
-                      </h2>
-                      <p className="mt-0.5 text-sm text-slate-400">
-                        {t("customersDrawerNrLabel", "Customer no.")} {selectedRowId}
-                      </p>
-                    </>
-                  )}
+                  <div className="flex flex-wrap items-baseline gap-3">
+                    <h2 id="customer-drawer-title" className="truncate text-lg font-bold tracking-tight sm:text-xl">
+                      {draftKunde?.firmenname || t("customersLoading", "Loading…")}
+                    </h2>
+                    <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-semibold text-blue-100">
+                      (Bearbeiten)
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-300">
+                    {t("customersDrawerNrLabel", "Customer no.")}{" "}
+                    <span className="font-mono font-semibold text-white">{draftKunde?.kunden_nr ?? selectedRowId}</span>
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end sm:text-right">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Aufnahme</p>
+                  <p className="text-sm font-semibold tabular-nums text-white">
+                    {draftKunde?.aufnahme || "—"}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedRowId(null)}
-                  className="shrink-0 rounded-xl p-2 text-slate-500 hover:bg-slate-100"
+                  className="absolute right-2 top-2 rounded-xl p-2 text-slate-300 hover:bg-white/10 hover:text-white"
                   aria-label="Schließen"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="flex gap-1 overflow-x-auto px-3 sm:px-4 pb-0">
+
+              <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
                 {(
                   [
                     { id: "kundendetail" as const, label: "Kundendetail", icon: FileText },
@@ -677,10 +741,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                     type="button"
                     onClick={() => setDetailDrawerTab(id)}
                     disabled={!draftKunde && id === "kundendetail"}
-                    className={`flex shrink-0 items-center gap-2 rounded-t-lg border border-b-0 px-3 py-2.5 text-sm font-medium transition sm:px-4 ${
+                    className={`relative -mb-px flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-semibold transition sm:px-4 ${
                       detailDrawerTab === id
-                        ? "border-slate-200 bg-white text-blue-700 shadow-sm"
-                        : "border-transparent text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        ? "border-blue-600 text-blue-700"
+                        : "border-transparent text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     }`}
                   >
                     <Icon className="h-4 w-4 shrink-0 opacity-70" />
@@ -689,8 +753,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 ))}
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/90">
-            <div className="space-y-6 p-5 sm:p-6 lg:p-8">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/40 px-4 py-3 sm:px-5">
+            <div className="space-y-6">
               {detailDrawerTab === "fzg" && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
                   <div className="mx-auto max-w-md text-center">
@@ -732,6 +796,122 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
               {detailDrawerTab === "kundendetail" && draftKunde && (
                 <div className="space-y-6">
+              <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-1 pt-2">
+                {(
+                  [
+                    { id: "vat" as const, label: "USt-IdNr. prüfen" },
+                    { id: "kunde" as const, label: "Kunde & Adresse" },
+                    { id: "art" as const, label: "Art / Buchungskonto" },
+                    { id: "waschanlage" as const, label: "Waschanlage" },
+                    { id: "extras" as const, label: "Mehr Optionen" },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setCustomerEditTab(id)}
+                    className={`relative -mb-px flex items-center border-b-2 px-3 py-3 text-sm font-semibold transition sm:px-4 ${
+                      customerEditTab === id
+                        ? id === "waschanlage"
+                          ? "border-cyan-600 text-cyan-800"
+                          : "border-blue-600 text-blue-700"
+                        : "border-transparent text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {customerEditTab === "vat" && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
+                    USt / Steuer
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">UST-ID-NR</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={draftKunde.ust_id_nr ?? ""}
+                        onChange={(e) => setDraftKunde({ ...draftKunde, ust_id_nr: e.target.value })}
+                        suggestions={fieldSuggestions.ust_id_nr}
+                        title="Vorschläge aus gespeicherten Kunden"
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Steuernummer</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={draftKunde.steuer_nr ?? ""}
+                        onChange={(e) => setDraftKunde({ ...draftKunde, steuer_nr: e.target.value })}
+                        suggestions={fieldSuggestions.steuer_nr}
+                        title="Vorschläge aus gespeicherten Kunden"
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Branchen-Nr.</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={draftKunde.branchen_nr ?? ""}
+                        onChange={(e) => setDraftKunde({ ...draftKunde, branchen_nr: e.target.value })}
+                        suggestions={fieldSuggestions.branchen_nr}
+                        title="Vorschläge aus gespeicherten Kunden"
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Land</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={draftKunde.land_code ?? ""}
+                        onChange={(e) => setDraftKunde({ ...draftKunde, land_code: e.target.value })}
+                        suggestions={fieldSuggestions.land_code}
+                        title="Vorschläge aus gespeicherten Kunden"
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {customerEditTab === "art" && (
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
+                    Art / Buchungskonto
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Art (Kunde)</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={draftKunde.art_kunde ?? ""}
+                        onChange={(e) => setDraftKunde({ ...draftKunde, art_kunde: e.target.value })}
+                        suggestions={fieldSuggestions.art_kunde}
+                        title="Vorschläge aus gespeicherten Kunden"
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-500">Buchungskonto (Haupt)</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={draftKunde.buchungskonto_haupt ?? ""}
+                        onChange={(e) =>
+                          setDraftKunde({ ...draftKunde, buchungskonto_haupt: e.target.value })
+                        }
+                        suggestions={fieldSuggestions.buchungskonto_haupt}
+                        title="Vorschläge aus gespeicherten Kunden"
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {customerEditTab === "kunde" && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
                   Stammdaten (kunden)
@@ -1078,7 +1258,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </div>
                 </div>
               </section>
+              )}
 
+              {customerEditTab === "extras" && (
               <div className="grid gap-6 lg:grid-cols-12">
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-5">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1195,7 +1377,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </div>
                 </section>
               </div>
+              )}
 
+              {customerEditTab === "kunde" && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
                   Kontakte &amp; Anschriften
@@ -1231,9 +1415,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   + Weitere Anschrift (demnächst)
                 </button>
               </section>
+              )}
 
               {/* Waschanlage-Daten – immer sichtbar für alle Bereiche */}
-              {draftWash && (
+              {customerEditTab === "waschanlage" && draftWash && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">
                     Waschanlage (kunden_wash)
@@ -1516,6 +1701,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               )}
 
               {/* Zusätzliche Angaben – nur Frontend-UI, gleiches Layout; Speichern später an API anbindbar */}
+              {customerEditTab === "extras" && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">
                   Zusätzliche Angaben
@@ -1571,8 +1757,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </div>
                 </div>
               </section>
+              )}
 
-              {department !== "waschanlage" &&
+              {customerEditTab === "extras" &&
+                department !== "waschanlage" &&
                 draftKunde &&
                 !hasWashProfile &&
                 !draftWash && (
@@ -1597,12 +1785,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               )}
             </div>
             </div>
-            <div className="shrink-0 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
+            <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedRowId(null)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
                 >
                   {t("customersClose", "Close")}
                 </button>
@@ -1610,7 +1798,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   type="button"
                   onClick={handleSaveDetail}
                   disabled={!draftKunde}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t("customersSave", "Save")}
                 </button>
@@ -1618,6 +1806,179 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedRowId && draftKunde && (
+        <NewCustomerModal
+          open={Boolean(selectedRowId)}
+          onClose={() => setSelectedRowId(null)}
+          department={department}
+          mode="edit"
+          editInitial={{ kunde: draftKunde, wash: draftWash }}
+          editKundeTopContent={
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    {t("customersDocsSectionTitle", "Customer documents")}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t(
+                      "customersDocsHint",
+                      "View, upload, open, and remove files linked to this customer."
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUnterlagenOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  {t("customersDocsOpen", "Open documents")}
+                  {unterlagenForCustomer.length > 0 ? (
+                    <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {unterlagenForCustomer.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </section>
+          }
+          editAdresseExtraContent={
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t("customersInvoicesTitle", "Invoices")}
+              </p>
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                <Receipt className="h-4 w-4 text-slate-500" />
+                {t("customersShowInvoices", "Show invoices")}
+              </button>
+            </>
+          }
+          editKundeSideContent={
+            <>
+              <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <Link2 className="h-4 w-4 text-slate-400" />
+                    Kundenbeziehungen
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Neu
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Bearbeiten
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-64 overflow-auto rounded-xl border border-slate-100">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 font-semibold text-slate-600">
+                      <tr>
+                        <th className="px-3 py-2">Verknüpfter Kunde</th>
+                        <th className="px-3 py-2">Art</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
+                      <tr>
+                        <td colSpan={2} className="px-3 py-8 text-center text-slate-400">
+                          Keine Einträge — Datenanbindung folgt
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    {t("customersAppointmentsTitle", "Appointments")}
+                  </h3>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5" />
+                    {t("customersNewAppointment", "New appointment")}
+                  </button>
+                </div>
+                <p className="mb-2 text-xs font-medium text-slate-500">
+                  {t("customersMoreAppointments", "More appointments")}
+                </p>
+                <div className="max-h-56 overflow-auto rounded-xl border border-slate-100">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 font-semibold text-slate-600">
+                      <tr>
+                        <th className="px-3 py-2">{t("customersApptDate", "Date")}</th>
+                        <th className="px-3 py-2">{t("customersApptTime", "Time")}</th>
+                        <th className="px-3 py-2">{t("customersApptPurpose", "Purpose")}</th>
+                        <th className="px-3 py-2">{t("customersApptDone", "Done")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
+                      <tr>
+                        <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
+                          {t("customersNoAppointments", "No appointments available")}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </section>
+            </>
+          }
+          additionalTabLabel="Additional"
+          additionalTabContent={
+            <div className="space-y-6">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                  Interne Informationen
+                </h3>
+                <textarea
+                  rows={6}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="Kurzinfos, Historie, Besonderheiten …"
+                />
+              </section>
+
+              <div className="grid gap-6">
+                <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-5">
+                  <h3 className="mb-2 text-sm font-semibold text-slate-700">Schnellaktionen</h3>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-white bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                      Kunden anschreiben
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-white bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                      Kaufvertrag
+                    </button>
+                  </div>
+                </section>
+              </div>
+            </div>
+          }
+          nextKundenNrPreview={draftKunde.kunden_nr}
+          fieldSuggestions={fieldSuggestions}
+          onSubmit={handleEditCustomerSubmit}
+        />
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">

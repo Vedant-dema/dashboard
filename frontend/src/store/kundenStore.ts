@@ -8,6 +8,13 @@ import type {
 } from "../types/kunden";
 
 const STORAGE_KEY = "dema-kunden-db";
+const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
+const API_MODE = ((import.meta.env.VITE_CUSTOMERS_SOURCE as string | undefined) ?? "").toLowerCase() === "api";
+const DEMO_API_KEY = (import.meta.env.VITE_DEMO_API_KEY as string | undefined) ?? "";
+
+function demoApiUrl(path: string): string {
+  return API_BASE ? `${API_BASE}${path}` : path;
+}
 
 export type KundenListRow = {
   kuNr: string;
@@ -331,6 +338,55 @@ function normalizeUnterlagen(db: KundenDbState): KundenDbState {
     unterlagen: Array.isArray(u) ? u : [],
     nextUnterlageId: typeof n === "number" && n >= 1 ? n : 1,
   };
+}
+
+type DemoCustomersDbResponse = {
+  state: KundenDbState | null;
+  updated_at?: string | null;
+};
+
+function demoHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (DEMO_API_KEY.trim()) headers["x-demo-key"] = DEMO_API_KEY.trim();
+  return headers;
+}
+
+export function isCustomersApiMode(): boolean {
+  return API_MODE;
+}
+
+export async function loadSharedKundenDb(): Promise<KundenDbState | null> {
+  if (!API_MODE) return null;
+  const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
+    method: "GET",
+    headers: demoHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(`Shared customers load failed (${res.status})`);
+  }
+  const payload = (await res.json()) as DemoCustomersDbResponse;
+  if (!payload?.state) return null;
+  if (!isKundenDbState(payload.state)) {
+    throw new Error("Shared customers payload has invalid shape");
+  }
+  return ensureSeedCustomers(normalizeUnterlagen(payload.state));
+}
+
+export async function saveSharedKundenDb(state: KundenDbState): Promise<KundenDbState> {
+  if (!API_MODE) return state;
+  const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
+    method: "PUT",
+    headers: demoHeaders(),
+    body: JSON.stringify({ state }),
+  });
+  if (!res.ok) {
+    throw new Error(`Shared customers save failed (${res.status})`);
+  }
+  const payload = (await res.json()) as DemoCustomersDbResponse;
+  if (!payload?.state || !isKundenDbState(payload.state)) {
+    throw new Error("Shared customers save response has invalid shape");
+  }
+  return ensureSeedCustomers(normalizeUnterlagen(payload.state));
 }
 
 export function loadKundenDb(): KundenDbState {

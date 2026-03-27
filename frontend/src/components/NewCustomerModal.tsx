@@ -6,12 +6,17 @@ import {
   ExtractedFieldWrapper,
   type ScanState,
 } from "./DocExtractBanner";
-import type { NewKundeInput, KundenWashUpsertFields } from "../store/kundenStore";
+import type {
+  NewKundeInput,
+  KundenWashUpsertFields,
+  NewKundenUnterlageInput,
+} from "../store/kundenStore";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import type { DepartmentArea } from "../types/departmentArea";
+import type { KundenStamm, KundenWashStamm } from "../types/kunden";
 
-type TabId = "vat" | "kunde" | "art" | "waschanlage";
+type TabId = "vat" | "kunde" | "art" | "waschanlage" | "additional";
 
 type KontaktEntry = {
   id: string;
@@ -518,6 +523,21 @@ function priceToInput(v: number): string {
   return v.toFixed(2).replace(".", ",");
 }
 
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatFileSize(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1048576).toFixed(1)} MB`;
+}
+
 function initialForm() {
   return {
     aufnahme: "",
@@ -559,6 +579,80 @@ function initialForm() {
 }
 
 type FormState = ReturnType<typeof initialForm>;
+
+function formFromExistingCustomer(
+  kunde: KundenStamm,
+  wash: KundenWashStamm | null | undefined,
+  department?: DepartmentArea
+): FormState {
+  const firstAdresse = emptyAdresse("Hauptadresse");
+  const kontakt = emptyKontakt();
+  const washKennzeichen =
+    wash?.kennzeichen
+      ?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? [];
+
+  return {
+    ...initialForm(),
+    aufnahme: kunde.aufnahme ?? "",
+    branche: kunde.branche ?? "",
+    fzgHandel: kunde.fzg_haendler == null ? "" : kunde.fzg_haendler ? "ja" : "nein",
+    juristische_person: kunde.juristische_person ?? false,
+    natuerliche_person: kunde.natuerliche_person ?? false,
+    gesellschaftsform: kunde.gesellschaftsform ?? "",
+    firmenvorsatz: kunde.firmenvorsatz ?? "",
+    firmenname: kunde.firmenname ?? "",
+    bemerkungen: kunde.bemerkungen ?? "",
+    zustaendige_person_name: kunde.zustaendige_person_name ?? "nicht zugeordnet",
+    adressen: [
+      {
+        ...firstAdresse,
+        strasse: kunde.strasse ?? "",
+        plz: kunde.plz ?? "",
+        ort: kunde.ort ?? "",
+        land_code: kunde.land_code ?? "DE",
+        art_land_code: kunde.art_land_code ?? landCodeToArtLand(kunde.land_code ?? "DE"),
+        ust_id_nr: kunde.ust_id_nr ?? "",
+        steuer_nr: kunde.steuer_nr ?? "",
+        branchen_nr: kunde.branchen_nr ?? "",
+      },
+    ],
+    internet_adr: kunde.internet_adr ?? "",
+    kontakte: [
+      {
+        ...kontakt,
+        name: kunde.ansprechpartner ?? "",
+        telefon: kunde.telefonnummer ?? "",
+        email: kunde.email ?? "",
+        handy: kunde.faxnummer ?? "",
+        bemerkung: kunde.bemerkungen_kontakt ?? "",
+      },
+    ],
+    art_kunde: kunde.art_kunde ?? "",
+    buchungskonto_haupt: kunde.buchungskonto_haupt ?? "",
+    includeWashProfile: Boolean(wash) || department === "waschanlage",
+    wash_bukto: wash?.bukto ?? "",
+    wash_limit: String(wash?.limit_betrag ?? 0),
+    wash_rechnung_zusatz: wash?.rechnung_zusatz ?? "",
+    wash_rechnung_plz: wash?.rechnung_plz ?? "",
+    wash_rechnung_ort: wash?.rechnung_ort ?? "",
+    wash_rechnung_strasse: wash?.rechnung_strasse ?? "",
+    wash_kunde_gesperrt: wash?.kunde_gesperrt ?? false,
+    wash_kennzeichen_list: washKennzeichen,
+    wash_kennzeichen_new: "",
+    wasch_programm: wash?.wasch_programm ?? "",
+    wash_netto_preis: wash?.netto_preis != null ? priceToInput(wash.netto_preis) : "",
+    wash_brutto_preis: wash?.brutto_preis != null ? priceToInput(wash.brutto_preis) : "",
+    wasch_intervall: wash?.wasch_intervall ?? "",
+    wash_bankname: wash?.bankname ?? "",
+    wash_bic: wash?.bic ?? "",
+    wash_iban: wash?.iban ?? "",
+    wash_wichtige_infos: wash?.wichtige_infos ?? "",
+    wash_bemerkungen: wash?.bemerkungen ?? "",
+    wash_lastschrift: wash?.lastschrift ?? false,
+  };
+}
 
 function formToPayload(form: FormState): NewKundeInput {
   const fzg_haendler =
@@ -637,9 +731,10 @@ const tabLabels: Record<TabId, string> = {
   kunde: "Kunde & Adresse",
   art: "Art / Buchungskonto",
   waschanlage: "Waschanlage",
+  additional: "Additional",
 };
 
-const TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
+const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
 
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
@@ -649,18 +744,36 @@ type Props = {
   open: boolean;
   onClose: () => void;
   department?: DepartmentArea;
+  mode?: "create" | "edit";
+  editInitial?: { kunde: KundenStamm; wash?: KundenWashStamm | null };
+  editKundeTopContent?: ReactNode;
+  editAdresseExtraContent?: ReactNode;
+  editKundeSideContent?: ReactNode;
+  additionalTabLabel?: string;
+  additionalTabContent?: ReactNode;
   /** Vorschau der nächsten automatischen KundenNr. (wird beim Speichern vergeben). */
   nextKundenNrPreview: string;
   /** Vorschläge aus bestehenden Kunden/Wash (<datalist>, kein Browser-Autofill). */
   fieldSuggestions: CustomerFieldSuggestions;
   /** `wash` gesetzt → nach createKunde wird upsertKundenWash aufgerufen (wie beim Bearbeiten). */
-  onSubmit: (data: NewKundeInput, wash: KundenWashUpsertFields | null) => void;
+  onSubmit: (
+    data: NewKundeInput,
+    wash: KundenWashUpsertFields | null,
+    scannedAttachment?: NewKundenUnterlageInput | null
+  ) => void;
 };
 
 export function NewCustomerModal({
   open,
   onClose,
   department,
+  mode = "create",
+  editInitial,
+  editKundeTopContent,
+  editAdresseExtraContent,
+  editKundeSideContent,
+  additionalTabLabel = "Additional",
+  additionalTabContent,
   nextKundenNrPreview,
   fieldSuggestions,
   onSubmit,
@@ -675,16 +788,25 @@ export function NewCustomerModal({
   const [vatCheckLoading, setVatCheckLoading] = useState(false);
   const [vatCheckResult, setVatCheckResult] = useState<ViesCheckResult | null>(null);
   const [vatCheckError, setVatCheckError] = useState<string | null>(null);
+  const isEditMode = mode === "edit";
+  const hasAdditionalTab = isEditMode && Boolean(additionalTabContent);
+  const hasEditKundeSideContent = isEditMode && Boolean(editKundeSideContent);
+  const tabOrder = hasAdditionalTab ? [...BASE_TAB_ORDER, "additional"] : BASE_TAB_ORDER;
+  const kundenNrDisplay = isEditMode ? editInitial?.kunde.kunden_nr ?? nextKundenNrPreview : nextKundenNrPreview;
 
   useEffect(() => {
     if (open) {
       const nowAufnahme = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
-      setForm({
-        ...initialForm(),
-        aufnahme: nowAufnahme,
-        includeWashProfile: department === "waschanlage",
-      });
-      setTab("vat");
+      const prepared =
+        isEditMode && editInitial
+          ? formFromExistingCustomer(editInitial.kunde, editInitial.wash, department)
+          : {
+              ...initialForm(),
+              aufnahme: nowAufnahme,
+              includeWashProfile: department === "waschanlage",
+            };
+      setForm(prepared);
+      setTab(isEditMode ? "kunde" : "vat");
       setActiveKontaktIdx(0);
       setActiveAdresseIdx(0);
       setViesCountry("DE");
@@ -692,9 +814,11 @@ export function NewCustomerModal({
       setVatCheckLoading(false);
       setVatCheckResult(null);
       setVatCheckError(null);
-      setAufnahmePreview(nowAufnahme);
+      setAufnahmePreview(prepared.aufnahme || nowAufnahme);
+      setScannedAttachment(null);
+      setShowAttachPrompt(false);
     }
-  }, [open, department]);
+  }, [open, department, isEditMode, editInitial]);
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -704,6 +828,8 @@ export function NewCustomerModal({
   const [docScanState, setDocScanState] = useState<ScanState>("idle");
   const [docFileName, setDocFileName] = useState("");
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+  const [scannedAttachment, setScannedAttachment] = useState<NewKundenUnterlageInput | null>(null);
+  const [showAttachPrompt, setShowAttachPrompt] = useState(false);
 
   /** Fields this mock extractor can fill — maps form keys to realistic demo values */
   const MOCK_EXTRACTED_FIRMA: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
@@ -724,6 +850,20 @@ export function NewCustomerModal({
     setDocFileName(file.name);
     setDocScanState("scanning");
     setExtractedFields(new Set());
+    setShowAttachPrompt(false);
+    void readFileAsDataURL(file).then(
+      (dataUrl) => {
+        setScannedAttachment({
+          name: file.name,
+          size: file.size,
+          mime_type: file.type || "application/octet-stream",
+          data_url: dataUrl,
+        });
+      },
+      () => {
+        setScannedAttachment(null);
+      }
+    );
 
     // Simulate OCR processing delay (2.5 s)
     setTimeout(() => {
@@ -778,6 +918,8 @@ export function NewCustomerModal({
     setExtractedFields(new Set());
     setDocScanState("idle");
     setDocFileName("");
+    setScannedAttachment(null);
+    setShowAttachPrompt(false);
   };
 
   const isExtracted = (key: string) => extractedFields.has(key);
@@ -913,14 +1055,28 @@ export function NewCustomerModal({
     setTab("kunde");
   };
 
+  const submitCustomer = (attachScanned: boolean) => {
+    const wash = form.includeWashProfile ? washFormToPayload(form) : null;
+    const payload = formToPayload(form);
+    const finalPayload =
+      isEditMode && editInitial
+        ? { ...payload, kunden_nr: editInitial.kunde.kunden_nr }
+        : payload;
+    onSubmit(finalPayload, wash, attachScanned ? scannedAttachment : null);
+    setShowAttachPrompt(false);
+  };
+
   const handleSave = () => {
     if (!form.firmenname.trim()) {
       alert("Bitte geben Sie einen Firmennamen ein.");
       setTab("kunde");
       return;
     }
-    const wash = form.includeWashProfile ? washFormToPayload(form) : null;
-    onSubmit(formToPayload(form), wash);
+    if (!isEditMode && scannedAttachment) {
+      setShowAttachPrompt(true);
+      return;
+    }
+    submitCustomer(false);
   };
 
   if (!open) return null;
@@ -932,7 +1088,7 @@ export function NewCustomerModal({
       role="presentation"
     >
       <div
-        className="flex w-full max-w-7xl max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
+        className="relative flex w-full max-w-[92rem] max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -946,7 +1102,7 @@ export function NewCustomerModal({
                 Kundendaten
               </h2>
               <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-semibold text-blue-100">
-                (Neu)
+                {isEditMode ? "(Bearbeiten)" : "(Neu)"}
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-300">DEMA Management</p>
@@ -969,7 +1125,7 @@ export function NewCustomerModal({
 
         {/* Tabs */}
         <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
-          {TAB_ORDER.map((id) => (
+          {tabOrder.map((id) => (
             <button
               key={id}
               type="button"
@@ -987,7 +1143,7 @@ export function NewCustomerModal({
               ) : id === "vat" ? (
                 <BadgeCheck className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
               ) : null}
-              {tabLabels[id]}
+              {id === "additional" ? additionalTabLabel : tabLabels[id]}
             </button>
           ))}
         </div>
@@ -1143,17 +1299,20 @@ export function NewCustomerModal({
           {tab === "kunde" && (
             <div className="flex flex-col gap-3">
 
-              {/* ── Document extraction banner ── */}
-              <DocExtractBanner
-                scanState={docScanState}
-                fileName={docFileName}
-                extractedCount={extractedFields.size}
-                onFileSelect={handleDocUpload}
-                onClear={clearDocExtraction}
-              />
+              {isEditMode ? (
+                editKundeTopContent ?? null
+              ) : (
+                <DocExtractBanner
+                  scanState={docScanState}
+                  fileName={docFileName}
+                  extractedCount={extractedFields.size}
+                  onFileSelect={handleDocUpload}
+                  onClear={clearDocExtraction}
+                />
+              )}
 
-              {/* ── 3-column grid: Firmendaten | Adresse & Steuer | Kontakt ── */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* ── Main grid: Firmendaten | Adresse & Steuer | Kontakt | (optional edit-side) ── */}
+              <div className={`grid gap-4 ${hasEditKundeSideContent ? "grid-cols-4" : "grid-cols-3"}`}>
 
                 {/* ── Col 1: Firmendaten ── */}
                 <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
@@ -1164,9 +1323,9 @@ export function NewCustomerModal({
                       <label className={labelClass}>KundenNr.</label>
                       <div
                         className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-semibold text-slate-800"
-                        title="Wird beim Speichern vergeben"
+                        title={isEditMode ? "Bestehende Kundennummer" : "Wird beim Speichern vergeben"}
                       >
-                        {nextKundenNrPreview}
+                        {kundenNrDisplay}
                       </div>
                     </div>
                     <div>
@@ -1495,6 +1654,7 @@ export function NewCustomerModal({
                         </div>
                       </div>
 
+                      {isEditMode && editAdresseExtraContent ? <div className="pt-2">{editAdresseExtraContent}</div> : null}
                     </div>
                   );
                 })()}
@@ -1712,6 +1872,8 @@ export function NewCustomerModal({
                     </div>
                   );
                 })()}
+
+                {hasEditKundeSideContent ? <div className="space-y-4">{editKundeSideContent}</div> : null}
               </div>
             </div>
           )}
@@ -1740,10 +1902,6 @@ export function NewCustomerModal({
                   title="Vorschläge aus gespeicherten Kunden"
                 />
               </div>
-              <p className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs text-slate-600">
-                Waschdaten erfassen Sie im Tab <strong>Waschanlage</strong> — gleiches Modell wie beim
-                Bearbeiten eines Kunden.
-              </p>
             </div>
           )}
 
@@ -2054,6 +2212,9 @@ export function NewCustomerModal({
               )}
             </div>
           )}
+          {tab === "additional" && hasAdditionalTab ? (
+            <div className="space-y-4">{additionalTabContent}</div>
+          ) : null}
         </div>
 
         {/* Footer */}
@@ -2086,11 +2247,45 @@ export function NewCustomerModal({
                 onClick={handleSave}
                 className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
               >
-                Speichern
+                {isEditMode ? "Änderungen speichern" : "Speichern"}
               </button>
             </div>
           </div>
         </div>
+
+        {showAttachPrompt && scannedAttachment ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h3 className="text-base font-semibold text-slate-900">Attach scanned file</h3>
+              </div>
+              <div className="space-y-3 px-5 py-4 text-sm text-slate-700">
+                <p>You scanned a document for prefill.</p>
+                <p>Do you also want to attach that file to Customer Documents?</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                  <p className="font-medium text-slate-700">{scannedAttachment.name}</p>
+                  <p>{formatFileSize(scannedAttachment.size)}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => submitCustomer(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => submitCustomer(true)}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Attach file
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -43,12 +43,15 @@ GET /api/v1/vat/status, POST /api/v1/vat/check-test, POST /api/v1/vat/check.
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import json
 import os
 import random
 import re
+import sqlite3
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape as _xml_escape
@@ -56,7 +59,7 @@ from xml.sax.saxutils import escape as _xml_escape
 import unicodedata
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -269,6 +272,7 @@ _vies_http: httpx.AsyncClient | None = None
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     global _vies_http
+    _init_demo_store()
     timeout = httpx.Timeout(45.0, connect=15.0)
     limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
     _vies_http = httpx.AsyncClient(timeout=timeout, limits=limits)
@@ -869,9 +873,123 @@ def _vies_request_timeout(remaining_sec: float) -> httpx.Timeout:
     return httpx.Timeout(total_sec, connect=connect_sec)
 
 
+def _demo_customers_db_path() -> Path:
+    raw = os.environ.get("DEMO_CUSTOMERS_DB_PATH", "demo_shared.db").strip() or "demo_shared.db"
+    return Path(raw)
+
+
+def _demo_api_key() -> str | None:
+    key = os.environ.get("DEMO_API_KEY", "").strip()
+    return key or None
+
+
+def _assert_demo_api_key(x_demo_key: str | None) -> None:
+    expected = _demo_api_key()
+    if expected is None:
+        return
+    if (x_demo_key or "").strip() != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing x-demo-key")
+
+
+def _demo_now_iso() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def _init_demo_store() -> None:
+    db_path = _demo_customers_db_path()
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS demo_store (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+
+
+def _demo_get_customers_state() -> tuple[dict[str, Any] | None, str | None]:
+    db_path = _demo_customers_db_path()
+    with sqlite3.connect(db_path) as conn:
+        cur = conn.execute(
+            "SELECT value, updated_at FROM demo_store WHERE key = ?",
+            ("customers_db",),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None, None
+    try:
+        parsed = json.loads(str(row[0]))
+    except json.JSONDecodeError:
+        return None, str(row[1])
+    if isinstance(parsed, dict):
+        return parsed, str(row[1])
+    return None, str(row[1])
+
+
+def _is_kunden_db_state_shape(state: dict[str, Any]) -> bool:
+    required_array_keys = ("kunden", "kundenWash", "rollen", "unterlagen")
+    required_number_keys = ("nextKundeId", "nextWashId", "nextRolleId", "nextUnterlageId")
+    if state.get("version") != 1:
+        return False
+    for key in required_array_keys:
+        if not isinstance(state.get(key), list):
+            return False
+    for key in required_number_keys:
+        if not isinstance(state.get(key), int):
+            return False
+    return True
+
+
+def _demo_save_customers_state(state: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    if not _is_kunden_db_state_shape(state):
+        raise HTTPException(status_code=400, detail="Invalid customers state shape")
+    updated_at = _demo_now_iso()
+    db_path = _demo_customers_db_path()
+    payload = json.dumps(state, ensure_ascii=False)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO demo_store (key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at
+            """,
+            ("customers_db", payload, updated_at),
+        )
+        conn.commit()
+    return state, updated_at
+
+
+class DemoCustomersDbPayload(BaseModel):
+    state: dict[str, Any]
+
+
 @app.get("/api/health")
 async def health() -> dict[str, Any]:
     return {"status": "ok", "cors_origins": _cors_origins()}
+
+
+@app.get("/api/v1/demo/customers-db")
+async def demo_get_customers_db(
+    x_demo_key: str | None = Header(default=None, alias="x-demo-key"),
+) -> dict[str, Any]:
+    _assert_demo_api_key(x_demo_key)
+    state, updated_at = _demo_get_customers_state()
+    return {"state": state, "updated_at": updated_at}
+
+
+@app.put("/api/v1/demo/customers-db")
+async def demo_put_customers_db(
+    body: DemoCustomersDbPayload,
+    x_demo_key: str | None = Header(default=None, alias="x-demo-key"),
+) -> dict[str, Any]:
+    _assert_demo_api_key(x_demo_key)
+    state, updated_at = _demo_save_customers_state(body.state)
+    return {"state": state, "updated_at": updated_at}
 
 
 def _build_vies_check_payload(body: VatCheckRequest) -> dict[str, str]:

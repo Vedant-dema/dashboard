@@ -6,12 +6,12 @@ alwaysApply: true
 # Daily Report Operations Rule
 
 ## Objective
-- Maintain one professional report file per day in `Daily report/`.
+- Maintain one professional report file per day in `vedant/Daily report/`.
 - Capture what was changed, what was completed, what issues were faced, and next actions.
 
 ## Daily File Rule
 - At session start, derive today's date in `YYYY-MM-DD`.
-- Use report file path: `Daily report/YYYY-MM-DD.md`.
+- Use report file path: `vedant/Daily report/YYYY-MM-DD.md`.
 - If the file does not exist, create it immediately on Monday-Friday.
 - On Saturday-Sunday, only create the file if explicitly requested.
 

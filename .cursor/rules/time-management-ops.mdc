@@ -6,11 +6,11 @@ alwaysApply: true
 # Solo IT Time Management Rule
 
 ## Session Start Protocol
-- Start by checking latest files in `todo/` and `learner/`.
+- Start by checking latest files in `vedant/todo/` and `vedant/learner/`.
 - Summarize: top 3 priorities, top 3 risks, blockers, and backlog delta.
 - If no daily file exists for today, create files only on Monday-Friday:
-  - `todo/YYYY-MM-DD.md`
-  - `learner/YYYY-MM-DD.md`
+  - `vedant/todo/YYYY-MM-DD.md`
+  - `vedant/learner/YYYY-MM-DD.md`
 - On Saturday or Sunday, do not create a normal daily file unless explicitly requested.
 - Weekend default mode: optional light review only (no full sprint load).
 - This rule is persistent and recurring: repeat this cycle every workday without expiration.
@@ -29,7 +29,7 @@ alwaysApply: true
 - Do not mark work `done` without evidence link (PR, commit, test output, or deployment log).
 
 ## Backlog and Timeline Control
-- Keep one source of truth: `todo/backlog.md`.
+- Keep one source of truth: `vedant/todo/backlog.md`.
 - Every completed daily file must update backlog item status.
 - Weekly review must identify overdue items and split oversized tasks.
 - Every feature must map to a sprint/milestone and production readiness gate.

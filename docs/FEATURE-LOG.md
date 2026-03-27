@@ -14,7 +14,7 @@
 | 2026-03-23 | [2026-03-23.md](feature-logs/2026-03-23.md) | FEATURE-001, FEATURE-007 |
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
-| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029 |
+| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035 |
 
 ---
 
@@ -51,6 +51,12 @@
 | FEATURE-027 | Hide VAT Backend Raw JSON Panel in Customer Modal | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-028 | Daily Report Folder and Auto Daily Reporting Rule | Added | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-029 | Remove VIES Hint and Customer Table-Name Labels from UI | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-030 | Professional Fuhrpark / Kennzeichen List UI | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-031 | Responsive Waschanlage Card Layout and Dynamic Kennzeichen Height | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-032 | Professional Waschanlage Two-Panel Composition | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-033 | Separate Konto and Rechnungsadresse Cards | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-034 | Single Waschanlage Selection Field (Program Only) | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-035 | Unified Waschprogramm Dropdown with Expanded Tariff List | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

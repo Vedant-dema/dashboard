@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, type ReactNode } from "react";
-import { X, Droplets, BadgeCheck, Plus, Trash2 } from "lucide-react";
+import { X, Droplets, BadgeCheck, Plus, Trash2, Car } from "lucide-react";
 import {
   DocExtractBanner,
   KiBadge,
@@ -447,8 +447,6 @@ function landCodeToArtLand(landCode: string): string {
 
 const ART_LAND_OPTIONS = ["IL", "EU", "Drittland"];
 
-const FAHRZEUG_TYPEN = ["", "PKW", "LKW", "Transporter", "Bus", "Sonstiges"];
-
 const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string; activePill: string }[] = [
   { from: "from-blue-500",    to: "to-indigo-500",  dot: "bg-blue-300",    dotActive: "bg-blue-500",    activePill: "bg-blue-500"    },
   { from: "from-emerald-500", to: "to-teal-500",    dot: "bg-emerald-300", dotActive: "bg-emerald-500", activePill: "bg-emerald-500" },
@@ -462,12 +460,27 @@ const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string
 
 const WASCH_PROGRAMME = [
   "",
-  "Standard",
-  "Premium",
-  "Unterboden",
-  "Komplett",
-  "Lkw-Wäsche",
-  "Nach Vereinbarung",
+  "S* Sonstiges",
+  "1* Kleinbus/Transporter Kasten (bis 3,5t)",
+  "2* LKW mit Aufbau (Koffer/Plane/Kuehlk.) ab 3,5t bis 7t",
+  "3* LKW mit Aufbau (Koffer/Plane) ab 7t",
+  "3* Anhaenger (Koffer/Plane/Lafette)",
+  "3* Omnibus bis 6m",
+  "4* Sattelzugmaschine",
+  "5* LKW ohne Aufbau (Fahrgestell oder BDF)",
+  "5* Auflieger (Koffer/Plane/Kipper)",
+  "6* LKW mit Aufbau (Koffer/Plane) und Anhaenger",
+  "6* Sattelzug komplett",
+  "6* Omnibus ueber 6m",
+  "6* Muellwagen",
+  "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Lafette",
+  "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Anhaenger",
+  "7* LKW mit Aufbau (Fahrgestell oder BDF) mit Lafette",
+  "7* Tank- und Silofahrzeuge",
+  "7* SZM mit Auflieger ohne Aufbau",
+  "8* Tank- und Silozuege",
+  "S1* Innenreinigung",
+  "S2* Innen + Aussen Polizei",
 ];
 
 function emptyToUndef(s: string): string | undefined {
@@ -500,8 +513,8 @@ function initialForm() {
     wash_rechnung_ort: "",
     wash_rechnung_strasse: "",
     wash_kunde_gesperrt: false,
-    wash_kennzeichen: "",
-    wasch_fahrzeug_typ: "",
+    wash_kennzeichen_list: [] as string[],
+    wash_kennzeichen_new: "",
     wasch_programm: "",
     wasch_intervall: "",
     wash_bankname: "",
@@ -576,8 +589,9 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
     wichtige_infos: emptyToUndef(form.wash_wichtige_infos),
     bemerkungen: emptyToUndef(form.wash_bemerkungen),
     lastschrift: form.wash_lastschrift,
-    kennzeichen: emptyToUndef(form.wash_kennzeichen),
-    wasch_fahrzeug_typ: emptyToUndef(form.wasch_fahrzeug_typ),
+    kennzeichen: form.wash_kennzeichen_list.length > 0
+      ? form.wash_kennzeichen_list.join(", ")
+      : undefined,
     wasch_programm: emptyToUndef(form.wasch_programm),
     wasch_intervall: emptyToUndef(form.wasch_intervall),
   };
@@ -1711,10 +1725,11 @@ export function NewCustomerModal({
                   Wasch-Infos zu speichern.
                 </p>
               ) : (
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <div className="grid items-start gap-6 xl:grid-cols-3">
+                  <div className="space-y-6 xl:col-span-2">
+                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Konto &amp; Rechnung
+                      Konto
                     </p>
                     <div>
                       <label className={labelClass}>BUKto</label>
@@ -1750,7 +1765,10 @@ export function NewCustomerModal({
                       />
                       Kunde gesperrt
                     </label>
-                    <p className="border-t border-slate-100 pt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    </div>
+
+                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
                       Rechnungsadresse
                     </p>
                     <div>
@@ -1799,73 +1817,137 @@ export function NewCustomerModal({
                         title="Vorschläge aus Waschprofilen"
                       />
                     </div>
+                    </div>
+
+                    {/* ── Bank & Zahlung ────────────────────────────── */}
+                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                      <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                        Bank &amp; Zahlung
+                      </p>
+                      <div>
+                        <label className={labelClass}>Bankname</label>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.wash_bankname}
+                          onChange={(e) => set("wash_bankname", e.target.value)}
+                          className={inputClass}
+                          suggestions={fieldSuggestions.wash_bankname}
+                          title="Vorschläge aus Waschprofilen"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={labelClass}>BIC</label>
+                          <SuggestTextInput
+                            type="text"
+                            value={form.wash_bic}
+                            onChange={(e) => set("wash_bic", e.target.value)}
+                            className={inputClass}
+                            suggestions={fieldSuggestions.wash_bic}
+                            title="Vorschläge aus Waschprofilen"
+                          />
+                        </div>
+                        <div>
+                          <label className={labelClass}>IBAN</label>
+                          <SuggestTextInput
+                            type="text"
+                            value={form.wash_iban}
+                            onChange={(e) => set("wash_iban", e.target.value)}
+                            className={inputClass}
+                            suggestions={fieldSuggestions.wash_iban}
+                            title="Vorschläge aus Waschprofilen"
+                          />
+                        </div>
+                      </div>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.wash_lastschrift}
+                          onChange={(e) => set("wash_lastschrift", e.target.checked)}
+                          className="rounded border-slate-300 text-cyan-600"
+                        />
+                        Lastschrift
+                      </label>
+                    </div>
                   </div>
 
-                  <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Bank &amp; Wasch-Infos
-                    </p>
-                    <div>
-                      <label className={labelClass}>Bankname</label>
-                      <SuggestTextInput
+                  <div className="space-y-6 xl:col-span-1">
+                    {/* ── Fuhrpark / Kennzeichen ────────────────────── */}
+                    <div className="space-y-3 self-start rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Car className="h-4 w-4 text-cyan-600" />
+                      <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                        Fuhrpark / Kennzeichen
+                      </p>
+                    </div>
+                    {/* Add new plate */}
+                    <div className="flex items-center gap-2">
+                      <input
                         type="text"
-                        value={form.wash_bankname}
-                        onChange={(e) => set("wash_bankname", e.target.value)}
-                        className={inputClass}
-                        suggestions={fieldSuggestions.wash_bankname}
-                        title="Vorschläge aus Waschprofilen"
+                        value={form.wash_kennzeichen_new}
+                        onChange={(e) => set("wash_kennzeichen_new", e.target.value.toUpperCase())}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const v = form.wash_kennzeichen_new.trim();
+                            if (v && !form.wash_kennzeichen_list.includes(v)) {
+                              set("wash_kennzeichen_list", [...form.wash_kennzeichen_list, v]);
+                              set("wash_kennzeichen_new", "");
+                            }
+                          }
+                        }}
+                        placeholder="NEU: z. B. LU-XX-123"
+                        className={`${inputClass} flex-1`}
                       />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelClass}>BIC</label>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.wash_bic}
-                          onChange={(e) => set("wash_bic", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.wash_bic}
-                          title="Vorschläge aus Waschprofilen"
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass}>IBAN</label>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.wash_iban}
-                          onChange={(e) => set("wash_iban", e.target.value)}
-                          className={inputClass}
-                          suggestions={fieldSuggestions.wash_iban}
-                          title="Vorschläge aus Waschprofilen"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Kennzeichen</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.wash_kennzeichen}
-                        onChange={(e) => set("wash_kennzeichen", e.target.value)}
-                        placeholder="z. B. HH-AB 1234"
-                        className={inputClass}
-                        suggestions={fieldSuggestions.wash_kennzeichen}
-                        title="Vorschläge aus Waschprofilen"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Fahrzeugtyp</label>
-                      <select
-                        value={form.wasch_fahrzeug_typ}
-                        onChange={(e) => set("wasch_fahrzeug_typ", e.target.value)}
-                        className={inputClass}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const v = form.wash_kennzeichen_new.trim();
+                          if (v && !form.wash_kennzeichen_list.includes(v)) {
+                            set("wash_kennzeichen_list", [...form.wash_kennzeichen_list, v]);
+                            set("wash_kennzeichen_new", "");
+                          }
+                        }}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-white shadow-sm hover:bg-slate-700"
                       >
-                        {FAHRZEUG_TYPEN.map((v) => (
-                          <option key={v || "—"} value={v}>
-                            {v || "—"}
-                          </option>
-                        ))}
-                      </select>
+                        <Plus className="h-4 w-4" />
+                      </button>
                     </div>
+                    {/* Plate list */}
+                    {form.wash_kennzeichen_list.length > 0 && (
+                      <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
+                        {form.wash_kennzeichen_list.map((plate, idx) => (
+                          <li key={plate} className="flex items-center justify-between px-3 py-2.5 text-sm text-slate-800">
+                            <span className="font-medium tracking-wide">{plate}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                set(
+                                  "wash_kennzeichen_list",
+                                  form.wash_kennzeichen_list.filter((_, i) => i !== idx)
+                                )
+                              }
+                              className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
+                              title="Entfernen"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {form.wash_kennzeichen_list.length === 0 && (
+                      <p className="py-2 text-center text-xs text-slate-400">
+                        Noch keine Kennzeichen hinzugefuegt.
+                      </p>
+                    )}
+                    </div>
+
+                    {/* ── Wasch-Infos ───────────────────────────────── */}
+                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                      Wasch-Infos
+                    </p>
                     <div>
                       <label className={labelClass}>Waschprogramm / Tarif</label>
                       <select
@@ -1874,8 +1956,8 @@ export function NewCustomerModal({
                         className={inputClass}
                       >
                         {WASCH_PROGRAMME.map((v) => (
-                          <option key={v || "—"} value={v}>
-                            {v || "—"}
+                          <option key={v || "\u2014"} value={v}>
+                            {v || "\u2014"}
                           </option>
                         ))}
                       </select>
@@ -1910,15 +1992,7 @@ export function NewCustomerModal({
                         className={`${inputClass} min-h-[80px] resize-y py-2`}
                       />
                     </div>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.wash_lastschrift}
-                        onChange={(e) => set("wash_lastschrift", e.target.checked)}
-                        className="rounded border-slate-300 text-cyan-600"
-                      />
-                      Lastschrift
-                    </label>
+                    </div>
                   </div>
                 </div>
               )}

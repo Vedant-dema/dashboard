@@ -81,6 +81,31 @@ const MOCK_ZUSTAENDIGE = [
   "Team Verkauf",
 ];
 
+const WASH_PROGRAM_OPTIONS = [
+  "",
+  "S* Sonstiges",
+  "1* Kleinbus/Transporter Kasten (bis 3,5t)",
+  "2* LKW mit Aufbau (Koffer/Plane/Kuehlk.) ab 3,5t bis 7t",
+  "3* LKW mit Aufbau (Koffer/Plane) ab 7t",
+  "3* Anhaenger (Koffer/Plane/Lafette)",
+  "3* Omnibus bis 6m",
+  "4* Sattelzugmaschine",
+  "5* LKW ohne Aufbau (Fahrgestell oder BDF)",
+  "5* Auflieger (Koffer/Plane/Kipper)",
+  "6* LKW mit Aufbau (Koffer/Plane) und Anhaenger",
+  "6* Sattelzug komplett",
+  "6* Omnibus ueber 6m",
+  "6* Muellwagen",
+  "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Lafette",
+  "7* LKW ohne Aufbau (Fahrgestell oder BDF) mit Anhaenger",
+  "7* LKW mit Aufbau (Fahrgestell oder BDF) mit Lafette",
+  "7* Tank- und Silofahrzeuge",
+  "7* SZM mit Auflieger ohne Aufbau",
+  "8* Tank- und Silozuege",
+  "S1* Innenreinigung",
+  "S2* Innen + Aussen Polizei",
+];
+
 type DetailDrawerTab = "kundendetail" | "fzg" | "info";
 
 function emptyWashDraft(kundenId: number): KundenWashStamm {
@@ -116,6 +141,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [draftKunde, setDraftKunde] = useState<KundenStamm | null>(null);
   const [draftWash, setDraftWash] = useState<KundenWashStamm | null>(null);
   const [detailDrawerTab, setDetailDrawerTab] = useState<DetailDrawerTab>("kundendetail");
+  const [newPlateInput, setNewPlateInput] = useState("");
 
   useEffect(() => {
     const q = sessionStorage.getItem("dema-search-q");
@@ -224,6 +250,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       } else {
         setDraftWash(emptyWashDraft(detail.kunden.id));
       }
+      setNewPlateInput("");
     },
     [db]
   );
@@ -273,7 +300,6 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         bemerkungen: draftWash.bemerkungen,
         lastschrift: draftWash.lastschrift ?? false,
         kennzeichen: draftWash.kennzeichen,
-        wasch_fahrzeug_typ: draftWash.wasch_fahrzeug_typ,
         wasch_programm: draftWash.wasch_programm,
         wasch_intervall: draftWash.wasch_intervall,
       });
@@ -1256,48 +1282,99 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         Kunde gesperrt (Waschanlage)
                       </label>
                     </div>
+                    {/* ── Fuhrpark / Kennzeichen ────────────────── */}
+                    <div className="sm:col-span-2 space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-4 w-4 text-cyan-600" />
+                        <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                          Fuhrpark / Kennzeichen
+                        </p>
+                      </div>
+                      {(() => {
+                        const plates = (draftWash.kennzeichen ?? "")
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+
+                        const addPlate = () => {
+                          const v = newPlateInput.trim().toUpperCase();
+                          if (!v || plates.includes(v)) return;
+                          const next = [...plates, v].join(", ");
+                          setDraftWash({ ...draftWash, kennzeichen: next });
+                          setNewPlateInput("");
+                        };
+
+                        const removePlate = (idx: number) => {
+                          const next = plates.filter((_, i) => i !== idx).join(", ");
+                          setDraftWash({ ...draftWash, kennzeichen: next || undefined });
+                        };
+
+                        return (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={newPlateInput}
+                                onChange={(e) => setNewPlateInput(e.target.value.toUpperCase())}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") { e.preventDefault(); addPlate(); }
+                                }}
+                                placeholder="NEU: z. B. LU-XX-123"
+                                className="h-9 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm outline-none placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                              />
+                              <button
+                                type="button"
+                                onClick={addPlate}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-white shadow-sm hover:bg-slate-700"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {plates.length > 0 && (
+                              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
+                                {plates.map((plate, idx) => (
+                                  <li key={plate} className="flex items-center justify-between px-3 py-2.5 text-sm text-slate-800">
+                                    <span className="font-medium tracking-wide">{plate}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removePlate(idx)}
+                                      className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
+                                      title="Entfernen"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            {plates.length === 0 && (
+                              <p className="py-2 text-center text-xs text-slate-400">
+                                Noch keine Kennzeichen hinzugefuegt.
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
                     <div className="sm:col-span-2 text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Waschanlage — Fahrzeug &amp; Programm
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-500">Kennzeichen</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={draftWash.kennzeichen ?? ""}
-                        onChange={(e) =>
-                          setDraftWash({ ...draftWash, kennzeichen: e.target.value })
-                        }
-                        suggestions={fieldSuggestions.wash_kennzeichen}
-                        title="Vorschläge aus gespeicherten Wasch-Datensätzen"
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-500">Fahrzeugtyp</label>
-                      <SuggestTextInput
-                        type="text"
-                        value={draftWash.wasch_fahrzeug_typ ?? ""}
-                        onChange={(e) =>
-                          setDraftWash({ ...draftWash, wasch_fahrzeug_typ: e.target.value })
-                        }
-                        placeholder="PKW, LKW …"
-                        suggestions={fieldSuggestions.wasch_fahrzeug_typ}
-                        title="Vorschläge aus gespeicherten Wasch-Datensätzen"
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                      />
+                      Waschanlage — Programm
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-500">Waschprogramm</label>
-                      <SuggestTextInput
-                        type="text"
+                      <select
                         value={draftWash.wasch_programm ?? ""}
                         onChange={(e) =>
                           setDraftWash({ ...draftWash, wasch_programm: e.target.value })
                         }
-                        suggestions={fieldSuggestions.wasch_programm}
-                        title="Vorschläge aus gespeicherten Wasch-Datensätzen"
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                      />
+                      >
+                        {WASH_PROGRAM_OPTIONS.map((v) => (
+                          <option key={v || "—"} value={v}>
+                            {v || "—"}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-500">Intervall</label>

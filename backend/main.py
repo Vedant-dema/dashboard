@@ -11,13 +11,13 @@ Environment:
   VIES_REQUESTER_CC        Optional default requester member state code (e.g. DE/EU).
   VIES_REQUESTER_VAT       Optional default requester VAT number (used with VIES_REQUESTER_CC).
   CORS_ORIGINS             Comma-separated origins (default: http://localhost:5173,http://127.0.0.1:5173).
-  VIES_MAX_RETRIES         Retries for transient / concurrent-cap errors (default: 8).
-  VIES_RETRY_BASE_SEC      Initial backoff before first retry, seconds (default: 0.8).
-  VIES_RETRY_MAX_WAIT_SEC  Cap on single backoff sleep (default: 28).
+  VIES_MAX_RETRIES         Retries for transient / concurrent-cap errors (default: 3).
+  VIES_RETRY_BASE_SEC      Initial backoff before first retry, seconds (default: 0.4).
+  VIES_RETRY_MAX_WAIT_SEC  Cap on single backoff sleep (default: 8).
   VIES_PRINT_RAW           If not 0/false/no/off: log full VIES JSON to stderr (default: on for debugging).
                            Set to 0 in production to avoid logging VAT numbers.
   VIES_OMIT_RAW_IN_JSON    If 1/true: do not include vies_raw in the HTTP JSON response (default: off).
-  VIES_MAX_TOTAL_SEC       Hard wall-clock budget for one check (retries + sleeps, default: 24 s).
+  VIES_MAX_TOTAL_SEC       Hard wall-clock budget for one check (retries + sleeps, default: 12 s).
                            Must be below the cloud reverse-proxy timeout (typically 30 s on Render/Railway/
                            Heroku). Increase only if your platform allows long-running requests.
   VIES_SOAP_APPROX_FALLBACK If 0/false: skip SOAP checkVatApprox when REST omits fields (default: on).
@@ -232,13 +232,54 @@ def _vies_error_codes(data: dict[str, Any]) -> list[str]:
     return out
 
 
+_VIES_CODE_MESSAGES: dict[str, str] = {
+    "MS_UNAVAILABLE": (
+        "MS_UNAVAILABLE: The member state's VIES server is temporarily offline. "
+        "This is a transient EU infrastructure issue — please try again in a few minutes."
+    ),
+    "MS_MAX_CONCURRENT_REQ": (
+        "MS_MAX_CONCURRENT_REQ: Too many simultaneous requests to the member state's VIES server. "
+        "Please try again in a few moments."
+    ),
+    "VOW-SERVICE-UNAVAILABLE": (
+        "VOW-SERVICE-UNAVAILABLE: The VIES validation service is temporarily unavailable. "
+        "Please try again shortly."
+    ),
+    "SERVICE_UNAVAILABLE": (
+        "SERVICE_UNAVAILABLE: VIES is temporarily unavailable. Please try again in a few minutes."
+    ),
+    "TIMEOUT": (
+        "TIMEOUT: The member state's VIES server did not respond in time. "
+        "Please try again in a few minutes."
+    ),
+    "INVALID_INPUT": (
+        "INVALID_INPUT: The VAT number format is not valid for the selected country."
+    ),
+    "VAT_BLOCKED": (
+        "VAT_BLOCKED: This VAT number is blocked in the VIES system."
+    ),
+    "VAT_REVOKED": (
+        "VAT_REVOKED: This VAT number has been revoked."
+    ),
+    "GLOBAL_MAX_CONCURRENT_REQ": (
+        "GLOBAL_MAX_CONCURRENT_REQ: VIES is currently overloaded. Please try again in a few moments."
+    ),
+}
+
+
 def _vies_error_message(data: dict[str, Any]) -> str:
     errs = data.get("errorWrappers") or []
-    parts = [
-        str(e.get("message") or e.get("error") or "unknown")
-        for e in errs
-        if isinstance(e, dict)
-    ]
+    parts: list[str] = []
+    for e in errs:
+        if not isinstance(e, dict):
+            continue
+        code = str(e.get("error") or "").upper()
+        readable = _VIES_CODE_MESSAGES.get(code)
+        if readable:
+            parts.append(readable)
+        else:
+            raw = str(e.get("message") or e.get("error") or "unknown")
+            parts.append(raw)
     return "; ".join(parts) if parts else "VIES rejected the request"
 
 
@@ -273,7 +314,7 @@ _vies_http: httpx.AsyncClient | None = None
 async def _lifespan(app: FastAPI):
     global _vies_http
     _init_demo_store()
-    timeout = httpx.Timeout(45.0, connect=15.0)
+    timeout = httpx.Timeout(15.0, connect=8.0)
     limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
     _vies_http = httpx.AsyncClient(timeout=timeout, limits=limits)
     try:
@@ -599,10 +640,10 @@ def _parse_vies_soap_approx_response(xml_text: str) -> dict[str, Any]:
 
 async def _vies_soap_check_with_retries(payload: dict[str, Any]) -> dict[str, Any]:
     """Retry official SOAP checkVat (classic); often returns name/address when REST/approx omit them."""
-    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
-    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
-    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
-    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
+    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "3")))
+    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.4"))
+    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "8"))
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "12.0"))
 
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
@@ -670,10 +711,10 @@ async def _vies_soap_check_with_retries(payload: dict[str, Any]) -> dict[str, An
 
 async def _vies_soap_approx_with_retries(payload: dict[str, Any]) -> dict[str, Any]:
     """Retry official SOAP checkVatApprox when REST omits trader details."""
-    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
-    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
-    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
-    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
+    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "3")))
+    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.4"))
+    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "8"))
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "12.0"))
 
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
@@ -781,10 +822,10 @@ def _merge_soap_approx_into_rest(rest_data: dict[str, Any], soap_data: dict[str,
 
 async def _vies_ms_lookup_with_retries(payload: dict[str, str]) -> dict[str, Any]:
     """Call the same website-style ms/{country}/vat/{vat} endpoint used by the VIES UI."""
-    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
-    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
-    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
-    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
+    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "3")))
+    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.4"))
+    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "8"))
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "12.0"))
 
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
@@ -1048,15 +1089,15 @@ async def _vies_call_with_retries(
 
     VIES_MAX_TOTAL_SEC caps total wall-clock time so cloud reverse proxies (which typically
     have a 25–30 s request timeout) don't kill the connection before we return.  Default is
-    24 s, which fits comfortably under a 30 s proxy limit.  Raise it (or set VIES_MAX_RETRIES
-    higher) only if your cloud platform explicitly supports long-running requests.
+    12 s for fast user-facing response.  Raise it (or set VIES_MAX_RETRIES higher) only if
+    your cloud platform explicitly supports long-running requests.
     """
-    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "8")))
-    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.8"))
-    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "28"))
+    max_retries = max(1, int(os.environ.get("VIES_MAX_RETRIES", "3")))
+    base_wait = float(os.environ.get("VIES_RETRY_BASE_SEC", "0.4"))
+    cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "8"))
     # Hard wall-clock budget for the whole retry loop (including sleeps + VIES call time).
     # Keeps us well inside the 30 s window most cloud reverse proxies enforce.
-    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "24.0"))
+    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "12.0"))
 
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
@@ -1207,68 +1248,53 @@ def _request_fallback_name_address(body: VatCheckRequest) -> tuple[str | None, s
 
 
 async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data: dict[str, Any]) -> dict[str, Any]:
-    """Try extra VIES sources in a bounded loop until details/matches are no longer unresolved."""
+    """Try extra VIES sources sequentially until details/matches are resolved.
+
+    Each fallback is only called when the previous result still has gaps, so the
+    common case (REST already returned everything) exits immediately.  The speed
+    improvement over older code comes from the tighter retry/timeout defaults.
+    """
     data = dict(initial_data)
     cc = payload.get("countryCode", "")
     vat = payload.get("vatNumber", "")
 
-    for _ in range(2):
-        needs_more = _rest_missing_trader_details(data) or _rest_matches_all_not_processed(data)
-        if not needs_more:
-            break
-        changed = False
+    needs_more = _rest_missing_trader_details(data) or _rest_matches_all_not_processed(data)
+    if not needs_more:
+        return data
 
-        run_ms_lookup = _payload_has_approx_inputs(payload) or (
-            bool(data.get("valid")) and _rest_missing_trader_details(data)
-        )
-        if run_ms_lookup:
-            try:
-                ms_raw = await _vies_ms_lookup_with_retries(payload)
-            except HTTPException:
-                ms_raw = {}
-            if ms_raw:
-                ms_data = _normalize_ms_lookup_data(ms_raw, cc, vat)
-                merged = _merge_soap_trader_into_rest(
-                    data,
-                    ms_data,
-                    fallback_used_key="msLookupFallbackUsed",
-                    raw_key="msLookupRaw",
-                )
-                if merged != data:
-                    data = merged
-                    changed = True
+    run_ms_lookup = _payload_has_approx_inputs(payload) or (
+        bool(data.get("valid")) and _rest_missing_trader_details(data)
+    )
+    if run_ms_lookup:
+        try:
+            ms_raw = await _vies_ms_lookup_with_retries(payload)
+        except HTTPException:
+            ms_raw = {}
+        if ms_raw:
+            ms_data = _normalize_ms_lookup_data(ms_raw, cc, vat)
+            data = _merge_soap_trader_into_rest(
+                data, ms_data, fallback_used_key="msLookupFallbackUsed", raw_key="msLookupRaw"
+            )
 
-        if _vies_soap_check_fallback_enabled() and _rest_missing_trader_details(data):
-            try:
-                soap_check = await _vies_soap_check_with_retries(payload)
-            except HTTPException:
-                soap_check = {}
-            if soap_check:
-                merged = _merge_soap_trader_into_rest(
-                    data,
-                    soap_check,
-                    fallback_used_key="soapCheckFallbackUsed",
-                    raw_key="soapCheckRaw",
-                )
-                if merged != data:
-                    data = merged
-                    changed = True
+    if _vies_soap_check_fallback_enabled() and _rest_missing_trader_details(data):
+        try:
+            soap_check = await _vies_soap_check_with_retries(payload)
+        except HTTPException:
+            soap_check = {}
+        if soap_check:
+            data = _merge_soap_trader_into_rest(
+                data, soap_check, fallback_used_key="soapCheckFallbackUsed", raw_key="soapCheckRaw"
+            )
 
-        if _vies_soap_approx_fallback_enabled() and (
-            _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
-        ):
-            try:
-                soap_approx = await _vies_soap_approx_with_retries(payload)
-            except HTTPException:
-                soap_approx = {}
-            if soap_approx:
-                merged = _merge_soap_approx_into_rest(data, soap_approx)
-                if merged != data:
-                    data = merged
-                    changed = True
-
-        if not changed:
-            break
+    if _vies_soap_approx_fallback_enabled() and (
+        _rest_matches_all_not_processed(data) or _rest_missing_trader_details(data)
+    ):
+        try:
+            soap_approx = await _vies_soap_approx_with_retries(payload)
+        except HTTPException:
+            soap_approx = {}
+        if soap_approx:
+            data = _merge_soap_approx_into_rest(data, soap_approx)
 
     return data
 

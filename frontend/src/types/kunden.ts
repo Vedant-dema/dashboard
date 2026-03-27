@@ -89,6 +89,26 @@ export interface KundenRolleRow {
   gueltig_bis?: string | null;
 }
 
+/** Appointment linked to a customer. */
+export interface KundenTermin {
+  id: number;
+  kunden_id: number;
+  datum: string;       // ISO date YYYY-MM-DD
+  zeit: string;        // HH:MM
+  zweck: string;
+  erledigt: boolean;
+  created_at?: string;
+}
+
+/** Relationship between two customers (e.g. parent company, branch, sister site). */
+export interface KundenBeziehung {
+  id: number;
+  kunden_id: number;
+  verknuepfter_kunden_id: number;
+  art: string;
+  created_at?: string;
+}
+
 /** Vom Kunden hochgeladene Datei (Demo: als Data-URL in localStorage). */
 export interface KundenUnterlage {
   id: number;
@@ -114,8 +134,12 @@ export interface KundenDbState {
   rollen: KundenRolleRow[];
   /** Hochgeladene Kundenunterlagen (pro kunden.id) */
   unterlagen: KundenUnterlage[];
+  termine: KundenTermin[];
+  beziehungen: KundenBeziehung[];
   nextKundeId: number;
   nextWashId: number;
   nextRolleId: number;
   nextUnterlageId: number;
+  nextTerminId: number;
+  nextBeziehungId: number;
 }

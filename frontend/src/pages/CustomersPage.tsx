@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Plus,
   Search,
@@ -30,6 +30,13 @@ import {
   addKundenUnterlage,
   removeKundenUnterlage,
   listUnterlagenForKunde,
+  listTermineForKunde,
+  addKundenTermin,
+  toggleTerminErledigt,
+  removeKundenTermin,
+  listBeziehungenForKunde,
+  addKundenBeziehung,
+  removeKundenBeziehung,
   isCustomersApiMode,
   loadSharedKundenDb,
   saveSharedKundenDb,
@@ -78,7 +85,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 }
 
 const MOCK_ZUSTAENDIGE = [
-  "â€”",
+  "—",
   "Liciu Ana-Maria",
   "Mitsos Deligiannis",
   "Anna Schmidt",
@@ -203,6 +210,82 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     [db, draftKunde?.id]
   );
 
+  const termineForCustomer = useMemo(
+    () => (draftKunde ? listTermineForKunde(db, draftKunde.id) : []),
+    [db, draftKunde?.id]
+  );
+
+  const beziehungenForCustomer = useMemo(
+    () => (draftKunde ? listBeziehungenForKunde(db, draftKunde.id) : []),
+    [db, draftKunde?.id]
+  );
+
+  const [terminFormOpen, setTerminFormOpen] = useState(false);
+  const [terminDatum, setTerminDatum] = useState("");
+  const [terminZeit, setTerminZeit] = useState("");
+  const [terminZweck, setTerminZweck] = useState("");
+
+  const handleAddTermin = useCallback(() => {
+    if (!draftKunde || !terminDatum || !terminZweck.trim()) return;
+    const next = addKundenTermin(db, draftKunde.id, {
+      datum: terminDatum,
+      zeit: terminZeit,
+      zweck: terminZweck,
+    });
+    saveKundenDb(next);
+    setDb(next);
+    setTerminFormOpen(false);
+    setTerminDatum("");
+    setTerminZeit("");
+    setTerminZweck("");
+  }, [db, draftKunde, terminDatum, terminZeit, terminZweck]);
+
+  const handleToggleTermin = useCallback(
+    (terminId: number) => {
+      const next = toggleTerminErledigt(db, terminId);
+      saveKundenDb(next);
+      setDb(next);
+    },
+    [db]
+  );
+
+  const handleRemoveTermin = useCallback(
+    (terminId: number) => {
+      const next = removeKundenTermin(db, terminId);
+      saveKundenDb(next);
+      setDb(next);
+    },
+    [db]
+  );
+
+  const [beziehungFormOpen, setBeziehungFormOpen] = useState(false);
+  const [beziehungNr, setBeziehungNr] = useState("");
+  const [beziehungArt, setBeziehungArt] = useState("");
+
+  const handleAddBeziehung = useCallback(() => {
+    if (!draftKunde || !beziehungNr.trim() || !beziehungArt.trim()) return;
+    const linked = db.kunden.find((k) => k.kunden_nr === beziehungNr.trim());
+    if (!linked || linked.id === draftKunde.id) return;
+    const next = addKundenBeziehung(db, draftKunde.id, {
+      verknuepfter_kunden_id: linked.id,
+      art: beziehungArt,
+    });
+    saveKundenDb(next);
+    setDb(next);
+    setBeziehungFormOpen(false);
+    setBeziehungNr("");
+    setBeziehungArt("");
+  }, [db, draftKunde, beziehungNr, beziehungArt]);
+
+  const handleRemoveBeziehung = useCallback(
+    (beziehungId: number) => {
+      const next = removeKundenBeziehung(db, beziehungId);
+      saveKundenDb(next);
+      setDb(next);
+    },
+    [db]
+  );
+
   const handleUnterlageFiles = useCallback(
     async (list: FileList | null) => {
       if (!list?.length || !draftKunde) return;
@@ -279,7 +362,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     setLand("");
   };
 
-  /** Load drafts immediately on row click â€” avoids one paint with no drawer (blank flash). */
+  /** Load drafts immediately on row click — avoids one paint with no drawer (blank flash). */
   const openCustomerRow = useCallback(
     (kuNr: string) => {
       const detail = getDetailByKundenNr(db, kuNr);
@@ -406,7 +489,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               <span className="font-medium text-slate-600">
                 {t(DEPARTMENT_I18N_KEY[department], department)}
               </span>
-              {" Â· "}
+              {" · "}
               <span className="text-slate-400">
                 {t(
                   "customersDeptHint",
@@ -433,7 +516,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             type="text"
             value={quickSearch}
             onChange={(e) => setQuickSearch(e.target.value)}
-            placeholder={t("customersSearchPlaceholder", "Searchâ€¦")}
+            placeholder={t("customersSearchPlaceholder", "Search…")}
             suggestions={quickSearchSuggestions}
             title={t("customersSuggestionsDb", "Suggestions from database")}
             className="h-10 w-64 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -566,7 +649,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <SuggestTextInput
                   type="text"
                   suggestions={fieldSuggestions.faxnummer}
-                  title="VorschlÃ¤ge aus gespeicherten Kunden"
+                  title="Vorschläge aus gespeicherten Kunden"
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
                 />
               </div>
@@ -575,7 +658,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <SuggestTextInput
                   type="text"
                   suggestions={fieldSuggestions.branche}
-                  title="VorschlÃ¤ge aus gespeicherten Kunden"
+                  title="Vorschläge aus gespeicherten Kunden"
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
                 />
               </div>
@@ -584,7 +667,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <SuggestTextInput
                   type="text"
                   suggestions={fieldSuggestions.branchen_nr}
-                  title="VorschlÃ¤ge aus gespeicherten Kunden"
+                  title="Vorschläge aus gespeicherten Kunden"
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
                 />
               </div>
@@ -593,14 +676,14 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <SuggestTextInput
                   type="text"
                   suggestions={fieldSuggestions.ust_id_nr}
-                  title="VorschlÃ¤ge aus gespeicherten Kunden"
+                  title="Vorschläge aus gespeicherten Kunden"
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">Art</label>
                 <select className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm">
-                  <option value="">â€”</option>
+                  <option value="">—</option>
                 </select>
               </div>
               <div>
@@ -626,7 +709,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 </label>
                 <label className="flex items-center gap-2 text-sm text-slate-600">
                   <input type="checkbox" className="rounded border-slate-300" />
-                  Zum LÃ¶schen mark.
+                  Zum Löschen mark.
                 </label>
               </div>
             </div>
@@ -737,46 +820,112 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           }
           editKundeSideContent={
             <>
+              {/* ── Kundenbeziehungen ─────────────────────────────── */}
               <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                     <Link2 className="h-4 w-4 text-slate-400" />
-                    Kundenbeziehungen
+                    {t("customersRelationsTitle", "Customer relationships")}
                   </h3>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                    >
-                      Neu
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                    >
-                      Bearbeiten
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setBeziehungFormOpen((v) => !v); setBeziehungNr(""); setBeziehungArt(""); }}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    {t("customersRelationsNew", "New")}
+                  </button>
                 </div>
+
+                {beziehungFormOpen && (
+                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+                    <input
+                      type="text"
+                      list="beziehung-nr-list"
+                      value={beziehungNr}
+                      onChange={(e) => setBeziehungNr(e.target.value)}
+                      placeholder={t("customersRelationsNrPh", "Search customer no.")}
+                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                    />
+                    <datalist id="beziehung-nr-list">
+                      {db.kunden
+                        .filter((k) => draftKunde && k.id !== draftKunde.id)
+                        .map((k) => (
+                          <option key={k.id} value={k.kunden_nr}>{k.firmenname}</option>
+                        ))}
+                    </datalist>
+                    <input
+                      type="text"
+                      value={beziehungArt}
+                      onChange={(e) => setBeziehungArt(e.target.value)}
+                      placeholder={t("customersRelationsArtPh", "Type (e.g. Parent company)")}
+                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddBeziehung}
+                        disabled={!beziehungNr.trim() || !beziehungArt.trim()}
+                        className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40"
+                      >
+                        {t("commonSave", "Save")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBeziehungFormOpen(false)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        {t("commonCancel", "Cancel")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-64 overflow-auto rounded-xl border border-slate-100">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 font-semibold text-slate-600">
                       <tr>
-                        <th className="px-3 py-2">VerknÃ¼pfter Kunde</th>
-                        <th className="px-3 py-2">Art</th>
+                        <th className="px-3 py-2">{t("customersRelationsLinked", "Linked customer")}</th>
+                        <th className="px-3 py-2">{t("customersRelationsArt", "Type")}</th>
+                        <th className="w-8 px-3 py-2" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
-                      <tr>
-                        <td colSpan={2} className="px-3 py-8 text-center text-slate-400">
-                          Keine EintrÃ¤ge â€” Datenanbindung folgt
-                        </td>
-                      </tr>
+                      {beziehungenForCustomer.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-8 text-center text-slate-400">
+                            {t("customersRelationsEmpty", "No entries")}
+                          </td>
+                        </tr>
+                      ) : (
+                        beziehungenForCustomer.map((b) => {
+                          const linked = db.kunden.find((k) => k.id === b.verknuepfter_kunden_id);
+                          return (
+                            <tr key={b.id}>
+                              <td className="px-3 py-2">
+                                <span className="font-medium">{linked?.firmenname ?? b.verknuepfter_kunden_id}</span>
+                                <span className="ml-1 text-slate-400">#{linked?.kunden_nr ?? "?"}</span>
+                              </td>
+                              <td className="px-3 py-2 text-slate-500">{b.art}</td>
+                              <td className="px-3 py-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveBeziehung(b.id)}
+                                  className="rounded p-0.5 text-slate-300 hover:text-red-500"
+                                  aria-label={t("commonRemove", "Remove")}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
               </section>
 
+              {/* ── Termine ───────────────────────────────────────── */}
               <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -784,15 +933,57 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </h3>
                   <button
                     type="button"
+                    onClick={() => { setTerminFormOpen((v) => !v); setTerminDatum(""); setTerminZeit(""); setTerminZweck(""); }}
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
                   >
                     <CalendarPlus className="h-3.5 w-3.5" />
                     {t("customersNewAppointment", "New appointment")}
                   </button>
                 </div>
-                <p className="mb-2 text-xs font-medium text-slate-500">
-                  {t("customersMoreAppointments", "More appointments")}
-                </p>
+
+                {terminFormOpen && (
+                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={terminDatum}
+                        onChange={(e) => setTerminDatum(e.target.value)}
+                        className="h-8 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                      />
+                      <input
+                        type="time"
+                        value={terminZeit}
+                        onChange={(e) => setTerminZeit(e.target.value)}
+                        className="h-8 w-28 rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={terminZweck}
+                      onChange={(e) => setTerminZweck(e.target.value)}
+                      placeholder={t("customersTerminZweckPh", "Purpose / subject")}
+                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddTermin}
+                        disabled={!terminDatum || !terminZweck.trim()}
+                        className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40"
+                      >
+                        {t("commonSave", "Save")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTerminFormOpen(false)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        {t("commonCancel", "Cancel")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-56 overflow-auto rounded-xl border border-slate-100">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 font-semibold text-slate-600">
@@ -800,19 +991,49 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         <th className="px-3 py-2">{t("customersApptDate", "Date")}</th>
                         <th className="px-3 py-2">{t("customersApptTime", "Time")}</th>
                         <th className="px-3 py-2">{t("customersApptPurpose", "Purpose")}</th>
-                        <th className="px-3 py-2">{t("customersApptDone", "Done")}</th>
+                        <th className="px-3 py-2 text-center">{t("customersApptDone", "Done")}</th>
+                        <th className="w-8 px-3 py-2" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
-                          {t("customersNoAppointments", "No appointments available")}
-                        </td>
-                      </tr>
+                      {termineForCustomer.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                            {t("customersNoAppointments", "No appointments available")}
+                          </td>
+                        </tr>
+                      ) : (
+                        termineForCustomer.map((termin) => (
+                          <tr key={termin.id} className={termin.erledigt ? "opacity-50" : ""}>
+                            <td className="px-3 py-2 tabular-nums">{termin.datum}</td>
+                            <td className="px-3 py-2 tabular-nums">{termin.zeit || "—"}</td>
+                            <td className={`px-3 py-2 ${termin.erledigt ? "line-through" : ""}`}>
+                              {termin.zweck}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={termin.erledigt}
+                                onChange={() => handleToggleTermin(termin.id)}
+                                className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTermin(termin.id)}
+                                className="rounded p-0.5 text-slate-300 hover:text-red-500"
+                                aria-label={t("commonRemove", "Remove")}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
-
               </section>
             </>
           }
@@ -826,7 +1047,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <textarea
                   rows={6}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  placeholder="Kurzinfos, Historie, Besonderheiten â€¦"
+                  placeholder="Kurzinfos, Historie, Besonderheiten …"
                 />
               </section>
 
@@ -921,7 +1142,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 type="button"
                 onClick={() => setUnterlagenOpen(false)}
                 className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="SchlieÃŸen"
+                aria-label="Schließen"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -930,7 +1151,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
               {unterlagenForCustomer.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
-                  Noch keine Dateien. Nutzen Sie â€žDatei hinzufÃ¼genâ€œ, um Uploads des Kunden zu simulieren.
+                  Noch keine Dateien. Nutzen Sie „Datei hinzufügen", um Uploads des Kunden zu simulieren.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -943,7 +1164,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-slate-800">{u.name}</p>
                         <p className="text-xs text-slate-500">
-                          {formatFileSize(u.size)} Â·{" "}
+                          {formatFileSize(u.size)} ·{" "}
                           {new Date(u.uploaded_at).toLocaleString("de-DE", {
                             dateStyle: "short",
                             timeStyle: "short",
@@ -957,7 +1178,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                           onClick={() => window.open(u.data_url, "_blank", "noopener,noreferrer")}
                           className="rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
                         >
-                          Ã–ffnen
+                          Öffnen
                         </button>
                         <button
                           type="button"
@@ -991,7 +1212,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700"
               >
                 <Upload className="h-4 w-4" />
-                Datei hinzufÃ¼gen (Kunden-Upload simulieren)
+                Datei hinzufügen (Kunden-Upload simulieren)
               </button>
             </div>
           </div>

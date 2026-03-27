@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import { X, Droplets, BadgeCheck, Plus, Trash2, Car, FileText, ExternalLink } from "lucide-react";
 import {
   DocExtractBanner,
@@ -70,6 +70,28 @@ function emptyKontakt(): KontaktEntry {
     email: "",
     bemerkung: "",
   };
+}
+
+/**
+ * Splits a stored phone string (e.g. "+49 123456") back into
+ * { code, number } so the dropdown and text-box show correct values on edit.
+ * Tries longest matching code first to avoid "+1" matching "+1x" numbers.
+ */
+function splitStoredPhone(
+  stored: string | undefined
+): { code: string; number: string } {
+  const s = (stored ?? "").trim();
+  if (!s) return { code: "+49", number: "" };
+  const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+  for (const { code } of sorted) {
+    if (s.startsWith(code + " ")) {
+      return { code, number: s.slice(code.length + 1).trim() };
+    }
+    if (s === code) {
+      return { code, number: "" };
+    }
+  }
+  return { code: "+49", number: s };
 }
 
 // ── Adresse ────────────────────────────────────────────────────────────────
@@ -623,9 +645,17 @@ function formFromExistingCustomer(
       {
         ...kontakt,
         name: kunde.ansprechpartner ?? "",
-        telefon: kunde.telefonnummer ?? "",
+        ...(() => {
+          const tel = splitStoredPhone(kunde.telefonnummer);
+          const fax = splitStoredPhone(kunde.faxnummer);
+          return {
+            telefonCode: tel.code,
+            telefon: tel.number,
+            handyCode: fax.code,
+            handy: fax.number,
+          };
+        })(),
         email: kunde.email ?? "",
-        handy: kunde.faxnummer ?? "",
         bemerkung: kunde.bemerkungen_kontakt ?? "",
       },
     ],
@@ -796,30 +826,39 @@ export function NewCustomerModal({
     : BASE_TAB_ORDER;
   const kundenNrDisplay = isEditMode ? editInitial?.kunde.kunden_nr ?? nextKundenNrPreview : nextKundenNrPreview;
 
+  // Track whether the modal was open on the previous render so we only
+  // re-initialise the form when the modal *transitions* from closed → open.
+  // Without this guard, every parent re-render (search-bar keystroke, adding a
+  // Termin/Beziehung, etc.) creates a new `editInitial` object reference and
+  // causes this effect to reset the form, losing any unsaved edits.
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (open) {
-      const nowAufnahme = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
-      const prepared =
-        isEditMode && editInitial
-          ? formFromExistingCustomer(editInitial.kunde, editInitial.wash, department)
-          : {
-              ...initialForm(),
-              aufnahme: nowAufnahme,
-              includeWashProfile: department === "waschanlage",
-            };
-      setForm(prepared);
-      setTab(isEditMode ? "kunde" : "vat");
-      setActiveKontaktIdx(0);
-      setActiveAdresseIdx(0);
-      setViesCountry("DE");
-      setViesVatInput("");
-      setVatCheckLoading(false);
-      setVatCheckResult(null);
-      setVatCheckError(null);
-      setAufnahmePreview(prepared.aufnahme || nowAufnahme);
-      setScannedAttachment(null);
-      setShowAttachPrompt(false);
-    }
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!justOpened) return;
+
+    const nowAufnahme = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+    const prepared =
+      isEditMode && editInitial
+        ? formFromExistingCustomer(editInitial.kunde, editInitial.wash, department)
+        : {
+            ...initialForm(),
+            aufnahme: nowAufnahme,
+            includeWashProfile: department === "waschanlage",
+          };
+    setForm(prepared);
+    setTab(isEditMode ? "kunde" : "vat");
+    setActiveKontaktIdx(0);
+    setActiveAdresseIdx(0);
+    setViesCountry("DE");
+    setViesVatInput("");
+    setVatCheckLoading(false);
+    setVatCheckResult(null);
+    setVatCheckError(null);
+    setAufnahmePreview(prepared.aufnahme || nowAufnahme);
+    setScannedAttachment(null);
+    setShowAttachPrompt(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, department, isEditMode, editInitial]);
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -926,28 +965,77 @@ export function NewCustomerModal({
 
   const isExtracted = (key: string) => extractedFields.has(key);
 
+  /** Maps known VIES infrastructure error codes to friendly German messages. */
+  const VIES_FRIENDLY: Record<string, string> = {
+    MS_UNAVAILABLE:
+      "Der VIES-Server des Mitgliedstaats ist vorübergehend nicht erreichbar (MS_UNAVAILABLE). " +
+      "Das ist ein bekanntes EU-Infrastrukturproblem und kein Fehler dieser Anwendung. " +
+      "Bitte in einigen Minuten erneut versuchen.",
+    MS_MAX_CONCURRENT_REQ:
+      "Zu viele gleichzeitige Anfragen an den VIES-Server des Mitgliedstaats (MS_MAX_CONCURRENT_REQ). " +
+      "Bitte kurz warten und erneut versuchen.",
+    GLOBAL_MAX_CONCURRENT_REQ:
+      "Der VIES-Dienst ist aktuell überlastet (GLOBAL_MAX_CONCURRENT_REQ). " +
+      "Bitte kurz warten und erneut versuchen.",
+    "VOW-SERVICE-UNAVAILABLE":
+      "Der VIES-Validierungsdienst ist vorübergehend nicht verfügbar (VOW-SERVICE-UNAVAILABLE). " +
+      "Bitte gleich nochmal versuchen.",
+    SERVICE_UNAVAILABLE:
+      "VIES ist vorübergehend nicht verfügbar (SERVICE_UNAVAILABLE). " +
+      "Bitte in einigen Minuten erneut versuchen.",
+    TIMEOUT:
+      "Der VIES-Server hat nicht rechtzeitig geantwortet (TIMEOUT). " +
+      "Bitte in einigen Minuten erneut versuchen.",
+    INVALID_INPUT:
+      "Das Format der USt-IdNr. ist für das gewählte Land ungültig (INVALID_INPUT).",
+    VAT_BLOCKED:
+      "Diese USt-IdNr. ist im VIES-System gesperrt (VAT_BLOCKED).",
+    VAT_REVOKED:
+      "Diese USt-IdNr. wurde widerrufen (VAT_REVOKED).",
+  }
+
+  /**
+   * Extracts a display string from a backend error body.
+   * Detects known VIES error codes and replaces them with friendly German text.
+   */
   const formatVatCheckDetail = (raw: unknown): string => {
-    if (typeof raw === "string" && raw.trim()) return raw.trim();
+    const extractText = (v: unknown): string => {
+      if (typeof v === "string") return v.trim();
+      if (typeof v === "number") return String(v);
+      return "";
+    }
+
+    const applyFriendly = (text: string): string => {
+      const upper = text.toUpperCase()
+      for (const [code, friendly] of Object.entries(VIES_FRIENDLY)) {
+        if (upper.includes(code)) return friendly
+      }
+      return text
+    }
+
+    if (typeof raw === "string" && raw.trim()) return applyFriendly(raw.trim())
+
     if (Array.isArray(raw)) {
       return raw
         .map((e) => {
-          if (e && typeof e === "object" && "msg" in e) return String((e as { msg: string }).msg);
+          if (e && typeof e === "object" && "msg" in e) return applyFriendly(String((e as { msg: string }).msg))
           if (e && typeof e === "object" && "message" in e)
-            return String((e as { message: string }).message);
-          return JSON.stringify(e);
+            return applyFriendly(String((e as { message: string }).message))
+          return JSON.stringify(e)
         })
-        .join("; ");
+        .join("; ")
     }
+
     // Handle proxy / gateway error shapes that don't use FastAPI's {"detail": ...} format.
     if (raw && typeof raw === "object") {
-      const obj = raw as Record<string, unknown>;
-      const candidate =
-        obj["detail"] ?? obj["error"] ?? obj["message"] ?? obj["error_description"];
-      if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-      if (typeof candidate === "number") return String(candidate);
+      const obj = raw as Record<string, unknown>
+      const candidate = obj["detail"] ?? obj["error"] ?? obj["message"] ?? obj["error_description"]
+      const text = extractText(candidate)
+      if (text) return applyFriendly(text)
     }
-    return "Prüfung fehlgeschlagen — keine Detail-Antwort vom Server (möglicherweise Proxy-Timeout oder CORS-Problem).";
-  };
+
+    return "Prüfung fehlgeschlagen — keine Detail-Antwort vom Server (möglicherweise Proxy-Timeout oder CORS-Problem)."
+  }
 
   const runVatCheck = async () => {
     const trimmed = viesVatInput.trim();
@@ -1011,11 +1099,14 @@ export function NewCustomerModal({
       }
       const body = parsedBody as ViesCheckResult;
       setVatCheckResult(body);
-    } catch {
+    } catch (err) {
+      const jsMsg = err instanceof Error ? err.message : String(err)
+      const targetUrl = `${API_BASE || "(Vite-Proxy)"}/api/v1/vat/check`
+      const hint = API_BASE
+        ? `Prüfen Sie, ob das Backend unter ${API_BASE} läuft und CORS_ORIGINS diese Domain enthält.`
+        : "Lokal: Läuft das Python-Backend? (uvicorn main:app --reload --port 8000). Cloud: VITE_API_BASE_URL als Build-Variable setzen."
       setVatCheckError(
-        API_BASE
-          ? "Netzwerkfehler. Das Backend ist nicht erreichbar — CORS-Block oder Backend nicht gestartet?"
-          : "Netzwerkfehler. Lokal: Läuft das Python-Backend (Port 8000)? Cloud: VITE_API_BASE_URL als Build-Variable setzen und Frontend neu bauen."
+        `Netzwerkfehler — ${jsMsg}. Ziel: ${targetUrl}. ${hint}`
       );
     } finally {
       setVatCheckLoading(false);

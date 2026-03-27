@@ -1,8 +1,10 @@
 import type {
+  KundenBeziehung,
   KundenDbState,
   KundenDetailWithWash,
   KundenRolleRow,
   KundenStamm,
+  KundenTermin,
   KundenUnterlage,
   KundenWashStamm,
 } from "../types/kunden";
@@ -293,10 +295,14 @@ function seedDb(): KundenDbState {
     kundenWash,
     rollen,
     unterlagen,
+    termine: [],
+    beziehungen: [],
     nextKundeId: 16,
     nextWashId: 2,
     nextRolleId: 1,
     nextUnterlageId: 2,
+    nextTerminId: 1,
+    nextBeziehungId: 1,
   };
 }
 
@@ -333,10 +339,18 @@ function isKundenDbState(x: unknown): x is KundenDbState {
 function normalizeUnterlagen(db: KundenDbState): KundenDbState {
   const u = db.unterlagen;
   const n = db.nextUnterlageId;
+  const t = (db as Partial<KundenDbState>).termine;
+  const b = (db as Partial<KundenDbState>).beziehungen;
+  const nt = (db as Partial<KundenDbState>).nextTerminId;
+  const nb = (db as Partial<KundenDbState>).nextBeziehungId;
   return {
     ...db,
     unterlagen: Array.isArray(u) ? u : [],
     nextUnterlageId: typeof n === "number" && n >= 1 ? n : 1,
+    termine: Array.isArray(t) ? t : [],
+    beziehungen: Array.isArray(b) ? b : [],
+    nextTerminId: typeof nt === "number" && nt >= 1 ? nt : 1,
+    nextBeziehungId: typeof nb === "number" && nb >= 1 ? nb : 1,
   };
 }
 
@@ -605,5 +619,97 @@ export function removeKundenUnterlage(db: KundenDbState, unterlageId: number): K
   return {
     ...db,
     unterlagen: db.unterlagen.filter((u) => u.id !== unterlageId),
+  };
+}
+
+// ─── Termine ────────────────────────────────────────────────────────────────
+
+export type NewKundenTerminInput = Pick<KundenTermin, "datum" | "zeit" | "zweck">;
+
+export function listTermineForKunde(db: KundenDbState, kundenId: number): KundenTermin[] {
+  return (db.termine ?? [])
+    .filter((t) => t.kunden_id === kundenId)
+    .slice()
+    .sort((a, b) => `${a.datum}T${a.zeit}`.localeCompare(`${b.datum}T${b.zeit}`));
+}
+
+export function addKundenTermin(
+  db: KundenDbState,
+  kundenId: number,
+  input: NewKundenTerminInput
+): KundenDbState {
+  const id = db.nextTerminId ?? 1;
+  const row: KundenTermin = {
+    id,
+    kunden_id: kundenId,
+    datum: input.datum,
+    zeit: input.zeit,
+    zweck: input.zweck.trim(),
+    erledigt: false,
+    created_at: new Date().toISOString(),
+  };
+  return {
+    ...db,
+    termine: [...(db.termine ?? []), row],
+    nextTerminId: id + 1,
+  };
+}
+
+export function toggleTerminErledigt(db: KundenDbState, terminId: number): KundenDbState {
+  return {
+    ...db,
+    termine: (db.termine ?? []).map((t) =>
+      t.id === terminId ? { ...t, erledigt: !t.erledigt } : t
+    ),
+  };
+}
+
+export function removeKundenTermin(db: KundenDbState, terminId: number): KundenDbState {
+  return {
+    ...db,
+    termine: (db.termine ?? []).filter((t) => t.id !== terminId),
+  };
+}
+
+// ─── Beziehungen ────────────────────────────────────────────────────────────
+
+export type NewKundenBeziehungInput = Pick<
+  KundenBeziehung,
+  "verknuepfter_kunden_id" | "art"
+>;
+
+export function listBeziehungenForKunde(db: KundenDbState, kundenId: number): KundenBeziehung[] {
+  return (db.beziehungen ?? []).filter((b) => b.kunden_id === kundenId);
+}
+
+export function addKundenBeziehung(
+  db: KundenDbState,
+  kundenId: number,
+  input: NewKundenBeziehungInput
+): KundenDbState {
+  const id = db.nextBeziehungId ?? 1;
+  const already = (db.beziehungen ?? []).some(
+    (b) =>
+      b.kunden_id === kundenId && b.verknuepfter_kunden_id === input.verknuepfter_kunden_id
+  );
+  if (already) return db;
+  const row: KundenBeziehung = {
+    id,
+    kunden_id: kundenId,
+    verknuepfter_kunden_id: input.verknuepfter_kunden_id,
+    art: input.art.trim(),
+    created_at: new Date().toISOString(),
+  };
+  return {
+    ...db,
+    beziehungen: [...(db.beziehungen ?? []), row],
+    nextBeziehungId: id + 1,
+  };
+}
+
+export function removeKundenBeziehung(db: KundenDbState, beziehungId: number): KundenDbState {
+  return {
+    ...db,
+    beziehungen: (db.beziehungen ?? []).filter((b) => b.id !== beziehungId),
   };
 }

@@ -12,6 +12,7 @@ This folder converts your daily work into structured skill growth.
 - Keep sessions focused: 30 to 90 minutes/day.
 - Always produce one applied output (code note, checklist, draft design, or test case).
 - Track confidence (1-5) and next skill gap daily.
+- Follow role path: Product -> Engineering -> QA -> DevOps -> Security basics.
 
 ## Daily workflow
 1. Pick one backlog-linked topic.
@@ -19,6 +20,7 @@ This folder converts your daily work into structured skill growth.
 3. Execute one practical exercise related to current sprint.
 4. Write reflection and next-step.
 5. Weekend learning is optional catch-up, not required.
+6. Log learning evidence in daily todo compliance notes.
 
 ## Anti-patterns
 - Consuming tutorials without building.

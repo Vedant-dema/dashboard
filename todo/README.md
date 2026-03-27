@@ -2,6 +2,9 @@
 
 Use this folder as the daily execution control center.
 
+## Objective
+Operate software delivery with enterprise discipline as a one-person IT team.
+
 ## Naming convention
 - Daily file: `YYYY-MM-DD.md` (example: `2026-03-27.md`)
 - One file per office day (Monday-Friday), no duplicates.
@@ -14,7 +17,14 @@ Use this folder as the daily execution control center.
 5. Update `backlog.md` after end-of-day review.
 6. On weekends, skip normal daily file creation unless there is urgent production work.
 
-## Rules
+## Formal process requirements
+- Every task must be linked to a backlog ID (`BL-xxx`).
+- Every P1/P2 task must include acceptance criteria before work starts.
+- Every completed task must include evidence (PR/commit/test/deploy link).
+- Every release candidate must pass a release checklist and rollback check.
+- Every incident must be logged with root cause and prevention action.
+
+## Execution rules
 - Track both "what to do" and "what not to do."
 - Every task needs: impact, estimate, deadline, owner, status.
 - Use statuses: `todo`, `in_progress`, `blocked`, `done`, `dropped`.
@@ -23,3 +33,8 @@ Use this folder as the daily execution control center.
 ## Weekly cadence
 - Friday: backlog cleanup and next-week priorities.
 - Split any task estimated > 1 day into smaller tasks.
+- Review DORA metrics trend and top 3 delivery risks.
+
+## Monthly cadence
+- Review milestone progress, security posture, and technical debt.
+- Confirm process compliance gaps and corrective actions.

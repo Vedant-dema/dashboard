@@ -1,0 +1,95 @@
+---
+description: Daily professional work reporting with automatic date-based files
+alwaysApply: true
+---
+
+# Daily Report Operations Rule
+
+## Objective
+- Maintain one professional report file per day in `Daily report/`.
+- Capture what was changed, what was completed, what issues were faced, and next actions.
+
+## Daily File Rule
+- At session start, derive today's date in `YYYY-MM-DD`.
+- Use report file path: `Daily report/YYYY-MM-DD.md`.
+- If the file does not exist, create it immediately on Monday-Friday.
+- On Saturday-Sunday, only create the file if explicitly requested.
+
+## Required Daily Sections
+- Report metadata (date, owner, status).
+- Executive summary (business-focused, concise).
+- Priorities worked on (with impact, estimate, deadline, owner, status).
+- What I changed (professional list of concrete updates).
+- Work completed (outcomes delivered).
+- Issues faced (problem, impact, severity, status).
+- Resolutions and mitigations (how issues were handled).
+- Blockers and escalations (owner and next action).
+- Decisions made (important trade-offs or approvals).
+- Backlog delta (added/removed/reprioritized).
+- Metrics snapshot (completed, in-progress, blocked counts).
+- End-of-day close (done, not done, carry-forward, tomorrow first task).
+
+## Writing Standard
+- Keep tone professional and audit-friendly.
+- Prefer measurable outcomes over vague statements.
+- Every blocker must include an escalation action and owner if unresolved.
+- Use statuses only: `todo`, `in_progress`, `blocked`, `done`, `dropped`.
+
+## Template (Create If Missing)
+```markdown
+# Daily Work Report - YYYY-MM-DD
+
+## Report Metadata
+- Date: YYYY-MM-DD
+- Author: You
+- Owner: you
+- Day Type: Weekday
+- Status: in_progress
+
+## Executive Summary
+One short paragraph describing business outcome and focus.
+
+## Priorities Worked On
+| ID | Priority | Impact | Estimate | Deadline | Owner | Status |
+|---|---|---|---|---|---|---|
+| T1 |  |  |  |  | you | todo |
+
+## What I Changed
+- ...
+
+## Work Completed
+- ...
+
+## Issues Faced
+| Issue | Impact | Severity | Owner | First Seen | Current Status |
+|---|---|---|---|---|---|
+|  |  |  | you | YYYY-MM-DD | in_progress |
+
+## Resolutions and Mitigations
+- ...
+
+## Blockers and Escalations
+- Blocker:
+- Escalation Action:
+- Escalation Owner:
+
+## Decisions Made
+- ...
+
+## Backlog Delta
+- Added:
+- Removed:
+- Reprioritized:
+
+## Metrics Snapshot
+- Tasks completed today:
+- Tasks in progress:
+- Blocked tasks:
+
+## End of Day Close
+- Done:
+- Not done:
+- Carry-forward:
+- Tomorrow first task:
+```
+

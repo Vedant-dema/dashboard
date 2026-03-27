@@ -456,7 +456,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     deptWerkstatt: "Werkstatt",
     deptWaschanlage: "Waschanlage",
     customersDeptHint:
-      "Eine Maske für alle Bereiche: kunden, optional kunden_wash im Tab Waschanlage (wie beim Bearbeiten).",
+      "Eine Maske für alle Bereiche, mit optionalen Waschanlagen-Daten im Tab Waschanlage beim Bearbeiten.",
     customersQuickCompanySearch: "Firmenname Schnellsuche:",
     customersSearchPlaceholder: "Suchen…",
     customersSuggestionsDb: "Vorschläge: KU-Nr. und Firmennamen aus der Datenbank",
@@ -1179,7 +1179,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     deptWerkstatt: "Workshop",
     deptWaschanlage: "Car wash",
     customersDeptHint:
-      "One screen for all areas: kunden; optional kunden_wash in the Car wash tab when editing.",
+      "One screen for all areas, with optional car wash details in the Car wash tab when editing.",
     customersQuickCompanySearch: "Company quick search:",
     customersSearchPlaceholder: "Search…",
     customersSuggestionsDb: "Suggestions: customer no. and company names from the database",
@@ -1802,7 +1802,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     deptWerkstatt: "Atelier",
     deptWaschanlage: "Station de lavage",
     customersDeptHint:
-      "Un écran pour tous les secteurs : kunden ; option kunden_wash dans l'onglet lavage lors de l'édition.",
+      "Un écran pour tous les secteurs, avec des données lavage optionnelles dans l'onglet lavage lors de l'édition.",
     customersQuickCompanySearch: "Recherche rapide entreprise :",
     customersSearchPlaceholder: "Rechercher…",
     customersSuggestionsDb: "Suggestions : n° client et entreprises depuis la base",
@@ -2312,7 +2312,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     deptWerkstatt: "Officina",
     deptWaschanlage: "Autolavaggio",
     customersDeptHint:
-      "Una maschera per tutte le aree: kunden; opzionale kunden_wash nella scheda Autolavaggio durante la modifica.",
+      "Una maschera per tutte le aree, con dettagli autolavaggio opzionali nella scheda Autolavaggio durante la modifica.",
     customersQuickCompanySearch: "Ricerca rapida azienda:",
     customersSearchPlaceholder: "Cerca…",
     customersSuggestionsDb: "Suggerimenti: n° cliente e ragioni sociali dal database",

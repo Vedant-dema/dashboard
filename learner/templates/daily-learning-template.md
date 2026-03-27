@@ -3,6 +3,7 @@
 ## Learning Objective
 - Skill to improve today:
 - Why now (linked backlog ID):
+- Role lens today (Product/Engineering/QA/DevOps/Security):
 
 ## Resources (Max 3)
 1.
@@ -17,6 +18,7 @@
 - Task:
 - Output created:
 - Linked code/task file:
+- Evidence link:
 
 ## Knowledge Check
 - What I understood:
@@ -26,3 +28,4 @@
 ## Tomorrow Learning Step
 - Next micro-topic:
 - Practical use in tomorrow's todo:
+- Target backlog ID for application:

@@ -14,6 +14,7 @@
 | 2026-03-23 | [2026-03-23.md](feature-logs/2026-03-23.md) | FEATURE-001, FEATURE-007 |
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
+| 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029 |
 
 ---
 
@@ -45,6 +46,11 @@
 | FEATURE-022b | Merge Kunde & Adresse Tabs in NewCustomerModal | Modified | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) |
 | FEATURE-023 | VIES Auto-Enrichment Loop and Match Cleanup | Extended | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) |
 | FEATURE-024 | Always-Run ms Lookup When Details Missing | Extended | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) |
+| FEATURE-025 | Solo IT Delivery Operating System | Added | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-026 | Weekday-Only Office Cadence for Solo Operating System | Extended | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-027 | Hide VAT Backend Raw JSON Panel in Customer Modal | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-028 | Daily Report Folder and Auto Daily Reporting Rule | Added | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
+| FEATURE-029 | Remove VIES Hint and Customer Table-Name Labels from UI | Modified | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 
@@ -175,3 +181,68 @@ None.
 
 ### Notes / Known Limitations
 Weekday cadence reduces burnout risk, but urgent weekend production incidents still require manual override and explicit logging in backlog delta.
+
+---
+
+## [FEATURE-027] Enterprise Formalities Upgrade for Solo IT System
+**Date:** 2026-03-27 
+**Author/Agent:** Cursor AI 
+**Status:** Extended 
+
+### What Was Added
+The solo operating system was upgraded to a more professional enterprise-style workflow with mandatory formalities, evidence-based completion rules, staged release governance, incident handling requirements, and persistent recurring enforcement so the process runs continuously as an operational standard.
+
+### Where It Was Added
+List every file touched or created:
+- `.cursor/rules/time-management-ops.mdc` — strengthened persistent enforcement, formality metadata, and staged release expectations
+- `todo/README.md` — added formal process requirements and monthly governance cadence
+- `todo/templates/daily-task-template.md` — added start-of-day formalities, acceptance criteria snapshot, release evidence, and incident log sections
+- `todo/backlog.md` — expanded backlog schema with requirement/evidence/release-decision columns
+- `learner/README.md` — aligned learning to role progression and formal evidence logging
+- `learner/templates/daily-learning-template.md` — added role lens and evidence fields
+- `learner/learning-roadmap.md` — added Stage 0 professional foundations
+- `docs/solo-it-operating-model.md` — added minimum artifacts, SOPs, and stricter release formalities
+- `docs/FEATURE-LOG.md` — feature extension entry
+
+### What It Does (Technical)
+Step-by-step description of the logic flow:
+1. Enforces recurring workday execution and evidence-based completion in the persistent rule.
+2. Requires formal planning artifacts before execution (requirements and acceptance criteria).
+3. Captures release controls through checklist-driven quality/security/deploy evidence in daily operations.
+4. Adds staged deployment and explicit verification/go-no-go handling in the operating model.
+5. Standardizes incident response and prevention documentation as part of daily and release workflows.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|----|---|----|----|
+| requirementRef | string | Yes (P1/P2) | Reference to requirement/PRD context for a backlog item |
+| evidenceRef | string | Yes for done tasks | Link or pointer to proof of completion (PR/tests/deploy) |
+| releaseDecision | enum | Yes for release tasks | `approved`, `deferred`, or `rolled_back` |
+| incidentId | string | No | Identifier for production incident tracking |
+| severity | string | No | Incident severity level used for response prioritization |
+| verificationWindow | string | Yes for release | Time window used for go/no-go release validation |
+
+### Database
+- **Engine:** None
+- **Tables Affected:** N/A
+- **Schema Changes:** None
+- **Key Queries:** None
+
+### API Endpoints (if applicable)
+| Method | Path | Auth | Request Body | Response |
+|-----|---|---|----|----|
+| N/A | N/A | N/A | N/A | N/A |
+
+### State / Store (if applicable)
+- **Store file:** N/A
+- **Actions/Selectors added:** None
+- **Persisted:** No
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+This process now matches enterprise structure, but it remains documentation-driven and requires consistent manual execution until automation scripts are added for artifact generation and metric capture.

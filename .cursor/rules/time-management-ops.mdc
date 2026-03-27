@@ -13,30 +13,44 @@ alwaysApply: true
   - `learner/YYYY-MM-DD.md`
 - On Saturday or Sunday, do not create a normal daily file unless explicitly requested.
 - Weekend default mode: optional light review only (no full sprint load).
+- This rule is persistent and recurring: repeat this cycle every workday without expiration.
 
 ## Task Definition Standard
 - Every task must include: impact, estimate, deadline, owner (`you` or `agent`), and status.
 - Use statuses only: `todo`, `in_progress`, `blocked`, `done`, `dropped`.
 - If blocked for more than 1 day, add escalation action and owner.
+- Every P1/P2 task must include formality metadata: requirement ID, test evidence, and release decision.
 
 ## Daily Execution Discipline
 - Plan using 3 focus blocks only (high-value tasks first).
 - Keep work in progress <= 3 items.
 - End of day must include: done list, not-done list, carry-forward, and tomorrow first task.
 - Office schedule baseline: Monday-Friday execution days.
+- Do not mark work `done` without evidence link (PR, commit, test output, or deployment log).
 
 ## Backlog and Timeline Control
 - Keep one source of truth: `todo/backlog.md`.
 - Every completed daily file must update backlog item status.
 - Weekly review must identify overdue items and split oversized tasks.
 - Every feature must map to a sprint/milestone and production readiness gate.
+- Maintain release forecast for next 2 sprints and highlight at-risk items.
 
 ## Production Readiness Gate (Before Live)
 - Required checks: tests pass, lint pass, rollback plan, monitoring, and risk notes.
 - Track DORA baseline for each release: deployment frequency, lead time, change failure rate, MTTR.
 - Track security baseline: secrets handling, dependency scan, vulnerability response owner/date.
+- Use staged release flow: `dev -> staging -> production`.
+- Require post-release verification window and go/no-go confirmation.
+
+## Mandatory Formalities (Enterprise-style)
+- Keep requirement artifacts: PRD/user story + acceptance criteria.
+- Keep decision artifacts: ADR for major technical decisions.
+- Keep delivery artifacts: change record, release checklist, incident log.
+- Keep review artifacts: weekly review notes and monthly audit notes.
 
 ## Non-Negotiable Don'ts
 - Do not start coding before writing today priorities and constraints.
 - Do not run unplanned tasks unless marked as urgent and logged in backlog delta.
 - Do not close day without carry-forward and blocker status updates.
+- Do not deploy directly to production without staging validation.
+- Do not close incidents without root-cause note and prevention action.

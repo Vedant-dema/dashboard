@@ -626,8 +626,6 @@ export function NewCustomerModal({
   const [vatCheckLoading, setVatCheckLoading] = useState(false);
   const [vatCheckResult, setVatCheckResult] = useState<ViesCheckResult | null>(null);
   const [vatCheckError, setVatCheckError] = useState<string | null>(null);
-  /** Full JSON string last returned by POST /api/v1/vat/check (always shown after a request). */
-  const [vatBackendResponseJson, setVatBackendResponseJson] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -643,7 +641,6 @@ export function NewCustomerModal({
       setVatCheckLoading(false);
       setVatCheckResult(null);
       setVatCheckError(null);
-      setVatBackendResponseJson(null);
       setAufnahmePreview(
         new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" })
       );
@@ -769,7 +766,6 @@ export function NewCustomerModal({
     setVatCheckLoading(true);
     setVatCheckError(null);
     setVatCheckResult(null);
-    setVatBackendResponseJson(null);
     try {
       // Keep the request website-style: only mandatory fields.
       const res = await fetch(`${API_BASE}/api/v1/vat/check`, {
@@ -786,7 +782,6 @@ export function NewCustomerModal({
           error: "CORS oder Netzwerkfehler (HTTP-Status 0)",
           hint: "Das Backend hat geantwortet, aber der Browser blockiert die Antwort. Stellen Sie sicher, dass CORS_ORIGINS auf dem Server die Cloud-Domain enthält.",
         };
-        setVatBackendResponseJson(JSON.stringify(corsHint, null, 2));
         setVatCheckError(
           "CORS-Fehler: Der Browser blockiert die Antwort des Backends. Bitte CORS_ORIGINS in der Cloud-Konfiguration prüfen."
         );
@@ -799,32 +794,6 @@ export function NewCustomerModal({
         parsedBody = textBody.trim() ? JSON.parse(textBody) : null;
       } catch {
         parseError = "Antwort war kein gültiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)";
-      }
-
-      let displayJson: unknown;
-      if (parseError) {
-        displayJson = {
-          _httpStatus: res.status,
-          _httpStatusText: res.statusText || "(kein Statustext)",
-          _parseError: parseError,
-          _rawText: textBody.slice(0, 4000),
-        };
-      } else if (parsedBody !== null && typeof parsedBody === "object") {
-        displayJson = parsedBody;
-      } else if (parsedBody !== null) {
-        displayJson = parsedBody;
-      } else {
-        // Empty body.
-        displayJson = {
-          _httpStatus: res.status,
-          _httpStatusText: res.statusText || "(kein Statustext)",
-          _body: "(leer)",
-        };
-      }
-      try {
-        setVatBackendResponseJson(JSON.stringify(displayJson, null, 2));
-      } catch {
-        setVatBackendResponseJson(String(displayJson));
       }
 
       if (!res.ok) {
@@ -854,19 +823,6 @@ export function NewCustomerModal({
         API_BASE
           ? "Netzwerkfehler. Das Backend ist nicht erreichbar — CORS-Block oder Backend nicht gestartet?"
           : "Netzwerkfehler. Lokal: Läuft das Python-Backend (Port 8000)? Cloud: VITE_API_BASE_URL als Build-Variable setzen und Frontend neu bauen."
-      );
-      setVatBackendResponseJson(
-        JSON.stringify(
-          {
-            error: "fetch failed — keine Antwort vom Server",
-            hint: API_BASE
-              ? "Backend prüfen: CORS_ORIGINS muss die Frontend-Domain enthalten"
-              : "VITE_API_BASE_URL ist leer — in Cloud-Build-Einstellungen auf Backend-URL setzen, z. B. https://dema-backend.onrender.com",
-            apiBase: API_BASE || "(leer — VITE_API_BASE_URL nicht gesetzt)",
-          },
-          null,
-          2
-        )
       );
     } finally {
       setVatCheckLoading(false);
@@ -939,11 +895,7 @@ export function NewCustomerModal({
                 (Neu)
               </span>
             </div>
-            <p className="mt-1 text-xs text-slate-300">
-              DEMA Management · <code className="rounded bg-black/20 px-1">kunden</code>
-              {", optional "}
-              <code className="rounded bg-black/20 px-1">kunden_wash</code> (Tab Waschanlage)
-            </p>
+            <p className="mt-1 text-xs text-slate-300">DEMA Management</p>
           </div>
           <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end sm:text-right">
             <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
@@ -1041,23 +993,6 @@ export function NewCustomerModal({
                     {vatCheckError}
                   </p>
                 ) : null}
-                {vatBackendResponseJson ? (
-                  <div className="mt-4 rounded-xl border-2 border-blue-200 bg-white p-3 shadow-sm ring-1 ring-blue-100">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">
-                      Server-Antwort (komplettes JSON vom Backend)
-                    </p>
-                    <p className="mb-2 text-[11px] leading-snug text-slate-600">
-                      Feld <code className="rounded bg-slate-100 px-1">vies_raw</code> enthält die VoW-Rohantwort,
-                      sofern das Backend sie mitsendet.
-                    </p>
-                    <pre
-                      className="max-h-[min(50vh,28rem)] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-3 text-left font-mono text-[11px] leading-relaxed text-amber-100"
-                      tabIndex={0}
-                    >
-                      {vatBackendResponseJson}
-                    </pre>
-                  </div>
-                ) : null}
                 {vatCheckResult ? (
                   <div
                     className={`mt-4 rounded-lg border px-3 py-3 text-sm ${
@@ -1142,10 +1077,6 @@ export function NewCustomerModal({
                   </div>
                 ) : null}
               </div>
-              <p className="text-xs text-slate-500">
-                Hinweis: VIES kann auslastungsbedingt kurzzeitig antworten — ggf. später erneut
-                versuchen.                 Geprüfte Daten können Sie im Tab <strong>Kunde &amp; Adresse</strong> anpassen.
-              </p>
             </div>
           )}
 
@@ -1750,8 +1681,8 @@ export function NewCustomerModal({
                 />
               </div>
               <p className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs text-slate-600">
-                Waschdaten (<code className="text-[10px]">kunden_wash</code>) erfassen Sie im Tab{" "}
-                <strong>Waschanlage</strong> — gleiches Modell wie beim Bearbeiten eines Kunden.
+                Waschdaten erfassen Sie im Tab <strong>Waschanlage</strong> — gleiches Modell wie beim
+                Bearbeiten eines Kunden.
               </p>
             </div>
           )}
@@ -1768,8 +1699,8 @@ export function NewCustomerModal({
                 <span>
                   <span className="font-semibold text-cyan-900">Waschprofil anlegen</span>
                   <span className="mt-1 block text-xs font-normal text-slate-600">
-                    Speichert Zusatzdaten in <code className="text-[10px]">kunden_wash</code> (1:1 zur
-                    Kunden-ID). Unter Waschanlage standardmäßig aktiv.
+                    Speichert zusätzliche Waschanlagen-Daten für diesen Kunden. Unter Waschanlage
+                    standardmäßig aktiv.
                   </span>
                 </span>
               </label>

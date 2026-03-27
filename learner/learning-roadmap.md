@@ -1,5 +1,14 @@
 # Learning Roadmap (Backlog Linked)
 
+## Stage 0 - Professional Foundations (Week 0-1)
+Goal: Build formal engineering habits before scaling delivery.
+
+| Topic | Why | Backlog Link | Evidence of learning |
+|---|---|---|---|
+| Writing acceptance criteria | Prevents scope confusion | BL-003 | 5 criteria-based tasks |
+| Change and release checklist discipline | Reduces production risk | BL-001 | Completed checklist for one release |
+| Incident logging and postmortem basics | Enables reliable operations | BL-002 | One mock incident note |
+
 ## Stage 1 - Delivery Fundamentals (Week 1-2)
 Goal: Ship safely to production with confidence.
 

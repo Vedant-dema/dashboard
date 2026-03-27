@@ -1,6 +1,14 @@
 # Solo IT Operating Model
 
-This model is for one-person delivery with enterprise-grade discipline.
+This model is for one-person delivery with enterprise-grade discipline from zero documentation baseline.
+
+## 0) Required artifacts (minimum formalities)
+- PRD (requirement document) for each major feature.
+- Acceptance criteria per backlog item.
+- ADR (architecture decision record) for non-trivial technical decisions.
+- Change record for each production deployment.
+- Incident record + post-incident actions for production issues.
+- Weekly review note + monthly audit note.
 
 ## 1) End-to-end workflow
 
@@ -31,6 +39,8 @@ flowchart TD
 - Security: secrets not in code, dependencies scanned, vulnerabilities triaged.
 - Observability: error tracking, uptime checks, and release annotations enabled.
 - Runbook: owner and response steps available for top failure scenarios.
+- Staged deployment: validate in staging before production.
+- Verification window: 30-60 minutes with explicit go/no-go result.
 
 ## 4) DORA baseline metrics
 Track each release in a simple table:
@@ -65,7 +75,29 @@ Definitions:
 - Security and technical debt review.
 - Scope reset for the next month.
 
-## 7) What to do / what not to do
+## 7) Standard operating procedures (SOP)
+
+### Intake SOP
+1. Capture request, business outcome, and deadline.
+2. Convert to backlog item with acceptance criteria.
+3. Assign priority and milestone.
+
+### Build SOP
+1. Pick from backlog only.
+2. Implement with tests and evidence.
+3. Update status and risk notes continuously.
+
+### Release SOP
+1. Complete release checklist and rollback plan.
+2. Deploy to staging, verify, then production.
+3. Monitor during verification window and record outcome.
+
+### Incident SOP
+1. Log incident ID, severity, impact, and start time.
+2. Apply fix or rollback fast.
+3. Document root cause and prevention action within 24 hours.
+
+## 8) What to do / what not to do
 
 ### Do
 - Ship in small increments.

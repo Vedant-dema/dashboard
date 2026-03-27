@@ -791,7 +791,9 @@ export function NewCustomerModal({
   const isEditMode = mode === "edit";
   const hasAdditionalTab = isEditMode && Boolean(additionalTabContent);
   const hasEditKundeSideContent = isEditMode && Boolean(editKundeSideContent);
-  const tabOrder = hasAdditionalTab ? [...BASE_TAB_ORDER, "additional"] : BASE_TAB_ORDER;
+  const tabOrder: TabId[] = hasAdditionalTab
+    ? [...BASE_TAB_ORDER, "additional" as TabId]
+    : BASE_TAB_ORDER;
   const kundenNrDisplay = isEditMode ? editInitial?.kunde.kunden_nr ?? nextKundenNrPreview : nextKundenNrPreview;
 
   useEffect(() => {

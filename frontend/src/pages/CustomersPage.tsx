@@ -1653,8 +1653,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <label className="mb-1 block text-xs font-medium text-slate-500">IBAN</label>
                       <SuggestTextInput
                         type="text"
-                        value={draftWash.iban ?? ""}
-                        onChange={(e) => setDraftWash({ ...draftWash, iban: e.target.value })}
+                        value={draftWash?.iban ?? ""}
+                        onChange={(e) =>
+                          setDraftWash((prev) => (prev ? { ...prev, iban: e.target.value } : prev))
+                        }
                         suggestions={fieldSuggestions.wash_iban}
                         title="Vorschläge aus gespeicherten Wasch-Datensätzen"
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -1663,9 +1665,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-500">Wichtige Infos</label>
                       <textarea
-                        value={draftWash.wichtige_infos ?? ""}
+                        value={draftWash?.wichtige_infos ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, wichtige_infos: e.target.value })
+                          setDraftWash((prev) =>
+                            prev ? { ...prev, wichtige_infos: e.target.value } : prev
+                          )
                         }
                         rows={2}
                         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -1674,9 +1678,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-500">Bemerkungen</label>
                       <textarea
-                        value={draftWash.bemerkungen ?? ""}
+                        value={draftWash?.bemerkungen ?? ""}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, bemerkungen: e.target.value })
+                          setDraftWash((prev) => (prev ? { ...prev, bemerkungen: e.target.value } : prev))
                         }
                         rows={2}
                         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -1685,9 +1689,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                     <div className="flex items-center gap-2 sm:col-span-2">
                       <input
                         type="checkbox"
-                        checked={draftWash.lastschrift ?? false}
+                        checked={draftWash?.lastschrift ?? false}
                         onChange={(e) =>
-                          setDraftWash({ ...draftWash, lastschrift: e.target.checked })
+                          setDraftWash((prev) => (prev ? { ...prev, lastschrift: e.target.checked } : prev))
                         }
                         id="lastschrift"
                         className="rounded border-slate-300"
@@ -1774,6 +1778,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       type="button"
                       className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-medium text-blue-700 ring-1 ring-slate-200 hover:bg-blue-50"
                       onClick={() => {
+                        if (!draftKunde) return;
                         setDraftWash(emptyWashDraft(draftKunde.id));
                       }}
                     >

@@ -6,11 +6,13 @@ import {
   ExtractedFieldWrapper,
   type ScanState,
 } from "./DocExtractBanner";
-import type {
-  NewKundeInput,
-  KundenWashUpsertFields,
-  NewKundenUnterlageInput,
-  KundenHistoryEntry,
+import {
+  BOOLEAN_KUNDEN_HISTORY_FIELDS,
+  BOOLEAN_WASH_HISTORY_FIELDS,
+  type NewKundeInput,
+  type KundenWashUpsertFields,
+  type NewKundenUnterlageInput,
+  type KundenHistoryEntry,
 } from "../store/kundenStore";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
@@ -851,6 +853,24 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
 
 const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
 
+function formatHistoryValueDisplay(
+  field: string,
+  raw: string,
+  t: (key: string, fallback: string) => string
+): string {
+  if (!raw) return raw;
+  if (raw === "true" || raw === "false") {
+    const washKey = field.startsWith("wash_") ? field.slice(5) : null;
+    if (washKey && BOOLEAN_WASH_HISTORY_FIELDS.has(washKey as keyof KundenWashStamm)) {
+      return raw === "true" ? t("historyBoolYes", "Yes") : t("historyBoolNo", "No");
+    }
+    if (!washKey && BOOLEAN_KUNDEN_HISTORY_FIELDS.has(field as keyof KundenStamm)) {
+      return raw === "true" ? t("historyBoolYes", "Yes") : t("historyBoolNo", "No");
+    }
+  }
+  return raw;
+}
+
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
 const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500";
@@ -1321,7 +1341,7 @@ export function NewCustomerModal({
       role="presentation"
     >
       <div
-        className="relative flex w-full max-w-[92rem] max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
+        className="relative flex w-full max-h-[88vh] max-w-[min(98rem,98vw)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -1601,15 +1621,19 @@ export function NewCustomerModal({
 
               {/* ── Main grid: Firmendaten | Adresse & Steuer | Kontakt | (optional edit-side) ── */}
               <div
-                className={`grid gap-4 ${
+                className={`grid gap-4 md:gap-5 ${
                   hasEditKundeSideContent
-                    ? "grid-cols-1 xl:grid-cols-4"
-                    : "grid-cols-1 md:grid-cols-3"
+                    ? "grid-cols-1 xl:grid-cols-12"
+                    : "grid-cols-1 md:grid-cols-3 lg:grid-cols-12"
                 }`}
               >
 
                 {/* ── Col 1: Firmendaten ── */}
-                <div className="min-w-0 space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <div
+                  className={`min-w-0 space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
+                    hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-4"
+                  }`}
+                >
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionFirma", "Company data")}</p>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1758,7 +1782,11 @@ export function NewCustomerModal({
                     }));
 
                   return (
-                    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <div
+                      className={`flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
+                        hasEditKundeSideContent ? "xl:col-span-4" : "lg:col-span-5"
+                      }`}
+                    >
 
                       {/* Header row */}
                       <div className="flex items-center justify-between">
@@ -1989,7 +2017,11 @@ export function NewCustomerModal({
                   const initials = k.name ? k.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : String(safeIdx + 1);
 
                   return (
-                    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <div
+                      className={`flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
+                        hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-3"
+                      }`}
+                    >
 
                       {/* ── Header ── */}
                       <div className="flex items-center justify-between">
@@ -2226,7 +2258,7 @@ export function NewCustomerModal({
                 })()}
 
                 {hasEditKundeSideContent ? (
-                  <div className="min-w-0 space-y-4">{editKundeSideContent}</div>
+                  <div className="min-w-0 space-y-4 xl:col-span-2">{editKundeSideContent}</div>
                 ) : null}
               </div>
 
@@ -2638,28 +2670,40 @@ export function NewCustomerModal({
                           {/* Field changes */}
                           {entry.changes && entry.changes.length > 0 ? (
                             <div className="divide-y divide-slate-100 px-4 py-1">
-                              {entry.changes.map((c) => (
-                                <div key={c.field} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-1.5 text-xs">
-                                  <span className="w-36 shrink-0 font-semibold text-slate-500">
-                                    {t(c.labelKey, c.field)}
-                                  </span>
-                                  {c.from ? (
-                                    <span className="rounded bg-red-50 px-1.5 py-0.5 font-mono text-red-600 line-through">
-                                      {c.from}
+                              {entry.changes.map((c, cIdx) => {
+                                const multiline =
+                                  c.field === "vies_snapshot" ||
+                                  c.from.includes("\n") ||
+                                  c.to.includes("\n");
+                                const cellClass = multiline
+                                  ? "max-w-full min-w-0 whitespace-pre-wrap break-words rounded px-1.5 py-0.5 font-mono text-[11px] leading-snug"
+                                  : "rounded px-1.5 py-0.5 font-mono text-[11px]";
+                                return (
+                                  <div
+                                    key={`${entry.id}-${cIdx}-${c.field}`}
+                                    className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-1.5 text-xs"
+                                  >
+                                    <span className="w-36 shrink-0 font-semibold text-slate-500">
+                                      {t(c.labelKey, c.field)}
                                     </span>
-                                  ) : (
-                                    <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
-                                  )}
-                                  <span className="text-slate-400">→</span>
-                                  {c.to ? (
-                                    <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-emerald-700">
-                                      {c.to}
-                                    </span>
-                                  ) : (
-                                    <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
-                                  )}
-                                </div>
-                              ))}
+                                    {c.from ? (
+                                      <span className={`${cellClass} bg-red-50 text-red-600 line-through`}>
+                                        {formatHistoryValueDisplay(c.field, c.from, t)}
+                                      </span>
+                                    ) : (
+                                      <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
+                                    )}
+                                    <span className="text-slate-400">→</span>
+                                    {c.to ? (
+                                      <span className={`${cellClass} bg-emerald-50 text-emerald-700`}>
+                                        {formatHistoryValueDisplay(c.field, c.to, t)}
+                                      </span>
+                                    ) : (
+                                      <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             entry.action === "updated" && (

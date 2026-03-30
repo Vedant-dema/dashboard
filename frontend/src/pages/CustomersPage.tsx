@@ -59,6 +59,8 @@ import {
   daysUntilExpiry,
   hasRisikoAlert,
   listHistoryForKunde,
+  mergeWashStateForDiff,
+  computeKundenWashFieldDiff,
   type KundenListRow,
   type NewKundeInput,
   type NewKundenUnterlageInput,
@@ -588,27 +590,38 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleSaveDetail = () => {
     if (!draftKunde) return;
-    let next = updateKunde(db, draftKunde, editor);
-    if (draftWash) {
-      next = upsertKundenWash(next, draftKunde.id, {
-        bukto: draftWash.bukto,
-        limit_betrag: draftWash.limit_betrag ?? 0,
-        rechnung_zusatz: draftWash.rechnung_zusatz,
-        rechnung_plz: draftWash.rechnung_plz,
-        rechnung_ort: draftWash.rechnung_ort,
-        rechnung_strasse: draftWash.rechnung_strasse,
-        kunde_gesperrt: draftWash.kunde_gesperrt,
-        bankname: draftWash.bankname,
-        bic: draftWash.bic,
-        iban: draftWash.iban,
-        wichtige_infos: draftWash.wichtige_infos,
-        bemerkungen: draftWash.bemerkungen,
-        lastschrift: draftWash.lastschrift ?? false,
-        kennzeichen: draftWash.kennzeichen,
-        wasch_programm: draftWash.wasch_programm,
-        wasch_intervall: draftWash.wasch_intervall,
-      });
+    if (!draftWash) {
+      persist(updateKunde(db, draftKunde, editor));
+      setSelectedRowId(null);
+      return;
     }
+    const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
+    const washPayload: KundenWashUpsertFields = {
+      bukto: draftWash.bukto,
+      limit_betrag: draftWash.limit_betrag ?? 0,
+      rechnung_zusatz: draftWash.rechnung_zusatz,
+      rechnung_plz: draftWash.rechnung_plz,
+      rechnung_ort: draftWash.rechnung_ort,
+      rechnung_strasse: draftWash.rechnung_strasse,
+      kunde_gesperrt: draftWash.kunde_gesperrt,
+      bankname: draftWash.bankname,
+      bic: draftWash.bic,
+      iban: draftWash.iban,
+      wichtige_infos: draftWash.wichtige_infos,
+      bemerkungen: draftWash.bemerkungen,
+      lastschrift: draftWash.lastschrift ?? false,
+      kennzeichen: draftWash.kennzeichen,
+      wasch_fahrzeug_typ: draftWash.wasch_fahrzeug_typ,
+      wasch_programm: draftWash.wasch_programm,
+      netto_preis: draftWash.netto_preis,
+      brutto_preis: draftWash.brutto_preis,
+      wasch_intervall: draftWash.wasch_intervall,
+    };
+    const washBaseline = oldWash ?? mergeWashStateForDiff(null, draftKunde.id, {});
+    const mergedWash = mergeWashStateForDiff(oldWash, draftKunde.id, washPayload);
+    const washChanges = computeKundenWashFieldDiff(washBaseline, mergedWash);
+    let next = updateKunde(db, draftKunde, editor, { extraChanges: washChanges });
+    next = upsertKundenWash(next, draftKunde.id, washPayload);
     persist(next);
     setSelectedRowId(null);
   };
@@ -616,19 +629,28 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleEditCustomerSubmit = useCallback(
     (data: NewKundeInput, wash: KundenWashUpsertFields | null) => {
       if (!draftKunde) return;
-      let next = updateKunde(db, {
-        ...draftKunde,
-        ...data,
-        id: draftKunde.id,
-        kunden_nr: draftKunde.kunden_nr,
-      }, editor);
+      const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
+      const washBaseline = oldWash ?? mergeWashStateForDiff(null, draftKunde.id, {});
+      const mergedWash = wash ? mergeWashStateForDiff(oldWash, draftKunde.id, wash) : null;
+      const washChanges = mergedWash ? computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
+      let next = updateKunde(
+        db,
+        {
+          ...draftKunde,
+          ...data,
+          id: draftKunde.id,
+          kunden_nr: draftKunde.kunden_nr,
+        },
+        editor,
+        { extraChanges: washChanges }
+      );
       if (wash) {
         next = upsertKundenWash(next, draftKunde.id, wash);
       }
       persist(next);
       setSelectedRowId(null);
     },
-    [db, draftKunde, persist]
+    [db, draftKunde, persist, editor]
   );
 
   const handleNewCustomerSubmit = useCallback(
@@ -638,7 +660,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       scannedAttachment?: NewKundenUnterlageInput | null
     ) => {
       try {
-        let next = createKunde(db, data, editor);
+        const washBaseline = mergeWashStateForDiff(null, 0, {});
+        const mergedWash = wash ? mergeWashStateForDiff(null, 0, wash) : null;
+        const washExtra = mergedWash ? computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
+        let next = createKunde(db, data, editor, { washExtraChanges: washExtra });
         const created = next.kunden[next.kunden.length - 1];
         if (wash) {
           next = upsertKundenWash(next, created.id, wash);

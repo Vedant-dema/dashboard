@@ -10,6 +10,7 @@ import type {
   KundenTermin,
   KundenUnterlage,
   KundenWashStamm,
+  ViesCustomerSnapshot,
 } from "../types/kunden";
 
 export type { KundenHistoryEntry, KundenFieldChange };
@@ -405,10 +406,12 @@ export async function loadSharedKundenDb(): Promise<KundenDbState | null> {
 
 export async function saveSharedKundenDb(state: KundenDbState): Promise<KundenDbState> {
   if (!API_MODE) return state;
+  // Backend `_is_kunden_db_state_shape` requires unterlagen + nextUnterlageId; normalize so PUT never omits them.
+  const payload = normalizeUnterlagen(state);
   const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
     method: "PUT",
     headers: demoHeaders(),
-    body: JSON.stringify({ state }),
+    body: JSON.stringify({ state: payload }),
   });
   if (!res.ok) {
     throw new Error(`Shared customers save failed (${res.status})`);
@@ -486,36 +489,144 @@ export type NewKundeInput = Pick<KundenStamm, "firmenname"> &
 /** Identifies the logged-in user performing a write operation (for audit trail). */
 export type AuditEditor = { name: string; email: string };
 
+/** KundenStamm boolean fields — values stored as "true"/"false" for history; UI may localize. */
+export const BOOLEAN_KUNDEN_HISTORY_FIELDS = new Set<keyof KundenStamm>([
+  "fzg_haendler",
+  "juristische_person",
+  "natuerliche_person",
+  "faxen_flag",
+]);
+
 /** All KundenStamm fields we track for diffs, paired with their i18n label key. */
 const TRACKED_FIELDS: { key: keyof KundenStamm; labelKey: string }[] = [
-  { key: "firmenname",             labelKey: "customersLabelCompany" },
-  { key: "branche",                labelKey: "customersLabelIndustry" },
-  { key: "strasse",                labelKey: "customersThStreet" },
-  { key: "plz",                    labelKey: "customersLabelZip" },
-  { key: "ort",                    labelKey: "customersLabelCity" },
-  { key: "land_code",              labelKey: "customersLabelCountry" },
-  { key: "ansprechpartner",        labelKey: "customersLabelContact" },
-  { key: "telefonnummer",          labelKey: "customersLabelPhone" },
-  { key: "email",                  labelKey: "historyFieldEmail" },
-  { key: "faxnummer",              labelKey: "historyFieldFax" },
-  { key: "internet_adr",           labelKey: "historyFieldWebsite" },
-  { key: "art_kunde",              labelKey: "historyFieldArtKunde" },
-  { key: "buchungskonto_haupt",    labelKey: "historyFieldBuchungskonto" },
-  { key: "ust_id_nr",              labelKey: "historyFieldUstId" },
-  { key: "steuer_nr",              labelKey: "historyFieldSteuerNr" },
-  { key: "gesellschaftsform",      labelKey: "historyFieldGesellschaft" },
-  { key: "zustaendige_person_name",labelKey: "historyFieldZustaendig" },
-  { key: "bemerkungen",            labelKey: "historyFieldBemerkungen" },
-  { key: "ansprache",              labelKey: "historyFieldAnsprache" },
+  { key: "firmenname", labelKey: "customersLabelCompany" },
+  { key: "branche", labelKey: "customersLabelIndustry" },
+  { key: "strasse", labelKey: "customersThStreet" },
+  { key: "plz", labelKey: "customersLabelZip" },
+  { key: "ort", labelKey: "customersLabelCity" },
+  { key: "land_code", labelKey: "customersLabelCountry" },
+  { key: "art_land_code", labelKey: "historyFieldArtLand" },
+  { key: "ansprechpartner", labelKey: "customersLabelContact" },
+  { key: "rolle_kontakt", labelKey: "historyFieldRolleKontakt" },
+  { key: "telefonnummer", labelKey: "customersLabelPhone" },
+  { key: "email", labelKey: "historyFieldEmail" },
+  { key: "faxnummer", labelKey: "historyFieldFax" },
+  { key: "internet_adr", labelKey: "historyFieldWebsite" },
+  { key: "bemerkungen_kontakt", labelKey: "historyFieldBemerkungenKontakt" },
+  { key: "art_kunde", labelKey: "historyFieldArtKunde" },
+  { key: "buchungskonto_haupt", labelKey: "historyFieldBuchungskonto" },
+  { key: "ust_id_nr", labelKey: "historyFieldUstId" },
+  { key: "steuer_nr", labelKey: "historyFieldSteuerNr" },
+  { key: "branchen_nr", labelKey: "historyFieldBranchenNr" },
+  { key: "gesellschaftsform", labelKey: "historyFieldGesellschaft" },
+  { key: "firmenvorsatz", labelKey: "historyFieldFirmenvorsatz" },
+  { key: "fzg_haendler", labelKey: "historyFieldFzgHaendler" },
+  { key: "juristische_person", labelKey: "historyFieldJuristischePerson" },
+  { key: "natuerliche_person", labelKey: "historyFieldNatuerlichePerson" },
+  { key: "faxen_flag", labelKey: "historyFieldFaxenFlag" },
+  { key: "zustaendige_person_name", labelKey: "historyFieldZustaendig" },
+  { key: "bemerkungen", labelKey: "historyFieldBemerkungen" },
+  { key: "ansprache", labelKey: "historyFieldAnsprache" },
+  { key: "aufnahme", labelKey: "historyFieldAufnahme" },
 ];
 
+/** Wash profile booleans — same storage as customer booleans ("true"/"false"). */
+export const BOOLEAN_WASH_HISTORY_FIELDS = new Set<keyof KundenWashStamm>([
+  "kunde_gesperrt",
+  "lastschrift",
+]);
+
+/** Waschanlage / wash profile fields shown in customer history. */
+const TRACKED_WASH_FIELDS: { key: keyof KundenWashStamm; labelKey: string }[] = [
+  { key: "bukto", labelKey: "historyWashBukto" },
+  { key: "limit_betrag", labelKey: "historyWashLimit" },
+  { key: "rechnung_zusatz", labelKey: "historyWashRechnungZusatz" },
+  { key: "rechnung_plz", labelKey: "historyWashRechnungPlz" },
+  { key: "rechnung_ort", labelKey: "historyWashRechnungOrt" },
+  { key: "rechnung_strasse", labelKey: "historyWashRechnungStrasse" },
+  { key: "kunde_gesperrt", labelKey: "historyWashKundeGesperrt" },
+  { key: "bankname", labelKey: "historyWashBankname" },
+  { key: "bic", labelKey: "historyWashBic" },
+  { key: "iban", labelKey: "historyWashIban" },
+  { key: "wichtige_infos", labelKey: "historyWashWichtigeInfos" },
+  { key: "bemerkungen", labelKey: "historyWashBemerkungen" },
+  { key: "lastschrift", labelKey: "historyWashLastschrift" },
+  { key: "kennzeichen", labelKey: "historyWashKennzeichen" },
+  { key: "wasch_fahrzeug_typ", labelKey: "historyWashFahrzeugTyp" },
+  { key: "wasch_programm", labelKey: "historyWashProgramm" },
+  { key: "netto_preis", labelKey: "historyWashNettoPreis" },
+  { key: "brutto_preis", labelKey: "historyWashBruttoPreis" },
+  { key: "wasch_intervall", labelKey: "historyWashIntervall" },
+];
+
+function fieldValueToHistoryString(
+  key: keyof KundenStamm | keyof KundenWashStamm,
+  val: unknown,
+  booleanKeys: Set<string>
+): string {
+  if (val === undefined || val === null) return "";
+  if (booleanKeys.has(String(key))) {
+    return val === true ? "true" : val === false ? "false" : "";
+  }
+  if (typeof val === "number") {
+    if (Number.isNaN(val)) return "";
+    return String(val);
+  }
+  return String(val).trim();
+}
+
+function viesSnapshotToHistoryText(s: ViesCustomerSnapshot): string {
+  const lines: string[] = [
+    `valid: ${s.valid}`,
+    `vat: ${s.country_code}${s.vat_number}`,
+  ];
+  if (s.name) lines.push(`name: ${s.name}`);
+  if (s.address) lines.push(`address: ${s.address}`);
+  if (s.request_date) lines.push(`requestDate: ${s.request_date}`);
+  if (s.request_identifier) lines.push(`requestId: ${s.request_identifier}`);
+  if (s.trader_details_available != null) {
+    lines.push(`traderDetails: ${s.trader_details_available}`);
+  }
+  if (s.trader_name_match) lines.push(`nameMatch: ${s.trader_name_match}`);
+  if (s.trader_street_match) lines.push(`streetMatch: ${s.trader_street_match}`);
+  if (s.trader_postal_code_match) lines.push(`postalMatch: ${s.trader_postal_code_match}`);
+  if (s.trader_city_match) lines.push(`cityMatch: ${s.trader_city_match}`);
+  if (s.trader_company_type_match) lines.push(`companyTypeMatch: ${s.trader_company_type_match}`);
+  lines.push(`savedAt: ${s.saved_at}`);
+  return lines.join("\n");
+}
+
+function diffViesSnapshots(
+  oldS: ViesCustomerSnapshot | null | undefined,
+  newS: ViesCustomerSnapshot | null | undefined
+): KundenFieldChange[] {
+  const from = oldS ? viesSnapshotToHistoryText(oldS) : "";
+  const to = newS ? viesSnapshotToHistoryText(newS) : "";
+  if (from === to) return [];
+  return [{ field: "vies_snapshot", labelKey: "historyFieldViesCheck", from, to }];
+}
+
 function computeKundenDiff(oldK: KundenStamm, newK: KundenStamm): KundenFieldChange[] {
-  return TRACKED_FIELDS.flatMap(({ key, labelKey }) => {
-    const from = String(oldK[key] ?? "");
-    const to = String(newK[key] ?? "");
+  const boolSet = BOOLEAN_KUNDEN_HISTORY_FIELDS as unknown as Set<string>;
+  const scalar = TRACKED_FIELDS.flatMap(({ key, labelKey }) => {
+    const from = fieldValueToHistoryString(key, oldK[key], boolSet);
+    const to = fieldValueToHistoryString(key, newK[key], boolSet);
     if (from === to) return [];
     return [{ field: String(key), labelKey, from, to }];
   });
+  return [...scalar, ...diffViesSnapshots(oldK.vies_snapshot, newK.vies_snapshot)];
+}
+
+/** First save of a customer — list every non-empty tracked value (and VIES snapshot). */
+function computeKundenDiffForCreate(row: KundenStamm): KundenFieldChange[] {
+  const boolSet = BOOLEAN_KUNDEN_HISTORY_FIELDS as unknown as Set<string>;
+  const scalar = TRACKED_FIELDS.flatMap(({ key, labelKey }) => {
+    const to = fieldValueToHistoryString(key, row[key], boolSet);
+    if (!to) return [];
+    if (BOOLEAN_KUNDEN_HISTORY_FIELDS.has(key) && to !== "true") return [];
+    return [{ field: String(key), labelKey, from: "", to }];
+  });
+  return [...scalar, ...diffViesSnapshots(undefined, row.vies_snapshot)];
 }
 
 function appendHistory(
@@ -564,7 +675,17 @@ export function generateNextKundenNr(db: KundenDbState): string {
   return String(maxNum + 1);
 }
 
-export function createKunde(db: KundenDbState, input: NewKundeInput, editor?: AuditEditor): KundenDbState {
+export type CreateKundeHistoryOptions = {
+  /** Extra lines (e.g. Waschanlage fields) appended to the "created" history entry. */
+  washExtraChanges?: KundenFieldChange[];
+};
+
+export function createKunde(
+  db: KundenDbState,
+  input: NewKundeInput,
+  editor?: AuditEditor,
+  historyOpts?: CreateKundeHistoryOptions
+): KundenDbState {
   const nr = input.kunden_nr?.trim();
   if (nr) {
     if (db.kunden.some((k) => k.kunden_nr === nr)) {
@@ -596,7 +717,17 @@ export function createKunde(db: KundenDbState, input: NewKundeInput, editor?: Au
     kunden: [...db.kunden, row],
     nextKundeId: id + 1,
   };
-  next = appendHistory(next, id, "created", editor);
+  const createdChanges = [
+    ...computeKundenDiffForCreate(row),
+    ...(historyOpts?.washExtraChanges ?? []),
+  ];
+  next = appendHistory(
+    next,
+    id,
+    "created",
+    editor,
+    createdChanges.length > 0 ? createdChanges : undefined
+  );
   return next;
 }
 
@@ -645,10 +776,21 @@ export function purgeKunde(db: KundenDbState, kundenId: number): KundenDbState {
   };
 }
 
-export function updateKunde(db: KundenDbState, kunde: KundenStamm, editor?: AuditEditor): KundenDbState {
+export type UpdateKundeHistoryOptions = {
+  /** e.g. Waschanlage field diffs merged into the same "updated" history row. */
+  extraChanges?: KundenFieldChange[];
+};
+
+export function updateKunde(
+  db: KundenDbState,
+  kunde: KundenStamm,
+  editor?: AuditEditor,
+  historyOpts?: UpdateKundeHistoryOptions
+): KundenDbState {
   const now = new Date().toISOString();
   const oldKunde = db.kunden.find((k) => k.id === kunde.id);
-  const changes = oldKunde ? computeKundenDiff(oldKunde, kunde) : [];
+  const stammChanges = oldKunde ? computeKundenDiff(oldKunde, kunde) : [];
+  const changes = [...stammChanges, ...(historyOpts?.extraChanges ?? [])];
   const nextKunden = db.kunden.map((k) =>
     k.id === kunde.id
       ? {
@@ -661,7 +803,7 @@ export function updateKunde(db: KundenDbState, kunde: KundenStamm, editor?: Audi
   );
   if (!nextKunden.some((k) => k.id === kunde.id)) return db;
   const next: KundenDbState = { ...db, kunden: nextKunden };
-  return appendHistory(next, kunde.id, "updated", editor, changes);
+  return appendHistory(next, kunde.id, "updated", editor, changes.length > 0 ? changes : undefined);
 }
 
 export type KundenWashUpsertFields = Partial<
@@ -688,6 +830,59 @@ export type KundenWashUpsertFields = Partial<
     | "wasch_intervall"
   >
 >;
+
+/**
+ * Merge wash upsert fields into a full row for diffing (mirrors `upsertKundenWash` merge rules).
+ */
+export function mergeWashStateForDiff(
+  prev: KundenWashStamm | null | undefined,
+  kundenId: number,
+  fields: KundenWashUpsertFields
+): KundenWashStamm {
+  if (prev) {
+    return { ...prev, ...fields, kunden_id: kundenId };
+  }
+  const now = new Date().toISOString();
+  return {
+    id: 0,
+    kunden_id: kundenId,
+    limit_betrag: fields.limit_betrag ?? 0,
+    lastschrift: fields.lastschrift ?? false,
+    kunde_gesperrt: fields.kunde_gesperrt ?? false,
+    bukto: fields.bukto,
+    rechnung_zusatz: fields.rechnung_zusatz,
+    rechnung_plz: fields.rechnung_plz,
+    rechnung_ort: fields.rechnung_ort,
+    rechnung_strasse: fields.rechnung_strasse,
+    bankname: fields.bankname,
+    bic: fields.bic,
+    iban: fields.iban,
+    wichtige_infos: fields.wichtige_infos,
+    bemerkungen: fields.bemerkungen,
+    kennzeichen: fields.kennzeichen,
+    wasch_fahrzeug_typ: fields.wasch_fahrzeug_typ,
+    wasch_programm: fields.wasch_programm,
+    netto_preis: fields.netto_preis,
+    brutto_preis: fields.brutto_preis,
+    wasch_intervall: fields.wasch_intervall,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export function computeKundenWashFieldDiff(
+  oldW: KundenWashStamm | null | undefined,
+  newW: KundenWashStamm | null | undefined
+): KundenFieldChange[] {
+  if (!newW) return [];
+  const boolSet = BOOLEAN_WASH_HISTORY_FIELDS as unknown as Set<string>;
+  return TRACKED_WASH_FIELDS.flatMap(({ key, labelKey }) => {
+    const from = fieldValueToHistoryString(key, oldW?.[key], boolSet);
+    const to = fieldValueToHistoryString(key, newW[key], boolSet);
+    if (from === to) return [];
+    return [{ field: `wash_${String(key)}`, labelKey, from, to }];
+  });
+}
 
 export function upsertKundenWash(
   db: KundenDbState,

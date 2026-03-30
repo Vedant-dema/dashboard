@@ -1,3 +1,22 @@
+/** Last VAT (VIES) check stored on the customer when saving from the New/Edit customer modal. */
+export interface ViesCustomerSnapshot {
+  valid: boolean;
+  country_code: string;
+  vat_number: string;
+  name: string | null;
+  address: string | null;
+  request_date?: string | null;
+  request_identifier?: string | null;
+  trader_details_available?: boolean;
+  trader_name_match?: string | null;
+  trader_street_match?: string | null;
+  trader_postal_code_match?: string | null;
+  trader_city_match?: string | null;
+  trader_company_type_match?: string | null;
+  /** ISO timestamp when this snapshot was written at save time */
+  saved_at: string;
+}
+
 /**
  * Master customer – one row per company/person (`kunden` table).
  * Shared by Sales, Purchase, Werkstatt; Waschanlage uses the same row + `KundenWashStamm`.
@@ -59,6 +78,9 @@ export interface KundenStamm {
   last_edited_by_name?: string;
   /** Audit: email of the user who last saved/modified this record. */
   last_edited_by_email?: string;
+
+  /** Last VIES VAT check outcome and trader fields (persisted with save). */
+  vies_snapshot?: ViesCustomerSnapshot | null;
 }
 
 /** Waschanlage-specific profile (`kunden_wash` table), 1:1 with `kunden.id`. */

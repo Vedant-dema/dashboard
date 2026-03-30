@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { VerkaufterBestandRow } from "../types/verkaufterBestand";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import { loadVerkaufterBestandDb } from "../store/verkaufterBestandStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -102,6 +103,15 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const [flagFilters, setFlagFilters] = useState<Partial<Record<FlagKey, boolean>>>({});
+  const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
+
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-verkaufter");
+    if (q) {
+      setGlobalHeaderSearch(q);
+      sessionStorage.removeItem("dema-search-q-verkaufter");
+    }
+  }, []);
 
   const setFlag = useCallback((key: FlagKey, value: boolean) => {
     setFlagFilters((prev) => {
@@ -124,6 +134,34 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
 
   const filtered = useMemo(() => {
     let list: VerkaufterBestandRow[] = [...db.rows];
+
+    if (globalHeaderSearch.trim()) {
+      const raw = globalHeaderSearch.trim();
+      list = list.filter((r) =>
+        combinedMatch(
+          raw,
+          [
+            r.position_anzeige,
+            r.firmenname,
+            r.fahrgestellnummer,
+            r.debitor_nr,
+            r.plz,
+            r.ort,
+            r.land,
+            r.fabrikat,
+            r.typ,
+            r.telefonnummer,
+            r.extras,
+            r.import_verkaufs_nr,
+            r.einkaeufer,
+            r.verkaeufer,
+            r.linkaeufer,
+            r.beteiligter,
+          ],
+          [r.telefonnummer, r.fahrgestellnummer, r.debitor_nr]
+        )
+      );
+    }
 
     if (positionsNr.trim()) {
       const q = positionsNr.trim();
@@ -172,8 +210,10 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
       list = list.filter((r) => (r.extras || "").toLowerCase().includes(e));
     }
     if (telefon.trim()) {
-      const t = telefon.toLowerCase();
-      list = list.filter((r) => (r.telefonnummer || "").toLowerCase().includes(t));
+      const raw = telefon.trim();
+      list = list.filter((r) =>
+        combinedMatch(raw, [r.telefonnummer], [r.telefonnummer])
+      );
     }
     if (debitorNr.trim()) list = list.filter((r) => r.debitor_nr.includes(debitorNr.trim()));
     if (firmenname.trim()) {
@@ -212,6 +252,7 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
     return list;
   }, [
     db.rows,
+    globalHeaderSearch,
     positionsNr,
     linkaeufer,
     beteiligter,

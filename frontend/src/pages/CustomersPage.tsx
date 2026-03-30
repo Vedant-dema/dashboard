@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import {
   Plus,
   Search,
@@ -26,6 +26,7 @@ import {
   Pencil,
 } from "lucide-react";
 import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import {
   loadKundenDb,
   saveKundenDb,
@@ -66,6 +67,7 @@ import {
   type AuditEditor,
 } from "../store/kundenStore";
 import { NewCustomerModal } from "../components/NewCustomerModal";
+import { DatePickerInput } from "../components/DatePickerInput";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import {
   getCustomerFieldSuggestions,
@@ -350,20 +352,40 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   );
   const [risikoEditOpen, setRisikoEditOpen] = useState(false);
   const [risikoDraft, setRisikoDraft] = useState<RisikoanalyseUpsertFields>({});
+  const risikoSectionRef = useRef<HTMLElement | null>(null);
+
+  /** Normalize stored dates for `<input type="date">` (expects YYYY-MM-DD). */
+  const toDateInputValue = useCallback((raw: string | undefined): string => {
+    const s = raw?.trim() ?? "";
+    if (!s) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+    if (m) {
+      const d = m[1]!.padStart(2, "0");
+      const mo = m[2]!.padStart(2, "0");
+      return `${m[3]}-${mo}-${d}`;
+    }
+    return "";
+  }, []);
 
   const handleRisikoEdit = useCallback(() => {
     setRisikoDraft({
       allg_dok_bogen: risikoForCustomer?.allg_dok_bogen ?? false,
-      reg_ausz: risikoForCustomer?.reg_ausz ?? "",
-      wirt_ber_erm: risikoForCustomer?.wirt_ber_erm ?? "",
-      ausw_kop_wirt_ber: risikoForCustomer?.ausw_kop_wirt_ber ?? "",
-      ausw_gueltig_bis: risikoForCustomer?.ausw_gueltig_bis ?? "",
-      ausw_kop_abholer: risikoForCustomer?.ausw_kop_abholer ?? "",
+      reg_ausz: toDateInputValue(risikoForCustomer?.reg_ausz),
+      wirt_ber_erm: toDateInputValue(risikoForCustomer?.wirt_ber_erm),
+      ausw_kop_wirt_ber: toDateInputValue(risikoForCustomer?.ausw_kop_wirt_ber),
+      ausw_gueltig_bis: toDateInputValue(risikoForCustomer?.ausw_gueltig_bis),
+      ausw_kop_abholer: toDateInputValue(risikoForCustomer?.ausw_kop_abholer),
       verst_dok_bogen: risikoForCustomer?.verst_dok_bogen ?? false,
       bearbeiter: risikoForCustomer?.bearbeiter ?? "",
     });
     setRisikoEditOpen(true);
-  }, [risikoForCustomer]);
+  }, [risikoForCustomer, toDateInputValue]);
+
+  useLayoutEffect(() => {
+    if (!risikoEditOpen) return;
+    risikoSectionRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [risikoEditOpen]);
 
   const handleRisikoSave = useCallback(() => {
     if (!draftKunde) return;
@@ -445,12 +467,32 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const filtered = useMemo(() => {
     let list: KundenListRow[] = [...listSource];
     if (quickSearch.trim()) {
-      const q = quickSearch.toLowerCase();
-      list = list.filter(
-        (r) =>
-          r.firmenname.toLowerCase().includes(q) ||
-          r.kuNr.includes(q)
-      );
+      const raw = quickSearch.trim();
+      list = list.filter((r) => {
+        const k = db.kunden.find((x) => x.kunden_nr === r.kuNr && !x.deleted);
+        if (!k) return false;
+        return combinedMatch(
+          raw,
+          [
+            r.firmenname,
+            r.kuNr,
+            k.email,
+            k.telefonnummer,
+            k.faxnummer,
+            k.strasse,
+            r.plz,
+            r.ort,
+            r.land,
+            k.ansprechpartner,
+            k.ust_id_nr,
+            k.steuer_nr,
+            k.branche,
+            k.internet_adr,
+            k.bemerkungen,
+          ],
+          [k.telefonnummer, k.faxnummer, k.kunden_nr]
+        );
+      });
     }
     if (kundenNr.trim()) list = list.filter((r) => r.kuNr.includes(kundenNr.trim()));
     if (firmenname.trim()) {
@@ -1414,9 +1456,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             };
 
             return (
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <section
+                ref={risikoSectionRef}
+                className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
                 {/* Header row */}
-                <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
                     <ShieldAlert className="h-4 w-4 text-slate-400" />
                     {t("riskTitle", "Risk Analysis")}
@@ -1439,10 +1484,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </div>
                 </div>
 
-                {/* Edit form — 2-column grid for full-width comfort */}
+                {/* Edit form — single column so it works in the narrow sidebar grid column */}
                 {risikoEditOpen && (
-                  <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-                    <div className="mb-3 flex flex-wrap gap-6">
+                  <div className="mb-3 min-w-0 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                       <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
                         <input
                           type="checkbox"
@@ -1461,26 +1506,31 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         />
                         {t("riskDocVerstDokBogen", "Understanding Form")}
                       </label>
-                      <div className="flex items-center gap-2 ml-auto">
+                      <div className="flex min-w-0 flex-col gap-1 sm:ml-auto sm:flex-row sm:items-center sm:gap-2">
                         <label className="text-xs text-slate-600 shrink-0">{t("riskBearbeiter", "Handler")}</label>
                         <input
                           type="text"
                           value={risikoDraft.bearbeiter ?? ""}
                           onChange={(e) => setRisikoDraft((d) => ({ ...d, bearbeiter: e.target.value }))}
                           maxLength={20}
-                          className="h-7 w-32 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                          className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none sm:h-7 sm:w-40"
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+                    <div className="flex flex-col gap-4">
                       {DATE_FIELDS.map((f) => (
-                        <div key={f.key} className="flex items-center gap-2">
-                          <label className="w-36 shrink-0 text-xs text-slate-600">{t(f.labelKey, f.fallback)}</label>
-                          <input
-                            type="date"
+                        <div
+                          key={f.key}
+                          className="flex min-w-0 flex-col gap-2 border-b border-slate-200/70 pb-4 last:border-b-0 last:pb-0"
+                        >
+                          <span className="block text-xs font-medium leading-snug text-slate-600">
+                            {t(f.labelKey, f.fallback)}
+                          </span>
+                          <DatePickerInput
                             value={(risikoDraft[f.key] as string | undefined) ?? ""}
-                            onChange={(e) => setRisikoDraft((d) => ({ ...d, [f.key]: e.target.value }))}
-                            className="h-7 flex-1 min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                            onChange={(iso) => setRisikoDraft((d) => ({ ...d, [f.key]: iso }))}
+                            placeholder={t("datePickerPlaceholder", "Select date…")}
+                            triggerClassName="min-h-11 justify-start py-2.5 text-xs shadow-none sm:min-h-10"
                           />
                         </div>
                       ))}

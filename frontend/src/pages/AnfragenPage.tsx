@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Search, Plus, X } from "lucide-react";
 import type { AnfrageStamm } from "../types/anfragen";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import { loadAnfragenDb, saveAnfragenDb, createAnfrage, previewNextAnfrageNr } from "../store/anfragenStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { NewAnfrageModal } from "../components/NewAnfrageModal";
@@ -63,6 +64,7 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
   const [extrasFilter, setExtrasFilter] = useState("");
   const [debitorNr, setDebitorNr] = useState("");
   const [firmenname, setFirmenname] = useState("");
+  const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
   const [sortierung, setSortierung] = useState<string>(SORT_OPTIONS[0]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -70,7 +72,7 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
   useEffect(() => {
     const q = sessionStorage.getItem("dema-search-q-anfragen");
     if (q) {
-      setFirmenname(q);
+      setGlobalHeaderSearch(q);
       sessionStorage.removeItem("dema-search-q-anfragen");
     }
   }, []);
@@ -88,6 +90,28 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
 
   const filtered = useMemo(() => {
     let list: AnfrageStamm[] = [...db.anfragen];
+
+    if (globalHeaderSearch.trim()) {
+      const raw = globalHeaderSearch.trim();
+      list = list.filter((r) =>
+        combinedMatch(
+          raw,
+          [
+            r.anfrage_nr,
+            r.firmenname,
+            r.fabrikat,
+            r.typ,
+            r.extras,
+            r.debitor_nr,
+            r.bearbeiter_sb,
+            r.bemerkungen,
+            r.fahrzeugart,
+            r.aufbauart,
+          ],
+          [r.debitor_nr]
+        )
+      );
+    }
 
     if (anfrageId.trim()) {
       const q = anfrageId.trim().toLowerCase();
@@ -140,6 +164,7 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
     return list;
   }, [
     db.anfragen,
+    globalHeaderSearch,
     anfrageId,
     bearbeiter,
     datumVon,

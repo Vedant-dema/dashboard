@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, ChevronDown, ChevronUp, Plus, X, FolderOpen, Link2 } from "lucide-react";
 import type { RechnungListRow } from "../types/rechnungen";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import { loadRechnungenDb, formatRechnungsbetrag } from "../store/rechnungenStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -47,15 +48,8 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
     return () => window.removeEventListener("dema-rechnungen-db-changed", onCh);
   }, []);
 
-  useEffect(() => {
-    const q = sessionStorage.getItem("dema-search-q-rechnungen");
-    if (q) {
-      setQuickFirmenname(q);
-      sessionStorage.removeItem("dema-search-q-rechnungen");
-    }
-  }, []);
-
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
   const [quickFirmenname, setQuickFirmenname] = useState("");
   const [rechnungsNr, setRechnungsNr] = useState("");
   const [vonRDatum, setVonRDatum] = useState("");
@@ -80,6 +74,14 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNewDrawer, setShowNewDrawer] = useState(false);
   const [newFolderPath, setNewFolderPath] = useState("");
+
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-rechnungen");
+    if (q) {
+      setGlobalHeaderSearch(q);
+      sessionStorage.removeItem("dema-search-q-rechnungen");
+    }
+  }, []);
 
   const suggestions = useMemo(() => {
     const fn = new Set<string>();
@@ -108,6 +110,7 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
   }, [db.rows]);
 
   const resetFilters = useCallback(() => {
+    setGlobalHeaderSearch("");
     setQuickFirmenname("");
     setRechnungsNr("");
     setVonRDatum("");
@@ -135,6 +138,32 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
 
   const filtered = useMemo(() => {
     let list = [...db.rows];
+    if (globalHeaderSearch.trim()) {
+      const raw = globalHeaderSearch.trim();
+      list = list.filter((r) =>
+        combinedMatch(
+          raw,
+          [
+            r.rechn_nr,
+            r.firmenname,
+            r.kunden_nr,
+            r.fahrgestell_nr,
+            r.positions_nr,
+            r.verkaufs_nr,
+            r.ort,
+            r.plz,
+            r.land,
+            r.art,
+            r.buchung,
+            r.vermerk,
+            r.ust_id,
+            r.ersteller,
+            r.verkaufer,
+          ],
+          [r.kunden_nr, r.fahrgestell_nr, r.rechn_nr, r.positions_nr, r.verkaufs_nr]
+        )
+      );
+    }
     const qf = quickFirmenname.trim().toLowerCase();
     if (qf) list = list.filter((r) => r.firmenname.toLowerCase().includes(qf));
     if (rechnungsNr.trim()) {
@@ -192,6 +221,7 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
     return list;
   }, [
     db.rows,
+    globalHeaderSearch,
     quickFirmenname,
     rechnungsNr,
     vonRDatum,

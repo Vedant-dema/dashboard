@@ -15,6 +15,8 @@ import {
   FileText,
   Users,
   Receipt,
+  Package,
+  ShoppingBag,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -31,6 +33,7 @@ import {
   type TaskNotification,
 } from "../store/taskNotifications";
 import { useGlobalSearch, type GlobalSearchResult, type SearchCategory } from "../hooks/useGlobalSearch";
+import { searchQueryMeetsMinimum } from "../lib/globalSearchMatch";
 
 const CATEGORY_META: Record<SearchCategory, { labelKey: string; labelFallback: string; icon: React.ReactNode; color: string }> = {
   kunden:    { labelKey: "searchCatKunden",    labelFallback: "Customers",  icon: <Users className="h-3.5 w-3.5" />,       color: "text-blue-600 bg-blue-50" },
@@ -38,9 +41,19 @@ const CATEGORY_META: Record<SearchCategory, { labelKey: string; labelFallback: s
   angebote:  { labelKey: "searchCatAngebote",  labelFallback: "Offers",     icon: <FileText className="h-3.5 w-3.5" />,    color: "text-emerald-600 bg-emerald-50" },
   anfragen:  { labelKey: "searchCatAnfragen",  labelFallback: "Inquiries",  icon: <ClipboardList className="h-3.5 w-3.5" />, color: "text-amber-600 bg-amber-50" },
   rechnungen:{ labelKey: "searchCatRechnungen",labelFallback: "Invoices",   icon: <Receipt className="h-3.5 w-3.5" />,     color: "text-rose-600 bg-rose-50" },
+  abhol:     { labelKey: "searchCatAbhol",     labelFallback: "Pickups",    icon: <Package className="h-3.5 w-3.5" />,     color: "text-cyan-600 bg-cyan-50" },
+  verkaufter:{ labelKey: "searchCatVerkaufter",labelFallback: "Sold stock", icon: <ShoppingBag className="h-3.5 w-3.5" />, color: "text-indigo-600 bg-indigo-50" },
 }
 
-const CATEGORY_ORDER: SearchCategory[] = ["kunden", "bestand", "angebote", "anfragen", "rechnungen"]
+const CATEGORY_ORDER: SearchCategory[] = [
+  "kunden",
+  "bestand",
+  "angebote",
+  "anfragen",
+  "rechnungen",
+  "abhol",
+  "verkaufter",
+]
 
 function highlight(text: string, query: string): React.ReactNode {
   if (!query) return text
@@ -178,7 +191,7 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!searchOpen || flatResults.length === 0) {
-      if (e.key === "Enter" && searchQuery.trim().length >= 2) {
+      if (e.key === "Enter" && searchQueryMeetsMinimum(searchQuery)) {
         sessionStorage.setItem("dema-search-q", searchQuery.trim())
         setSearchQuery("")
         setSearchOpen(false)
@@ -196,7 +209,7 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
       e.preventDefault()
       if (activeIndex >= 0 && flatResults[activeIndex]) {
         navigateToResult(flatResults[activeIndex])
-      } else if (searchQuery.trim().length >= 2) {
+      } else if (searchQueryMeetsMinimum(searchQuery)) {
         sessionStorage.setItem("dema-search-q", searchQuery.trim())
         setSearchQuery("")
         setSearchOpen(false)
@@ -209,7 +222,7 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
     }
   }
 
-  const showDropdown = searchOpen && searchQuery.trim().length >= 2;
+  const showDropdown = searchOpen && searchQueryMeetsMinimum(searchQuery);
 
   const openNotifPanel = () => {
     setNotifPanelOpen((v) => !v);

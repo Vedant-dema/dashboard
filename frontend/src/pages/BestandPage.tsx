@@ -5,6 +5,7 @@ import {
   RefreshCw, Car, Tag, Info,
 } from "lucide-react";
 import type { BestandRow } from "../types/bestand";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import { loadBestandDb } from "../store/bestandStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { NeuesFahrzeugModal } from "./NeuesFahrzeugModal";
@@ -178,13 +179,29 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
     let list = [...baseRows];
 
     if (quickSearch.trim()) {
-      const q = quickSearch.toLowerCase();
+      const raw = quickSearch.trim();
       list = list.filter((r) =>
-        r.fabrikat.toLowerCase().includes(q) ||
-        r.typ.toLowerCase().includes(q) ||
-        (r.firmenname ?? "").toLowerCase().includes(q) ||
-        r.fahrgestellnummer.toLowerCase().includes(q) ||
-        r.positions_nr.includes(q)
+        combinedMatch(
+          raw,
+          [
+            r.positions_nr,
+            r.fabrikat,
+            r.typ,
+            r.firmenname,
+            r.fahrgestellnummer,
+            r.ort,
+            r.plz,
+            r.land,
+            r.kreditor_nr,
+            r.telefonnummer,
+            r.letzte_kz,
+            r.modellreihe,
+            r.import_nr,
+            r.beteiligter,
+            r.einkaeufer,
+          ],
+          [r.fahrgestellnummer, r.telefonnummer, r.positions_nr, r.kreditor_nr]
+        )
       );
     }
 

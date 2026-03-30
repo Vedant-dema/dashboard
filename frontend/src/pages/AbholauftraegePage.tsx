@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import type { AbholauftragRow } from "../types/abholauftraege";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import { loadAbholauftraegeDb } from "../store/abholauftraegeStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -47,6 +48,15 @@ export function AbholauftraegePage({ department }: { department?: DepartmentArea
   const [typFilter, setTypFilter] = useState("");
   const [sortierung, setSortierung] = useState<string>(SORT_OPTIONS[0]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
+
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-abhol");
+    if (q) {
+      setGlobalHeaderSearch(q);
+      sessionStorage.removeItem("dema-search-q-abhol");
+    }
+  }, []);
 
   const suggestions = useMemo(() => {
     const fin = new Set<string>();
@@ -61,6 +71,25 @@ export function AbholauftraegePage({ department }: { department?: DepartmentArea
 
   const filtered = useMemo(() => {
     let list: AbholauftragRow[] = [...db.rows];
+
+    if (globalHeaderSearch.trim()) {
+      const raw = globalHeaderSearch.trim();
+      list = list.filter((r) =>
+        combinedMatch(
+          raw,
+          [
+            r.kunde_anzeige,
+            r.fahrgestellnummer,
+            r.fahrgestellnummer_2,
+            r.fabrikat,
+            r.typ,
+            r.fahrzeugart,
+            r.aufbauart,
+          ],
+          [r.fahrgestellnummer, r.fahrgestellnummer_2]
+        )
+      );
+    }
 
     if (fahrgestellSuche.trim()) {
       const q = fahrgestellSuche.trim().toLowerCase();
@@ -115,6 +144,7 @@ export function AbholauftraegePage({ department }: { department?: DepartmentArea
     return list;
   }, [
     db.rows,
+    globalHeaderSearch,
     fahrgestellSuche,
     erledigt,
     erstelltVon,

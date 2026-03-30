@@ -1,11 +1,21 @@
 import { useMemo } from "react"
+import { combinedMatch, searchQueryMeetsMinimum } from "../lib/globalSearchMatch"
 import { loadKundenDb } from "../store/kundenStore"
 import { loadBestandDb } from "../store/bestandStore"
 import { loadAngeboteDb } from "../store/angeboteStore"
 import { loadAnfragenDb } from "../store/anfragenStore"
 import { loadRechnungenDb } from "../store/rechnungenStore"
+import { loadAbholauftraegeDb } from "../store/abholauftraegeStore"
+import { loadVerkaufterBestandDb } from "../store/verkaufterBestandStore"
 
-export type SearchCategory = "kunden" | "bestand" | "angebote" | "anfragen" | "rechnungen"
+export type SearchCategory =
+  | "kunden"
+  | "bestand"
+  | "angebote"
+  | "anfragen"
+  | "rechnungen"
+  | "abhol"
+  | "verkaufter"
 
 export interface GlobalSearchResult {
   id: string
@@ -23,50 +33,98 @@ export interface GlobalSearchResults {
   angebote: GlobalSearchResult[]
   anfragen: GlobalSearchResult[]
   rechnungen: GlobalSearchResult[]
+  abhol: GlobalSearchResult[]
+  verkaufter: GlobalSearchResult[]
   total: number
 }
 
 const MAX_PER_CATEGORY = 5
 
-function norm(s: string): string {
-  return s.toLowerCase().trim()
-}
-
-function matches(q: string, ...fields: (string | undefined | null)[]): boolean {
-  return fields.some((f) => f && norm(f).includes(q))
-}
-
 export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResults {
   return useMemo(() => {
-    const q = norm(query)
-    if (q.length < 2) {
-      return { kunden: [], bestand: [], angebote: [], anfragen: [], rechnungen: [], total: 0 }
+    const empty: GlobalSearchResults = {
+      kunden: [],
+      bestand: [],
+      angebote: [],
+      anfragen: [],
+      rechnungen: [],
+      abhol: [],
+      verkaufter: [],
+      total: 0,
     }
 
-    // ── Customers ──────────────────────────────────────────────────────────────
+    if (!searchQueryMeetsMinimum(query)) return empty
+
+    const qTrim = query.trim()
+
+    // ── Customers ────────────────────────────────────────────────────────────
     const kundenDb = loadKundenDb()
     const kundenResults: GlobalSearchResult[] = []
     for (const k of kundenDb.kunden) {
       if (k.deleted) continue
-      if (matches(q, k.kunden_nr, k.firmenname, k.email)) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            k.kunden_nr,
+            k.firmenname,
+            k.email,
+            k.telefonnummer,
+            k.faxnummer,
+            k.strasse,
+            k.plz,
+            k.ort,
+            k.land_code,
+            k.ansprechpartner,
+            k.ust_id_nr,
+            k.steuer_nr,
+            k.branche,
+            k.internet_adr,
+            k.bemerkungen,
+          ],
+          [k.telefonnummer, k.faxnummer, k.kunden_nr]
+        )
+      ) {
         kundenResults.push({
           id: `kunden-${k.id}`,
           category: "kunden",
           primary: k.firmenname || k.kunden_nr,
-          secondary: [k.kunden_nr, k.ort].filter(Boolean).join(" · "),
+          secondary: [k.kunden_nr, k.telefonnummer, k.ort].filter(Boolean).join(" · "),
           navigateTo: "#/sales/kunden",
           storageKey: "dema-search-q",
-          storageValue: k.firmenname || k.kunden_nr,
+          storageValue: qTrim,
         })
         if (kundenResults.length >= MAX_PER_CATEGORY) break
       }
     }
 
-    // ── Inventory (Bestand) ────────────────────────────────────────────────────
+    // ── Inventory (Bestand) ──────────────────────────────────────────────────
     const bestandDb = loadBestandDb()
     const bestandResults: GlobalSearchResult[] = []
     for (const r of bestandDb.rows) {
-      if (matches(q, r.positions_nr, r.fabrikat, r.typ, r.firmenname, r.fahrgestellnummer)) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            r.positions_nr,
+            r.fabrikat,
+            r.typ,
+            r.firmenname,
+            r.fahrgestellnummer,
+            r.ort,
+            r.plz,
+            r.land,
+            r.kreditor_nr,
+            r.telefonnummer,
+            r.letzte_kz,
+            r.modellreihe,
+            r.import_nr,
+            r.beteiligter,
+            r.einkaeufer,
+          ],
+          [r.fahrgestellnummer, r.telefonnummer, r.positions_nr, r.kreditor_nr]
+        )
+      ) {
         bestandResults.push({
           id: `bestand-${r.id}`,
           category: "bestand",
@@ -74,7 +132,7 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
           secondary: [r.positions_nr, r.firmenname, r.ort].filter(Boolean).join(" · "),
           navigateTo: "#/sales/bestand",
           storageKey: "dema-search-q-bestand",
-          storageValue: query.trim(),
+          storageValue: qTrim,
         })
         if (bestandResults.length >= MAX_PER_CATEGORY) break
       }
@@ -84,7 +142,26 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
     const angeboteDb = loadAngeboteDb()
     const angeboteResults: GlobalSearchResult[] = []
     for (const a of angeboteDb.angebote) {
-      if (matches(q, a.angebot_nr, a.firmenname, a.fabrikat, a.typ)) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            a.angebot_nr,
+            a.firmenname,
+            a.fabrikat,
+            a.typ,
+            a.modellreihe,
+            a.plz,
+            a.ort,
+            a.fahrgestellnummer,
+            a.bemerkungen,
+            a.land_code,
+            a.fahrzeugart,
+            a.aufbauart,
+          ],
+          [a.fahrgestellnummer]
+        )
+      ) {
         angeboteResults.push({
           id: `angebot-${a.id}`,
           category: "angebote",
@@ -92,7 +169,7 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
           secondary: [a.angebot_nr, a.firmenname].filter(Boolean).join(" · "),
           navigateTo: "#/sales/angebote",
           storageKey: "dema-search-q-angebote",
-          storageValue: query.trim(),
+          storageValue: qTrim,
         })
         if (angeboteResults.length >= MAX_PER_CATEGORY) break
       }
@@ -102,7 +179,24 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
     const anfragenDb = loadAnfragenDb()
     const anfragenResults: GlobalSearchResult[] = []
     for (const a of anfragenDb.anfragen) {
-      if (matches(q, a.anfrage_nr, a.firmenname, a.fabrikat)) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            a.anfrage_nr,
+            a.firmenname,
+            a.fabrikat,
+            a.typ,
+            a.extras,
+            a.debitor_nr,
+            a.bearbeiter_sb,
+            a.bemerkungen,
+            a.fahrzeugart,
+            a.aufbauart,
+          ],
+          [a.debitor_nr]
+        )
+      ) {
         anfragenResults.push({
           id: `anfrage-${a.id}`,
           category: "anfragen",
@@ -110,7 +204,7 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
           secondary: [a.anfrage_nr, a.fabrikat, a.aufbauart].filter(Boolean).join(" · "),
           navigateTo: "#/sales/anfragen",
           storageKey: "dema-search-q-anfragen",
-          storageValue: query.trim(),
+          storageValue: qTrim,
         })
         if (anfragenResults.length >= MAX_PER_CATEGORY) break
       }
@@ -120,7 +214,29 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
     const rechnungenDb = loadRechnungenDb()
     const rechnungenResults: GlobalSearchResult[] = []
     for (const r of rechnungenDb.rows) {
-      if (matches(q, r.rechn_nr, r.firmenname, r.kunden_nr, r.fahrgestell_nr)) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            r.rechn_nr,
+            r.firmenname,
+            r.kunden_nr,
+            r.fahrgestell_nr,
+            r.positions_nr,
+            r.verkaufs_nr,
+            r.ort,
+            r.plz,
+            r.land,
+            r.art,
+            r.buchung,
+            r.vermerk,
+            r.ust_id,
+            r.ersteller,
+            r.verkaufer,
+          ],
+          [r.kunden_nr, r.fahrgestell_nr, r.rechn_nr, r.positions_nr, r.verkaufs_nr]
+        )
+      ) {
         rechnungenResults.push({
           id: `rechnung-${r.id}`,
           category: "rechnungen",
@@ -128,9 +244,85 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
           secondary: [r.rechn_nr, r.kunden_nr, r.ort].filter(Boolean).join(" · "),
           navigateTo: "#/sales/rechnungen",
           storageKey: "dema-search-q-rechnungen",
-          storageValue: query.trim(),
+          storageValue: qTrim,
         })
         if (rechnungenResults.length >= MAX_PER_CATEGORY) break
+      }
+    }
+
+    // ── Pickup orders (Abholaufträge) ──────────────────────────────────────────
+    const abholDb = loadAbholauftraegeDb()
+    const abholResults: GlobalSearchResult[] = []
+    for (const r of abholDb.rows) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            r.kunde_anzeige,
+            r.fahrgestellnummer,
+            r.fahrgestellnummer_2,
+            r.fabrikat,
+            r.typ,
+            r.fahrzeugart,
+            r.aufbauart,
+          ],
+          [r.fahrgestellnummer, r.fahrgestellnummer_2]
+        )
+      ) {
+        abholResults.push({
+          id: `abhol-${r.id}`,
+          category: "abhol",
+          primary:
+            [r.fabrikat, r.typ].filter(Boolean).join(" ") ||
+            (r.kunde_anzeige ? r.kunde_anzeige.slice(0, 48) : "") ||
+            r.fahrgestellnummer,
+          secondary: [r.kunde_anzeige, r.fahrgestellnummer].filter(Boolean).join(" · "),
+          navigateTo: "#/sales/abholauftraege",
+          storageKey: "dema-search-q-abhol",
+          storageValue: qTrim,
+        })
+        if (abholResults.length >= MAX_PER_CATEGORY) break
+      }
+    }
+
+    // ── Sold inventory ─────────────────────────────────────────────────────────
+    const verkDb = loadVerkaufterBestandDb()
+    const verkaufterResults: GlobalSearchResult[] = []
+    for (const r of verkDb.rows) {
+      if (
+        combinedMatch(
+          qTrim,
+          [
+            r.position_anzeige,
+            r.firmenname,
+            r.fahrgestellnummer,
+            r.debitor_nr,
+            r.plz,
+            r.ort,
+            r.land,
+            r.fabrikat,
+            r.typ,
+            r.telefonnummer,
+            r.extras,
+            r.import_verkaufs_nr,
+            r.einkaeufer,
+            r.verkaeufer,
+            r.linkaeufer,
+            r.beteiligter,
+          ],
+          [r.telefonnummer, r.fahrgestellnummer, r.debitor_nr]
+        )
+      ) {
+        verkaufterResults.push({
+          id: `verkaufter-${r.id}`,
+          category: "verkaufter",
+          primary: r.firmenname || [r.fabrikat, r.typ].filter(Boolean).join(" "),
+          secondary: [r.position_anzeige, r.fahrgestellnummer, r.telefonnummer].filter(Boolean).join(" · "),
+          navigateTo: "#/sales/verkaufter-bestand",
+          storageKey: "dema-search-q-verkaufter",
+          storageValue: qTrim,
+        })
+        if (verkaufterResults.length >= MAX_PER_CATEGORY) break
       }
     }
 
@@ -139,10 +331,20 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
       bestandResults.length +
       angeboteResults.length +
       anfragenResults.length +
-      rechnungenResults.length
+      rechnungenResults.length +
+      abholResults.length +
+      verkaufterResults.length
 
-    return { kunden: kundenResults, bestand: bestandResults, angebote: angeboteResults, anfragen: anfragenResults, rechnungen: rechnungenResults, total }
-    // dbTick is used to force re-run when any store changes
+    return {
+      kunden: kundenResults,
+      bestand: bestandResults,
+      angebote: angeboteResults,
+      anfragen: anfragenResults,
+      rechnungen: rechnungenResults,
+      abhol: abholResults,
+      verkaufter: verkaufterResults,
+      total,
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, dbTick])
 }

@@ -16,7 +16,7 @@ import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions
 import { SuggestTextInput } from "./SuggestTextInput";
 import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
 import type { DepartmentArea } from "../types/departmentArea";
-import type { KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { KundenStamm, KundenWashStamm, ViesCustomerSnapshot } from "../types/kunden";
 import { useLanguage } from "../contexts/LanguageContext";
 
 type TabId = "vat" | "kunde" | "art" | "waschanlage" | "history";
@@ -745,6 +745,84 @@ function formToPayload(form: FormState): NewKundeInput {
   };
 }
 
+function viesResultToSnapshot(r: ViesCheckResult): ViesCustomerSnapshot {
+  return {
+    valid: r.valid,
+    country_code: r.country_code,
+    vat_number: r.vat_number,
+    name: r.name ?? null,
+    address: r.address ?? null,
+    request_date: r.request_date ?? null,
+    request_identifier: r.request_identifier ?? null,
+    trader_details_available: r.trader_details_available,
+    trader_name_match: r.trader_name_match ?? null,
+    trader_street_match: r.trader_street_match ?? null,
+    trader_postal_code_match: r.trader_postal_code_match ?? null,
+    trader_city_match: r.trader_city_match ?? null,
+    trader_company_type_match: r.trader_company_type_match ?? null,
+    saved_at: new Date().toISOString(),
+  };
+}
+
+function snapshotToViesCheckResult(s: ViesCustomerSnapshot): ViesCheckResult {
+  return {
+    valid: s.valid,
+    country_code: s.country_code,
+    vat_number: s.vat_number,
+    name: s.name,
+    address: s.address,
+    request_date: s.request_date,
+    request_identifier: s.request_identifier,
+    trader_details_available: s.trader_details_available,
+    trader_name_match: s.trader_name_match,
+    trader_street_match: s.trader_street_match,
+    trader_postal_code_match: s.trader_postal_code_match,
+    trader_city_match: s.trader_city_match,
+    trader_company_type_match: s.trader_company_type_match,
+  };
+}
+
+/** Persists VIES snapshot and applies the same field fills as "Apply to form" when the user saves without clicking it. */
+function mergeVatCheckIntoPayload(
+  base: NewKundeInput,
+  vatCheckResult: ViesCheckResult | null,
+  localeTag: string
+): NewKundeInput {
+  if (!vatCheckResult) return base;
+  const out: NewKundeInput = { ...base, vies_snapshot: viesResultToSnapshot(vatCheckResult) };
+  if (!vatCheckResult.valid) return out;
+
+  const cc = vatCheckResult.country_code;
+  const nr = vatCheckResult.vat_number;
+  const ustFromVies = `${cc}${nr}`.replace(/\s+/g, "");
+  const addr = isMeaningfulViesText(vatCheckResult.address)
+    ? parseViesAddress(vatCheckResult.address)
+    : {};
+  const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
+  const derivedLandCode = viesLandToFormLand(cc);
+  const viesRequestDate = normalizeViesRequestDate(vatCheckResult.request_date, localeTag);
+  const hadUst = Boolean((base.ust_id_nr ?? "").trim());
+
+  if (!hadUst) {
+    out.ust_id_nr = ustFromVies;
+    out.land_code = derivedLandCode;
+    out.art_land_code = landCodeToArtLand(derivedLandCode);
+    if (nm && !(base.firmenname ?? "").trim()) out.firmenname = nm;
+    if (addr.strasse && !(base.strasse ?? "").trim()) out.strasse = addr.strasse;
+    if (addr.plz && !(base.plz ?? "").trim()) out.plz = addr.plz;
+    if (addr.ort && !(base.ort ?? "").trim()) out.ort = addr.ort;
+    if (viesRequestDate && !(base.aufnahme ?? "").trim()) out.aufnahme = viesRequestDate;
+  } else {
+    if (!(base.firmenname ?? "").trim() && nm) out.firmenname = nm;
+    if (!(base.strasse ?? "").trim() && addr.strasse) out.strasse = addr.strasse;
+    if (!(base.plz ?? "").trim() && addr.plz) out.plz = addr.plz;
+    if (!(base.ort ?? "").trim() && addr.ort) out.ort = addr.ort;
+    if (viesRequestDate && !(base.aufnahme ?? "").trim()) out.aufnahme = viesRequestDate;
+  }
+
+  return out;
+}
+
 function washFormToPayload(form: FormState): KundenWashUpsertFields {
   const limit = Math.max(0, Number(form.wash_limit) || 0);
   return {
@@ -891,6 +969,12 @@ export function NewCustomerModal({
     setVatCheckLoading(false);
     setVatCheckResult(null);
     setVatCheckError(null);
+    if (isEditMode && editInitial?.kunde.vies_snapshot) {
+      const vs = editInitial.kunde.vies_snapshot;
+      setViesCountry((vs.country_code || "DE").trim() || "DE");
+      setViesVatInput((vs.vat_number || "").trim());
+      setVatCheckResult(snapshotToViesCheckResult(vs));
+    }
     setAufnahmePreview(prepared.aufnahme || nowAufnahme);
     setScannedAttachment(null);
     setShowAttachPrompt(false);
@@ -1188,7 +1272,7 @@ export function NewCustomerModal({
 
   const submitCustomer = (attachScanned: boolean) => {
     const wash = form.includeWashProfile ? washFormToPayload(form) : null;
-    const payload = formToPayload(form);
+    const payload = mergeVatCheckIntoPayload(formToPayload(form), vatCheckResult, localeTag);
     const finalPayload =
       isEditMode && editInitial
         ? { ...payload, kunden_nr: editInitial.kunde.kunden_nr }
@@ -1516,10 +1600,16 @@ export function NewCustomerModal({
               )}
 
               {/* ── Main grid: Firmendaten | Adresse & Steuer | Kontakt | (optional edit-side) ── */}
-              <div className={`grid gap-4 ${hasEditKundeSideContent ? "grid-cols-4" : "grid-cols-3"}`}>
+              <div
+                className={`grid gap-4 ${
+                  hasEditKundeSideContent
+                    ? "grid-cols-1 xl:grid-cols-4"
+                    : "grid-cols-1 md:grid-cols-3"
+                }`}
+              >
 
                 {/* ── Col 1: Firmendaten ── */}
-                <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <div className="min-w-0 space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionFirma", "Company data")}</p>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1668,7 +1758,7 @@ export function NewCustomerModal({
                     }));
 
                   return (
-                    <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
 
                       {/* Header row */}
                       <div className="flex items-center justify-between">
@@ -1899,7 +1989,7 @@ export function NewCustomerModal({
                   const initials = k.name ? k.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() : String(safeIdx + 1);
 
                   return (
-                    <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
 
                       {/* ── Header ── */}
                       <div className="flex items-center justify-between">
@@ -2135,7 +2225,9 @@ export function NewCustomerModal({
                   );
                 })()}
 
-                {hasEditKundeSideContent ? <div className="space-y-4">{editKundeSideContent}</div> : null}
+                {hasEditKundeSideContent ? (
+                  <div className="min-w-0 space-y-4">{editKundeSideContent}</div>
+                ) : null}
               </div>
 
               {isEditMode && editKundeBottomContent ? (

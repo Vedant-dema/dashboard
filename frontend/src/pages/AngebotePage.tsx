@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import type { AngebotStamm } from "../types/angebote";
+import { combinedMatch } from "../lib/globalSearchMatch";
 import {
   loadAngeboteDb,
   saveAngeboteDb,
@@ -63,6 +64,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
   const [fabrikat, setFabrikat] = useState("");
   const [modellTyp, setModellTyp] = useState("");
   const [kundenfilter, setKundenfilter] = useState("");
+  const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
   const [land, setLand] = useState("");
   const [sortierung, setSortierung] = useState<string>(SORT_OPTIONS[0]);
   const [nurVerkauft, setNurVerkauft] = useState(false);
@@ -74,7 +76,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
   useEffect(() => {
     const q = sessionStorage.getItem("dema-search-q-angebote");
     if (q) {
-      setKundenfilter(q);
+      setGlobalHeaderSearch(q);
       sessionStorage.removeItem("dema-search-q-angebote");
     }
   }, []);
@@ -106,6 +108,30 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
 
   const filtered = useMemo(() => {
     let list: AngebotStamm[] = [...db.angebote];
+
+    if (globalHeaderSearch.trim()) {
+      const raw = globalHeaderSearch.trim();
+      list = list.filter((a) =>
+        combinedMatch(
+          raw,
+          [
+            a.angebot_nr,
+            a.firmenname,
+            a.fabrikat,
+            a.typ,
+            a.modellreihe,
+            a.plz,
+            a.ort,
+            a.fahrgestellnummer,
+            a.bemerkungen,
+            a.land_code,
+            a.fahrzeugart,
+            a.aufbauart,
+          ],
+          [a.fahrgestellnummer]
+        )
+      );
+    }
 
     if (angebotId.trim()) {
       const q = angebotId.trim().toLowerCase();
@@ -195,6 +221,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
     return list;
   }, [
     db.angebote,
+    globalHeaderSearch,
     angebotId,
     angebotVon,
     angebotBis,

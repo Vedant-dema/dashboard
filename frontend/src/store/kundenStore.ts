@@ -407,20 +407,20 @@ export async function loadSharedKundenDb(): Promise<KundenDbState | null> {
 export async function saveSharedKundenDb(state: KundenDbState): Promise<KundenDbState> {
   if (!API_MODE) return state;
   // Backend `_is_kunden_db_state_shape` requires unterlagen + nextUnterlageId; normalize so PUT never omits them.
-  const payload = normalizeUnterlagen(state);
+  const bodyState = normalizeUnterlagen(state);
   const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
     method: "PUT",
     headers: demoHeaders(),
-    body: JSON.stringify({ state: payload }),
+    body: JSON.stringify({ state: bodyState }),
   });
   if (!res.ok) {
     throw new Error(`Shared customers save failed (${res.status})`);
   }
-  const payload = (await res.json()) as DemoCustomersDbResponse;
-  if (!payload?.state || !isKundenDbState(payload.state)) {
+  const responseJson: DemoCustomersDbResponse = (await res.json()) as DemoCustomersDbResponse;
+  if (!responseJson.state || !isKundenDbState(responseJson.state)) {
     throw new Error("Shared customers save response has invalid shape");
   }
-  return ensureSeedCustomers(normalizeUnterlagen(payload.state));
+  return ensureSeedCustomers(normalizeUnterlagen(responseJson.state));
 }
 
 export function loadKundenDb(): KundenDbState {

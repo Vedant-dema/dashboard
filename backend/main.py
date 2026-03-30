@@ -25,6 +25,8 @@ Environment:
                            checkVat is the classic operation and sometimes returns name/address when
                            checkVatApprox does not for a minimal request.
   VIES_SIMPLE_TIMEOUT_SEC   Timeout in seconds for simplified one-shot live check (default: 8).
+  VIES_DISPLAY_TEXT_LANG     Target language for normalised trader name/address: de or en (default: de).
+                             Clients may override per request with JSON field text_locale.
   NOMINATIM_API_BASE         OpenStreetMap Nominatim base URL (default: https://nominatim.openstreetmap.org).
   NOMINATIM_USER_AGENT       Required by Nominatim usage policy — identify this app (default: generic string;
                              set to your site URL + contact email in production).
@@ -81,34 +83,78 @@ try:
 except ImportError:
     _TRANSLATOR_AVAILABLE = False
 
-def _has_non_latin_alpha(text: str) -> bool:
-    """Return True when text contains alphabetic chars outside Basic/Extended Latin."""
+
+def _resolve_vies_display_locale(request_locale: str | None) -> str:
+    """Pick de or en for normalised VIES trader strings (default: env or de)."""
+    if request_locale in ("de", "en"):
+        return request_locale
+    env = os.environ.get("VIES_DISPLAY_TEXT_LANG", "de").strip().lower()
+    return env if env in ("de", "en") else "de"
+
+
+def _needs_vies_text_conversion(text: str) -> bool:
+    """True when any letter is outside Latin-1 (ISO-8859-1), e.g. Polish Ł, Greek, Cyrillic."""
     for ch in text:
-        if ch.isalpha() and ord(ch) > 0x024F:
+        if ch.isalpha() and ord(ch) > 0x00FF:
             return True
     return False
 
 
-def _to_de_title(text: str | None) -> str | None:
-    """Translate non-Latin text to German and reformat to Title Case.
+# Letters NFKD does not map to ASCII alone (stroke, ligatures, Romanian comma-below, etc.).
+_VIES_LATIN_ASCII_MANUAL: dict[str, str] = {
+    "Ł": "L",
+    "ł": "l",
+    "Ø": "O",
+    "ø": "o",
+    "Æ": "AE",
+    "æ": "ae",
+    "Œ": "OE",
+    "œ": "oe",
+    "Đ": "D",
+    "đ": "d",
+    "Ș": "S",
+    "ș": "s",
+    "Ț": "T",
+    "ț": "t",
+    "ẞ": "SS",
+    "ß": "ss",
+    "ſ": "s",
+}
 
-    Steps:
-    1. Replace VIES double-pipe company-name separator with ' / '.
-    2. If non-Latin characters are present, try Google Translate → German.
-    3. Apply Python title-case (first letter of each word capitalised).
-    Falls back to title-case of the original if translation is unavailable.
+
+def _fold_latin_for_vies_fallback(text: str) -> str:
+    """Strip combining marks and map a few Latin letters to ASCII when translation is unavailable."""
+    mapped = "".join(_VIES_LATIN_ASCII_MANUAL.get(ch, ch) for ch in text)
+    out: list[str] = []
+    for ch in unicodedata.normalize("NFD", mapped):
+        if unicodedata.category(ch) != "Mn":
+            out.append(ch)
+    return "".join(out)
+
+
+def _normalize_vies_display_text(text: str | None, target_lang: str) -> str | None:
+    """Unicode-normalise VIES text; convert extended or non-Latin scripts to de/en when possible.
+
+    1. NFKC + replace VIES ``||`` with `` / ``.
+    2. If any letter is outside Latin-1, try Google Translate → target_lang (de or en).
+    3. If still needed, fold extended Latin to ASCII (no-op for unconverted Cyrillic/CJK without translator).
+    4. Title-case for consistent CRM display.
     """
     if not text:
         return None
-    text = text.replace("||", " / ").strip()
-    if _has_non_latin_alpha(text) and _TRANSLATOR_AVAILABLE:
+    text = unicodedata.normalize("NFKC", text).replace("||", " / ").strip()
+    if not text:
+        return None
+    tgt = target_lang if target_lang in ("de", "en") else "de"
+    if _needs_vies_text_conversion(text) and _TRANSLATOR_AVAILABLE:
         try:
-            translated = _GoogleTranslator(source="auto", target="de").translate(text)
+            translated = _GoogleTranslator(source="auto", target=tgt).translate(text)
             if translated:
-                text = translated
+                text = unicodedata.normalize("NFKC", translated).strip()
         except Exception:
-            pass  # network error / rate-limit — keep original
-    # Normalise runs of whitespace introduced during translation
+            pass
+    if _needs_vies_text_conversion(text):
+        text = _fold_latin_for_vies_fallback(text)
     text = re.sub(r" {2,}", " ", text).strip()
     return text.title() if text else None
 
@@ -362,6 +408,20 @@ class VatCheckRequest(BaseModel):
     trader_postal_code: str | None = Field(default=None, max_length=32)
     trader_city: str | None = Field(default=None, max_length=200)
     trader_company_type: str | None = Field(default=None, max_length=100)
+    text_locale: str | None = Field(
+        default=None,
+        description='Normalise trader name/address to this language: "de" or "en" (default: VIES_DISPLAY_TEXT_LANG or de).',
+    )
+
+    @field_validator("text_locale", mode="before")
+    @classmethod
+    def _coerce_text_locale(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        s = str(v).strip().lower()
+        return s if s in ("de", "en") else None
 
 
 REQUESTER_COUNTRY_CODES: frozenset[str] = VIES_COUNTRY_CODES | {"EU"}
@@ -1916,6 +1976,7 @@ def _map_vies_check_response(
     vat: str,
     fallback_name: str | None = None,
     fallback_address: str | None = None,
+    display_locale: str = "de",
 ) -> VatCheckResponse:
     valid = bool(data.get("valid"))
     trader_name = _vies_text_or_none(data.get("traderName")) or _vies_text_or_none(data.get("name"))
@@ -1928,9 +1989,9 @@ def _map_vies_check_response(
     if not addr:
         addr = _vies_address_or_none(data.get("address"))
 
-    # Translate non-Latin text (e.g. Greek) to German and apply Title Case.
-    trader_name = _to_de_title(trader_name)
-    addr = _to_de_title(addr)
+    loc = display_locale if display_locale in ("de", "en") else _resolve_vies_display_locale(None)
+    trader_name = _normalize_vies_display_text(trader_name, loc)
+    addr = _normalize_vies_display_text(addr, loc)
 
     details = bool(trader_name or addr)
     if valid and not trader_name and fallback_name:
@@ -2003,12 +2064,14 @@ async def vies_check_test_service(body: VatCheckRequest) -> VatCheckResponse:
         require_valid_field=True,
     )
     fallback_name, fallback_address = _request_fallback_name_address(body)
+    display_locale = _resolve_vies_display_locale(body.text_locale)
     return _map_vies_check_response(
         data,
         cc,
         vat,
         fallback_name=fallback_name,
         fallback_address=fallback_address,
+        display_locale=display_locale,
     )
 
 
@@ -2032,10 +2095,12 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
     )
     data = await _enrich_vies_data_with_fallbacks(payload, data)
     fallback_name, fallback_address = _request_fallback_name_address(body)
+    display_locale = _resolve_vies_display_locale(body.text_locale)
     return _map_vies_check_response(
         data,
         cc,
         vat,
         fallback_name=fallback_name,
         fallback_address=fallback_address,
+        display_locale=display_locale,
     )

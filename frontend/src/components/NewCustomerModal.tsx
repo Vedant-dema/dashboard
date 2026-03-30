@@ -1197,6 +1197,7 @@ export function NewCustomerModal({
         body: JSON.stringify({
           country_code: viesCountry,
           vat_number: trimmed,
+          text_locale: language === "de" ? "de" : "en",
         }),
       });
       // status 0 means the browser blocked the request (CORS / network).
@@ -1619,7 +1620,7 @@ export function NewCustomerModal({
                 />
               )}
 
-              {/* ── Main grid: Firmendaten | Adresse & Steuer | Kontakt | (optional edit-side) ── */}
+              {/* ── Main grid: Firmendaten | Adresse & Steuer | Kontakt | (optional edit-side, xl: 3+3+3+3) ── */}
               <div
                 className={`grid gap-4 md:gap-5 ${
                   hasEditKundeSideContent
@@ -1784,7 +1785,7 @@ export function NewCustomerModal({
                   return (
                     <div
                       className={`flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
-                        hasEditKundeSideContent ? "xl:col-span-4" : "lg:col-span-5"
+                        hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-5"
                       }`}
                     >
 
@@ -2258,7 +2259,7 @@ export function NewCustomerModal({
                 })()}
 
                 {hasEditKundeSideContent ? (
-                  <div className="min-w-0 space-y-4 xl:col-span-2">{editKundeSideContent}</div>
+                  <div className="min-w-0 space-y-4 xl:col-span-3">{editKundeSideContent}</div>
                 ) : null}
               </div>
 

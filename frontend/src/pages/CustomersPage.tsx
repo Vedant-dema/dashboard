@@ -468,6 +468,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         setDraftWash(emptyWashDraft(detail.kunden.id));
       }
       setNewPlateInput("");
+      // Reset inline forms so they don't carry over when switching customers
+      setBeziehungFormOpen(false);
+      setBeziehungNr("");
+      setBeziehungArt("");
+      setRisikoEditOpen(false);
+      setTerminFormOpen(false);
     },
     [db]
   );
@@ -1053,10 +1059,28 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         beziehungenForCustomer.map((b) => {
                           const linked = db.kunden.find((k) => k.id === b.verknuepfter_kunden_id);
                           return (
-                            <tr key={b.id}>
+                            <tr key={b.id} className="group">
                               <td className="px-3 py-2">
-                                <span className="font-medium">{linked?.firmenname ?? b.verknuepfter_kunden_id}</span>
-                                <span className="ml-1 text-slate-400">#{linked?.kunden_nr ?? "?"}</span>
+                                {linked ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openCustomerRow(linked.kunden_nr)}
+                                    className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-left transition hover:bg-blue-50"
+                                    title={t("customersRelationsOpenHint", "Open this customer")}
+                                  >
+                                    <span className="font-medium text-blue-700 group-hover:underline">
+                                      {linked.firmenname}
+                                    </span>
+                                    <span className="font-mono text-[10px] text-slate-400">
+                                      #{linked.kunden_nr}
+                                    </span>
+                                    {linked.ort && (
+                                      <span className="text-[10px] text-slate-400">· {linked.ort}</span>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-400">#{b.verknuepfter_kunden_id}</span>
+                                )}
                               </td>
                               <td className="px-3 py-2 text-slate-500">{b.art}</td>
                               <td className="px-3 py-2">

@@ -14,6 +14,7 @@ import type {
 } from "../store/kundenStore";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
+import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
 import type { DepartmentArea } from "../types/departmentArea";
 import type { KundenStamm, KundenWashStamm } from "../types/kunden";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -1744,6 +1745,35 @@ export function NewCustomerModal({
 
                         {/* Card body */}
                         <div className="space-y-2 p-3">
+                          <div>
+                            <label className={labelClass}>{t("globalAddrSearchLabel", "Address search (worldwide)")}</label>
+                            <p className="mb-1.5 text-[11px] text-slate-500">
+                              {t(
+                                "newCustomerGlobalAddrHint",
+                                "Type a street or place name, then choose a suggestion to fill street, ZIP, city and country."
+                              )}
+                            </p>
+                            <GlobalAddressSearch
+                              onSelect={(r: GlobalAddressResult) => {
+                                const road = r.strasse?.trim();
+                                const line1 =
+                                  road && road.length > 0
+                                    ? road
+                                    : (r.label.split(",")[0]?.trim() ?? "");
+                                const code = (r.land_code ?? "").toUpperCase();
+                                const landOk =
+                                  code !== "" && LAND_OPTIONS.some((l) => l.code === code);
+                                patchAdresse({
+                                  strasse: line1,
+                                  plz: r.plz ?? "",
+                                  ort: r.ort ?? "",
+                                  ...(landOk
+                                    ? { land_code: code, art_land_code: landCodeToArtLand(code) }
+                                    : {}),
+                                });
+                              }}
+                            />
+                          </div>
                           <div>
                             <label className={labelClass}>{t("newCustomerLabelStrasse", "Street")}{isExtracted("strasse") && <KiBadge />}</label>
                             <ExtractedFieldWrapper extracted={isExtracted("strasse")}>

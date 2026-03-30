@@ -593,8 +593,6 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     riskAlertWarning: "{n} Dokument(e) laufen bald ab (≤60 Tage)",
     riskAlertBannerTitle: "Dokument-Ablauf Warnung",
     riskEdit: "Daten bearbeiten",
-    riskNoData: "Keine Risikoanalyse-Daten hinterlegt",
-    riskAddData: "Daten erfassen",
     riskDocDate: "Datum (gültig bis)",
     riskDocStatus: "Status",
     riskDocName: "Dokument",
@@ -993,7 +991,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     globalAddrHint: "Auswählen um PLZ, Ort und Land zu füllen",
     globalAddrListLabel: "Adressvorschläge",
     globalAddrNoResults: "Keine Adresse gefunden. Anderen Suchbegriff verwenden.",
-    globalAddrPowered: "Powered by OpenStreetMap · Photon",
+    globalAddrPowered: "OpenStreetMap · Photon & Nominatim",
+    globalAddrConnError: "Adressdienst nicht erreichbar",
+    globalAddrConnErrorHint:
+      "Internet prüfen. Lokal: Python-Backend auf Port 8000 starten (Ordner backend: uvicorn main:app --reload --port 8000).",
+    globalAddrNetworkError:
+      "Keine Verbindung zum API-Server. Backend starten: im Ordner backend → uvicorn main:app --reload --port 8000 (parallel zu npm run dev).",
+    globalAddrSearching: "Suche läuft…",
+    newCustomerGlobalAddrHint:
+      "Straße oder Ort eingeben, dann einen Vorschlag wählen — Straße, PLZ, Ort und Land werden ausgefüllt.",
     angebotFirmennamePlaceholder: "Firmen- / Kundenname",
     datePickerToday: "Heute",
     datePickerClear: "Löschen",
@@ -1566,8 +1572,6 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     riskAlertWarning: "{n} document(s) expiring soon (≤60 days)",
     riskAlertBannerTitle: "Document Expiry Warning",
     riskEdit: "Edit dates",
-    riskNoData: "No risk analysis data on file",
-    riskAddData: "Add data",
     riskDocDate: "Date (valid until)",
     riskDocStatus: "Status",
     riskDocName: "Document",
@@ -1965,7 +1969,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     globalAddrHint: "Select to fill PLZ, Ort and Land",
     globalAddrListLabel: "Address suggestions",
     globalAddrNoResults: "No addresses found. Try a different search term.",
-    globalAddrPowered: "Powered by OpenStreetMap · Photon",
+    globalAddrPowered: "OpenStreetMap · Photon & Nominatim",
+    globalAddrConnError: "Address service unavailable",
+    globalAddrConnErrorHint:
+      "Check your connection. Local: run the Python backend on port 8000 (backend folder: uvicorn main:app --reload --port 8000).",
+    globalAddrNetworkError:
+      "Cannot reach the API server. Start the backend: cd backend, then uvicorn main:app --reload --port 8000 (while npm run dev is running).",
+    globalAddrSearching: "Searching…",
+    newCustomerGlobalAddrHint:
+      "Type a street or place name, then pick a suggestion to fill street, ZIP, city and country.",
     angebotFirmennamePlaceholder: "Company / customer name",
     datePickerToday: "Today",
     datePickerClear: "Clear",
@@ -2439,8 +2451,6 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     riskAlertWarning: "{n} document(s) expirent bientôt (≤60 jours)",
     riskAlertBannerTitle: "Avertissement d'expiration",
     riskEdit: "Modifier les dates",
-    riskNoData: "Aucune donnée d'analyse des risques",
-    riskAddData: "Saisir les données",
     riskDocDate: "Date (valable jusqu'au)",
     riskDocStatus: "Statut",
     riskDocName: "Document",
@@ -2746,7 +2756,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     globalAddrHint: "Sélectionner pour remplir CP, Ville et Pays",
     globalAddrListLabel: "Suggestions d'adresses",
     globalAddrNoResults: "Aucune adresse trouvée. Essayez un autre terme.",
-    globalAddrPowered: "Propulsé par OpenStreetMap · Photon",
+    globalAddrPowered: "OpenStreetMap · Photon & Nominatim",
+    globalAddrConnError: "Service d'adresses indisponible",
+    globalAddrConnErrorHint:
+      "Vérifiez la connexion. En local : démarrez le backend Python sur le port 8000 (dossier backend : uvicorn main:app --reload --port 8000).",
+    globalAddrNetworkError:
+      "Impossible de joindre l'API. Démarrez le backend : dossier backend → uvicorn main:app --reload --port 8000 (en parallèle de npm run dev).",
+    globalAddrSearching: "Recherche en cours…",
+    newCustomerGlobalAddrHint:
+      "Saisissez une rue ou un lieu, puis choisissez une suggestion pour remplir rue, code postal, ville et pays.",
     angebotFirmennamePlaceholder: "Nom de l'entreprise / client",
     datePickerToday: "Aujourd'hui",
     datePickerClear: "Effacer",

@@ -1360,9 +1360,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </table>
                 </div>
               </section>
-            </>
-          }
-          editKundeBottomContent={(() => {
+
+              {(() => {
             const risk = risikoForCustomer;
 
             type DocField = {
@@ -1560,24 +1559,14 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         })}
                       </tbody>
                     </table>
-
-                    {!risk && (
-                      <p className="px-4 py-5 text-center text-sm text-slate-400">
-                        {t("riskNoData", "No risk analysis data on file")} —{" "}
-                        <button
-                          type="button"
-                          onClick={handleRisikoEdit}
-                          className="text-blue-600 underline hover:text-blue-700"
-                        >
-                          {t("riskAddData", "Add data")}
-                        </button>
-                      </p>
-                    )}
                   </div>
                 )}
               </section>
             );
-          })()}
+              })()}
+
+            </>
+          }
           nextKundenNrPreview={draftKunde.kunden_nr}
           fieldSuggestions={fieldSuggestions}
           onSubmit={handleEditCustomerSubmit}

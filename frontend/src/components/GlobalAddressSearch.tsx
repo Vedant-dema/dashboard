@@ -1,7 +1,16 @@
-import { useState, useRef, useEffect, useCallback, useId, type CSSProperties } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useId,
+  type CSSProperties,
+} from "react";
 import { createPortal } from "react-dom";
-import { Search, MapPin, Globe, Loader2, X } from "lucide-react";
+import { Search, MapPin, Globe, Loader2, X, AlertCircle } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
+import { buildGeocodeSearchUrl } from "../services/geocodeApi";
 
 export type GlobalAddressResult = {
   label: string;
@@ -12,52 +21,57 @@ export type GlobalAddressResult = {
   land_name?: string;
 };
 
-type PhotonFeature = {
-  properties: {
-    name?: string;
-    street?: string;
-    housenumber?: string;
+type NominatimResult = {
+  place_id: number;
+  display_name: string;
+  name?: string;
+  address?: {
+    road?: string;
+    pedestrian?: string;
+    path?: string;
+    footway?: string;
+    house_number?: string;
     postcode?: string;
     city?: string;
     town?: string;
     village?: string;
-    municipality?: string;
-    district?: string;
+    hamlet?: string;
+    county?: string;
     state?: string;
     country?: string;
-    countrycode?: string;
+    country_code?: string;
   };
 };
 
-type PhotonResponse = {
-  features: PhotonFeature[];
-};
-
-function parsePhoton(features: PhotonFeature[]): GlobalAddressResult[] {
-  return features
-    .map((f) => {
-      const p = f.properties;
-      const street = [p.street, p.housenumber].filter(Boolean).join(" ");
-      const city =
-        p.city ?? p.town ?? p.village ?? p.municipality ?? p.district ?? p.state ?? "";
-      const postcode = p.postcode ?? "";
-      const countrycode = (p.countrycode ?? "").toUpperCase();
-      const country = p.country ?? "";
-
-      const parts: string[] = [];
-      if (p.name && p.name !== p.street) parts.push(p.name);
-      if (street) parts.push(street);
-      if (postcode) parts.push(postcode);
-      if (city) parts.push(city);
-      if (country) parts.push(country);
-
+function parseNominatim(items: NominatimResult[]): GlobalAddressResult[] {
+  return items
+    .map((r) => {
+      const a = r.address;
+      if (!a) {
+        return {
+          label: r.display_name,
+          strasse: undefined,
+          plz: undefined,
+          ort: undefined,
+          land_code: undefined,
+          land_name: undefined,
+        };
+      }
+      const road = a.road ?? a.pedestrian ?? a.path ?? a.footway ?? "";
+      const hn = (a.house_number ?? "").trim();
+      const street =
+        hn && road ? `${road} ${hn}`.trim()
+        : road || hn || "";
+      const city = a.city ?? a.town ?? a.village ?? a.hamlet ?? a.county ?? a.state ?? "";
+      const postcode = a.postcode ?? "";
+      const countryCode = (a.country_code ?? "").toUpperCase();
       return {
-        label: parts.join(", "),
+        label: r.display_name,
         strasse: street || undefined,
         plz: postcode || undefined,
         ort: city || undefined,
-        land_code: countrycode || undefined,
-        land_name: country || undefined,
+        land_code: countryCode || undefined,
+        land_name: a.country || undefined,
       };
     })
     .filter((r) => r.label.trim().length > 0);
@@ -77,12 +91,17 @@ function flag(code?: string): string {
   return code ? (COUNTRY_FLAGS[code] ?? "🌍") : "🌍";
 }
 
-type Props = {
-  onSelect: (result: GlobalAddressResult) => void;
-};
+const REQUEST_TIMEOUT_MS = 15000;
+
+/** Above modal overlays (e.g. z-50) and stacking contexts. */
+const DROPDOWN_Z = 2147483646;
 
 const BASE_INPUT =
   "h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 text-sm text-slate-800 shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20";
+
+type Props = {
+  onSelect: (result: GlobalAddressResult) => void;
+};
 
 export function GlobalAddressSearch({ onSelect }: Props) {
   const { t, language } = useLanguage();
@@ -91,6 +110,9 @@ export function GlobalAddressSearch({ onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalAddressResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  /** True when fetch failed before HTTP (backend down, wrong URL, CORS). */
+  const [networkError, setNetworkError] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
@@ -99,26 +121,48 @@ export function GlobalAddressSearch({ onSelect }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestSeqRef = useRef(0);
 
   const langParam =
     language === "de" ? "de"
     : language === "fr" ? "fr"
     : language === "it" ? "it"
+    : language === "es" ? "es"
     : language === "ru" ? "ru"
     : "en";
 
-  /** Recalculate dropdown position relative to the input (fixed coords). */
-  const updateDropdownPos = useCallback(() => {
-    if (!inputRef.current) return;
-    const rect = inputRef.current.getBoundingClientRect();
+  const applyDropdownGeometry = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
     setDropdownStyle({
       position: "fixed",
       top: rect.bottom + 4,
       left: rect.left,
       width: rect.width,
-      zIndex: 9999,
+      zIndex: DROPDOWN_Z,
     });
   }, []);
+
+  /** Before paint: anchor portal so the list is not rendered at the bottom of <body>. */
+  useLayoutEffect(() => {
+    if (!open) return;
+    applyDropdownGeometry();
+  }, [open, error, results.length, loading, applyDropdownGeometry]);
+
+  /** Track scroll/resize to keep dropdown anchored. */
+  useEffect(() => {
+    if (!open) return;
+    const h = () => applyDropdownGeometry();
+    window.addEventListener("scroll", h, true);
+    window.addEventListener("resize", h);
+    return () => {
+      window.removeEventListener("scroll", h, true);
+      window.removeEventListener("resize", h);
+    };
+  }, [open, applyDropdownGeometry]);
 
   const fetchAddresses = useCallback(
     async (q: string) => {
@@ -128,36 +172,96 @@ export function GlobalAddressSearch({ onSelect }: Props) {
         return;
       }
 
+      const seq = ++requestSeqRef.current;
       abortRef.current?.abort();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       abortRef.current = new AbortController();
+      const { signal } = abortRef.current;
+
+      timeoutRef.current = setTimeout(() => {
+        abortRef.current?.abort();
+      }, REQUEST_TIMEOUT_MS);
+
       setLoading(true);
+      setError(false);
+      setNetworkError(false);
 
       try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=${langParam}`;
-        const res = await fetch(url, { signal: abortRef.current.signal });
-        if (!res.ok) throw new Error("fetch failed");
-        const data = (await res.json()) as PhotonResponse;
-        const parsed = parsePhoton(data.features ?? []);
-        setResults(parsed);
-        setOpen(parsed.length > 0);
-        setActiveIdx(-1);
-        updateDropdownPos();
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+        const url = buildGeocodeSearchUrl(q.trim(), langParam);
+        const res = await fetch(url, {
+          signal,
+          headers: { Accept: "application/json" },
+        });
+
+        let payload: unknown;
+        try {
+          payload = await res.json();
+        } catch {
+          if (seq !== requestSeqRef.current) return;
+          setNetworkError(false);
+          setError(true);
           setResults([]);
-          setOpen(false);
+          applyDropdownGeometry();
+          setOpen(true);
+          return;
         }
+
+        if (seq !== requestSeqRef.current) return;
+
+        if (!res.ok) {
+          const d = payload as { detail?: string | string[] };
+          const detail = d.detail;
+          const msg =
+            typeof detail === "string"
+              ? detail
+              : Array.isArray(detail)
+                ? detail.join(", ")
+                : `HTTP ${res.status}`;
+          throw new Error(msg);
+        }
+
+        if (!Array.isArray(payload)) {
+          throw new Error("Invalid geocode response");
+        }
+
+        const parsed = parseNominatim(payload as NominatimResult[]);
+        applyDropdownGeometry();
+        setResults(parsed);
+        setOpen(true);
+        setActiveIdx(-1);
+        setError(false);
+        setNetworkError(false);
+      } catch (err) {
+        if (seq !== requestSeqRef.current) return;
+        const isAbort = (err as Error).name === "AbortError";
+        const isNetwork = err instanceof TypeError;
+        if (isAbort) {
+          setNetworkError(false);
+          setError(true);
+          setResults([]);
+          applyDropdownGeometry();
+          setOpen(true);
+          return;
+        }
+        setNetworkError(isNetwork);
+        setError(true);
+        setResults([]);
+        applyDropdownGeometry();
+        setOpen(true);
       } finally {
-        setLoading(false);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (seq === requestSeqRef.current) setLoading(false);
       }
     },
-    [langParam, updateDropdownPos]
+    [langParam, applyDropdownGeometry]
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setQuery(val);
+      setError(false);
+      setNetworkError(false);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (val.trim().length < 2) {
         setResults([]);
@@ -166,7 +270,7 @@ export function GlobalAddressSearch({ onSelect }: Props) {
         return;
       }
       setLoading(true);
-      debounceRef.current = setTimeout(() => fetchAddresses(val), 400);
+      debounceRef.current = setTimeout(() => fetchAddresses(val), 350);
     },
     [fetchAddresses]
   );
@@ -178,6 +282,8 @@ export function GlobalAddressSearch({ onSelect }: Props) {
       setOpen(false);
       setResults([]);
       setActiveIdx(-1);
+      setError(false);
+      setNetworkError(false);
     },
     [onSelect]
   );
@@ -187,6 +293,8 @@ export function GlobalAddressSearch({ onSelect }: Props) {
     setResults([]);
     setOpen(false);
     setActiveIdx(-1);
+    setError(false);
+    setNetworkError(false);
     abortRef.current?.abort();
     inputRef.current?.focus();
   }, []);
@@ -211,33 +319,21 @@ export function GlobalAddressSearch({ onSelect }: Props) {
     [open, results, activeIdx, handleSelect]
   );
 
-  /* Close on click outside the input + portal */
+  /** Close on click outside the input + portal. */
   useEffect(() => {
-    function onPointerDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (inputRef.current?.contains(target)) return;
-      const portalEl = document.getElementById(`portal-${uid}`);
-      if (portalEl?.contains(target)) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (inputRef.current?.contains(t)) return;
+      const portal = document.getElementById(`portal-${uid}`);
+      if (portal?.contains(t)) return;
       setOpen(false);
       setActiveIdx(-1);
     }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
   }, [uid]);
 
-  /* Reposition on scroll / resize while open */
-  useEffect(() => {
-    if (!open) return;
-    const handler = () => updateDropdownPos();
-    window.addEventListener("scroll", handler, true);
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("scroll", handler, true);
-      window.removeEventListener("resize", handler);
-    };
-  }, [open, updateDropdownPos]);
-
-  /* Scroll active item into view */
+  /** Scroll active item into view. */
   useEffect(() => {
     if (activeIdx >= 0 && listRef.current) {
       const item = listRef.current.children[activeIdx + 1] as HTMLElement | undefined;
@@ -245,19 +341,42 @@ export function GlobalAddressSearch({ onSelect }: Props) {
     }
   }, [activeIdx]);
 
-  /* Cleanup on unmount */
+  /** Cleanup. */
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       abortRef.current?.abort();
     };
   }, []);
 
   const listboxId = `global-addr-${uid}`;
+  const showDropdown = open && (results.length > 0 || error || (!loading && query.trim().length >= 2));
 
-  const dropdown = (open && (results.length > 0 || (query.trim().length >= 2 && !loading))) ? (
+  const dropdownContent = showDropdown ? (
     <div id={`portal-${uid}`} style={dropdownStyle}>
-      {results.length > 0 ? (
+      {error ? (
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-white px-4 py-3 shadow-lg">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+          <div>
+            <p className="text-sm font-medium text-red-700">
+              {t("globalAddrConnError", "Address service unavailable")}
+            </p>
+            <p className="mt-0.5 text-[11px] text-red-500">
+              {networkError
+                ? t(
+                    "globalAddrNetworkError",
+                    "Cannot reach the API. Start the backend from the backend folder: uvicorn main:app --reload --port 8000"
+                  )
+                : t("globalAddrConnErrorHint", "Check your internet connection and try again.")}
+            </p>
+          </div>
+        </div>
+      ) : results.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-lg">
+          {t("globalAddrNoResults", "No addresses found. Try a different search term.")}
+        </div>
+      ) : (
         <ul
           ref={listRef}
           id={listboxId}
@@ -293,7 +412,11 @@ export function GlobalAddressSearch({ onSelect }: Props) {
                   {flag(r.land_code)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className={`truncate text-sm font-medium ${isActive ? "text-teal-900" : "text-slate-800"}`}>
+                  <p
+                    className={`truncate text-sm font-medium ${
+                      isActive ? "text-teal-900" : "text-slate-800"
+                    }`}
+                  >
                     {topLine}
                   </p>
                   {secondLine && (
@@ -312,13 +435,9 @@ export function GlobalAddressSearch({ onSelect }: Props) {
             );
           })}
           <li className="border-t border-slate-100 px-3 py-1.5 text-[10px] text-slate-400">
-            {t("globalAddrPowered", "Powered by OpenStreetMap · Photon")}
+            {t("globalAddrPowered", "Powered by OpenStreetMap · Photon & Nominatim")}
           </li>
         </ul>
-      ) : (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-lg">
-          {t("globalAddrNoResults", "No addresses found. Try a different search term.")}
-        </div>
       )}
     </div>
   ) : null;
@@ -341,8 +460,8 @@ export function GlobalAddressSearch({ onSelect }: Props) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            updateDropdownPos();
-            if (results.length > 0) setOpen(true);
+            applyDropdownGeometry();
+            if (results.length > 0 || error) setOpen(true);
           }}
           className={BASE_INPUT}
           placeholder={t("globalAddrSearchPlaceholder", "Search address worldwide…")}
@@ -365,7 +484,12 @@ export function GlobalAddressSearch({ onSelect }: Props) {
           </button>
         )}
       </div>
-      {typeof document !== "undefined" && createPortal(dropdown, document.body)}
+      {loading && query.trim().length >= 2 && (
+        <p className="mt-1 text-[11px] text-teal-600">
+          {t("globalAddrSearching", "Searching…")}
+        </p>
+      )}
+      {typeof document !== "undefined" && createPortal(dropdownContent, document.body)}
     </>
   );
 }

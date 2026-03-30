@@ -25,6 +25,11 @@ Environment:
                            checkVat is the classic operation and sometimes returns name/address when
                            checkVatApprox does not for a minimal request.
   VIES_SIMPLE_TIMEOUT_SEC   Timeout in seconds for simplified one-shot live check (default: 8).
+  NOMINATIM_API_BASE         OpenStreetMap Nominatim base URL (default: https://nominatim.openstreetmap.org).
+  NOMINATIM_USER_AGENT       Required by Nominatim usage policy — identify this app (default: generic string;
+                             set to your site URL + contact email in production).
+  PHOTON_API_BASE            Komoot Photon OSM search base (default: https://photon.komoot.io). Merged with Nominatim.
+  GEOCODE_DISABLE_PHOTON     If 1/true: skip Photon and use only Nominatim.
 
 Note: MS_MAX_CONCURRENT_REQ is enforced by the Commission/member states. We cannot remove it;
 this app serializes outbound VIES calls and retries with backoff so many checks still succeed.
@@ -44,6 +49,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import hashlib
 import json
 import os
 import random
@@ -61,6 +67,7 @@ import unicodedata
 import httpx
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 
 try:
@@ -1009,9 +1016,304 @@ class DemoCustomersDbPayload(BaseModel):
     state: dict[str, Any]
 
 
+def _nominatim_base() -> str:
+    return os.environ.get(
+        "NOMINATIM_API_BASE",
+        "https://nominatim.openstreetmap.org",
+    ).rstrip("/")
+
+
+def _nominatim_user_agent() -> str:
+    return os.environ.get(
+        "NOMINATIM_USER_AGENT",
+        "DemaDashboard/1.0 (address search proxy; configure NOMINATIM_USER_AGENT for production)",
+    ).strip() or "DemaDashboard/1.0"
+
+
+def _photon_base() -> str:
+    return os.environ.get("PHOTON_API_BASE", "https://photon.komoot.io").rstrip("/")
+
+
+def _photon_geocoding_enabled() -> bool:
+    v = os.environ.get("GEOCODE_DISABLE_PHOTON", "").strip().lower()
+    return v not in ("1", "true", "yes", "on")
+
+
+def _stable_place_id(
+    osm_type: str | None, osm_id: int | None, label: str
+) -> int:
+    raw = f"{osm_type or ''}|{osm_id or ''}|{label[:120]}"
+    h = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return int(h[:12], 16) % 1_000_000_000
+
+
+def _photon_feature_to_nominatim(feature: Any) -> dict[str, Any] | None:
+    """Map one Photon GeoJSON feature to a Nominatim-shaped dict for the frontend."""
+    if not isinstance(feature, dict) or feature.get("type") != "Feature":
+        return None
+    props = feature.get("properties")
+    if not isinstance(props, dict):
+        return None
+
+    def _s(key: str) -> str | None:
+        v = props.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        return None
+
+    street = _s("street")
+    housenumber = _s("housenumber")
+    name = _s("name")
+    postcode = _s("postcode")
+    city = (
+        _s("city")
+        or _s("town")
+        or _s("village")
+        or _s("hamlet")
+        or _s("locality")
+        or _s("district")
+    )
+    country = _s("country")
+    cc_raw = props.get("countrycode")
+    country_code: str | None
+    if isinstance(cc_raw, str) and cc_raw.strip():
+        country_code = cc_raw.strip().upper()
+    else:
+        country_code = None
+    state = _s("state")
+    county = _s("county")
+
+    line1 = ""
+    if street and housenumber:
+        line1 = f"{street} {housenumber}"
+    elif street:
+        line1 = street
+    elif name:
+        line1 = name
+    else:
+        line1 = ""
+
+    tail: list[str] = []
+    if postcode:
+        tail.append(postcode)
+    if city:
+        tail.append(city)
+    if country:
+        tail.append(country)
+
+    display_parts: list[str] = []
+    if line1:
+        display_parts.append(line1)
+    display_parts.extend(tail)
+    display_name = ", ".join(display_parts) if display_parts else (name or "")
+    if not display_name.strip():
+        return None
+
+    osm_raw = props.get("osm_id")
+    osm_id: int | None
+    if isinstance(osm_raw, int):
+        osm_id = osm_raw
+    elif isinstance(osm_raw, str) and osm_raw.isdigit():
+        osm_id = int(osm_raw)
+    else:
+        osm_id = None
+    osm_t = props.get("osm_type")
+    osm_type = osm_t[:1] if isinstance(osm_t, str) and osm_t else None
+
+    addr: dict[str, Any] = {}
+    if street:
+        addr["road"] = street
+    if housenumber:
+        addr["house_number"] = housenumber
+    if postcode:
+        addr["postcode"] = postcode
+    if city:
+        addr["city"] = city
+    if state:
+        addr["state"] = state
+    if county:
+        addr["county"] = county
+    if country:
+        addr["country"] = country
+    if country_code:
+        addr["country_code"] = country_code.lower()
+
+    return {
+        "place_id": _stable_place_id(osm_type, osm_id, display_name),
+        "display_name": display_name,
+        "name": name,
+        "address": addr,
+    }
+
+
+def _merge_geocode_results(
+    photon_first: list[dict[str, Any]],
+    nominatim: list[dict[str, Any]],
+    *,
+    max_items: int,
+) -> list[dict[str, Any]]:
+    """Prefer Photon ordering (strong for partial address typing), then add Nominatim-only hits."""
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+
+    def norm(item: dict[str, Any]) -> str:
+        dn = item.get("display_name")
+        if not isinstance(dn, str):
+            return ""
+        return " ".join(dn.lower().split())
+
+    for item in photon_first:
+        k = norm(item)
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        out.append(item)
+        if len(out) >= max_items:
+            return out
+
+    for item in nominatim:
+        k = norm(item)
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        out.append(item)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+async def _fetch_photon_results(
+    client: httpx.AsyncClient, q: str, lang: str
+) -> list[dict[str, Any]]:
+    if not _photon_geocoding_enabled():
+        return []
+    photon_lang = lang[:2] if len(lang) >= 2 else "en"
+    url = f"{_photon_base()}/api/"
+    params = {"q": q, "limit": "18", "lang": photon_lang}
+    try:
+        r = await client.get(
+            url,
+            params=params,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": _nominatim_user_agent(),
+            },
+            timeout=httpx.Timeout(10.0, connect=5.0),
+        )
+    except (httpx.TimeoutException, httpx.RequestError):
+        return []
+    if r.status_code >= 400:
+        return []
+    try:
+        data = r.json()
+    except ValueError:
+        return []
+    if not isinstance(data, dict):
+        return []
+    features = data.get("features")
+    if not isinstance(features, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for feat in features:
+        conv = _photon_feature_to_nominatim(feat)
+        if conv:
+            out.append(conv)
+    return out
+
+
+async def _fetch_nominatim_results(
+    client: httpx.AsyncClient, q: str, lang: str
+) -> list[dict[str, Any]]:
+    params = {
+        "q": q,
+        "format": "json",
+        "addressdetails": "1",
+        "limit": "15",
+        "accept-language": lang,
+    }
+    url = f"{_nominatim_base()}/search"
+    try:
+        r = await client.get(
+            url,
+            params=params,
+            headers={
+                "User-Agent": _nominatim_user_agent(),
+                "Accept": "application/json",
+            },
+            timeout=httpx.Timeout(12.0, connect=6.0),
+        )
+    except (httpx.TimeoutException, httpx.RequestError):
+        return []
+    if r.status_code >= 400:
+        return []
+    try:
+        data = r.json()
+    except ValueError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return data
+
+
+@app.get("/")
+async def api_root() -> dict[str, Any]:
+    """Browser hits this when you open http://127.0.0.1:8000/ — the UI lives on Vite (e.g. :5173)."""
+    return {
+        "service": "Dema Dashboard API",
+        "note": "Open the app in the Vite dev server (usually http://localhost:5173), not this port.",
+        "health": "/api/health",
+        "docs": "/docs",
+        "geocode_try": "/api/v1/geocode/search?q=berlin&lang=en",
+    }
+
+
+@app.head("/", include_in_schema=False)
+async def api_root_head() -> Response:
+    """Render and other platforms probe HEAD / for deploy health; must not return 404."""
+    return Response(status_code=200)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> Response:
+    """Avoid 404 noise when a browser requests a favicon on the API origin."""
+    return Response(status_code=204)
+
+
 @app.get("/api/health")
 async def health() -> dict[str, Any]:
     return {"status": "ok", "cors_origins": _cors_origins()}
+
+
+@app.get("/api/v1/geocode/search")
+async def geocode_search(
+    q: str,
+    lang: str = "en",
+) -> list[dict[str, Any]]:
+    """Address search: Photon (Komoot) + Nominatim in parallel, merged for broader OSM coverage.
+
+    Photon is tuned for autocomplete-style queries; Nominatim often finds different POIs and places.
+    Both use OpenStreetMap data — no API key. Optional: GEOCODE_DISABLE_PHOTON=1 for Nominatim only.
+    """
+    raw = (q or "").strip()
+    if len(raw) < 2:
+        raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
+    if len(raw) > 256:
+        raise HTTPException(status_code=400, detail="Query too long")
+    lang_clean = (lang or "en").strip()[:12] or "en"
+    if _vies_http is None:
+        raise HTTPException(status_code=503, detail="HTTP client not initialised")
+    client: httpx.AsyncClient = _vies_http
+    photon_list, nomi_list = await asyncio.gather(
+        _fetch_photon_results(client, raw, lang_clean),
+        _fetch_nominatim_results(client, raw, lang_clean),
+    )
+    merged = _merge_geocode_results(photon_list, nomi_list, max_items=18)
+    if not merged:
+        raise HTTPException(
+            status_code=502,
+            detail="Geocoding unavailable from OSM sources (Photon and Nominatim)",
+        )
+    return merged
 
 
 @app.get("/api/v1/demo/customers-db")

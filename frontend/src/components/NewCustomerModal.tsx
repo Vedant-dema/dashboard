@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
 import { X, Droplets, BadgeCheck, Plus, Trash2, Car, FileText, ExternalLink } from "lucide-react";
 import {
   DocExtractBanner,
@@ -10,17 +10,20 @@ import type {
   NewKundeInput,
   KundenWashUpsertFields,
   NewKundenUnterlageInput,
+  KundenHistoryEntry,
 } from "../store/kundenStore";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import type { DepartmentArea } from "../types/departmentArea";
 import type { KundenStamm, KundenWashStamm } from "../types/kunden";
+import { useLanguage } from "../contexts/LanguageContext";
 
-type TabId = "vat" | "kunde" | "art" | "waschanlage" | "additional";
+type TabId = "vat" | "kunde" | "art" | "waschanlage" | "history";
 
 type KontaktEntry = {
   id: string;
   name: string;
+  rolle: string;
   telefonCode: string;
   telefon: string;
   handyCode: string;
@@ -63,6 +66,7 @@ function emptyKontakt(): KontaktEntry {
   return {
     id: Math.random().toString(36).slice(2),
     name: "",
+    rolle: "",
     telefonCode: "+49",
     telefon: "",
     handyCode: "+49",
@@ -109,6 +113,14 @@ type AdresseEntry = {
 };
 
 const ADRESSE_TYPEN = ["Hauptadresse", "Lieferadresse", "Filiale", "Alte Hauptadresse", "Sonstiges"];
+
+const ADRESSE_TYP_I18N: Record<string, [string, string]> = {
+  Hauptadresse:      ["adresseTypHaupt",     "Main address"],
+  Lieferadresse:     ["adresseTypLieferung",  "Delivery address"],
+  Filiale:           ["adresseTypFiliale",    "Branch"],
+  "Alte Hauptadresse": ["adresseTypAltHaupt", "Old main address"],
+  Sonstiges:         ["adresseTypSonstiges",  "Other"],
+};
 
 const ADRESSE_COLORS: { dot: string; dotActive: string; activePill: string }[] = [
   { dot: "bg-indigo-300",  dotActive: "bg-indigo-500",  activePill: "bg-indigo-500"  },
@@ -258,13 +270,13 @@ function parseViesAddress(block: string | null | undefined): {
   return { strasse, ort: lines.slice(1).join(", ") };
 }
 
-function normalizeViesRequestDate(raw: string | null | undefined): string | undefined {
+function normalizeViesRequestDate(raw: string | null | undefined, locale = "en-GB"): string | undefined {
   if (!raw) return undefined;
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
   const parsedMs = Date.parse(trimmed);
   if (!Number.isNaN(parsedMs)) {
-    return new Date(parsedMs).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+    return new Date(parsedMs).toLocaleString(locale, { dateStyle: "short", timeStyle: "medium" });
   }
   return trimmed;
 }
@@ -645,6 +657,7 @@ function formFromExistingCustomer(
       {
         ...kontakt,
         name: kunde.ansprechpartner ?? "",
+        rolle: kunde.rolle_kontakt ?? "",
         ...(() => {
           const tel = splitStoredPhone(kunde.telefonnummer);
           const fax = splitStoredPhone(kunde.faxnummer);
@@ -711,6 +724,7 @@ function formToPayload(form: FormState): NewKundeInput {
     steuer_nr: emptyToUndef(form.adressen[0]?.steuer_nr ?? ""),
     branchen_nr: emptyToUndef(form.adressen[0]?.branchen_nr ?? ""),
     ansprechpartner: emptyToUndef(form.kontakte[0]?.name ?? ""),
+    rolle_kontakt: emptyToUndef(form.kontakte[0]?.rolle ?? ""),
     telefonnummer: emptyToUndef(
       form.kontakte[0]?.telefon
         ? `${form.kontakte[0].telefonCode} ${form.kontakte[0].telefon}`
@@ -756,14 +770,6 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
   };
 }
 
-const tabLabels: Record<TabId, string> = {
-  vat: "USt-IdNr. prüfen",
-  kunde: "Kunde & Adresse",
-  art: "Art / Buchungskonto",
-  waschanlage: "Waschanlage",
-  additional: "Additional",
-};
-
 const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
 
 const inputClass =
@@ -781,8 +787,6 @@ type Props = {
   editKundeSideContent?: ReactNode;
   /** Full-width content rendered below the main Firmendaten/Adresse/Kontakt grid (edit mode only). */
   editKundeBottomContent?: ReactNode;
-  additionalTabLabel?: string;
-  additionalTabContent?: ReactNode;
   /** Vorschau der nächsten automatischen KundenNr. (wird beim Speichern vergeben). */
   nextKundenNrPreview: string;
   /** Vorschläge aus bestehenden Kunden/Wash (<datalist>, kein Browser-Autofill). */
@@ -793,6 +797,12 @@ type Props = {
     wash: KundenWashUpsertFields | null,
     scannedAttachment?: NewKundenUnterlageInput | null
   ) => void;
+  /** Optional: checks whether a company name already exists. Returns matching entries. Create mode only. */
+  duplicateCheck?: (firmenname: string) => { kuNr: string; firmenname: string }[];
+  /** Edit mode only — called when the user confirms customer deletion. */
+  onDelete?: () => void;
+  /** Edit mode only — full change history for the current customer, newest first. */
+  historyEntries?: KundenHistoryEntry[];
 };
 
 export function NewCustomerModal({
@@ -805,12 +815,35 @@ export function NewCustomerModal({
   editAdresseExtraContent,
   editKundeSideContent,
   editKundeBottomContent,
-  additionalTabLabel = "Additional",
-  additionalTabContent,
   nextKundenNrPreview,
   fieldSuggestions,
   onSubmit,
+  duplicateCheck,
+  onDelete,
+  historyEntries = [],
 }: Props) {
+  const { t, language } = useLanguage();
+  const localeTag = language === "de" ? "de-DE"
+    : language === "fr" ? "fr-FR"
+    : language === "es" ? "es-ES"
+    : language === "it" ? "it-IT"
+    : language === "pt" ? "pt-PT"
+    : language === "tr" ? "tr-TR"
+    : language === "ru" ? "ru-RU"
+    : language === "ar" ? "ar-SA"
+    : language === "zh" ? "zh-CN"
+    : language === "ja" ? "ja-JP"
+    : language === "hi" ? "hi-IN"
+    : "en-GB";
+
+  const tabLabels = useMemo((): Record<TabId, string> => ({
+    vat: t("newCustomerTabVat", "Check VAT ID"),
+    kunde: t("newCustomerTabKunde", "Customer & Address"),
+    art: t("newCustomerTabArt", "Type / Account"),
+    waschanlage: t("newCustomerTabWaschanlage", "Car wash"),
+    history: t("historyTabLabel", "History"),
+  }), [t]);
+
   const [tab, setTab] = useState<TabId>("vat");
   const [form, setForm] = useState<FormState>(initialForm);
   const [activeKontaktIdx, setActiveKontaktIdx] = useState(0);
@@ -822,10 +855,9 @@ export function NewCustomerModal({
   const [vatCheckResult, setVatCheckResult] = useState<ViesCheckResult | null>(null);
   const [vatCheckError, setVatCheckError] = useState<string | null>(null);
   const isEditMode = mode === "edit";
-  const hasAdditionalTab = isEditMode && Boolean(additionalTabContent);
   const hasEditKundeSideContent = isEditMode && Boolean(editKundeSideContent);
-  const tabOrder: TabId[] = hasAdditionalTab
-    ? [...BASE_TAB_ORDER, "additional" as TabId]
+  const tabOrder: TabId[] = isEditMode
+    ? [...BASE_TAB_ORDER, "history"]
     : BASE_TAB_ORDER;
   const kundenNrDisplay = isEditMode ? editInitial?.kunde.kunden_nr ?? nextKundenNrPreview : nextKundenNrPreview;
 
@@ -840,7 +872,7 @@ export function NewCustomerModal({
     wasOpenRef.current = open;
     if (!justOpened) return;
 
-    const nowAufnahme = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+    const nowAufnahme = new Date().toLocaleString(localeTag, { dateStyle: "short", timeStyle: "medium" });
     const prepared =
       isEditMode && editInitial
         ? formFromExistingCustomer(editInitial.kunde, editInitial.wash, department)
@@ -874,6 +906,8 @@ export function NewCustomerModal({
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [scannedAttachment, setScannedAttachment] = useState<NewKundenUnterlageInput | null>(null);
   const [showAttachPrompt, setShowAttachPrompt] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState<{ kuNr: string; firmenname: string }[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   /** Fields this mock extractor can fill — maps form keys to realistic demo values */
   const MOCK_EXTRACTED_FIRMA: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
@@ -1125,7 +1159,7 @@ export function NewCustomerModal({
       ? parseViesAddress(vatCheckResult.address)
       : {};
     const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
-    const viesRequestDate = normalizeViesRequestDate(vatCheckResult.request_date);
+    const viesRequestDate = normalizeViesRequestDate(vatCheckResult.request_date, localeTag);
     const derivedLandCode = viesLandToFormLand(cc);
     setForm((f) => ({
       ...f,
@@ -1164,10 +1198,28 @@ export function NewCustomerModal({
 
   const handleSave = () => {
     if (!form.firmenname.trim()) {
-      alert("Bitte geben Sie einen Firmennamen ein.");
+      alert(t("newCustomerRequiredFirmenname", "Please enter a company name."));
       setTab("kunde");
       return;
     }
+    if (!isEditMode && duplicateCheck) {
+      const matches = duplicateCheck(form.firmenname.trim());
+      if (matches.length > 0) {
+        setDuplicateMatches(matches);
+        setShowDuplicateWarning(true);
+        return;
+      }
+    }
+    if (!isEditMode && scannedAttachment) {
+      setShowAttachPrompt(true);
+      return;
+    }
+    submitCustomer(false);
+  };
+
+  const handleDuplicateSaveAnyway = () => {
+    setShowDuplicateWarning(false);
+    setDuplicateMatches([]);
     if (!isEditMode && scannedAttachment) {
       setShowAttachPrompt(true);
       return;
@@ -1195,17 +1247,72 @@ export function NewCustomerModal({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-3">
               <h2 id="new-kunde-title" className="text-lg font-bold tracking-tight sm:text-xl">
-                Kundendaten
+                {t("newCustomerModalTitle", "Customer data")}
               </h2>
               <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-semibold text-blue-100">
-                {isEditMode ? "(Bearbeiten)" : "(Neu)"}
+                {isEditMode ? t("newCustomerModalEdit", "(Edit)") : t("newCustomerModalNew", "(New)")}
               </span>
+              {isEditMode && editInitial?.kunde.kunden_nr && (
+                <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-xs text-slate-300">
+                  #{editInitial.kunde.kunden_nr}
+                </span>
+              )}
             </div>
-            <p className="mt-1 text-xs text-slate-300">DEMA Management</p>
+            {isEditMode && editInitial?.kunde ? (() => {
+              const k = editInitial.kunde;
+              const fmt = (iso?: string) =>
+                iso
+                  ? new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })
+                  : "—";
+              return (
+                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
+                  {k.created_by_name && (
+                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-600 text-[9px] font-bold text-white">
+                        {k.created_by_name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="text-slate-500">{t("auditCreatedBy", "Created by")}</span>
+                      <span className="font-semibold text-slate-300">{k.created_by_name}</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="tabular-nums text-slate-400">{fmt(k.created_at)}</span>
+                    </span>
+                  )}
+                  {k.last_edited_by_name && k.last_edited_by_name !== k.created_by_name && (
+                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-700 text-[9px] font-bold text-white">
+                        {k.last_edited_by_name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="text-slate-500">{t("auditLastEditedBy", "Last edited by")}</span>
+                      <span className="font-semibold text-slate-300">{k.last_edited_by_name}</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="tabular-nums text-slate-400">{fmt(k.updated_at)}</span>
+                    </span>
+                  )}
+                  {k.last_edited_by_name && k.last_edited_by_name === k.created_by_name && k.updated_at !== k.created_at && (
+                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-700 text-[9px] font-bold text-white">
+                        {k.last_edited_by_name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="text-slate-500">{t("auditLastEditedBy", "Last edited by")}</span>
+                      <span className="font-semibold text-slate-300">{k.last_edited_by_name}</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="tabular-nums text-slate-400">{fmt(k.updated_at)}</span>
+                    </span>
+                  )}
+                  {!k.created_by_name && !k.last_edited_by_name && (
+                    <span className="text-[11px] italic text-slate-600">
+                      {t("auditNoTrail", "No edit history available")}
+                    </span>
+                  )}
+                </div>
+              );
+            })() : (
+              <p className="mt-1 text-xs text-slate-400">DEMA Management</p>
+            )}
           </div>
           <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end sm:text-right">
             <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-              Aufnahme
+              {t("newCustomerModalAufnahme", "Entry date")}
             </p>
             <p className="text-sm font-semibold tabular-nums text-white">{aufnahmePreview}</p>
           </div>
@@ -1213,7 +1320,7 @@ export function NewCustomerModal({
             type="button"
             onClick={onClose}
             className="absolute right-2 top-2 rounded-xl p-2 text-slate-300 hover:bg-white/10 hover:text-white"
-            aria-label="Schließen"
+            aria-label={t("newCustomerModalClose", "Close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -1239,7 +1346,7 @@ export function NewCustomerModal({
               ) : id === "vat" ? (
                 <BadgeCheck className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
               ) : null}
-              {id === "additional" ? additionalTabLabel : tabLabels[id]}
+              {tabLabels[id]}
             </button>
           ))}
         </div>
@@ -1250,7 +1357,7 @@ export function NewCustomerModal({
               <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className={labelClass}>Mitgliedstaat / Schema</label>
+                    <label className={labelClass}>{t("newCustomerVatMemberState", "Member state / scheme")}</label>
                     <select
                       value={viesCountry}
                       onChange={(e) => setViesCountry(e.target.value)}
@@ -1264,12 +1371,12 @@ export function NewCustomerModal({
                     </select>
                   </div>
                   <div>
-                    <label className={labelClass}>USt-IdNr.</label>
+                    <label className={labelClass}>{t("newCustomerVatNrLabel", "VAT ID")}</label>
                     <input
                       type="text"
                       value={viesVatInput}
                       onChange={(e) => setViesVatInput(e.target.value)}
-                      placeholder="z. B. 814584193 oder DE814584193"
+                      placeholder={t("newCustomerVatNrPh", "e.g. 814584193 or DE814584193")}
                       className={inputClass}
                       autoComplete="off"
                     />
@@ -1282,7 +1389,7 @@ export function NewCustomerModal({
                     onClick={() => void runVatCheck()}
                     className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {vatCheckLoading ? "Prüfe…" : "Bei VIES prüfen"}
+                    {vatCheckLoading ? t("newCustomerVatChecking", "Checking…") : t("newCustomerVatCheck", "Check with VIES")}
                   </button>
                   {vatCheckResult?.valid ? (
                     <button
@@ -1290,7 +1397,7 @@ export function NewCustomerModal({
                       onClick={applyViesResultToForm}
                       className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
                     >
-                      Daten ins Formular übernehmen
+                      {t("newCustomerVatApply", "Apply to form")}
                     </button>
                   ) : null}
                 </div>
@@ -1309,8 +1416,8 @@ export function NewCustomerModal({
                   >
                     <p className="font-semibold">
                       {vatCheckResult.valid
-                        ? "USt-IdNr. gültig laut VIES"
-                        : "USt-IdNr. ungültig oder nicht bestätigt"}
+                        ? t("newCustomerVatValid", "VAT ID valid according to VIES")
+                        : t("newCustomerVatInvalid", "VAT ID invalid or not confirmed")}
                     </p>
                     <p className="mt-1 font-mono text-xs">
                       {vatCheckResult.country_code}
@@ -1337,13 +1444,13 @@ export function NewCustomerModal({
                     ) : null}
                     {isMeaningfulViesText(vatCheckResult.name) ? (
                       <p className="mt-2 text-slate-800">
-                        <span className="font-medium text-slate-600">Name: </span>
+                        <span className="font-medium text-slate-600">{t("newCustomerVatNameLabel", "Name:")} </span>
                         {vatCheckResult.name}
                       </p>
                     ) : null}
                     {isMeaningfulViesText(vatCheckResult.address) ? (
                       <p className="mt-1 whitespace-pre-line text-slate-800">
-                        <span className="font-medium text-slate-600">Adresse: </span>
+                        <span className="font-medium text-slate-600">{t("newCustomerVatAddressLabel", "Address:")} </span>
                         {vatCheckResult.address}
                       </p>
                     ) : null}
@@ -1356,7 +1463,7 @@ export function NewCustomerModal({
                     {vatCheckResult.request_date ? (
                       <p className="mt-1 break-all font-mono text-[11px] text-slate-700">
                         <span className="font-sans font-medium text-slate-600">requestDate: </span>
-                        {normalizeViesRequestDate(vatCheckResult.request_date) ?? vatCheckResult.request_date}
+                        {normalizeViesRequestDate(vatCheckResult.request_date, localeTag) ?? vatCheckResult.request_date}
                       </p>
                     ) : null}
                     {[
@@ -1367,7 +1474,7 @@ export function NewCustomerModal({
                       ["Rechtsform", vatCheckResult.trader_company_type_match],
                     ].some(([, v]) => v) ? (
                       <div className="mt-2 rounded-md border border-slate-200 bg-white/90 px-2 py-2 text-xs text-slate-700">
-                        <p className="font-semibold text-slate-800">Näherungsabgleich (VIES Match)</p>
+                        <p className="font-semibold text-slate-800">{t("newCustomerVatMatchTitle", "Approximate match (VIES Match)")}</p>
                         <ul className="mt-1 list-inside list-disc">
                           {[
                             ["Name", vatCheckResult.trader_name_match],
@@ -1412,20 +1519,20 @@ export function NewCustomerModal({
 
                 {/* ── Col 1: Firmendaten ── */}
                 <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Firmendaten</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionFirma", "Company data")}</p>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={labelClass}>KundenNr.</label>
+                      <label className={labelClass}>{t("newCustomerLabelKundenNr", "Customer no.")}</label>
                       <div
                         className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-semibold text-slate-800"
-                        title={isEditMode ? "Bestehende Kundennummer" : "Wird beim Speichern vergeben"}
+                        title={isEditMode ? t("newCustomerKundenNrTooltipEdit", "Existing customer number") : t("newCustomerKundenNrTooltipNew", "Assigned when saving")}
                       >
                         {kundenNrDisplay}
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>Branche{isExtracted("branche") && <KiBadge />}</label>
+                      <label className={labelClass}>{t("newCustomerLabelBranche", "Industry")}{isExtracted("branche") && <KiBadge />}</label>
                       <ExtractedFieldWrapper extracted={isExtracted("branche")}>
                         <SuggestTextInput
                           type="text"
@@ -1433,7 +1540,7 @@ export function NewCustomerModal({
                           onChange={(e) => set("branche", e.target.value)}
                           className={inputClass}
                           suggestions={fieldSuggestions.branche}
-                          title="Vorschläge aus gespeicherten Kunden"
+                          title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                         />
                       </ExtractedFieldWrapper>
                     </div>
@@ -1441,7 +1548,7 @@ export function NewCustomerModal({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <span className={labelClass}>FZG-Händler</span>
+                      <span className={labelClass}>{t("newCustomerLabelFzgHandel", "Vehicle trader")}</span>
                       <div className="mt-1 flex gap-2">
                         {(["ja", "nein"] as const).map((v) => (
                           <label
@@ -1465,16 +1572,16 @@ export function NewCustomerModal({
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>Gesellschaftsform{isExtracted("gesellschaftsform") && <KiBadge />}</label>
+                      <label className={labelClass}>{t("newCustomerLabelGesellschaftsform", "Legal form")}{isExtracted("gesellschaftsform") && <KiBadge />}</label>
                       <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
                         <SuggestTextInput
                           type="text"
                           value={form.gesellschaftsform}
                           onChange={(e) => set("gesellschaftsform", e.target.value)}
-                          placeholder="z. B. GmbH, AG"
+                          placeholder={t("newCustomerGesellschaftsformPh", "e.g. GmbH, AG")}
                           className={inputClass}
                           suggestions={fieldSuggestions.gesellschaftsform}
-                          title="Vorschläge aus gespeicherten Kunden"
+                          title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                         />
                       </ExtractedFieldWrapper>
                     </div>
@@ -1488,7 +1595,7 @@ export function NewCustomerModal({
                         onChange={(e) => set("juristische_person", e.target.checked)}
                         className="rounded border-slate-300 text-blue-600"
                       />
-                      Juristische Person
+                      {t("newCustomerLabelJuristischePerson", "Legal entity")}
                     </label>
                     <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-700">
                       <input
@@ -1497,12 +1604,12 @@ export function NewCustomerModal({
                         onChange={(e) => set("natuerliche_person", e.target.checked)}
                         className="rounded border-slate-300 text-blue-600"
                       />
-                      Natürliche Person
+                      {t("newCustomerLabelNatuerlichePerson", "Natural person")}
                     </label>
                   </div>
 
                   <div>
-                    <label className={labelClass}>Firmenvorsatz{isExtracted("firmenvorsatz") && <KiBadge />}</label>
+                    <label className={labelClass}>{t("newCustomerLabelFirmenvorsatz", "Company prefix")}{isExtracted("firmenvorsatz") && <KiBadge />}</label>
                     <ExtractedFieldWrapper extracted={isExtracted("firmenvorsatz")}>
                       <SuggestTextInput
                         type="text"
@@ -1510,14 +1617,14 @@ export function NewCustomerModal({
                         onChange={(e) => set("firmenvorsatz", e.target.value)}
                         className={inputClass}
                         suggestions={fieldSuggestions.firmenvorsatz}
-                        title="Vorschläge aus gespeicherten Kunden"
+                        title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                       />
                     </ExtractedFieldWrapper>
                   </div>
 
                   <div>
                     <label className={labelClass}>
-                      Firmenname <span className="text-red-500">*</span>
+                      {t("newCustomerLabelFirmenname", "Company name")} <span className="text-red-500">*</span>
                       {isExtracted("firmenname") && <KiBadge />}
                     </label>
                     <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
@@ -1527,14 +1634,14 @@ export function NewCustomerModal({
                         onChange={(e) => set("firmenname", e.target.value)}
                         className={inputClass}
                         suggestions={fieldSuggestions.firmenname}
-                        title="Vorschläge aus gespeicherten Kunden"
+                        title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                       />
                     </ExtractedFieldWrapper>
                   </div>
 
 
                   <div>
-                    <label className={labelClass}>Bemerkungen</label>
+                    <label className={labelClass}>{t("newCustomerLabelBemerkungen", "Remarks")}</label>
                     <textarea
                       value={form.bemerkungen}
                       onChange={(e) => set("bemerkungen", e.target.value)}
@@ -1564,7 +1671,7 @@ export function NewCustomerModal({
 
                       {/* Header row */}
                       <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Adresse &amp; Steuer</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionAdresse", "Address & Tax")}</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -1575,7 +1682,7 @@ export function NewCustomerModal({
                           className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-600 transition-all"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Neu
+                          {t("newCustomerAdresseNewBtn", "New")}
                         </button>
                       </div>
 
@@ -1596,7 +1703,7 @@ export function NewCustomerModal({
                               }`}
                             >
                               <span className={`h-2 w-2 rounded-full ${isActive ? "bg-white/60" : dc.dotActive}`} />
-                              {ad.typ}
+                              {t(...(ADRESSE_TYP_I18N[ad.typ] ?? [ad.typ, ad.typ]))}
                             </button>
                           );
                         })}
@@ -1615,8 +1722,8 @@ export function NewCustomerModal({
                               onChange={(e) => patchAdresse({ typ: e.target.value })}
                               className="border-0 bg-transparent text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer"
                             >
-                              {ADRESSE_TYPEN.map((t) => (
-                                <option key={t} value={t}>{t}</option>
+                              {ADRESSE_TYPEN.map((typ) => (
+                                <option key={typ} value={typ}>{t(...(ADRESSE_TYP_I18N[typ] ?? [typ, typ]))}</option>
                               ))}
                             </select>
                           </div>
@@ -1628,7 +1735,7 @@ export function NewCustomerModal({
                                 setActiveAdresseIdx(Math.max(0, safeAdresseIdx - 1));
                               }}
                               className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                              title="Adresse entfernen"
+                              title={t("newCustomerAdresseRemove", "Remove address")}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -1638,23 +1745,23 @@ export function NewCustomerModal({
                         {/* Card body */}
                         <div className="space-y-2 p-3">
                           <div>
-                            <label className={labelClass}>Strasse{isExtracted("strasse") && <KiBadge />}</label>
+                            <label className={labelClass}>{t("newCustomerLabelStrasse", "Street")}{isExtracted("strasse") && <KiBadge />}</label>
                             <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
                               <SuggestTextInput
                                 type="text"
                                 value={a.strasse}
                                 onChange={(e) => patchAdresse({ strasse: e.target.value })}
-                                placeholder="nicht bekannt"
+                                placeholder={t("newCustomerStrassePh", "unknown")}
                                 className={inputClass}
                                 suggestions={fieldSuggestions.strasse}
-                                title="Vorschläge aus gespeicherten Kunden"
+                                title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                               />
                             </ExtractedFieldWrapper>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className={labelClass}>PLZ{isExtracted("plz") && <KiBadge />}</label>
+                              <label className={labelClass}>{t("newCustomerLabelPLZ", "ZIP")}{isExtracted("plz") && <KiBadge />}</label>
                               <ExtractedFieldWrapper extracted={isExtracted("plz")}>
                                 <SuggestTextInput
                                   type="text"
@@ -1662,12 +1769,12 @@ export function NewCustomerModal({
                                   onChange={(e) => patchAdresse({ plz: e.target.value })}
                                   className={inputClass}
                                   suggestions={fieldSuggestions.plz}
-                                  title="Vorschläge aus gespeicherten Kunden"
+                                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                                 />
                               </ExtractedFieldWrapper>
                             </div>
                             <div>
-                              <label className={labelClass}>Ort{isExtracted("ort") && <KiBadge />}</label>
+                              <label className={labelClass}>{t("newCustomerLabelOrt", "City")}{isExtracted("ort") && <KiBadge />}</label>
                               <ExtractedFieldWrapper extracted={isExtracted("ort")}>
                                 <SuggestTextInput
                                   type="text"
@@ -1675,7 +1782,7 @@ export function NewCustomerModal({
                                   onChange={(e) => patchAdresse({ ort: e.target.value })}
                                   className={inputClass}
                                   suggestions={fieldSuggestions.ort}
-                                  title="Vorschläge aus gespeicherten Kunden"
+                                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                                 />
                               </ExtractedFieldWrapper>
                             </div>
@@ -1683,7 +1790,7 @@ export function NewCustomerModal({
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className={labelClass}>Land{isExtracted("land_code") && <KiBadge />}</label>
+                              <label className={labelClass}>{t("newCustomerLabelLand", "Country")}{isExtracted("land_code") && <KiBadge />}</label>
                               <select
                                 value={a.land_code}
                                 onChange={(e) => {
@@ -1698,7 +1805,7 @@ export function NewCustomerModal({
                               </select>
                             </div>
                             <div>
-                              <label className={labelClass}>Art_Land</label>
+                              <label className={labelClass}>{t("newCustomerLabelArtLand", "Country type")}</label>
                               <select
                                 value={a.art_land_code}
                                 onChange={(e) => patchAdresse({ art_land_code: e.target.value })}
@@ -1712,38 +1819,37 @@ export function NewCustomerModal({
                           </div>
 
                           <div>
-                            <label className={labelClass}>UST-ID-Nr.</label>
+                            <label className={labelClass}>{t("newCustomerLabelUstIdNr", "VAT ID no.")}</label>
                             <SuggestTextInput
                               type="text"
                               value={a.ust_id_nr}
                               onChange={(e) => patchAdresse({ ust_id_nr: e.target.value })}
                               className={inputClass}
                               suggestions={fieldSuggestions.ust_id_nr}
-                              title="Vorschläge aus gespeicherten Kunden"
+                              title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                             />
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className={labelClass}>Steuer-Nr.</label>
+                              <label className={labelClass}>{t("newCustomerLabelSteuerNr", "Tax no.")}</label>
                               <SuggestTextInput
                                 type="text"
                                 value={a.steuer_nr}
                                 onChange={(e) => patchAdresse({ steuer_nr: e.target.value })}
                                 className={inputClass}
                                 suggestions={fieldSuggestions.steuer_nr}
-                                title="Vorschläge aus gespeicherten Kunden"
+                                title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                               />
                             </div>
                             <div>
-                              <label className={labelClass}>Branchen-Nr.</label>
-                              <SuggestTextInput
+                              <label className={labelClass}>{t("customersLabelWebsite", "Website")}</label>
+                              <input
                                 type="text"
-                                value={a.branchen_nr}
-                                onChange={(e) => patchAdresse({ branchen_nr: e.target.value })}
+                                value={form.internet_adr}
+                                onChange={(e) => setForm((f) => ({ ...f, internet_adr: e.target.value }))}
                                 className={inputClass}
-                                suggestions={fieldSuggestions.branchen_nr}
-                                title="Vorschläge aus gespeicherten Kunden"
+                                placeholder={t("newCustomerPhWebsite", "www.example.com")}
                               />
                             </div>
                           </div>
@@ -1767,7 +1873,7 @@ export function NewCustomerModal({
 
                       {/* ── Header ── */}
                       <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Kontakte</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionKontakte", "Contacts")}</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -1777,7 +1883,7 @@ export function NewCustomerModal({
                           className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition-all"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Neu
+                          {t("newCustomerKontaktNewBtn", "New")}
                         </button>
                       </div>
 
@@ -1786,7 +1892,7 @@ export function NewCustomerModal({
                         {form.kontakte.map((c, i) => {
                           const dc = KONTAKT_COLORS[i % KONTAKT_COLORS.length]!;
                           const isActive = i === safeIdx;
-                          const label = c.name || `Kontakt ${i + 1}`;
+                          const label = c.name || t("newCustomerKontaktDefaultLabel", "Contact {n}").replace("{n}", String(i + 1));
                           return (
                             <button
                               key={c.id}
@@ -1816,7 +1922,7 @@ export function NewCustomerModal({
                               {initials}
                             </div>
                             <span className="truncate text-sm font-semibold text-slate-700">
-                              {k.name || `Kontakt ${safeIdx + 1}`}
+                              {k.name || t("newCustomerKontaktDefaultLabel", "Contact {n}").replace("{n}", String(safeIdx + 1))}
                             </span>
                           </div>
                           {form.kontakte.length > 1 && (
@@ -1827,7 +1933,7 @@ export function NewCustomerModal({
                                 setActiveKontaktIdx(Math.max(0, safeIdx - 1));
                               }}
                               className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                              title="Kontakt entfernen"
+                              title={t("newCustomerKontaktRemove", "Remove contact")}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -1837,7 +1943,7 @@ export function NewCustomerModal({
                         {/* Card body */}
                         <div className="space-y-2 p-3">
                           <div>
-                            <label className={labelClass}>Name</label>
+                            <label className={labelClass}>{t("newCustomerLabelName", "Name")}</label>
                             <input
                               type="text"
                               value={k.name}
@@ -1850,13 +1956,43 @@ export function NewCustomerModal({
                                 }))
                               }
                               className={inputClass}
-                              placeholder="Vor- und Nachname"
+                              placeholder={t("newCustomerNamePh", "First and last name")}
                             />
+                          </div>
+
+                          {/* Role / job title */}
+                          <div>
+                            <label className={labelClass}>{t("newCustomerLabelRolle", "Function / Role")}</label>
+                            <select
+                              value={k.rolle}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, rolle: e.target.value } : c
+                                  ),
+                                }))
+                              }
+                              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            >
+                              <option value="">{t("newCustomerRolleDefault", "— Select role —")}</option>
+                              <option value="Geschäftsführer">Geschäftsführer / Geschäftsführerin</option>
+                              <option value="Prokurist">Prokurist / Prokuristin</option>
+                              <option value="Fuhrparkleiter">Fuhrparkleiter / -leiterin</option>
+                              <option value="Disponent">Disponent / Disponentin</option>
+                              <option value="Verkaufsleiter">Verkaufsleiter / -leiterin</option>
+                              <option value="Einkäufer">Einkäufer / Einkäuferin</option>
+                              <option value="Buchhalter">Buchhalter / Buchhalterin</option>
+                              <option value="Werkstattleiter">Werkstattleiter / -leiterin</option>
+                              <option value="Fahrer">Fahrer / Fahrerin</option>
+                              <option value="Sekretariat">Sekretariat / Empfang</option>
+                              <option value="Sonstiges">Sonstiges</option>
+                            </select>
                           </div>
 
                           {/* Telefon with country code */}
                           <div>
-                            <label className={labelClass}>Telefon</label>
+                            <label className={labelClass}>{t("newCustomerLabelTelefon", "Phone")}</label>
                             <div className="flex gap-1.5">
                               <select
                                 value={k.telefonCode}
@@ -1886,14 +2022,14 @@ export function NewCustomerModal({
                                   }))
                                 }
                                 className={`${inputClass} flex-1`}
-                                placeholder="030 1234567"
+                                placeholder={t("newCustomerPhPhone", "030 1234567")}
                               />
                             </div>
                           </div>
 
                           {/* Handy with country code */}
                           <div>
-                            <label className={labelClass}>Handy</label>
+                            <label className={labelClass}>{t("newCustomerLabelHandy", "Mobile")}</label>
                             <div className="flex gap-1.5">
                               <select
                                 value={k.handyCode}
@@ -1923,13 +2059,13 @@ export function NewCustomerModal({
                                   }))
                                 }
                                 className={`${inputClass} flex-1`}
-                                placeholder="0170 1234567"
+                                placeholder={t("newCustomerPhMobile", "0170 1234567")}
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className={labelClass}>E-Mail</label>
+                            <label className={labelClass}>{t("newCustomerLabelEmail", "E-mail")}</label>
                             <input
                               type="email"
                               value={k.email}
@@ -1942,12 +2078,12 @@ export function NewCustomerModal({
                                 }))
                               }
                               className={inputClass}
-                              placeholder="name@firma.de"
+                              placeholder={t("newCustomerPhEmail", "name@company.com")}
                             />
                           </div>
 
                           <div>
-                            <label className={labelClass}>Bemerkung</label>
+                            <label className={labelClass}>{t("newCustomerLabelKontaktBemerkung", "Note")}</label>
                             <textarea
                               value={k.bemerkung}
                               onChange={(e) =>
@@ -1981,25 +2117,25 @@ export function NewCustomerModal({
           {tab === "art" && (
             <div className="space-y-4">
               <div>
-                <label className={labelClass}>Art (Kunde)</label>
+                <label className={labelClass}>{t("newCustomerLabelArtKunde", "Type (customer)")}</label>
                 <SuggestTextInput
                   type="text"
                   value={form.art_kunde}
                   onChange={(e) => set("art_kunde", e.target.value)}
                   className={inputClass}
                   suggestions={fieldSuggestions.art_kunde}
-                  title="Vorschläge aus gespeicherten Kunden"
+                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                 />
               </div>
               <div>
-                <label className={labelClass}>Buchungskonto (Haupt)</label>
+                <label className={labelClass}>{t("newCustomerLabelBuchungskonto", "Main booking account")}</label>
                 <SuggestTextInput
                   type="text"
                   value={form.buchungskonto_haupt}
                   onChange={(e) => set("buchungskonto_haupt", e.target.value)}
                   className={inputClass}
                   suggestions={fieldSuggestions.buchungskonto_haupt}
-                  title="Vorschläge aus gespeicherten Kunden"
+                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                 />
               </div>
             </div>
@@ -2015,18 +2151,16 @@ export function NewCustomerModal({
                   className="mt-0.5 rounded border-slate-300 text-cyan-600"
                 />
                 <span>
-                  <span className="font-semibold text-cyan-900">Waschprofil anlegen</span>
+                  <span className="font-semibold text-cyan-900">{t("newCustomerWashProfileCreate", "Create wash profile")}</span>
                   <span className="mt-1 block text-xs font-normal text-slate-600">
-                    Speichert zusätzliche Waschanlagen-Daten für diesen Kunden. Unter Waschanlage
-                    standardmäßig aktiv.
+                    {t("newCustomerWashProfileDesc", "Saves additional car wash data for this customer. Active by default in the Car wash area.")}
                   </span>
                 </span>
               </label>
 
               {!form.includeWashProfile ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  Aktivieren Sie „Waschprofil anlegen“, um BUKto, Limit, Bank und Wasch-Infos zu
-                  speichern.
+                  {t("newCustomerWashDisabledHint", 'Enable "Create wash profile" to save BUKto, limit, bank and wash info.')}
                 </p>
               ) : (
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,1.15fr)_minmax(0,1fr)]">
@@ -2034,17 +2168,17 @@ export function NewCustomerModal({
                     {/* ── Bank & Zahlung ────────────────────────────── */}
                     <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                       <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                        Bank &amp; Zahlung
+                        {t("newCustomerWashBankTitle", "Bank & Payment")}
                       </p>
                       <div>
-                        <label className={labelClass}>Bankname</label>
+                        <label className={labelClass}>{t("newCustomerLabelBankname", "Bank name")}</label>
                         <SuggestTextInput
                           type="text"
                           value={form.wash_bankname}
                           onChange={(e) => set("wash_bankname", e.target.value)}
                           className={inputClass}
                           suggestions={fieldSuggestions.wash_bankname}
-                          title="Vorschläge aus Waschprofilen"
+                          title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -2056,7 +2190,7 @@ export function NewCustomerModal({
                             onChange={(e) => set("wash_bic", e.target.value)}
                             className={inputClass}
                             suggestions={fieldSuggestions.wash_bic}
-                            title="Vorschläge aus Waschprofilen"
+                            title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
                           />
                         </div>
                         <div>
@@ -2067,7 +2201,7 @@ export function NewCustomerModal({
                             onChange={(e) => set("wash_iban", e.target.value)}
                             className={inputClass}
                             suggestions={fieldSuggestions.wash_iban}
-                            title="Vorschläge aus Waschprofilen"
+                            title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
                           />
                         </div>
                       </div>
@@ -2078,27 +2212,27 @@ export function NewCustomerModal({
                           onChange={(e) => set("wash_lastschrift", e.target.checked)}
                           className="rounded border-slate-300 text-cyan-600"
                         />
-                        Lastschrift
+                        {t("newCustomerLabelLastschrift", "Direct debit")}
                       </label>
                     </div>
 
                     <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Konto
+                      {t("newCustomerWashKontoTitle", "Account")}
                     </p>
                     <div>
-                      <label className={labelClass}>BUKto</label>
+                      <label className={labelClass}>{t("newCustomerLabelBUKto", "BUKto")}</label>
                       <SuggestTextInput
                         type="text"
                         value={form.wash_bukto}
                         onChange={(e) => set("wash_bukto", e.target.value)}
                         className={inputClass}
                         suggestions={fieldSuggestions.wash_bukto}
-                        title="Vorschläge aus Waschprofilen"
+                        title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Limit (€)</label>
+                      <label className={labelClass}>{t("newCustomerLabelLimit", "Limit (€)")}</label>
                       <input
                         type="number"
                         min={0}
@@ -2108,7 +2242,7 @@ export function NewCustomerModal({
                         className={inputClass}
                       />
                       <p className="mt-1 text-[10px] text-slate-500">
-                        Limit ist nur dann aktiv, wenn Betrag &gt; 0 ist.
+                        {t("newCustomerLimitHint", "Limit is only active when amount > 0.")}
                       </p>
                     </div>
                     <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
@@ -2118,7 +2252,7 @@ export function NewCustomerModal({
                         onChange={(e) => set("wash_kunde_gesperrt", e.target.checked)}
                         className="rounded border-slate-300 text-cyan-600"
                       />
-                      Kunde gesperrt
+                      {t("newCustomerLabelGesperrt", "Customer blocked")}
                     </label>
                     </div>
                   </div>
@@ -2128,10 +2262,10 @@ export function NewCustomerModal({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                            Preisliste Referenz
+                            {t("newCustomerWashPreislisteTitle", "Price list reference")}
                           </p>
                           <p className="mt-1 text-sm text-slate-700">
-                            Offizielle DEMA Preisliste Waschstrasse (PDF) fuer schnelle Rueckfragen.
+                            {t("newCustomerWashPreislisteDesc", "Official DEMA car wash price list (PDF) for quick reference.")}
                           </p>
                         </div>
                         <FileText className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
@@ -2142,7 +2276,7 @@ export function NewCustomerModal({
                         rel="noopener noreferrer"
                         className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-semibold text-cyan-900 transition hover:border-cyan-400 hover:bg-cyan-50"
                       >
-                        Preisliste als PDF oeffnen
+                        {t("newCustomerWashPreislisteOpen", "Open price list as PDF")}
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     </div>
@@ -2152,7 +2286,7 @@ export function NewCustomerModal({
                     <div className="flex items-center gap-2">
                       <Car className="h-4 w-4 text-cyan-600" />
                       <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                        Fuhrpark / Kennzeichen
+                        {t("newCustomerWashFuhrparkTitle", "Fleet / License plates")}
                       </p>
                     </div>
                     {/* Add new plate */}
@@ -2171,7 +2305,7 @@ export function NewCustomerModal({
                             }
                           }
                         }}
-                        placeholder="NEU: z. B. LU-XX-123"
+                        placeholder={t("newCustomerWashKennzeichenPh", "NEW: e.g. LU-XX-123")}
                         className={`${inputClass} flex-1`}
                       />
                       <button
@@ -2203,7 +2337,7 @@ export function NewCustomerModal({
                                 )
                               }
                               className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
-                              title="Entfernen"
+                              title={t("newCustomerWashKennzeichenRemove", "Remove")}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -2213,7 +2347,7 @@ export function NewCustomerModal({
                     )}
                     {form.wash_kennzeichen_list.length === 0 && (
                       <p className="py-2 text-center text-xs text-slate-400">
-                        Noch keine Kennzeichen hinzugefuegt.
+                        {t("newCustomerWashNoKennzeichen", "No license plates added yet.")}
                       </p>
                     )}
                     </div>
@@ -2224,10 +2358,10 @@ export function NewCustomerModal({
                     {/* ── Wasch-Infos ───────────────────────────────── */}
                     <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
-                      Wasch-Infos
+                      {t("newCustomerWashInfosTitle", "Wash info")}
                     </p>
                     <div>
-                      <label className={labelClass}>Waschprogramm</label>
+                      <label className={labelClass}>{t("newCustomerLabelWaschprogramm", "Wash program")}</label>
                       <select
                         value={form.wasch_programm}
                         onChange={(e) => {
@@ -2254,42 +2388,42 @@ export function NewCustomerModal({
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className={labelClass}>Netto preis</label>
+                        <label className={labelClass}>{t("newCustomerLabelNettoPreis", "Net price")}</label>
                         <input
                           type="text"
                           inputMode="decimal"
                           value={form.wash_netto_preis}
                           onChange={(e) => set("wash_netto_preis", e.target.value)}
-                          placeholder="z. B. 29,90"
+                          placeholder={t("newCustomerNettoPreisPh", "e.g. 29.90")}
                           className={inputClass}
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>Brutto preis</label>
+                        <label className={labelClass}>{t("newCustomerLabelBruttoPreis", "Gross price")}</label>
                         <input
                           type="text"
                           inputMode="decimal"
                           value={form.wash_brutto_preis}
                           onChange={(e) => set("wash_brutto_preis", e.target.value)}
-                          placeholder="z. B. 35,58"
+                          placeholder={t("newCustomerBruttoPreisPh", "e.g. 35.58")}
                           className={inputClass}
                         />
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>Intervall / Rhythmus</label>
+                      <label className={labelClass}>{t("newCustomerLabelIntervall", "Interval / frequency")}</label>
                       <SuggestTextInput
                         type="text"
                         value={form.wasch_intervall}
                         onChange={(e) => set("wasch_intervall", e.target.value)}
-                        placeholder="z. B. wöchentlich"
+                        placeholder={t("newCustomerIntervallPh", "e.g. weekly")}
                         className={inputClass}
                         suggestions={fieldSuggestions.wasch_intervall}
-                        title="Vorschläge aus Waschprofilen"
+                        title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Wichtige Infos</label>
+                      <label className={labelClass}>{t("newCustomerLabelWichtigeInfos", "Important info")}</label>
                       <textarea
                         value={form.wash_wichtige_infos}
                         onChange={(e) => set("wash_wichtige_infos", e.target.value)}
@@ -2298,7 +2432,7 @@ export function NewCustomerModal({
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Bemerkungen (Waschanlage)</label>
+                      <label className={labelClass}>{t("newCustomerLabelWashBemerkungen", "Remarks (car wash)")}</label>
                       <textarea
                         value={form.wash_bemerkungen}
                         onChange={(e) => set("wash_bemerkungen", e.target.value)}
@@ -2312,9 +2446,114 @@ export function NewCustomerModal({
               )}
             </div>
           )}
-          {tab === "additional" && hasAdditionalTab ? (
-            <div className="space-y-4">{additionalTabContent}</div>
-          ) : null}
+          {tab === "history" && isEditMode && (
+            <div className="p-4 sm:p-6">
+              {historyEntries.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 py-16 text-center">
+                  <svg className="mb-3 h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                  <p className="text-sm text-slate-400">{t("historyEmpty", "No entries yet.")}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historyEntries.map((entry) => {
+                    const actionLabel =
+                      entry.action === "created" ? t("historyActionCreated", "Created")
+                      : entry.action === "updated" ? t("historyActionUpdated", "Updated")
+                      : entry.action === "deleted" ? t("historyActionDeleted", "Deleted")
+                      : t("historyActionRestored", "Restored");
+                    const actionColor =
+                      entry.action === "created" ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                      : entry.action === "updated" ? "bg-blue-100 text-blue-700 border-blue-200"
+                      : entry.action === "deleted" ? "bg-red-100 text-red-700 border-red-200"
+                      : "bg-violet-100 text-violet-700 border-violet-200";
+                    const dotColor =
+                      entry.action === "created" ? "bg-emerald-500"
+                      : entry.action === "updated" ? "bg-blue-500"
+                      : entry.action === "deleted" ? "bg-red-500"
+                      : "bg-violet-500";
+                    const dateStr = new Date(entry.timestamp).toLocaleString(localeTag, {
+                      dateStyle: "short",
+                      timeStyle: "medium",
+                    });
+                    const initials = entry.editor_name
+                      ? entry.editor_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+                      : "?";
+                    return (
+                      <div key={entry.id} className="flex gap-3">
+                        {/* Timeline spine */}
+                        <div className="flex flex-col items-center">
+                          <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-white ${dotColor}`} />
+                          <div className="mt-1 w-px flex-1 bg-slate-200" />
+                        </div>
+                        {/* Card */}
+                        <div className="mb-1 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          {/* Header row */}
+                          <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+                            {/* Avatar */}
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-white">
+                              {initials}
+                            </div>
+                            {/* Name + email */}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-slate-800">
+                                {entry.editor_name ?? t("historyUnknownUser", "Unknown")}
+                              </p>
+                              {entry.editor_email && (
+                                <p className="truncate text-xs text-slate-400">{entry.editor_email}</p>
+                              )}
+                            </div>
+                            {/* Action badge */}
+                            <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${actionColor}`}>
+                              {actionLabel}
+                            </span>
+                            {/* Timestamp */}
+                            <span className="shrink-0 font-mono text-xs text-slate-400 tabular-nums">
+                              {dateStr}
+                            </span>
+                          </div>
+                          {/* Field changes */}
+                          {entry.changes && entry.changes.length > 0 ? (
+                            <div className="divide-y divide-slate-100 px-4 py-1">
+                              {entry.changes.map((c) => (
+                                <div key={c.field} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-1.5 text-xs">
+                                  <span className="w-36 shrink-0 font-semibold text-slate-500">
+                                    {t(c.labelKey, c.field)}
+                                  </span>
+                                  {c.from ? (
+                                    <span className="rounded bg-red-50 px-1.5 py-0.5 font-mono text-red-600 line-through">
+                                      {c.from}
+                                    </span>
+                                  ) : (
+                                    <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
+                                  )}
+                                  <span className="text-slate-400">→</span>
+                                  {c.to ? (
+                                    <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-emerald-700">
+                                      {c.to}
+                                    </span>
+                                  ) : (
+                                    <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            entry.action === "updated" && (
+                              <p className="px-4 py-2 text-xs italic text-slate-400">
+                                {t("historyNoFieldChanges", "No tracked fields changed.")}
+                              </p>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -2322,7 +2561,7 @@ export function NewCustomerModal({
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
-                Zuständige Person
+                {t("newCustomerZustaendige", "Responsible person")}
               </label>
               <select
                 value={form.zustaendige_person_name}
@@ -2340,18 +2579,60 @@ export function NewCustomerModal({
                 onClick={onClose}
                 className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
               >
-                Abbrechen
+                {t("commonCancel", "Cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleSave}
                 className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
               >
-                {isEditMode ? "Änderungen speichern" : "Speichern"}
+                {isEditMode ? t("newCustomerSaveEdit", "Save changes") : t("commonSave", "Save")}
               </button>
             </div>
           </div>
         </div>
+
+        {showDuplicateWarning && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white shadow-2xl">
+              <div className="border-b border-amber-100 bg-amber-50 px-5 py-4">
+                <h3 className="flex items-center gap-2 text-base font-semibold text-amber-800">
+                  <svg className="h-5 w-5 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  {t("customersDuplicateTitle", "Possible duplicate detected")}
+                </h3>
+              </div>
+              <div className="space-y-3 px-5 py-4 text-sm text-slate-700">
+                <p>{t("customersDuplicateMsg", "A customer with a similar company name already exists:")}</p>
+                <ul className="space-y-1.5">
+                  {duplicateMatches.map((m) => (
+                    <li key={m.kuNr} className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2">
+                      <span className="font-mono text-xs font-semibold text-slate-500">{m.kuNr}</span>
+                      <span className="font-medium text-slate-800">{m.firmenname}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowDuplicateWarning(false); setDuplicateMatches([]); }}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  {t("customersDuplicateCancel", "Cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDuplicateSaveAnyway}
+                  className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+                >
+                  {t("customersDuplicateSaveAnyway", "Save anyway")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showAttachPrompt && scannedAttachment ? (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">

@@ -16,6 +16,8 @@ import {
   FileText,
   Upload,
   Trash2,
+  RotateCcw,
+  Archive,
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
@@ -28,10 +30,14 @@ import {
   loadKundenDb,
   saveKundenDb,
   listRowsFromState,
+  listDeletedRowsFromState,
   getDetailByKundenNr,
   createKunde,
   generateNextKundenNr,
   updateKunde,
+  deleteKunde,
+  restoreKunde,
+  purgeKunde,
   upsertKundenWash,
   addKundenUnterlage,
   removeKundenUnterlage,
@@ -51,11 +57,13 @@ import {
   getExpiryStatus,
   daysUntilExpiry,
   hasRisikoAlert,
+  listHistoryForKunde,
   type KundenListRow,
   type NewKundeInput,
   type NewKundenUnterlageInput,
   type KundenWashUpsertFields,
   type RisikoanalyseUpsertFields,
+  type AuditEditor,
 } from "../store/kundenStore";
 import { NewCustomerModal } from "../components/NewCustomerModal";
 import { SuggestTextInput } from "../components/SuggestTextInput";
@@ -64,6 +72,7 @@ import {
   getQuickSearchSuggestions,
 } from "../store/customerFieldSuggestions";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
 import type { DepartmentArea } from "../types/departmentArea";
 import { DEPARTMENT_I18N_KEY } from "../types/departmentArea";
 
@@ -143,7 +152,21 @@ function emptyWashDraft(kundenId: number): KundenWashStamm {
 }
 
 export function CustomersPage({ department }: { department?: DepartmentArea }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const editor: AuditEditor | undefined = user ? { name: user.name, email: user.email } : undefined;
+  const localeTag = language === "de" ? "de-DE"
+    : language === "fr" ? "fr-FR"
+    : language === "es" ? "es-ES"
+    : language === "it" ? "it-IT"
+    : language === "pt" ? "pt-PT"
+    : language === "tr" ? "tr-TR"
+    : language === "ru" ? "ru-RU"
+    : language === "ar" ? "ar-SA"
+    : language === "zh" ? "zh-CN"
+    : language === "ja" ? "ja-JP"
+    : language === "hi" ? "hi-IN"
+    : "en-GB";
   const [db, setDb] = useState(() => loadKundenDb());
   const fieldSuggestions = useMemo(() => getCustomerFieldSuggestions(db), [db]);
   const quickSearchSuggestions = useMemo(() => getQuickSearchSuggestions(db), [db]);
@@ -156,6 +179,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [plz, setPlz] = useState("");
   const [ort, setOrt] = useState("");
   const [land, setLand] = useState("");
+  const [vatId, setVatId] = useState("");
   const [sortierung, setSortierung] = useState<CustomerSortKey>("kundenNr");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -229,6 +253,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const beziehungenForCustomer = useMemo(
     () => (draftKunde ? listBeziehungenForKunde(db, draftKunde.id) : []),
+    [db, draftKunde?.id]
+  );
+
+  const historyForCustomer = useMemo(
+    () => (draftKunde ? listHistoryForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
@@ -409,7 +438,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     [db, persist]
   );
 
+  const [showDeleted, setShowDeleted] = useState(false);
   const listSource = useMemo(() => listRowsFromState(db), [db]);
+  const deletedSource = useMemo(() => listDeletedRowsFromState(db), [db]);
 
   const filtered = useMemo(() => {
     let list: KundenListRow[] = [...listSource];
@@ -432,6 +463,13 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       list = list.filter((r) => r.ort.toLowerCase().includes(o));
     }
     if (land.trim()) list = list.filter((r) => r.land.toLowerCase().includes(land.trim()));
+    if (vatId.trim()) {
+      const v = vatId.trim().toLowerCase();
+      list = list.filter((r) => {
+        const kunde = db.kunden.find((k) => k.kunden_nr === r.kuNr);
+        return kunde?.ust_id_nr?.toLowerCase().includes(v) ?? false;
+      });
+    }
 
     if (sortierung === "kundenNr") list.sort((a, b) => a.kuNr.localeCompare(b.kuNr));
     if (sortierung === "firmenname") list.sort((a, b) => a.firmenname.localeCompare(b.firmenname));
@@ -439,7 +477,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     if (sortierung === "plz") list.sort((a, b) => a.plz.localeCompare(b.plz));
     if (sortierung === "termin") list.sort((a, b) => a.termin.localeCompare(b.termin));
     return list;
-  }, [listSource, quickSearch, kundenNr, firmenname, plz, ort, land, sortierung]);
+  }, [listSource, quickSearch, kundenNr, firmenname, plz, ort, land, vatId, sortierung, db.kunden]);
 
   const applyFilters = () => {};
   const showAll = () => {
@@ -451,6 +489,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     setPlz("");
     setOrt("");
     setLand("");
+    setVatId("");
   };
 
   /** Load drafts immediately on row click — avoids one paint with no drawer (blank flash). */
@@ -507,7 +546,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleSaveDetail = () => {
     if (!draftKunde) return;
-    let next = updateKunde(db, draftKunde);
+    let next = updateKunde(db, draftKunde, editor);
     if (draftWash) {
       next = upsertKundenWash(next, draftKunde.id, {
         bukto: draftWash.bukto,
@@ -540,7 +579,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         ...data,
         id: draftKunde.id,
         kunden_nr: draftKunde.kunden_nr,
-      });
+      }, editor);
       if (wash) {
         next = upsertKundenWash(next, draftKunde.id, wash);
       }
@@ -557,7 +596,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       scannedAttachment?: NewKundenUnterlageInput | null
     ) => {
       try {
-        let next = createKunde(db, data);
+        let next = createKunde(db, data, editor);
         const created = next.kunden[next.kunden.length - 1];
         if (wash) {
           next = upsertKundenWash(next, created.id, wash);
@@ -574,6 +613,37 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     },
     [db, persist, t]
   );
+
+  const handleDeleteKunde = useCallback(
+    (kundenId: number) => {
+      if (!window.confirm(t("customersDeleteConfirm", "Mark this customer for deletion? They will be moved to the recycle bin and can be restored."))) return;
+      const next = deleteKunde(db, kundenId, editor);
+      persist(next);
+      setSelectedRowId(null);
+    },
+    [db, editor, persist, t]
+  );
+
+  const handleRestoreKunde = useCallback(
+    (kundenId: number) => {
+      if (!window.confirm(t("customersRestoreConfirm", "Restore this customer?"))) return;
+      const next = restoreKunde(db, kundenId, editor);
+      persist(next);
+    },
+    [db, editor, persist, t]
+  );
+
+  const handlePurgeKunde = useCallback(
+    (kundenId: number) => {
+      if (!window.confirm(t("customersPurgeConfirm", "Permanently delete this customer? This cannot be undone."))) return;
+      const next = purgeKunde(db, kundenId);
+      persist(next);
+    },
+    [db, persist, t]
+  );
+
+  // editor is derived from user — include in callbacks that use it
+  // (listed explicitly above to satisfy exhaustive-deps)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-6 pb-8">
@@ -596,14 +666,37 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddCustomer(true)}
-          className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
-        >
-          <UserPlus className="h-4 w-4" />
-          {t("customersNewCustomer", "Add customer")}
-        </button>
+        <div className="flex items-center gap-2">
+          {!showDeleted && (
+            <button
+              type="button"
+              onClick={() => setShowAddCustomer(true)}
+              className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
+            >
+              <UserPlus className="h-4 w-4" />
+              {t("customersNewCustomer", "Add customer")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowDeleted((v) => !v)}
+            className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+              showDeleted
+                ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <Archive className="h-4 w-4" />
+            {showDeleted
+              ? t("customersHideDeleted", "Back to customer list")
+              : t("customersShowDeleted", "Show deleted customers")}
+            {!showDeleted && deletedSource.length > 0 && (
+              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                {deletedSource.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="glass-card mb-4 space-y-4 p-4">
@@ -708,8 +801,19 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               type="text"
               value={land}
               onChange={(e) => setLand(e.target.value)}
-              placeholder="z. B. DE"
+              placeholder={t("customersLandPlaceholder", "e.g. DE")}
               suggestions={fieldSuggestions.land_code}
+              title={t("customersSuggestionsSaved", "Suggestions from saved customers")}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterUstId", "VAT ID")}</label>
+            <SuggestTextInput
+              type="text"
+              value={vatId}
+              onChange={(e) => setVatId(e.target.value)}
+              suggestions={fieldSuggestions.ust_id_nr}
               title={t("customersSuggestionsSaved", "Suggestions from saved customers")}
               className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
             />
@@ -742,71 +846,17 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           {showMoreFilters && (
             <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Faxnummer</label>
-                <SuggestTextInput
-                  type="text"
-                  suggestions={fieldSuggestions.faxnummer}
-                  title="Vorschläge aus gespeicherten Kunden"
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Branche</label>
-                <SuggestTextInput
-                  type="text"
-                  suggestions={fieldSuggestions.branche}
-                  title="Vorschläge aus gespeicherten Kunden"
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Branchen-Nr.</label>
-                <SuggestTextInput
-                  type="text"
-                  suggestions={fieldSuggestions.branchen_nr}
-                  title="Vorschläge aus gespeicherten Kunden"
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Umsatzsteuer-ID</label>
-                <SuggestTextInput
-                  type="text"
-                  suggestions={fieldSuggestions.ust_id_nr}
-                  title="Vorschläge aus gespeicherten Kunden"
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Art</label>
-                <select className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm">
-                  <option value="">—</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Aufnahme von</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterAufnahmeVon", "Entry from")}</label>
                 <input type="date" className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Aufnahme bis</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterAufnahmeBis", "Entry to")}</label>
                 <input type="date" className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Bemerkungen</label>
-                <input type="text" className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" />
-              </div>
-              <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
+              <div className="flex items-center">
                 <label className="flex items-center gap-2 text-sm text-slate-600">
                   <input type="checkbox" className="rounded border-slate-300" />
-                  nicht KIL/KEG/KSL
-                </label>
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" className="rounded border-slate-300" />
-                  Kunde mit Verkn.
-                </label>
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" className="rounded border-slate-300" />
-                  Zum Löschen mark.
+                  {t("customersFilterKeinKii", "not KIL/KEG/KSL")}
                 </label>
               </div>
             </div>
@@ -814,6 +864,81 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         </div>
       </div>
 
+      {showDeleted ? (
+        <div className="glass-card min-h-0 flex-1 overflow-hidden">
+          <div className="border-b border-red-100 bg-red-50 px-4 py-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-red-700">
+              <Archive className="h-4 w-4" />
+              {t("customersDeletedTitle", "Recycle Bin — Deleted Customers")}
+            </h2>
+          </div>
+          <div className="overflow-auto">
+            <table className="w-full min-w-[800px] text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-slate-50 font-semibold text-slate-600">
+                <tr>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThKuNr", "KU-NR")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThCompany", "Company")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersDeletedAt", "Deleted on")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThIndustry", "Industry")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThStreet", "Street")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThZip", "ZIP")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThCity", "City")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("customersThCountry", "Country")}</th>
+                  <th className="w-32 px-2 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {deletedSource.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-400">
+                      {t("customersDeletedEmpty", "No deleted customers.")}
+                    </td>
+                  </tr>
+                ) : (
+                  deletedSource.map((row) => {
+                    const kunde = db.kunden.find((k) => k.kunden_nr === row.kuNr);
+                    return (
+                      <tr key={row.kuNr} className="text-slate-400">
+                        <td className="px-4 py-2.5 font-medium tabular-nums line-through">{row.kuNr}</td>
+                        <td className="px-4 py-2.5 line-through">{row.firmenname}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-red-400">{row.termin}</td>
+                        <td className="px-4 py-2.5">{row.branche}</td>
+                        <td className="px-4 py-2.5">{row.strasse}</td>
+                        <td className="px-4 py-2.5 tabular-nums">{row.plz}</td>
+                        <td className="px-4 py-2.5">{row.ort}</td>
+                        <td className="px-4 py-2.5">{row.land}</td>
+                        <td className="px-2 py-2.5">
+                          {kunde && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreKunde(kunde.id)}
+                                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50"
+                                title={t("customersRestore", "Restore")}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                {t("customersRestore", "Restore")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePurgeKunde(kunde.id)}
+                                className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                                title={t("customersPurge", "Delete permanently")}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="glass-card min-h-0 flex-1 overflow-hidden">
         <div className="overflow-auto">
           <table className="w-full min-w-[800px] text-left text-sm">
@@ -827,45 +952,68 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <th className="whitespace-nowrap px-4 py-3">{t("customersThZip", "ZIP")}</th>
                 <th className="whitespace-nowrap px-4 py-3">{t("customersThCity", "City")}</th>
                 <th className="whitespace-nowrap px-4 py-3">{t("customersThCountry", "Country")}</th>
+                <th className="w-10 px-2 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500">
+                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-500">
                     {t("customersEmptyList", "")}
                   </td>
                 </tr>
               ) : (
-                filtered.map((row) => (
-                  <tr
-                    key={row.kuNr}
-                    onClick={() => openCustomerRow(row.kuNr)}
-                    className={`cursor-pointer transition ${
-                      selectedRowId === row.kuNr
-                        ? "bg-slate-800 text-white"
-                        : "hover:bg-slate-50 text-slate-800"
-                    }`}
-                  >
-                    <td className="px-4 py-2.5 font-medium tabular-nums">{row.kuNr}</td>
-                    <td className="px-4 py-2.5">{row.firmenname}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{row.termin}</td>
-                    <td className="px-4 py-2.5">{row.branche}</td>
-                    <td className="px-4 py-2.5">{row.strasse}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{row.plz}</td>
-                    <td className="px-4 py-2.5">{row.ort}</td>
-                    <td className="px-4 py-2.5">{row.land}</td>
-                  </tr>
-                ))
+                filtered.map((row) => {
+                  const kunde = db.kunden.find((k) => k.kunden_nr === row.kuNr);
+                  return (
+                    <tr
+                      key={row.kuNr}
+                      onClick={() => openCustomerRow(row.kuNr)}
+                      className={`cursor-pointer transition ${
+                        selectedRowId === row.kuNr
+                          ? "bg-slate-800 text-white"
+                          : "hover:bg-slate-50 text-slate-800"
+                      }`}
+                    >
+                      <td className="px-4 py-2.5 font-medium tabular-nums">{row.kuNr}</td>
+                      <td className="px-4 py-2.5">{row.firmenname}</td>
+                      <td className="px-4 py-2.5 tabular-nums">{row.termin}</td>
+                      <td className="px-4 py-2.5">{row.branche}</td>
+                      <td className="px-4 py-2.5">{row.strasse}</td>
+                      <td className="px-4 py-2.5 tabular-nums">{row.plz}</td>
+                      <td className="px-4 py-2.5">{row.ort}</td>
+                      <td className="px-4 py-2.5">{row.land}</td>
+                      <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        {kunde && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteKunde(kunde.id)}
+                            className={`rounded-lg p-1.5 transition ${
+                              selectedRowId === row.kuNr
+                                ? "text-red-300 hover:bg-white/10 hover:text-red-200"
+                                : "text-slate-300 hover:bg-red-50 hover:text-red-500"
+                            }`}
+                            aria-label={t("customersDeleteCustomer", "Delete customer")}
+                            title={t("customersDeleteCustomer", "Delete customer")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+      )}
 
 
       {selectedRowId && draftKunde && (
         <NewCustomerModal
+          key={selectedRowId}
           open={Boolean(selectedRowId)}
           onClose={() => setSelectedRowId(null)}
           department={department}
@@ -1444,44 +1592,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               </section>
             );
           })()}
-          additionalTabLabel="Additional"
-          additionalTabContent={
-            <div className="space-y-6">
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
-                  Interne Informationen
-                </h3>
-                <textarea
-                  rows={6}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  placeholder="Kurzinfos, Historie, Besonderheiten …"
-                />
-              </section>
-
-              <div className="grid gap-6">
-                <section className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-5">
-                  <h3 className="mb-2 text-sm font-semibold text-slate-700">Schnellaktionen</h3>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      className="rounded-lg border border-white bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                      Kunden anschreiben
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-white bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                      Kaufvertrag
-                    </button>
-                  </div>
-                </section>
-              </div>
-            </div>
-          }
           nextKundenNrPreview={draftKunde.kunden_nr}
           fieldSuggestions={fieldSuggestions}
           onSubmit={handleEditCustomerSubmit}
+          historyEntries={historyForCustomer}
         />
       )}
 
@@ -1516,6 +1630,13 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         nextKundenNrPreview={generateNextKundenNr(db)}
         onSubmit={handleNewCustomerSubmit}
         fieldSuggestions={fieldSuggestions}
+        duplicateCheck={(name) => {
+          const q = name.trim().toLowerCase();
+          if (!q) return [];
+          return db.kunden
+            .filter((k) => k.firmenname.trim().toLowerCase() === q)
+            .map((k) => ({ kuNr: k.kunden_nr, firmenname: k.firmenname }));
+        }}
       />
 
       {unterlagenOpen && draftKunde ? (
@@ -1538,18 +1659,18 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   className="flex items-center gap-2 text-lg font-bold text-slate-800"
                 >
                   <FolderOpen className="h-5 w-5 shrink-0 text-blue-600" />
-                  <span className="truncate">Kundenunterlagen</span>
+                  <span className="truncate">{t("customersUnterlageTitle", "Customer documents")}</span>
                 </h2>
                 <p className="mt-0.5 truncate text-sm text-slate-500">{draftKunde.firmenname}</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  KU-Nr. <span className="font-mono text-slate-600">{draftKunde.kunden_nr}</span>
+                  {t("customersUnterlageKuNrLabel", "Cust. no.")} <span className="font-mono text-slate-600">{draftKunde.kunden_nr}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setUnterlagenOpen(false)}
                 className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Schließen"
+                aria-label={t("customersClose", "Close")}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1558,7 +1679,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
               {unterlagenForCustomer.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
-                  Noch keine Dateien. Nutzen Sie „Datei hinzufügen", um Uploads des Kunden zu simulieren.
+                  {t("customersUnterlageEmpty", 'No files yet. Use "Add file" to simulate customer uploads.')}
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -1572,7 +1693,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                         <p className="truncate text-sm font-medium text-slate-800">{u.name}</p>
                         <p className="text-xs text-slate-500">
                           {formatFileSize(u.size)} ·{" "}
-                          {new Date(u.uploaded_at).toLocaleString("de-DE", {
+                          {new Date(u.uploaded_at).toLocaleString(localeTag, {
                             dateStyle: "short",
                             timeStyle: "short",
                           })}
@@ -1581,18 +1702,18 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          title="Datei anzeigen / herunterladen"
+                          title={t("customersUnterlageOpenTitle", "View / download file")}
                           onClick={() => window.open(u.data_url, "_blank", "noopener,noreferrer")}
                           className="rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
                         >
-                          Öffnen
+                          {t("customersUnterlageOpenBtn", "Open")}
                         </button>
                         <button
                           type="button"
-                          title="Entfernen"
+                          title={t("customersUnterlageRemoveTitle", "Remove")}
                           onClick={() => handleRemoveUnterlage(u.id)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                          aria-label={`${u.name} entfernen`}
+                          aria-label={`${u.name} ${t("customersUnterlageRemoveTitle", "Remove")}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1619,7 +1740,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700"
               >
                 <Upload className="h-4 w-4" />
-                Datei hinzufügen (Kunden-Upload simulieren)
+                {t("customersUnterlageAdd", "Add file (simulate customer upload)")}
               </button>
             </div>
           </div>

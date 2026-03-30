@@ -30,6 +30,8 @@ export interface KundenStamm {
   steuer_nr?: string;
   branchen_nr?: string;
   ansprechpartner?: string;
+  /** Role / job title of the primary contact person (e.g. Geschäftsführer, Disponent). */
+  rolle_kontakt?: string;
   telefonnummer?: string;
   faxnummer?: string;
   email?: string;
@@ -44,6 +46,19 @@ export interface KundenStamm {
   aufnahme?: string;
   created_at?: string;
   updated_at?: string;
+  /** Soft-delete flag — customer is hidden from main list but not permanently removed. */
+  deleted?: boolean;
+  /** ISO timestamp of when the customer was marked for deletion. */
+  deleted_at?: string;
+
+  /** Audit: full name of the user who created this record. */
+  created_by_name?: string;
+  /** Audit: email of the user who created this record. */
+  created_by_email?: string;
+  /** Audit: full name of the user who last saved/modified this record. */
+  last_edited_by_name?: string;
+  /** Audit: email of the user who last saved/modified this record. */
+  last_edited_by_email?: string;
 }
 
 /** Waschanlage-specific profile (`kunden_wash` table), 1:1 with `kunden.id`. */
@@ -137,6 +152,29 @@ export interface KundenRisikoanalyse {
   updated_at?: string;
 }
 
+/** One changed field recorded inside a history entry. */
+export interface KundenFieldChange {
+  /** The KundenStamm field key, e.g. "firmenname" */
+  field: string;
+  /** Human-readable label key (maps to i18n) */
+  labelKey: string;
+  from: string;
+  to: string;
+}
+
+/** One entry in the change-history log for a customer. */
+export interface KundenHistoryEntry {
+  id: number;
+  kunden_id: number;
+  /** ISO timestamp of when the action occurred. */
+  timestamp: string;
+  action: "created" | "updated" | "deleted" | "restored";
+  editor_name?: string;
+  editor_email?: string;
+  /** Field-level diff — only present for "updated" entries. */
+  changes?: KundenFieldChange[];
+}
+
 /** Vom Kunden hochgeladene Datei (Demo: als Data-URL in localStorage). */
 export interface KundenUnterlage {
   id: number;
@@ -166,6 +204,8 @@ export interface KundenDbState {
   beziehungen: KundenBeziehung[];
   /** Risk-analysis / document-expiry records (1 row per kunden.id) */
   risikoanalysen: KundenRisikoanalyse[];
+  /** Full change-history log (one entry per save/delete/restore action). */
+  history: KundenHistoryEntry[];
   nextKundeId: number;
   nextWashId: number;
   nextRolleId: number;
@@ -173,4 +213,5 @@ export interface KundenDbState {
   nextTerminId: number;
   nextBeziehungId: number;
   nextRisikoanalyseId: number;
+  nextHistoryId: number;
 }

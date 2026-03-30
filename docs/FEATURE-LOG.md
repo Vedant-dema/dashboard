@@ -15,7 +15,7 @@
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
 | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046, FEATURE-047, FEATURE-048, FEATURE-049, FEATURE-050, FEATURE-051, FEATURE-052, FEATURE-053, FEATURE-054, FEATURE-055, FEATURE-056, FEATURE-057, FEATURE-058, FEATURE-059, FEATURE-060, FEATURE-061, FEATURE-062, FEATURE-063, FEATURE-064, FEATURE-065, FEATURE-066, FEATURE-067, FEATURE-068, FEATURE-069, FEATURE-070 |
-| 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071, FEATURE-072 |
+| 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071, FEATURE-072, FEATURE-073, FEATURE-074, FEATURE-075, FEATURE-076, FEATURE-077 |
 
 ---
 
@@ -90,6 +90,15 @@
 | FEATURE-070 | Fix Edit-Modal Form Reset on Re-render / Side-Panel Changes | Fixed | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) |
 | FEATURE-071 | Customers Service — Full Technical and Business Documentation | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 | FEATURE-072 | Customer Risk Analysis — Smart Document Expiry Tracker | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-073 | Adresse & Steuer Tab — Replace Branchen-Nr. with Website Field | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-074 | Duplicate Customer Prevention — Name-Match Warning on Create | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-075 | Customer Delete — Full Cascade with Confirmation | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-076 | Customer Soft-Delete — Recycle Bin with Restore & Purge | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-077 | Customer Audit Trail — Created By / Last Edited By Tracking | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-078 | Customer History — Field-Level Change Tracking with Timeline UI | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-076 | Full i18n Coverage — Customers Page & New Customer Modal | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-077 | Main Filters — VAT ID Promoted + Unused Checkbox Filters Removed | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-078 | Customer Change History Log — Full Audit Trail in Edit Modal | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

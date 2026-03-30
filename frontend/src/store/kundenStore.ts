@@ -2,6 +2,8 @@ import type {
   KundenBeziehung,
   KundenDbState,
   KundenDetailWithWash,
+  KundenFieldChange,
+  KundenHistoryEntry,
   KundenRisikoanalyse,
   KundenRolleRow,
   KundenStamm,
@@ -9,6 +11,8 @@ import type {
   KundenUnterlage,
   KundenWashStamm,
 } from "../types/kunden";
+
+export type { KundenHistoryEntry, KundenFieldChange };
 
 const STORAGE_KEY = "dema-kunden-db";
 const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
@@ -299,6 +303,7 @@ function seedDb(): KundenDbState {
     termine: [],
     beziehungen: [],
     risikoanalysen: [],
+    history: [],
     nextKundeId: 16,
     nextWashId: 2,
     nextRolleId: 1,
@@ -306,6 +311,7 @@ function seedDb(): KundenDbState {
     nextTerminId: 1,
     nextBeziehungId: 1,
     nextRisikoanalyseId: 1,
+    nextHistoryId: 1,
   };
 }
 
@@ -348,6 +354,8 @@ function normalizeUnterlagen(db: KundenDbState): KundenDbState {
   const nb = (db as Partial<KundenDbState>).nextBeziehungId;
   const r = (db as Partial<KundenDbState>).risikoanalysen;
   const nr = (db as Partial<KundenDbState>).nextRisikoanalyseId;
+  const h = (db as Partial<KundenDbState>).history;
+  const nh = (db as Partial<KundenDbState>).nextHistoryId;
   return {
     ...db,
     unterlagen: Array.isArray(u) ? u : [],
@@ -358,6 +366,8 @@ function normalizeUnterlagen(db: KundenDbState): KundenDbState {
     nextBeziehungId: typeof nb === "number" && nb >= 1 ? nb : 1,
     risikoanalysen: Array.isArray(r) ? r : [],
     nextRisikoanalyseId: typeof nr === "number" && nr >= 1 ? nr : 1,
+    history: Array.isArray(h) ? h : [],
+    nextHistoryId: typeof nh === "number" && nh >= 1 ? nh : 1,
   };
 }
 
@@ -432,16 +442,33 @@ export function saveKundenDb(state: KundenDbState): void {
 }
 
 export function listRowsFromState(db: KundenDbState): KundenListRow[] {
-  return db.kunden.map((k) => ({
-    kuNr: k.kunden_nr,
-    firmenname: k.firmenname,
-    termin: k.aufnahme ?? "—",
-    branche: k.branche ?? "—",
-    strasse: k.strasse ?? "—",
-    plz: k.plz ?? "—",
-    ort: k.ort ?? "—",
-    land: k.land_code ?? "—",
-  }));
+  return db.kunden
+    .filter((k) => !k.deleted)
+    .map((k) => ({
+      kuNr: k.kunden_nr,
+      firmenname: k.firmenname,
+      termin: k.aufnahme ?? "—",
+      branche: k.branche ?? "—",
+      strasse: k.strasse ?? "—",
+      plz: k.plz ?? "—",
+      ort: k.ort ?? "—",
+      land: k.land_code ?? "—",
+    }));
+}
+
+export function listDeletedRowsFromState(db: KundenDbState): KundenListRow[] {
+  return db.kunden
+    .filter((k) => k.deleted)
+    .map((k) => ({
+      kuNr: k.kunden_nr,
+      firmenname: k.firmenname,
+      termin: k.deleted_at ? k.deleted_at.slice(0, 10) : "—",
+      branche: k.branche ?? "—",
+      strasse: k.strasse ?? "—",
+      plz: k.plz ?? "—",
+      ort: k.ort ?? "—",
+      land: k.land_code ?? "—",
+    }));
 }
 
 export function getDetailByKundenNr(db: KundenDbState, kuNr: string): KundenDetailWithWash | null {
@@ -455,6 +482,71 @@ export function getDetailByKundenNr(db: KundenDbState, kuNr: string): KundenDeta
 /** Felder für neuen Kunden (ohne `id`; `kunden_nr` optional = automatisch). */
 export type NewKundeInput = Pick<KundenStamm, "firmenname"> &
   Partial<Omit<KundenStamm, "id" | "firmenname">>;
+
+/** Identifies the logged-in user performing a write operation (for audit trail). */
+export type AuditEditor = { name: string; email: string };
+
+/** All KundenStamm fields we track for diffs, paired with their i18n label key. */
+const TRACKED_FIELDS: { key: keyof KundenStamm; labelKey: string }[] = [
+  { key: "firmenname",             labelKey: "customersLabelCompany" },
+  { key: "branche",                labelKey: "customersLabelIndustry" },
+  { key: "strasse",                labelKey: "customersThStreet" },
+  { key: "plz",                    labelKey: "customersLabelZip" },
+  { key: "ort",                    labelKey: "customersLabelCity" },
+  { key: "land_code",              labelKey: "customersLabelCountry" },
+  { key: "ansprechpartner",        labelKey: "customersLabelContact" },
+  { key: "telefonnummer",          labelKey: "customersLabelPhone" },
+  { key: "email",                  labelKey: "historyFieldEmail" },
+  { key: "faxnummer",              labelKey: "historyFieldFax" },
+  { key: "internet_adr",           labelKey: "historyFieldWebsite" },
+  { key: "art_kunde",              labelKey: "historyFieldArtKunde" },
+  { key: "buchungskonto_haupt",    labelKey: "historyFieldBuchungskonto" },
+  { key: "ust_id_nr",              labelKey: "historyFieldUstId" },
+  { key: "steuer_nr",              labelKey: "historyFieldSteuerNr" },
+  { key: "gesellschaftsform",      labelKey: "historyFieldGesellschaft" },
+  { key: "zustaendige_person_name",labelKey: "historyFieldZustaendig" },
+  { key: "bemerkungen",            labelKey: "historyFieldBemerkungen" },
+  { key: "ansprache",              labelKey: "historyFieldAnsprache" },
+];
+
+function computeKundenDiff(oldK: KundenStamm, newK: KundenStamm): KundenFieldChange[] {
+  return TRACKED_FIELDS.flatMap(({ key, labelKey }) => {
+    const from = String(oldK[key] ?? "");
+    const to = String(newK[key] ?? "");
+    if (from === to) return [];
+    return [{ field: String(key), labelKey, from, to }];
+  });
+}
+
+function appendHistory(
+  db: KundenDbState,
+  kundenId: number,
+  action: KundenHistoryEntry["action"],
+  editor?: AuditEditor,
+  changes?: KundenFieldChange[]
+): KundenDbState {
+  const entry: KundenHistoryEntry = {
+    id: db.nextHistoryId ?? 1,
+    kunden_id: kundenId,
+    timestamp: new Date().toISOString(),
+    action,
+    editor_name: editor?.name,
+    editor_email: editor?.email,
+    changes: changes && changes.length > 0 ? changes : undefined,
+  };
+  return {
+    ...db,
+    history: [...(db.history ?? []), entry],
+    nextHistoryId: (db.nextHistoryId ?? 1) + 1,
+  };
+}
+
+/** Returns all history entries for a customer, newest first. */
+export function listHistoryForKunde(db: KundenDbState, kundenId: number): KundenHistoryEntry[] {
+  return (db.history ?? [])
+    .filter((h) => h.kunden_id === kundenId)
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
 
 function defaultAufnahme(): string {
   return new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
@@ -472,7 +564,7 @@ export function generateNextKundenNr(db: KundenDbState): string {
   return String(maxNum + 1);
 }
 
-export function createKunde(db: KundenDbState, input: NewKundeInput): KundenDbState {
+export function createKunde(db: KundenDbState, input: NewKundeInput, editor?: AuditEditor): KundenDbState {
   const nr = input.kunden_nr?.trim();
   if (nr) {
     if (db.kunden.some((k) => k.kunden_nr === nr)) {
@@ -494,21 +586,82 @@ export function createKunde(db: KundenDbState, input: NewKundeInput): KundenDbSt
     aufnahme: input.aufnahme ?? defaultAufnahme(),
     created_at: now,
     updated_at: now,
+    created_by_name: editor?.name,
+    created_by_email: editor?.email,
+    last_edited_by_name: editor?.name,
+    last_edited_by_email: editor?.email,
   };
-  return {
+  let next: KundenDbState = {
     ...db,
     kunden: [...db.kunden, row],
     nextKundeId: id + 1,
   };
+  next = appendHistory(next, id, "created", editor);
+  return next;
 }
 
-export function updateKunde(db: KundenDbState, kunde: KundenStamm): KundenDbState {
+/** Soft-delete: marks the customer as deleted without removing any data. */
+export function deleteKunde(db: KundenDbState, kundenId: number, editor?: AuditEditor): KundenDbState {
   const now = new Date().toISOString();
-  const next = db.kunden.map((k) =>
-    k.id === kunde.id ? { ...kunde, updated_at: now } : k
+  const next: KundenDbState = {
+    ...db,
+    kunden: db.kunden.map((k) =>
+      k.id === kundenId
+        ? { ...k, deleted: true, deleted_at: now, updated_at: now, last_edited_by_name: editor?.name, last_edited_by_email: editor?.email }
+        : k
+    ),
+  };
+  return appendHistory(next, kundenId, "deleted", editor);
+}
+
+/** Restore a soft-deleted customer back to the active list. */
+export function restoreKunde(db: KundenDbState, kundenId: number, editor?: AuditEditor): KundenDbState {
+  const now = new Date().toISOString();
+  const next: KundenDbState = {
+    ...db,
+    kunden: db.kunden.map((k) =>
+      k.id === kundenId
+        ? { ...k, deleted: false, deleted_at: undefined, updated_at: now, last_edited_by_name: editor?.name, last_edited_by_email: editor?.email }
+        : k
+    ),
+  };
+  return appendHistory(next, kundenId, "restored", editor);
+}
+
+/** Permanently removes a customer and all linked data — use only from the deleted view. */
+export function purgeKunde(db: KundenDbState, kundenId: number): KundenDbState {
+  return {
+    ...db,
+    kunden: db.kunden.filter((k) => k.id !== kundenId),
+    kundenWash: db.kundenWash.filter((w) => w.kunden_id !== kundenId),
+    unterlagen: db.unterlagen.filter((u) => u.kunden_id !== kundenId),
+    rollen: db.rollen.filter((r) => r.kunden_id !== kundenId),
+    termine: (db.termine ?? []).filter((t) => t.kunden_id !== kundenId),
+    beziehungen: (db.beziehungen ?? []).filter(
+      (b) => b.kunden_id !== kundenId && b.verknuepfter_kunden_id !== kundenId
+    ),
+    risikoanalysen: (db.risikoanalysen ?? []).filter((r) => r.kunden_id !== kundenId),
+    history: (db.history ?? []).filter((h) => h.kunden_id !== kundenId),
+  };
+}
+
+export function updateKunde(db: KundenDbState, kunde: KundenStamm, editor?: AuditEditor): KundenDbState {
+  const now = new Date().toISOString();
+  const oldKunde = db.kunden.find((k) => k.id === kunde.id);
+  const changes = oldKunde ? computeKundenDiff(oldKunde, kunde) : [];
+  const nextKunden = db.kunden.map((k) =>
+    k.id === kunde.id
+      ? {
+          ...kunde,
+          updated_at: now,
+          last_edited_by_name: editor?.name ?? kunde.last_edited_by_name,
+          last_edited_by_email: editor?.email ?? kunde.last_edited_by_email,
+        }
+      : k
   );
-  if (!next.some((k) => k.id === kunde.id)) return db;
-  return { ...db, kunden: next };
+  if (!nextKunden.some((k) => k.id === kunde.id)) return db;
+  const next: KundenDbState = { ...db, kunden: nextKunden };
+  return appendHistory(next, kunde.id, "updated", editor, changes);
 }
 
 export type KundenWashUpsertFields = Partial<

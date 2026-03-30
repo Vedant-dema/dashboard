@@ -273,6 +273,46 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [beziehungFormOpen, setBeziehungFormOpen] = useState(false);
   const [beziehungNr, setBeziehungNr] = useState("");
   const [beziehungArt, setBeziehungArt] = useState("");
+  const [beziehungSearchOpen, setBeziehungSearchOpen] = useState(false);
+  const [beziehungArtOpen, setBeziehungArtOpen] = useState(false);
+  const beziehungSearchRef = useRef<HTMLDivElement>(null);
+  const beziehungArtRef = useRef<HTMLDivElement>(null);
+
+  // Filtered customer list for the beziehung search dropdown
+  const beziehungSearchResults = useMemo(() => {
+    const others = db.kunden.filter((k) => draftKunde && k.id !== draftKunde.id);
+    const q = beziehungNr.trim().toLowerCase();
+    if (!q) return others.slice(0, 10);
+    return others
+      .filter((k) => k.kunden_nr.toLowerCase().includes(q) || k.firmenname.toLowerCase().includes(q))
+      .slice(0, 10);
+  }, [beziehungNr, db.kunden, draftKunde?.id]);
+
+  // Predefined relationship type options
+  const BEZIEHUNG_ART_OPTIONS = useMemo(() => [
+    t("beziehungArtParent", "Parent company"),
+    t("beziehungArtSubsidiary", "Subsidiary"),
+    t("beziehungArtSister", "Sister company"),
+    t("beziehungArtBranch", "Branch"),
+    t("beziehungArtPartner", "Partner"),
+    t("beziehungArtSupplier", "Supplier"),
+    t("beziehungArtCustomer", "Customer"),
+    t("beziehungArtOther", "Other"),
+  ], [t]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (beziehungSearchRef.current && !beziehungSearchRef.current.contains(e.target as Node)) {
+        setBeziehungSearchOpen(false);
+      }
+      if (beziehungArtRef.current && !beziehungArtRef.current.contains(e.target as Node)) {
+        setBeziehungArtOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ── Risikoanalyse ──────────────────────────────────────────────────────────
   const risikoForCustomer = useMemo(
@@ -889,28 +929,90 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
                 {beziehungFormOpen && (
                   <div className="mb-3 flex flex-col gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
-                    <input
-                      type="text"
-                      list="beziehung-nr-list"
-                      value={beziehungNr}
-                      onChange={(e) => setBeziehungNr(e.target.value)}
-                      placeholder={t("customersRelationsNrPh", "Search customer no.")}
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
-                    />
-                    <datalist id="beziehung-nr-list">
-                      {db.kunden
-                        .filter((k) => draftKunde && k.id !== draftKunde.id)
-                        .map((k) => (
-                          <option key={k.id} value={k.kunden_nr}>{k.firmenname}</option>
-                        ))}
-                    </datalist>
-                    <input
-                      type="text"
-                      value={beziehungArt}
-                      onChange={(e) => setBeziehungArt(e.target.value)}
-                      placeholder={t("customersRelationsArtPh", "Type (e.g. Parent company)")}
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
-                    />
+
+                    {/* ── Customer search combobox ── */}
+                    <div ref={beziehungSearchRef} className="relative">
+                      <input
+                        type="text"
+                        value={beziehungNr}
+                        onChange={(e) => { setBeziehungNr(e.target.value); setBeziehungSearchOpen(true); }}
+                        onFocus={() => setBeziehungSearchOpen(true)}
+                        placeholder={t("customersRelationsNrPh", "Search by customer no. or company name")}
+                        className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                        autoComplete="off"
+                      />
+                      {/* Selected customer chip */}
+                      {beziehungNr && (() => {
+                        const matched = db.kunden.find((k) => k.kunden_nr === beziehungNr.trim());
+                        return matched ? (
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                            {matched.firmenname}
+                          </span>
+                        ) : null;
+                      })()}
+                      {/* Dropdown list */}
+                      {beziehungSearchOpen && beziehungSearchResults.length > 0 && (
+                        <ul className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                          {beziehungSearchResults.map((k) => (
+                            <li key={k.id}>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setBeziehungNr(k.kunden_nr);
+                                  setBeziehungSearchOpen(false);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-blue-50"
+                              >
+                                <span className="w-14 shrink-0 font-mono font-semibold text-slate-500">{k.kunden_nr}</span>
+                                <span className="truncate font-medium text-slate-800">{k.firmenname}</span>
+                                {k.ort && <span className="ml-auto shrink-0 text-slate-400">{k.ort}</span>}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {beziehungSearchOpen && beziehungNr.trim() && beziehungSearchResults.length === 0 && (
+                        <div className="absolute left-0 right-0 top-full z-[200] mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 shadow-xl">
+                          {t("customersEmptyList", "No customers found")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Relationship type combobox ── */}
+                    <div ref={beziehungArtRef} className="relative">
+                      <input
+                        type="text"
+                        value={beziehungArt}
+                        onChange={(e) => { setBeziehungArt(e.target.value); setBeziehungArtOpen(true); }}
+                        onFocus={() => setBeziehungArtOpen(true)}
+                        placeholder={t("customersRelationsArtPh", "Type (e.g. Parent company)")}
+                        className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                        autoComplete="off"
+                      />
+                      {beziehungArtOpen && (
+                        <ul className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                          {BEZIEHUNG_ART_OPTIONS
+                            .filter((opt) => !beziehungArt.trim() || opt.toLowerCase().includes(beziehungArt.toLowerCase()))
+                            .map((opt) => (
+                              <li key={opt}>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setBeziehungArt(opt);
+                                    setBeziehungArtOpen(false);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-blue-50"
+                                >
+                                  {opt}
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                    </div>
+
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -922,7 +1024,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setBeziehungFormOpen(false)}
+                        onClick={() => { setBeziehungFormOpen(false); setBeziehungNr(""); setBeziehungArt(""); }}
                         className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
                       >
                         {t("commonCancel", "Cancel")}

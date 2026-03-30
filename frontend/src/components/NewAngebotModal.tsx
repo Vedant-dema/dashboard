@@ -590,10 +590,7 @@ export function NewAngebotModal({
                     <label className={labelClass}>
                       {t("globalAddrSearchLabel", "Address search (worldwide)")}
                     </label>
-                    <GlobalAddressSearch
-                      onSelect={handleAddressSelect}
-                      className={inputClass}
-                    />
+                    <GlobalAddressSearch onSelect={handleAddressSelect} />
                     {(form.plz || form.ort) && (
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-teal-700">
                         <span className="font-semibold">

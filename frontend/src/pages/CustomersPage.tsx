@@ -1530,50 +1530,36 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       )}
                     </div>
 
-                    {/* Expiry date table — horizontal, all 5 docs side by side */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[600px] text-left text-xs">
-                        <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          <tr>
-                            {DATE_FIELDS.map((f) => (
-                              <th key={f.key} className="px-4 py-2">{t(f.labelKey, f.fallback)}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {/* Date row */}
-                          <tr className="border-t border-slate-100 bg-white">
-                            {DATE_FIELDS.map((f) => {
-                              const dateVal = risk?.[f.key] as string | undefined;
-                              return (
-                                <td key={f.key} className="px-4 py-2 font-mono text-slate-700">
-                                  {dateVal || "—"}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                          {/* Status row */}
-                          <tr className="border-t border-slate-100">
-                            {DATE_FIELDS.map((f) => {
-                              const dateVal = risk?.[f.key] as string | undefined;
-                              const status = getExpiryStatus(dateVal);
-                              return (
-                                <td
-                                  key={f.key}
-                                  className={`px-4 py-2 ${
-                                    status === "expired" ? "bg-red-50" :
-                                    status === "critical" ? "bg-orange-50" :
-                                    status === "warning" ? "bg-amber-50" : "bg-white"
-                                  }`}
-                                >
-                                  {statusBadge(status, dateVal)}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                    {/* Expiry date table — vertical, one row per document */}
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        <tr>
+                          <th className="px-4 py-2 w-1/3">{t("riskDocName", "Document")}</th>
+                          <th className="px-4 py-2 w-1/3">{t("riskDocDate", "Date (valid until)")}</th>
+                          <th className="px-4 py-2 w-1/3">{t("riskDocStatus", "Status")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {DATE_FIELDS.map((f) => {
+                          const dateVal = risk?.[f.key] as string | undefined;
+                          const status = getExpiryStatus(dateVal);
+                          return (
+                            <tr
+                              key={f.key}
+                              className={`border-t border-slate-100 ${
+                                status === "expired" ? "bg-red-50" :
+                                status === "critical" ? "bg-orange-50" :
+                                status === "warning" ? "bg-amber-50" : "bg-white"
+                              }`}
+                            >
+                              <td className="px-4 py-2 font-medium text-slate-600">{t(f.labelKey, f.fallback)}</td>
+                              <td className="px-4 py-2 font-mono text-slate-700">{dateVal || "—"}</td>
+                              <td className="px-4 py-2">{statusBadge(status, dateVal)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
 
                     {!risk && (
                       <p className="px-4 py-5 text-center text-sm text-slate-400">

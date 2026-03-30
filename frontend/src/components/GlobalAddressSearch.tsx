@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useState, useRef, useEffect, useCallback, useId, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Search, MapPin, Globe, Loader2, X } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -25,7 +26,6 @@ type PhotonFeature = {
     state?: string;
     country?: string;
     countrycode?: string;
-    type?: string;
   };
 };
 
@@ -38,7 +38,8 @@ function parsePhoton(features: PhotonFeature[]): GlobalAddressResult[] {
     .map((f) => {
       const p = f.properties;
       const street = [p.street, p.housenumber].filter(Boolean).join(" ");
-      const city = p.city ?? p.town ?? p.village ?? p.municipality ?? p.district ?? p.state ?? "";
+      const city =
+        p.city ?? p.town ?? p.village ?? p.municipality ?? p.district ?? p.state ?? "";
       const postcode = p.postcode ?? "";
       const countrycode = (p.countrycode ?? "").toUpperCase();
       const country = p.country ?? "";
@@ -78,20 +79,24 @@ function flag(code?: string): string {
 
 type Props = {
   onSelect: (result: GlobalAddressResult) => void;
-  className?: string;
 };
 
-export function GlobalAddressSearch({ onSelect, className }: Props) {
+const BASE_INPUT =
+  "h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 text-sm text-slate-800 shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20";
+
+export function GlobalAddressSearch({ onSelect }: Props) {
   const { t, language } = useLanguage();
   const uid = useId().replace(/:/g, "");
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalAddressResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
+
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -101,6 +106,19 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
     : language === "it" ? "it"
     : language === "ru" ? "ru"
     : "en";
+
+  /** Recalculate dropdown position relative to the input (fixed coords). */
+  const updateDropdownPos = useCallback(() => {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, []);
 
   const fetchAddresses = useCallback(
     async (q: string) => {
@@ -112,8 +130,8 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
 
       abortRef.current?.abort();
       abortRef.current = new AbortController();
-
       setLoading(true);
+
       try {
         const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=${langParam}`;
         const res = await fetch(url, { signal: abortRef.current.signal });
@@ -123,6 +141,7 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
         setResults(parsed);
         setOpen(parsed.length > 0);
         setActiveIdx(-1);
+        updateDropdownPos();
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setResults([]);
@@ -132,7 +151,7 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
         setLoading(false);
       }
     },
-    [langParam]
+    [langParam, updateDropdownPos]
   );
 
   const handleChange = useCallback(
@@ -159,7 +178,6 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
       setOpen(false);
       setResults([]);
       setActiveIdx(-1);
-      inputRef.current?.blur();
     },
     [onSelect]
   );
@@ -193,24 +211,41 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
     [open, results, activeIdx, handleSelect]
   );
 
+  /* Close on click outside the input + portal */
+  useEffect(() => {
+    function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (inputRef.current?.contains(target)) return;
+      const portalEl = document.getElementById(`portal-${uid}`);
+      if (portalEl?.contains(target)) return;
+      setOpen(false);
+      setActiveIdx(-1);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [uid]);
+
+  /* Reposition on scroll / resize while open */
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => updateDropdownPos();
+    window.addEventListener("scroll", handler, true);
+    window.addEventListener("resize", handler);
+    return () => {
+      window.removeEventListener("scroll", handler, true);
+      window.removeEventListener("resize", handler);
+    };
+  }, [open, updateDropdownPos]);
+
+  /* Scroll active item into view */
   useEffect(() => {
     if (activeIdx >= 0 && listRef.current) {
-      const item = listRef.current.children[activeIdx] as HTMLElement | undefined;
+      const item = listRef.current.children[activeIdx + 1] as HTMLElement | undefined;
       item?.scrollIntoView({ block: "nearest" });
     }
   }, [activeIdx]);
 
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setActiveIdx(-1);
-      }
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
-
+  /* Cleanup on unmount */
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -220,55 +255,16 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
 
   const listboxId = `global-addr-${uid}`;
 
-  return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
-          ) : (
-            <Globe className="h-4 w-4 text-teal-500" />
-          )}
-        </div>
-        <input
-          ref={inputRef}
-          id={uid}
-          type="text"
-          value={query}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (results.length > 0) setOpen(true);
-          }}
-          className={`${className ?? ""} pl-9 pr-8`}
-          placeholder={t("globalAddrSearchPlaceholder", "Search address worldwide…")}
-          autoComplete="nope"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={open && results.length > 0}
-          aria-controls={open && results.length > 0 ? listboxId : undefined}
-          aria-activedescendant={activeIdx >= 0 ? `${listboxId}-${activeIdx}` : undefined}
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute inset-y-0 right-2 flex items-center px-1 text-slate-400 hover:text-slate-600"
-            tabIndex={-1}
-            aria-label={t("commonClear", "Clear")}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-
-      {open && results.length > 0 && (
+  const dropdown = (open && (results.length > 0 || (query.trim().length >= 2 && !loading))) ? (
+    <div id={`portal-${uid}`} style={dropdownStyle}>
+      {results.length > 0 ? (
         <ul
           ref={listRef}
           id={listboxId}
           role="listbox"
           aria-label={t("globalAddrListLabel", "Address suggestions")}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-teal-200/80 bg-white py-1 shadow-2xl shadow-teal-900/12 ring-1 ring-teal-100/60"
+          className="max-h-72 overflow-y-auto rounded-xl border border-teal-200/80 bg-white py-1 shadow-2xl ring-1 ring-teal-100/60"
+          style={{ boxShadow: "0 20px 60px rgba(13,148,136,0.15), 0 4px 16px rgba(0,0,0,0.08)" }}
         >
           <li className="flex items-center gap-1.5 border-b border-slate-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             <Search className="h-3 w-3" />
@@ -276,9 +272,8 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
           </li>
           {results.map((r, i) => {
             const isActive = i === activeIdx;
-            const addrParts = [r.strasse, [r.plz, r.ort].filter(Boolean).join(" ")].filter(Boolean);
-            const primaryLine = addrParts[0] ?? r.label;
-            const secondaryLine = addrParts.length > 1 ? addrParts.slice(1).join(" · ") : undefined;
+            const secondLine = [r.plz, r.ort].filter(Boolean).join(" ");
+            const topLine = r.strasse ?? r.label;
             return (
               <li
                 key={`${r.label}-${i}`}
@@ -299,20 +294,20 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-medium ${isActive ? "text-teal-900" : "text-slate-800"}`}>
-                    {primaryLine}
+                    {topLine}
                   </p>
-                  {secondaryLine && (
+                  {secondLine && (
                     <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
                       <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-                      {secondaryLine}
+                      {secondLine}
+                      {r.land_name && (
+                        <span className="ml-1 rounded bg-slate-100 px-1 py-px text-[10px] font-semibold text-slate-500">
+                          {r.land_code ?? r.land_name}
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
-                {r.land_name && (
-                  <span className="mt-0.5 shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                    {r.land_code ?? r.land_name}
-                  </span>
-                )}
               </li>
             );
           })}
@@ -320,13 +315,57 @@ export function GlobalAddressSearch({ onSelect, className }: Props) {
             {t("globalAddrPowered", "Powered by OpenStreetMap · Photon")}
           </li>
         </ul>
-      )}
-
-      {open && query.trim().length >= 2 && !loading && results.length === 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-lg">
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-lg">
           {t("globalAddrNoResults", "No addresses found. Try a different search term.")}
         </div>
       )}
     </div>
+  ) : null;
+
+  return (
+    <>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex w-9 items-center justify-center">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
+          ) : (
+            <Globe className="h-4 w-4 text-teal-500" />
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          id={uid}
+          type="text"
+          value={query}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            updateDropdownPos();
+            if (results.length > 0) setOpen(true);
+          }}
+          className={BASE_INPUT}
+          placeholder={t("globalAddrSearchPlaceholder", "Search address worldwide…")}
+          autoComplete="nope"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open && results.length > 0}
+          aria-controls={open && results.length > 0 ? listboxId : undefined}
+          aria-activedescendant={activeIdx >= 0 ? `${listboxId}-${activeIdx}` : undefined}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute inset-y-0 right-2 flex items-center px-1 text-slate-400 hover:text-slate-600"
+            tabIndex={-1}
+            aria-label={t("commonClear", "Clear")}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {typeof document !== "undefined" && createPortal(dropdown, document.body)}
+    </>
   );
 }

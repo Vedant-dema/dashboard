@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import type { AbholauftragRow } from "../types/abholauftraege";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import { loadAbholauftraegeDb } from "../store/abholauftraegeStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -50,13 +51,30 @@ export function AbholauftraegePage({ department }: { department?: DepartmentArea
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
 
-  useEffect(() => {
-    const q = sessionStorage.getItem("dema-search-q-abhol");
-    if (q) {
-      setGlobalHeaderSearch(q);
-      sessionStorage.removeItem("dema-search-q-abhol");
-    }
+  const clearAbholFilters = useCallback(() => {
+    setGlobalHeaderSearch("");
+    setFahrgestellSuche("");
+    setErledigt("");
+    setErstelltVon("");
+    setErstelltBis("");
+    setAbholVon("");
+    setAbholBis("");
+    setKundeFilter("");
+    setFahrzeugart("");
+    setFabrikat("");
+    setTypFilter("");
   }, []);
+
+  const focusAbholFromSearch = useCallback(
+    (id: number) => {
+      if (!db.rows.some((r) => r.id === id)) return;
+      clearAbholFilters();
+      setSelectedId(id);
+    },
+    [db.rows, clearAbholFilters]
+  );
+
+  useApplyGlobalSearchFocus("abhol", focusAbholFromSearch);
 
   const suggestions = useMemo(() => {
     const fin = new Set<string>();

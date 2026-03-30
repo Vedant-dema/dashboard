@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, Plus, X } from "lucide-react";
 import type { AnfrageStamm } from "../types/anfragen";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import { loadAnfragenDb, saveAnfragenDb, createAnfrage, previewNextAnfrageNr } from "../store/anfragenStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { NewAnfrageModal } from "../components/NewAnfrageModal";
@@ -180,6 +181,7 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
   ]);
 
   const showAll = () => {
+    setGlobalHeaderSearch("");
     setAnfrageId("");
     setBearbeiter("");
     setDatumVon("");
@@ -192,6 +194,17 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
     setDebitorNr("");
     setFirmenname("");
   };
+
+  const focusAnfrageFromSearch = useCallback(
+    (id: number) => {
+      if (!db.anfragen.some((r) => r.id === id)) return;
+      showAll();
+      setSelectedId(id);
+    },
+    [db.anfragen]
+  );
+
+  useApplyGlobalSearchFocus("anfragen", focusAnfrageFromSearch);
 
   const selected = selectedId != null ? db.anfragen.find((r) => r.id === selectedId) : null;
 

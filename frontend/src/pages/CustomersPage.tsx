@@ -10,7 +10,6 @@ import {
   FolderOpen,
   Car,
   Info,
-  Link2,
   CalendarPlus,
   Receipt,
   FileText,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
   loadKundenDb,
   saveKundenDb,
@@ -560,6 +560,18 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     },
     [db]
   );
+
+  const focusCustomerFromSearch = useCallback(
+    (id: number) => {
+      const k = db.kunden.find((x) => x.id === id && !x.deleted);
+      if (!k) return;
+      showAll();
+      openCustomerRow(k.kunden_nr);
+    },
+    [db, openCustomerRow]
+  );
+
+  useApplyGlobalSearchFocus("kunden", focusCustomerFromSearch);
 
   useEffect(() => {
     if (!selectedRowId) {
@@ -1133,17 +1145,17 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           editKundeSideContent={
             <>
               {/* ── Kundenbeziehungen ─────────────────────────────── */}
-              <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                    <Link2 className="h-4 w-4 text-slate-400" />
+              <section className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                     {t("customersRelationsTitle", "Customer relationships")}
-                  </h3>
+                  </p>
                   <button
                     type="button"
                     onClick={() => { setBeziehungFormOpen((v) => !v); setBeziehungNr(""); setBeziehungArt(""); }}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700"
                   >
+                    <Plus className="h-3.5 w-3.5" />
                     {t("customersRelationsNew", "New")}
                   </button>
                 </div>
@@ -1318,15 +1330,15 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               </section>
 
               {/* ── Termine ───────────────────────────────────────── */}
-              <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              <section className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                     {t("customersAppointmentsTitle", "Appointments")}
-                  </h3>
+                  </p>
                   <button
                     type="button"
                     onClick={() => { setTerminFormOpen((v) => !v); setTerminDatum(""); setTerminZeit(""); setTerminZweck(""); }}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700"
                   >
                     <CalendarPlus className="h-3.5 w-3.5" />
                     {t("customersNewAppointment", "New appointment")}
@@ -1483,27 +1495,26 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             return (
               <section
                 ref={risikoSectionRef}
-                className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
               >
-                {/* Header row */}
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-                    <ShieldAlert className="h-4 w-4 text-slate-400" />
+                {/* Header row — matches Contacts / Firmendaten section title scale */}
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                     {t("riskTitle", "Risk Analysis")}
-                  </h3>
-                  <div className="flex items-center gap-2">
+                  </p>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
                     {(expiredCount > 0 || criticalCount > 0 || warningCount > 0) && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
-                        <ShieldAlert className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+                        <ShieldAlert className="h-3 w-3 shrink-0" />
                         {expiredCount + criticalCount + warningCount} {t("riskAlertBannerTitle", "Document Expiry Warning")}
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={risikoEditOpen ? () => setRisikoEditOpen(false) : handleRisikoEdit}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700"
                     >
-                      <Pencil className="h-3 w-3" />
+                      <Pencil className="h-3.5 w-3.5" />
                       {t("riskEdit", "Edit dates")}
                     </button>
                   </div>

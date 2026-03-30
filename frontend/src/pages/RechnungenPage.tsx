@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, ChevronDown, ChevronUp, Plus, X, FolderOpen, Link2 } from "lucide-react";
 import type { RechnungListRow } from "../types/rechnungen";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import { loadRechnungenDb, formatRechnungsbetrag } from "../store/rechnungenStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -135,6 +136,17 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
   }, []);
 
   const refreshDb = useCallback(() => setDb(loadRechnungenDb()), []);
+
+  const focusRechnungFromSearch = useCallback(
+    (id: number) => {
+      if (!db.rows.some((r) => r.id === id)) return;
+      resetFilters();
+      setSelectedId(id);
+    },
+    [db.rows, resetFilters]
+  );
+
+  useApplyGlobalSearchFocus("rechnungen", focusRechnungFromSearch);
 
   const filtered = useMemo(() => {
     let list = [...db.rows];

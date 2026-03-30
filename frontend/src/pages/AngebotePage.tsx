@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import type { AngebotStamm } from "../types/angebote";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
   loadAngeboteDb,
   saveAngeboteDb,
@@ -244,6 +245,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
   ]);
 
   const showAll = () => {
+    setGlobalHeaderSearch("");
     setAngebotId("");
     setAngebotVon("");
     setAngebotBis("");
@@ -263,6 +265,17 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
     setNurGekauft(false);
     setNurAnbieten(false);
   };
+
+  const focusAngebotFromSearch = useCallback(
+    (id: number) => {
+      if (!db.angebote.some((a) => a.id === id)) return;
+      showAll();
+      setSelectedId(id);
+    },
+    [db.angebote]
+  );
+
+  useApplyGlobalSearchFocus("angebote", focusAngebotFromSearch);
 
   const selected = selectedId != null ? db.angebote.find((a) => a.id === selectedId) : null;
 

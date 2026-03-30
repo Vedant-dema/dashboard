@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Search, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { VerkaufterBestandRow } from "../types/verkaufterBestand";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import { loadVerkaufterBestandDb } from "../store/verkaufterBestandStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -104,14 +105,6 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
 
   const [flagFilters, setFlagFilters] = useState<Partial<Record<FlagKey, boolean>>>({});
   const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
-
-  useEffect(() => {
-    const q = sessionStorage.getItem("dema-search-q-verkaufter");
-    if (q) {
-      setGlobalHeaderSearch(q);
-      sessionStorage.removeItem("dema-search-q-verkaufter");
-    }
-  }, []);
 
   const setFlag = useCallback((key: FlagKey, value: boolean) => {
     setFlagFilters((prev) => {
@@ -280,6 +273,7 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
   ]);
 
   const showAll = () => {
+    setGlobalHeaderSearch("");
     setPositionsNr("");
     setLinkaeufer("");
     setBeteiligter("");
@@ -304,6 +298,17 @@ export function VerkaufterBestandPage({ department }: { department?: DepartmentA
     setImportVerkaufsNr("");
     setFlagFilters({});
   };
+
+  const focusVerkaufterFromSearch = useCallback(
+    (id: number) => {
+      if (!db.rows.some((r) => r.id === id)) return;
+      showAll();
+      setSelectedId(id);
+    },
+    [db.rows]
+  );
+
+  useApplyGlobalSearchFocus("verkaufter", focusVerkaufterFromSearch);
 
   const selected = selectedId != null ? db.rows.find((r) => r.id === selectedId) : null;
 

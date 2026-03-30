@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import type { BestandRow } from "../types/bestand";
 import { combinedMatch } from "../lib/globalSearchMatch";
+import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import { loadBestandDb } from "../store/bestandStore";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import { NeuesFahrzeugModal } from "./NeuesFahrzeugModal";
@@ -147,6 +148,19 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
     setStandtageVon(""); setStandtageBis(""); setKreditorNr(""); setFirmenname("");
     setPlz(""); setOrt(""); setLand(""); setBeteiligter(""); setImportNr(""); setFlagFilters({});
   };
+
+  const focusBestandRowFromSearch = useCallback(
+    (id: number) => {
+      const row = db.rows.find((r) => r.id === id);
+      if (!row) return;
+      showAll();
+      setActiveTab(row.hauptschluessel ? "haupt" : "ersatz");
+      setSelectedId(id);
+    },
+    [db.rows]
+  );
+
+  useApplyGlobalSearchFocus("bestand", focusBestandRowFromSearch);
 
   const activeFilterCount = [
     quickSearch, positionsNr, kaufVon, kaufBis, fahrzeugart, aufbauArt, fabrikat,

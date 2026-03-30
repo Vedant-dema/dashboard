@@ -779,6 +779,8 @@ type Props = {
   editKundeTopContent?: ReactNode;
   editAdresseExtraContent?: ReactNode;
   editKundeSideContent?: ReactNode;
+  /** Full-width content rendered below the main Firmendaten/Adresse/Kontakt grid (edit mode only). */
+  editKundeBottomContent?: ReactNode;
   additionalTabLabel?: string;
   additionalTabContent?: ReactNode;
   /** Vorschau der nächsten automatischen KundenNr. (wird beim Speichern vergeben). */
@@ -802,6 +804,7 @@ export function NewCustomerModal({
   editKundeTopContent,
   editAdresseExtraContent,
   editKundeSideContent,
+  editKundeBottomContent,
   additionalTabLabel = "Additional",
   additionalTabContent,
   nextKundenNrPreview,
@@ -1968,6 +1971,10 @@ export function NewCustomerModal({
 
                 {hasEditKundeSideContent ? <div className="space-y-4">{editKundeSideContent}</div> : null}
               </div>
+
+              {isEditMode && editKundeBottomContent ? (
+                <div className="mt-1">{editKundeBottomContent}</div>
+              ) : null}
             </div>
           )}
 

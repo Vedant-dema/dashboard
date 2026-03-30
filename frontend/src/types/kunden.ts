@@ -109,6 +109,34 @@ export interface KundenBeziehung {
   created_at?: string;
 }
 
+/**
+ * Risk-analysis profile per customer — tracks document expiry dates.
+ * All date fields are ISO `YYYY-MM-DD` strings (nullable).
+ * A date stored here is treated as the *expiry / valid-until* date for that document.
+ */
+export interface KundenRisikoanalyse {
+  id: number;
+  kunden_id: number;
+  /** Allgemeiner Dokumentenbogen — submitted flag */
+  allg_dok_bogen?: boolean;
+  /** Registerauszug — valid-until / renewal-due date */
+  reg_ausz?: string;
+  /** Wirtschaftsberichts-Ermächtigung — valid-until date */
+  wirt_ber_erm?: string;
+  /** Ausweis-Kopie + Wirtschaftsbericht — valid-until date */
+  ausw_kop_wirt_ber?: string;
+  /** Ausweis gültig bis — direct ID expiry date */
+  ausw_gueltig_bis?: string;
+  /** Ausweis-Kopie Abholer — valid-until date */
+  ausw_kop_abholer?: string;
+  /** Verständigungs-Dokumentenbogen — submitted flag */
+  verst_dok_bogen?: boolean;
+  /** Responsible staff initials / name */
+  bearbeiter?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 /** Vom Kunden hochgeladene Datei (Demo: als Data-URL in localStorage). */
 export interface KundenUnterlage {
   id: number;
@@ -136,10 +164,13 @@ export interface KundenDbState {
   unterlagen: KundenUnterlage[];
   termine: KundenTermin[];
   beziehungen: KundenBeziehung[];
+  /** Risk-analysis / document-expiry records (1 row per kunden.id) */
+  risikoanalysen: KundenRisikoanalyse[];
   nextKundeId: number;
   nextWashId: number;
   nextRolleId: number;
   nextUnterlageId: number;
   nextTerminId: number;
   nextBeziehungId: number;
+  nextRisikoanalyseId: number;
 }

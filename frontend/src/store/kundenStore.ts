@@ -2,6 +2,7 @@ import type {
   KundenBeziehung,
   KundenDbState,
   KundenDetailWithWash,
+  KundenRisikoanalyse,
   KundenRolleRow,
   KundenStamm,
   KundenTermin,
@@ -297,12 +298,14 @@ function seedDb(): KundenDbState {
     unterlagen,
     termine: [],
     beziehungen: [],
+    risikoanalysen: [],
     nextKundeId: 16,
     nextWashId: 2,
     nextRolleId: 1,
     nextUnterlageId: 2,
     nextTerminId: 1,
     nextBeziehungId: 1,
+    nextRisikoanalyseId: 1,
   };
 }
 
@@ -343,6 +346,8 @@ function normalizeUnterlagen(db: KundenDbState): KundenDbState {
   const b = (db as Partial<KundenDbState>).beziehungen;
   const nt = (db as Partial<KundenDbState>).nextTerminId;
   const nb = (db as Partial<KundenDbState>).nextBeziehungId;
+  const r = (db as Partial<KundenDbState>).risikoanalysen;
+  const nr = (db as Partial<KundenDbState>).nextRisikoanalyseId;
   return {
     ...db,
     unterlagen: Array.isArray(u) ? u : [],
@@ -351,6 +356,8 @@ function normalizeUnterlagen(db: KundenDbState): KundenDbState {
     beziehungen: Array.isArray(b) ? b : [],
     nextTerminId: typeof nt === "number" && nt >= 1 ? nt : 1,
     nextBeziehungId: typeof nb === "number" && nb >= 1 ? nb : 1,
+    risikoanalysen: Array.isArray(r) ? r : [],
+    nextRisikoanalyseId: typeof nr === "number" && nr >= 1 ? nr : 1,
   };
 }
 
@@ -712,4 +719,85 @@ export function removeKundenBeziehung(db: KundenDbState, beziehungId: number): K
     ...db,
     beziehungen: (db.beziehungen ?? []).filter((b) => b.id !== beziehungId),
   };
+}
+
+// ─── Risikoanalyse ──────────────────────────────────────────────────────────
+
+export type RisikoanalyseUpsertFields = Partial<
+  Omit<KundenRisikoanalyse, "id" | "kunden_id" | "created_at" | "updated_at">
+>;
+
+export function getRisikoanalyseForKunde(
+  db: KundenDbState,
+  kundenId: number
+): KundenRisikoanalyse | null {
+  return (db.risikoanalysen ?? []).find((r) => r.kunden_id === kundenId) ?? null;
+}
+
+export function upsertRisikoanalyse(
+  db: KundenDbState,
+  kundenId: number,
+  fields: RisikoanalyseUpsertFields
+): KundenDbState {
+  const now = new Date().toISOString();
+  const risikoanalysen = db.risikoanalysen ?? [];
+  const idx = risikoanalysen.findIndex((r) => r.kunden_id === kundenId);
+  if (idx >= 0) {
+    const prev = risikoanalysen[idx]!;
+    const updated: KundenRisikoanalyse = { ...prev, ...fields, kunden_id: kundenId, updated_at: now };
+    const next = [...risikoanalysen];
+    next[idx] = updated;
+    return { ...db, risikoanalysen: next };
+  }
+  const id = db.nextRisikoanalyseId ?? 1;
+  const created: KundenRisikoanalyse = {
+    id,
+    kunden_id: kundenId,
+    ...fields,
+    created_at: now,
+    updated_at: now,
+  };
+  return {
+    ...db,
+    risikoanalysen: [...risikoanalysen, created],
+    nextRisikoanalyseId: id + 1,
+  };
+}
+
+/** Days until a date string (ISO YYYY-MM-DD) from today. Negative = already expired. */
+export function daysUntilExpiry(isoDate: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(isoDate);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+}
+
+export type ExpiryStatus = "expired" | "critical" | "warning" | "ok" | "missing";
+
+export function getExpiryStatus(isoDate: string | undefined): ExpiryStatus {
+  if (!isoDate) return "missing";
+  const days = daysUntilExpiry(isoDate);
+  if (days < 0) return "expired";
+  if (days <= 30) return "critical";
+  if (days <= 60) return "warning";
+  return "ok";
+}
+
+/** Returns true if a customer has any expired or near-expiry (≤60 days) doc dates. */
+export function hasRisikoAlert(risk: KundenRisikoanalyse | null): boolean {
+  if (!risk) return false;
+  const dateFields: (keyof KundenRisikoanalyse)[] = [
+    "reg_ausz",
+    "wirt_ber_erm",
+    "ausw_kop_wirt_ber",
+    "ausw_gueltig_bis",
+    "ausw_kop_abholer",
+  ];
+  return dateFields.some((f) => {
+    const v = risk[f];
+    if (typeof v !== "string") return false;
+    const s = getExpiryStatus(v);
+    return s === "expired" || s === "critical" || s === "warning";
+  });
 }

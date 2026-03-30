@@ -16,8 +16,14 @@ import {
   FileText,
   Upload,
   Trash2,
+  ShieldAlert,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  CircleDashed,
+  Pencil,
 } from "lucide-react";
-import type { KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import {
   loadKundenDb,
   saveKundenDb,
@@ -40,10 +46,16 @@ import {
   isCustomersApiMode,
   loadSharedKundenDb,
   saveSharedKundenDb,
+  getRisikoanalyseForKunde,
+  upsertRisikoanalyse,
+  getExpiryStatus,
+  daysUntilExpiry,
+  hasRisikoAlert,
   type KundenListRow,
   type NewKundeInput,
   type NewKundenUnterlageInput,
   type KundenWashUpsertFields,
+  type RisikoanalyseUpsertFields,
 } from "../store/kundenStore";
 import { NewCustomerModal } from "../components/NewCustomerModal";
 import { SuggestTextInput } from "../components/SuggestTextInput";
@@ -261,6 +273,45 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [beziehungFormOpen, setBeziehungFormOpen] = useState(false);
   const [beziehungNr, setBeziehungNr] = useState("");
   const [beziehungArt, setBeziehungArt] = useState("");
+
+  // ── Risikoanalyse ──────────────────────────────────────────────────────────
+  const risikoForCustomer = useMemo(
+    () => (draftKunde ? getRisikoanalyseForKunde(db, draftKunde.id) : null),
+    [db, draftKunde?.id]
+  );
+  const [risikoEditOpen, setRisikoEditOpen] = useState(false);
+  const [risikoDraft, setRisikoDraft] = useState<RisikoanalyseUpsertFields>({});
+
+  const handleRisikoEdit = useCallback(() => {
+    setRisikoDraft({
+      allg_dok_bogen: risikoForCustomer?.allg_dok_bogen ?? false,
+      reg_ausz: risikoForCustomer?.reg_ausz ?? "",
+      wirt_ber_erm: risikoForCustomer?.wirt_ber_erm ?? "",
+      ausw_kop_wirt_ber: risikoForCustomer?.ausw_kop_wirt_ber ?? "",
+      ausw_gueltig_bis: risikoForCustomer?.ausw_gueltig_bis ?? "",
+      ausw_kop_abholer: risikoForCustomer?.ausw_kop_abholer ?? "",
+      verst_dok_bogen: risikoForCustomer?.verst_dok_bogen ?? false,
+      bearbeiter: risikoForCustomer?.bearbeiter ?? "",
+    });
+    setRisikoEditOpen(true);
+  }, [risikoForCustomer]);
+
+  const handleRisikoSave = useCallback(() => {
+    if (!draftKunde) return;
+    const next = upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
+    saveKundenDb(next);
+    setDb(next);
+    setRisikoEditOpen(false);
+  }, [db, draftKunde, risikoDraft]);
+
+  // Pre-compute customers that have risk alerts for the list badge
+  const alertKundenIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const r of db.risikoanalysen ?? []) {
+      if (hasRisikoAlert(r)) ids.add(r.kunden_id);
+    }
+    return ids;
+  }, [db.risikoanalysen]);
 
   const handleAddBeziehung = useCallback(() => {
     if (!draftKunde || !beziehungNr.trim() || !beziehungArt.trim()) return;
@@ -1037,6 +1088,236 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               </section>
             </>
           }
+          editKundeBottomContent={(() => {
+            const risk = risikoForCustomer;
+
+            type DocField = {
+              key: keyof Pick<KundenRisikoanalyse, "reg_ausz" | "wirt_ber_erm" | "ausw_kop_wirt_ber" | "ausw_gueltig_bis" | "ausw_kop_abholer">;
+              labelKey: string;
+              fallback: string;
+            };
+            const DATE_FIELDS: DocField[] = [
+              { key: "reg_ausz", labelKey: "riskDocRegAusz", fallback: "Registration Extract" },
+              { key: "wirt_ber_erm", labelKey: "riskDocWirtBerErm", fallback: "Business Auth." },
+              { key: "ausw_kop_wirt_ber", labelKey: "riskDocAuswKopWirtBer", fallback: "ID Copy + Bus. Report" },
+              { key: "ausw_gueltig_bis", labelKey: "riskDocAuswGueltigBis", fallback: "ID valid until" },
+              { key: "ausw_kop_abholer", labelKey: "riskDocAuswKopAbholer", fallback: "ID Copy Collector" },
+            ];
+
+            const expiredCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "expired").length;
+            const criticalCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "critical").length;
+            const warningCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "warning").length;
+
+            const statusBadge = (status: ReturnType<typeof getExpiryStatus>, date?: string) => {
+              const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold";
+              if (status === "expired") return (
+                <span className={`${base} bg-red-100 text-red-700`}>
+                  <X className="h-2.5 w-2.5" /> {t("riskStatusExpired", "Expired")}
+                  {date && <span className="ml-0.5 opacity-70">({Math.abs(daysUntilExpiry(date))}d)</span>}
+                </span>
+              );
+              if (status === "critical") return (
+                <span className={`${base} bg-orange-100 text-orange-700`}>
+                  <AlertTriangle className="h-2.5 w-2.5" /> {t("riskStatusCritical", "Critical")}
+                  {date && <span className="ml-0.5 opacity-70">({daysUntilExpiry(date)}d)</span>}
+                </span>
+              );
+              if (status === "warning") return (
+                <span className={`${base} bg-amber-100 text-amber-700`}>
+                  <AlertTriangle className="h-2.5 w-2.5" /> {t("riskStatusWarning", "Expiring soon")}
+                  {date && <span className="ml-0.5 opacity-70">({daysUntilExpiry(date)}d)</span>}
+                </span>
+              );
+              if (status === "ok") return (
+                <span className={`${base} bg-emerald-100 text-emerald-700`}>
+                  <CheckCircle2 className="h-2.5 w-2.5" /> {t("riskStatusOk", "Valid")}
+                </span>
+              );
+              return (
+                <span className={`${base} bg-slate-100 text-slate-500`}>
+                  <CircleDashed className="h-2.5 w-2.5" /> {t("riskStatusMissing", "Not entered")}
+                </span>
+              );
+            };
+
+            return (
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                {/* Header row */}
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+                    <ShieldAlert className="h-4 w-4 text-slate-400" />
+                    {t("riskTitle", "Risk Analysis")}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {(expiredCount > 0 || criticalCount > 0 || warningCount > 0) && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                        <ShieldAlert className="h-3 w-3" />
+                        {expiredCount + criticalCount + warningCount} {t("riskAlertBannerTitle", "Document Expiry Warning")}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={risikoEditOpen ? () => setRisikoEditOpen(false) : handleRisikoEdit}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      {t("riskEdit", "Edit dates")}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Edit form — 2-column grid for full-width comfort */}
+                {risikoEditOpen && (
+                  <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                    <div className="mb-3 flex flex-wrap gap-6">
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={risikoDraft.allg_dok_bogen ?? false}
+                          onChange={(e) => setRisikoDraft((d) => ({ ...d, allg_dok_bogen: e.target.checked }))}
+                          className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                        />
+                        {t("riskDocAllgDokBogen", "General Doc Form")}
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={risikoDraft.verst_dok_bogen ?? false}
+                          onChange={(e) => setRisikoDraft((d) => ({ ...d, verst_dok_bogen: e.target.checked }))}
+                          className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                        />
+                        {t("riskDocVerstDokBogen", "Understanding Form")}
+                      </label>
+                      <div className="flex items-center gap-2 ml-auto">
+                        <label className="text-xs text-slate-600 shrink-0">{t("riskBearbeiter", "Handler")}</label>
+                        <input
+                          type="text"
+                          value={risikoDraft.bearbeiter ?? ""}
+                          onChange={(e) => setRisikoDraft((d) => ({ ...d, bearbeiter: e.target.value }))}
+                          maxLength={20}
+                          className="h-7 w-32 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+                      {DATE_FIELDS.map((f) => (
+                        <div key={f.key} className="flex items-center gap-2">
+                          <label className="w-36 shrink-0 text-xs text-slate-600">{t(f.labelKey, f.fallback)}</label>
+                          <input
+                            type="date"
+                            value={(risikoDraft[f.key] as string | undefined) ?? ""}
+                            onChange={(e) => setRisikoDraft((d) => ({ ...d, [f.key]: e.target.value }))}
+                            className="h-7 flex-1 min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRisikoSave}
+                        className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                      >
+                        {t("commonSave", "Save")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRisikoEditOpen(false)}
+                        className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        {t("commonCancel", "Cancel")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Read-only section */}
+                {!risikoEditOpen && (
+                  <div className="overflow-hidden rounded-xl border border-slate-100">
+                    {/* Flags + handler row */}
+                    <div className="flex flex-wrap items-center gap-6 border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-xs">
+                      <span className="flex items-center gap-1.5 text-slate-600">
+                        {risk?.allg_dok_bogen
+                          ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          : <CircleDashed className="h-3.5 w-3.5 text-slate-300" />}
+                        {t("riskDocAllgDokBogen", "General Doc Form")}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-slate-600">
+                        {risk?.verst_dok_bogen
+                          ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          : <CircleDashed className="h-3.5 w-3.5 text-slate-300" />}
+                        {t("riskDocVerstDokBogen", "Understanding Form")}
+                      </span>
+                      {risk?.bearbeiter && (
+                        <span className="ml-auto flex items-center gap-1 text-slate-400">
+                          <span className="text-slate-500">{t("riskBearbeiter", "Handler")}:</span>
+                          <span className="font-mono font-semibold text-slate-700">{risk.bearbeiter}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Expiry date table — horizontal, all 5 docs side by side */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px] text-left text-xs">
+                        <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          <tr>
+                            {DATE_FIELDS.map((f) => (
+                              <th key={f.key} className="px-4 py-2">{t(f.labelKey, f.fallback)}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Date row */}
+                          <tr className="border-t border-slate-100 bg-white">
+                            {DATE_FIELDS.map((f) => {
+                              const dateVal = risk?.[f.key] as string | undefined;
+                              return (
+                                <td key={f.key} className="px-4 py-2 font-mono text-slate-700">
+                                  {dateVal || "—"}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {/* Status row */}
+                          <tr className="border-t border-slate-100">
+                            {DATE_FIELDS.map((f) => {
+                              const dateVal = risk?.[f.key] as string | undefined;
+                              const status = getExpiryStatus(dateVal);
+                              return (
+                                <td
+                                  key={f.key}
+                                  className={`px-4 py-2 ${
+                                    status === "expired" ? "bg-red-50" :
+                                    status === "critical" ? "bg-orange-50" :
+                                    status === "warning" ? "bg-amber-50" : "bg-white"
+                                  }`}
+                                >
+                                  {statusBadge(status, dateVal)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {!risk && (
+                      <p className="px-4 py-5 text-center text-sm text-slate-400">
+                        {t("riskNoData", "No risk analysis data on file")} —{" "}
+                        <button
+                          type="button"
+                          onClick={handleRisikoEdit}
+                          className="text-blue-600 underline hover:text-blue-700"
+                        >
+                          {t("riskAddData", "Add data")}
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })()}
           additionalTabLabel="Additional"
           additionalTabContent={
             <div className="space-y-6">

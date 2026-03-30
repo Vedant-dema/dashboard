@@ -20,11 +20,11 @@ export type SearchCategory =
 export interface GlobalSearchResult {
   id: string
   category: SearchCategory
+  /** Numeric row id on the target page (used to open the exact record after navigation). */
+  entityId: number
   primary: string
   secondary: string
   navigateTo: string
-  storageKey: string
-  storageValue: string
 }
 
 export interface GlobalSearchResults {
@@ -88,11 +88,10 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         kundenResults.push({
           id: `kunden-${k.id}`,
           category: "kunden",
+          entityId: k.id,
           primary: k.firmenname || k.kunden_nr,
           secondary: [k.kunden_nr, k.telefonnummer, k.ort].filter(Boolean).join(" · "),
           navigateTo: "#/sales/kunden",
-          storageKey: "dema-search-q",
-          storageValue: qTrim,
         })
         if (kundenResults.length >= MAX_PER_CATEGORY) break
       }
@@ -128,11 +127,10 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         bestandResults.push({
           id: `bestand-${r.id}`,
           category: "bestand",
+          entityId: r.id,
           primary: [r.fabrikat, r.typ].filter(Boolean).join(" "),
           secondary: [r.positions_nr, r.firmenname, r.ort].filter(Boolean).join(" · "),
           navigateTo: "#/sales/bestand",
-          storageKey: "dema-search-q-bestand",
-          storageValue: qTrim,
         })
         if (bestandResults.length >= MAX_PER_CATEGORY) break
       }
@@ -165,11 +163,10 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         angeboteResults.push({
           id: `angebot-${a.id}`,
           category: "angebote",
+          entityId: a.id,
           primary: [a.fabrikat, a.typ].filter(Boolean).join(" ") || a.angebot_nr,
           secondary: [a.angebot_nr, a.firmenname].filter(Boolean).join(" · "),
           navigateTo: "#/sales/angebote",
-          storageKey: "dema-search-q-angebote",
-          storageValue: qTrim,
         })
         if (angeboteResults.length >= MAX_PER_CATEGORY) break
       }
@@ -200,11 +197,10 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         anfragenResults.push({
           id: `anfrage-${a.id}`,
           category: "anfragen",
+          entityId: a.id,
           primary: a.firmenname || a.anfrage_nr,
           secondary: [a.anfrage_nr, a.fabrikat, a.aufbauart].filter(Boolean).join(" · "),
           navigateTo: "#/sales/anfragen",
-          storageKey: "dema-search-q-anfragen",
-          storageValue: qTrim,
         })
         if (anfragenResults.length >= MAX_PER_CATEGORY) break
       }
@@ -240,11 +236,10 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         rechnungenResults.push({
           id: `rechnung-${r.id}`,
           category: "rechnungen",
+          entityId: r.id,
           primary: r.firmenname || r.rechn_nr,
           secondary: [r.rechn_nr, r.kunden_nr, r.ort].filter(Boolean).join(" · "),
           navigateTo: "#/sales/rechnungen",
-          storageKey: "dema-search-q-rechnungen",
-          storageValue: qTrim,
         })
         if (rechnungenResults.length >= MAX_PER_CATEGORY) break
       }
@@ -272,14 +267,13 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         abholResults.push({
           id: `abhol-${r.id}`,
           category: "abhol",
+          entityId: r.id,
           primary:
             [r.fabrikat, r.typ].filter(Boolean).join(" ") ||
             (r.kunde_anzeige ? r.kunde_anzeige.slice(0, 48) : "") ||
             r.fahrgestellnummer,
           secondary: [r.kunde_anzeige, r.fahrgestellnummer].filter(Boolean).join(" · "),
           navigateTo: "#/sales/abholauftraege",
-          storageKey: "dema-search-q-abhol",
-          storageValue: qTrim,
         })
         if (abholResults.length >= MAX_PER_CATEGORY) break
       }
@@ -316,11 +310,10 @@ export function useGlobalSearch(query: string, dbTick: number): GlobalSearchResu
         verkaufterResults.push({
           id: `verkaufter-${r.id}`,
           category: "verkaufter",
+          entityId: r.id,
           primary: r.firmenname || [r.fabrikat, r.typ].filter(Boolean).join(" "),
           secondary: [r.position_anzeige, r.fahrgestellnummer, r.telefonnummer].filter(Boolean).join(" · "),
           navigateTo: "#/sales/verkaufter-bestand",
-          storageKey: "dema-search-q-verkaufter",
-          storageValue: qTrim,
         })
         if (verkaufterResults.length >= MAX_PER_CATEGORY) break
       }

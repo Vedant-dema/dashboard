@@ -34,6 +34,7 @@ import {
 } from "../store/taskNotifications";
 import { useGlobalSearch, type GlobalSearchResult, type SearchCategory } from "../hooks/useGlobalSearch";
 import { searchQueryMeetsMinimum } from "../lib/globalSearchMatch";
+import { writeSearchNavTarget, dispatchSearchFocusEvent } from "../lib/globalSearchNavigation";
 
 const CATEGORY_META: Record<SearchCategory, { labelKey: string; labelFallback: string; icon: React.ReactNode; color: string }> = {
   kunden:    { labelKey: "searchCatKunden",    labelFallback: "Customers",  icon: <Users className="h-3.5 w-3.5" />,       color: "text-blue-600 bg-blue-50" },
@@ -182,11 +183,12 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
   }, [notifPanelOpen]);
 
   const navigateToResult = useCallback((result: GlobalSearchResult) => {
-    sessionStorage.setItem(result.storageKey, result.storageValue)
+    writeSearchNavTarget({ v: 1, category: result.category, id: result.entityId })
     setSearchQuery("")
     setSearchOpen(false)
     setActiveIndex(-1)
     window.location.hash = result.navigateTo
+    dispatchSearchFocusEvent()
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

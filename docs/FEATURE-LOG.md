@@ -15,7 +15,7 @@
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
 | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046, FEATURE-047, FEATURE-048, FEATURE-049, FEATURE-050, FEATURE-051, FEATURE-052, FEATURE-053, FEATURE-054, FEATURE-055, FEATURE-056, FEATURE-057, FEATURE-058, FEATURE-059, FEATURE-060, FEATURE-061, FEATURE-062, FEATURE-063, FEATURE-064, FEATURE-065, FEATURE-066, FEATURE-067, FEATURE-068, FEATURE-069, FEATURE-070 |
-| 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071, FEATURE-072, FEATURE-073, FEATURE-074, FEATURE-075, FEATURE-076, FEATURE-077 |
+| 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071, FEATURE-072, FEATURE-073, FEATURE-074, FEATURE-075, FEATURE-076, FEATURE-077, FEATURE-078, FEATURE-079, FEATURE-080, FEATURE-081 |
 
 ---
 
@@ -99,6 +99,10 @@
 | FEATURE-076 | Full i18n Coverage — Customers Page & New Customer Modal | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 | FEATURE-077 | Main Filters — VAT ID Promoted + Unused Checkbox Filters Removed | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 | FEATURE-078 | Customer Change History Log — Full Audit Trail in Edit Modal | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-078 | Global Search Bar — Cross-Entity Live Dropdown | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-079 | Bidirectional Customer Relationships | Fixed | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-080 | Global Customer Address Autofill — CustomerAddressPicker | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-081 | Global Real-World Address Autocomplete — GlobalAddressSearch | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 
@@ -294,3 +298,120 @@ None.
 
 ### Notes / Known Limitations
 This process now matches enterprise structure, but it remains documentation-driven and requires consistent manual execution until automation scripts are added for artifact generation and metric capture.
+
+---
+
+## FEATURE-078: Global Search Bar — Cross-Entity Live Dropdown
+**Date:** 2026-03-30
+**Author/Agent:** Cursor AI
+**Status:** Added
+
+### What Was Added
+Replaced the customer-only header search bar with a full global search that queries all major data stores in real time and presents categorised results in a live dropdown. Typing 2+ characters instantly shows up to 5 matches each for Customers, Inventory, Offers, Inquiries, and Invoices. Clicking any result navigates to the appropriate page with the search term pre-applied to that page's quick-filter. Keyboard navigation (↑↓ to move, Enter to select, Esc to close) is fully supported. Matched text is highlighted in yellow in each result row.
+
+### Where It Was Added
+- `frontend/src/hooks/useGlobalSearch.ts` — created; pure hook that reads all five stores and returns categorised `GlobalSearchResult[]` arrays
+- `frontend/src/components/Header.tsx` — replaced `SuggestTextInput` + datalist with a plain `<input>` + live dropdown overlay; added `useGlobalSearch`; listens to all five `dema-*-db-changed` events to refresh on data changes
+- `frontend/src/pages/BestandPage.tsx` — added `useEffect` on mount to pick up `dema-search-q-bestand` sessionStorage key and apply it to `quickSearch`
+- `frontend/src/pages/AngebotePage.tsx` — added `useEffect` on mount to pick up `dema-search-q-angebote` and apply it to `kundenfilter`
+- `frontend/src/pages/AnfragenPage.tsx` — added `useEffect` on mount to pick up `dema-search-q-anfragen` and apply it to `firmenname`
+- `frontend/src/pages/RechnungenPage.tsx` — added `useEffect` on mount to pick up `dema-search-q-rechnungen` and apply it to `quickFirmenname`
+- `frontend/src/contexts/LanguageContext.tsx` — added 10 new keys to `MESSAGES.de`, `MESSAGES.en`, `MESSAGES.fr`
+
+### What It Does (Technical)
+1. User types in the header input (≥2 chars triggers search).
+2. `useGlobalSearch` reads all five localStorage stores synchronously and filters up to 5 results per category.
+3. Dropdown renders categorised groups with coloured icon badges.
+4. On click or Enter, the result's `storageKey`/`storageValue` is written to `sessionStorage`, then `window.location.hash` navigates to the target page.
+5. The destination page's `useEffect` on mount reads and removes the sessionStorage key, pre-filling its local filter state.
+6. Store-change events (`dema-*-db-changed`) increment `dbTick` to force the hook to re-run when data is mutated.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| query | string | Yes | User-typed search string (min 2 chars) |
+| dbTick | number | Yes | Increments on any store change to bust the memo |
+| GlobalSearchResult.storageKey | string | Yes | sessionStorage key the target page reads |
+| GlobalSearchResult.storageValue | string | Yes | The search string to pre-apply |
+| GlobalSearchResult.navigateTo | string | Yes | Hash route of the destination page |
+
+### Database
+- **Engine:** Browser `localStorage` (via each store's load function)
+- **Tables Affected:** N/A — read-only across all stores
+- **Schema Changes:** None
+- **Key Queries:** Each store is loaded fully and filtered client-side on up to 5 fields per entity
+
+### API Endpoints (if applicable)
+N/A — all data is local.
+
+### State / Store (if applicable)
+- **Store file:** `frontend/src/hooks/useGlobalSearch.ts`
+- **Actions/Selectors added:** `useGlobalSearch(query, dbTick)` → `GlobalSearchResults`
+- **Persisted:** No — results are computed on each render
+
+### i18n Keys Added
+`searchCatKunden`, `searchCatBestand`, `searchCatAngebote`, `searchCatAnfragen`, `searchCatRechnungen`, `searchNoResults`, `searchNoResultsHint`, `searchFooterHint` — added to `MESSAGES.de`, `MESSAGES.en`, `MESSAGES.fr`. `headerSearchPlaceholder` updated in all three.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- Search runs synchronously on every keystroke; for very large datasets a debounce could be added.
+- The mirror sessionStorage key for each page only applies the query to one filter field (the primary "quick search"). Advanced multi-field search from the header is not yet supported.
+
+---
+
+## FEATURE-079: Bidirectional Customer Relationships
+**Date:** 2026-03-30
+**Author/Agent:** Cursor AI
+**Status:** Fixed
+
+### What Was Added
+Fixed a bug where linking Customer A to Customer B only created the relationship visible on A's panel. Customer B's panel showed nothing. The fix makes every link bidirectional: a primary row (A→B) and a mirror row (B→A) are stored simultaneously, and deleting from either side removes both rows.
+
+### Where It Was Added
+- `frontend/src/store/kundenStore.ts` — `addKundenBeziehung` and `removeKundenBeziehung` functions updated
+
+### What It Does (Technical)
+1. **Add:** `addKundenBeziehung(db, A, { verknuepfter_kunden_id: B, art })` now:
+   - Checks both directions for duplicates (A→B and B→A)
+   - Creates `primaryRow { kunden_id: A, verknuepfter_kunden_id: B }` with the same `art`
+   - Creates `mirrorRow { kunden_id: B, verknuepfter_kunden_id: A }` with the same `art`
+   - Allocates two consecutive IDs from `nextBeziehungId`
+2. **Remove:** `removeKundenBeziehung(db, id)` now:
+   - Finds the target row
+   - Removes it AND any row where `kunden_id === target.verknuepfter_kunden_id && verknuepfter_kunden_id === target.kunden_id`
+3. `listBeziehungenForKunde` is unchanged — it still filters `kunden_id === kundenId`, which now naturally returns results for both sides since both rows exist.
+
+### Data It Accepts / Emits
+| Field | Type | Required | Description |
+|---|---|---|---|
+| kunden_id | number | Yes | The customer who initiated the link |
+| verknuepfter_kunden_id | number | Yes | The customer being linked to |
+| art | string | Yes | Relationship type label (same on both sides) |
+
+### Database
+- **Engine:** Browser `localStorage` (`dema-kunden-db`)
+- **Tables Affected:** `beziehungen` array in `KundenDbState`
+- **Schema Changes:** None — same `KundenBeziehung` shape, just two rows per link instead of one
+- **Key Queries:** Duplicate check now covers both directions; delete filter covers both rows
+
+### API Endpoints (if applicable)
+N/A.
+
+### State / Store (if applicable)
+- **Store file:** `frontend/src/store/kundenStore.ts`
+- **Actions/Selectors added:** None new — `addKundenBeziehung` and `removeKundenBeziehung` behaviour updated
+- **Persisted:** Yes — via `saveKundenDb` in `CustomersPage.tsx`
+
+### i18n Keys Added
+None.
+
+### Dependencies Added
+None.
+
+### Notes / Known Limitations
+- The relationship type label is the same on both sides (e.g., both A and B see "Parent company"). If asymmetric types are needed in future (e.g., A sees "Parent", B sees "Subsidiary"), a `mirror_art` field can be added to `KundenBeziehung`.
+- Existing single-direction records stored before this fix are not automatically back-filled with mirror rows.
+
+---

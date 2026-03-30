@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { X, Printer, FolderOpen, Car, Gauge, Euro } from "lucide-react";
 import type { NewAngebotPayload } from "../types/angebote";
 import { SuggestTextInput } from "./SuggestTextInput";
+import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
+import { useLanguage } from "../contexts/LanguageContext";
 
 type TabId = "fahrzeug" | "technik" | "preise";
 
@@ -15,7 +17,49 @@ const LAND_OPTIONS: { code: string; label: string }[] = [
   { code: "AT", label: "Österreich" },
   { code: "CH", label: "Schweiz" },
   { code: "NL", label: "Niederlande" },
+  { code: "BE", label: "Belgien" },
+  { code: "LU", label: "Luxemburg" },
+  { code: "FR", label: "Frankreich" },
+  { code: "IT", label: "Italien" },
+  { code: "ES", label: "Spanien" },
+  { code: "PT", label: "Portugal" },
+  { code: "GB", label: "Großbritannien" },
+  { code: "IE", label: "Irland" },
+  { code: "DK", label: "Dänemark" },
+  { code: "SE", label: "Schweden" },
+  { code: "NO", label: "Norwegen" },
+  { code: "FI", label: "Finnland" },
   { code: "PL", label: "Polen" },
+  { code: "CZ", label: "Tschechien" },
+  { code: "SK", label: "Slowakei" },
+  { code: "HU", label: "Ungarn" },
+  { code: "RO", label: "Rumänien" },
+  { code: "BG", label: "Bulgarien" },
+  { code: "HR", label: "Kroatien" },
+  { code: "SI", label: "Slowenien" },
+  { code: "RS", label: "Serbien" },
+  { code: "BA", label: "Bosnien-Herzegowina" },
+  { code: "MK", label: "Nordmazedonien" },
+  { code: "AL", label: "Albanien" },
+  { code: "GR", label: "Griechenland" },
+  { code: "TR", label: "Türkei" },
+  { code: "RU", label: "Russland" },
+  { code: "UA", label: "Ukraine" },
+  { code: "LT", label: "Litauen" },
+  { code: "LV", label: "Lettland" },
+  { code: "EE", label: "Estland" },
+  { code: "US", label: "USA" },
+  { code: "CA", label: "Kanada" },
+  { code: "CN", label: "China" },
+  { code: "JP", label: "Japan" },
+  { code: "IN", label: "Indien" },
+  { code: "AU", label: "Australien" },
+  { code: "BR", label: "Brasilien" },
+  { code: "AR", label: "Argentinien" },
+  { code: "ZA", label: "Südafrika" },
+  { code: "MA", label: "Marokko" },
+  { code: "AE", label: "Vereinigte Arab. Emirate" },
+  { code: "SA", label: "Saudi-Arabien" },
 ];
 
 const tabLabels: Record<TabId, string> = {
@@ -215,6 +259,7 @@ export function NewAngebotModal({
   fabrikatSuggestions,
   onSubmit,
 }: Props) {
+  const { t } = useLanguage();
   const [tab, setTab] = useState<TabId>("fahrzeug");
   const [form, setForm] = useState<FormState>(initialForm);
   const [extrasLocked, setExtrasLocked] = useState(true);
@@ -230,6 +275,15 @@ export function NewAngebotModal({
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((s) => ({ ...s, [key]: value }));
+  }, []);
+
+  const handleAddressSelect = useCallback((r: GlobalAddressResult) => {
+    setForm((s) => ({
+      ...s,
+      plz: r.plz ?? s.plz,
+      ort: r.ort ?? s.ort,
+      land_code: r.land_code ?? s.land_code,
+    }));
   }, []);
 
   const handleBilder = (list: FileList | null) => {
@@ -529,7 +583,29 @@ export function NewAngebotModal({
                       value={form.firmenname}
                       onChange={(e) => set("firmenname", e.target.value)}
                       className={inputClass}
+                      placeholder={t("angebotFirmennamePlaceholder", "Company / customer name")}
                     />
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      {t("globalAddrSearchLabel", "Address search (worldwide)")}
+                    </label>
+                    <GlobalAddressSearch
+                      onSelect={handleAddressSelect}
+                      className={inputClass}
+                    />
+                    {(form.plz || form.ort) && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] text-teal-700">
+                        <span className="font-semibold">
+                          {[form.plz, form.ort].filter(Boolean).join(" ")}
+                        </span>
+                        {form.land_code && (
+                          <span className="rounded bg-teal-100 px-1 py-px text-[10px] font-semibold text-teal-800">
+                            {form.land_code}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -560,9 +636,12 @@ export function NewAngebotModal({
                     >
                       {LAND_OPTIONS.map((l) => (
                         <option key={l.code} value={l.code}>
-                          {l.label}
+                          {l.label} ({l.code})
                         </option>
                       ))}
+                      {form.land_code && !LAND_OPTIONS.some((l) => l.code === form.land_code) && (
+                        <option value={form.land_code}>{form.land_code}</option>
+                      )}
                     </select>
                   </div>
                   <div>

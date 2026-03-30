@@ -847,30 +847,56 @@ export function addKundenBeziehung(
   kundenId: number,
   input: NewKundenBeziehungInput
 ): KundenDbState {
-  const id = db.nextBeziehungId ?? 1;
-  const already = (db.beziehungen ?? []).some(
+  const existing = db.beziehungen ?? [];
+  // Prevent duplicate in either direction
+  const alreadyExists = existing.some(
     (b) =>
-      b.kunden_id === kundenId && b.verknuepfter_kunden_id === input.verknuepfter_kunden_id
+      (b.kunden_id === kundenId && b.verknuepfter_kunden_id === input.verknuepfter_kunden_id) ||
+      (b.kunden_id === input.verknuepfter_kunden_id && b.verknuepfter_kunden_id === kundenId)
   );
-  if (already) return db;
-  const row: KundenBeziehung = {
-    id,
+  if (alreadyExists) return db;
+
+  const now = new Date().toISOString();
+  let nextId = db.nextBeziehungId ?? 1;
+
+  // Primary row: A → B (visible in A's panel)
+  const primaryRow: KundenBeziehung = {
+    id: nextId++,
     kunden_id: kundenId,
     verknuepfter_kunden_id: input.verknuepfter_kunden_id,
     art: input.art.trim(),
-    created_at: new Date().toISOString(),
+    created_at: now,
   };
+
+  // Mirror row: B → A (visible in B's panel, same relationship type)
+  const mirrorRow: KundenBeziehung = {
+    id: nextId++,
+    kunden_id: input.verknuepfter_kunden_id,
+    verknuepfter_kunden_id: kundenId,
+    art: input.art.trim(),
+    created_at: now,
+  };
+
   return {
     ...db,
-    beziehungen: [...(db.beziehungen ?? []), row],
-    nextBeziehungId: id + 1,
+    beziehungen: [...existing, primaryRow, mirrorRow],
+    nextBeziehungId: nextId,
   };
 }
 
 export function removeKundenBeziehung(db: KundenDbState, beziehungId: number): KundenDbState {
+  const existing = db.beziehungen ?? [];
+  const target = existing.find((b) => b.id === beziehungId);
+  if (!target) return db;
+
+  // Remove both the selected row and its mirror in the opposite direction
   return {
     ...db,
-    beziehungen: (db.beziehungen ?? []).filter((b) => b.id !== beziehungId),
+    beziehungen: existing.filter(
+      (b) =>
+        b.id !== beziehungId &&
+        !(b.kunden_id === target.verknuepfter_kunden_id && b.verknuepfter_kunden_id === target.kunden_id)
+    ),
   };
 }
 

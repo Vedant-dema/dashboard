@@ -47,6 +47,14 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
     return () => window.removeEventListener("dema-rechnungen-db-changed", onCh);
   }, []);
 
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-rechnungen");
+    if (q) {
+      setQuickFirmenname(q);
+      sessionStorage.removeItem("dema-search-q-rechnungen");
+    }
+  }, []);
+
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [quickFirmenname, setQuickFirmenname] = useState("");
   const [rechnungsNr, setRechnungsNr] = useState("");

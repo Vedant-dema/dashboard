@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Search, X, Plus, ChevronDown, ChevronUp,
   Truck, CheckCircle2, Clock,
@@ -122,6 +122,14 @@ export function BestandPage({ department }: { department?: DepartmentArea }) {
   const [flagFilters,    setFlagFilters]     = useState<Partial<Record<FlagKey, boolean>>>({});
   const [selectedId,     setSelectedId]      = useState<number | null>(null);
   const [showNewModal,   setShowNewModal]    = useState(false);
+
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-bestand");
+    if (q) {
+      setQuickSearch(q);
+      sessionStorage.removeItem("dema-search-q-bestand");
+    }
+  }, []);
 
   const setFlag = useCallback((key: FlagKey, value: boolean) => {
     setFlagFilters((prev) => {

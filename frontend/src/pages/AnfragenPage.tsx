@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Plus, X } from "lucide-react";
 import type { AnfrageStamm } from "../types/anfragen";
 import { loadAnfragenDb, saveAnfragenDb, createAnfrage, previewNextAnfrageNr } from "../store/anfragenStore";
@@ -66,6 +66,14 @@ export function AnfragenPage({ department }: { department?: DepartmentArea }) {
   const [sortierung, setSortierung] = useState<string>(SORT_OPTIONS[0]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
+
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-anfragen");
+    if (q) {
+      setFirmenname(q);
+      sessionStorage.removeItem("dema-search-q-anfragen");
+    }
+  }, []);
 
   const suggestions = useMemo(() => {
     const fb = new Set<string>();

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import type { AngebotStamm } from "../types/angebote";
 import {
@@ -71,6 +71,14 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
 
+  useEffect(() => {
+    const q = sessionStorage.getItem("dema-search-q-angebote");
+    if (q) {
+      setKundenfilter(q);
+      sessionStorage.removeItem("dema-search-q-angebote");
+    }
+  }, []);
+
   const persist = useCallback((next: typeof db) => {
     saveAngeboteDb(next);
     setDb(next);
@@ -94,6 +102,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
       angebot_nr: db.angebote.map((a) => a.angebot_nr),
     };
   }, [db.angebote]);
+
 
   const filtered = useMemo(() => {
     let list: AngebotStamm[] = [...db.angebote];

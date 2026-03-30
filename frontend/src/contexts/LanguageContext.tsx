@@ -992,6 +992,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     globalAddrListLabel: "Adressvorschläge",
     globalAddrNoResults: "Keine Adresse gefunden. Anderen Suchbegriff verwenden.",
     globalAddrPowered: "OpenStreetMap · Photon & Nominatim",
+    globalAddrPoweredMapbox: "Mapbox",
+    globalAddrPoweredGoogle: "Google Geokodierung",
+    globalAddrPoweredGeneric: "Geokodierung",
     globalAddrConnError: "Adressdienst nicht erreichbar",
     globalAddrConnErrorHint:
       "Internet prüfen. Lokal: Python-Backend auf Port 8000 starten (Ordner backend: uvicorn main:app --reload --port 8000).",
@@ -1970,6 +1973,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     globalAddrListLabel: "Address suggestions",
     globalAddrNoResults: "No addresses found. Try a different search term.",
     globalAddrPowered: "OpenStreetMap · Photon & Nominatim",
+    globalAddrPoweredMapbox: "Mapbox",
+    globalAddrPoweredGoogle: "Google Geocoding",
+    globalAddrPoweredGeneric: "Geocoding",
     globalAddrConnError: "Address service unavailable",
     globalAddrConnErrorHint:
       "Check your connection. Local: run the Python backend on port 8000 (backend folder: uvicorn main:app --reload --port 8000).",
@@ -2757,6 +2763,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     globalAddrListLabel: "Suggestions d'adresses",
     globalAddrNoResults: "Aucune adresse trouvée. Essayez un autre terme.",
     globalAddrPowered: "OpenStreetMap · Photon & Nominatim",
+    globalAddrPoweredMapbox: "Mapbox",
+    globalAddrPoweredGoogle: "Géocodage Google",
+    globalAddrPoweredGeneric: "Géocodage",
     globalAddrConnError: "Service d'adresses indisponible",
     globalAddrConnErrorHint:
       "Vérifiez la connexion. En local : démarrez le backend Python sur le port 8000 (dossier backend : uvicorn main:app --reload --port 8000).",

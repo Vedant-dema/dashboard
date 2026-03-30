@@ -30,6 +30,10 @@ Environment:
                              set to your site URL + contact email in production).
   PHOTON_API_BASE            Komoot Photon OSM search base (default: https://photon.komoot.io). Merged with Nominatim.
   GEOCODE_DISABLE_PHOTON     If 1/true: skip Photon and use only Nominatim.
+  GEOCODING_PROVIDER         osm (default): Photon+Nominatim. mapbox: Mapbox Geocoding API.
+                             google: Google Geocoding API (Geocoding must be enabled for the key).
+  MAPBOX_ACCESS_TOKEN        Required when GEOCODING_PROVIDER=mapbox (secret token).
+  GOOGLE_MAPS_API_KEY        Google API key with Geocoding API enabled (alias: GOOGLE_GEOCODING_API_KEY).
 
 Note: MS_MAX_CONCURRENT_REQ is enforced by the Commission/member states. We cannot remove it;
 this app serializes outbound VIES calls and retries with backoff so many checks still succeed.
@@ -59,6 +63,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape as _xml_escape
 
@@ -1255,6 +1260,281 @@ async def _fetch_nominatim_results(
     return data
 
 
+def _geocoding_provider_normalized() -> str:
+    v = (os.environ.get("GEOCODING_PROVIDER") or "osm").strip().lower()
+    if v in ("osm", "openstreetmap", "photon", "nominatim", ""):
+        return "osm"
+    if v == "mapbox":
+        return "mapbox"
+    if v in ("google", "google_maps", "gmaps"):
+        return "google"
+    return "invalid"
+
+
+def _google_maps_api_key() -> str | None:
+    k = os.environ.get("GOOGLE_MAPS_API_KEY") or os.environ.get("GOOGLE_GEOCODING_API_KEY")
+    if isinstance(k, str) and k.strip():
+        return k.strip()
+    return None
+
+
+def _mapbox_access_token() -> str | None:
+    k = os.environ.get("MAPBOX_ACCESS_TOKEN")
+    if isinstance(k, str) and k.strip():
+        return k.strip()
+    return None
+
+
+def _google_geocode_result_to_nominatim(gr: Any) -> dict[str, Any] | None:
+    if not isinstance(gr, dict):
+        return None
+    formatted = gr.get("formatted_address")
+    if not isinstance(formatted, str) or not formatted.strip():
+        return None
+    components = gr.get("address_components")
+    if not isinstance(components, list):
+        components = []
+    by_type: dict[str, tuple[str, str]] = {}
+    for c in components:
+        if not isinstance(c, dict):
+            continue
+        types = c.get("types")
+        if not isinstance(types, list):
+            continue
+        ln = str(c.get("long_name") or "")
+        sn = str(c.get("short_name") or "")
+        for t in types:
+            if isinstance(t, str) and t not in by_type:
+                by_type[t] = (ln, sn)
+
+    def _long(*keys: str) -> str | None:
+        for k in keys:
+            p = by_type.get(k)
+            if p and p[0].strip():
+                return p[0].strip()
+        return None
+
+    route = _long("route")
+    street_number = _long("street_number")
+    city = _long(
+        "locality",
+        "postal_town",
+        "sublocality",
+        "sublocality_level_1",
+        "administrative_area_level_2",
+        "administrative_area_level_1",
+    )
+    postcode = _long("postal_code")
+    country = _long("country")
+    cc_pair = by_type.get("country")
+    country_code = cc_pair[1].upper() if cc_pair and cc_pair[1] else None
+    state = _long("administrative_area_level_1")
+    county = _long("administrative_area_level_2")
+    poi = _long("premise", "point_of_interest", "establishment")
+
+    addr: dict[str, Any] = {}
+    if route:
+        addr["road"] = route
+    if street_number:
+        addr["house_number"] = street_number
+    if postcode:
+        addr["postcode"] = postcode
+    if city:
+        addr["city"] = city
+    if state:
+        addr["state"] = state
+    if county:
+        addr["county"] = county
+    if country:
+        addr["country"] = country
+    if country_code:
+        addr["country_code"] = country_code.lower()
+
+    pid = gr.get("place_id")
+    label_ref = str(pid) if isinstance(pid, str) else formatted
+    place_id_num = _stable_place_id("G", None, label_ref)
+
+    return {
+        "place_id": place_id_num,
+        "display_name": formatted.strip(),
+        "name": poi,
+        "address": addr,
+    }
+
+
+def _mapbox_parse_context(context: Any) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not isinstance(context, list):
+        return out
+    for item in context:
+        if not isinstance(item, dict):
+            continue
+        cid = item.get("id")
+        if not isinstance(cid, str) or "." not in cid:
+            continue
+        prefix = cid.split(".", 1)[0]
+        txt = item.get("text")
+        text = txt.strip() if isinstance(txt, str) else ""
+        if prefix == "postcode":
+            out["postcode"] = text
+        elif prefix == "place":
+            out["city"] = text
+        elif prefix == "district":
+            out["district"] = text
+        elif prefix == "region":
+            out["region"] = text
+        elif prefix == "country":
+            out["country"] = text
+            sc = item.get("short_code")
+            if isinstance(sc, str) and sc.strip():
+                out["country_code"] = sc.strip().upper()
+    return out
+
+
+def _mapbox_feature_to_nominatim(feature: Any) -> dict[str, Any] | None:
+    if not isinstance(feature, dict) or feature.get("type") != "Feature":
+        return None
+    place_name = feature.get("place_name")
+    if not isinstance(place_name, str) or not place_name.strip():
+        return None
+    text_raw = feature.get("text")
+    text = text_raw.strip() if isinstance(text_raw, str) else ""
+    addr_num = feature.get("address")
+    housenumber = addr_num.strip() if isinstance(addr_num, str) else ""
+
+    ctx = _mapbox_parse_context(feature.get("context"))
+    postcode = ctx.get("postcode")
+    city = ctx.get("city")
+    country = ctx.get("country")
+    country_code = ctx.get("country_code")
+    state = ctx.get("region")
+
+    place_types = feature.get("place_type")
+    is_address = isinstance(place_types, list) and "address" in place_types
+
+    if is_address and housenumber and text:
+        line1 = f"{housenumber} {text}"
+    elif text:
+        line1 = text
+    else:
+        line1 = place_name.split(",")[0].strip()
+
+    addr: dict[str, Any] = {}
+    if text and is_address:
+        addr["road"] = text
+    if housenumber:
+        addr["house_number"] = housenumber
+    if postcode:
+        addr["postcode"] = postcode
+    if city:
+        addr["city"] = city
+    if state:
+        addr["state"] = state
+    if country:
+        addr["country"] = country
+    if country_code:
+        ccu = country_code.upper()
+        addr["country_code"] = ccu.lower() if len(ccu) == 2 else ccu.lower()
+
+    fid = feature.get("id")
+    label_ref = str(fid) if isinstance(fid, str) else place_name
+
+    return {
+        "place_id": _stable_place_id("M", None, label_ref),
+        "display_name": place_name.strip(),
+        "name": line1 or None,
+        "address": addr,
+    }
+
+
+async def _fetch_google_geocode_results(
+    client: httpx.AsyncClient, q: str, lang: str, api_key: str
+) -> list[dict[str, Any]]:
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    lang_param = lang if len(lang) > 2 and lang[2] == "-" else lang[:2]
+    params: dict[str, str] = {"address": q, "key": api_key}
+    if lang_param:
+        params["language"] = lang_param
+    try:
+        r = await client.get(
+            url,
+            params=params,
+            headers={"Accept": "application/json"},
+            timeout=httpx.Timeout(12.0, connect=6.0),
+        )
+    except (httpx.TimeoutException, httpx.RequestError):
+        return []
+    if r.status_code >= 400:
+        return []
+    try:
+        data = r.json()
+    except ValueError:
+        return []
+    if not isinstance(data, dict):
+        return []
+    status = data.get("status")
+    if status == "ZERO_RESULTS":
+        return []
+    if status != "OK":
+        err = data.get("error_message")
+        msg = f"Google Geocoding: {status}"
+        if isinstance(err, str) and err.strip():
+            msg = f"{msg}: {err.strip()[:200]}"
+        raise HTTPException(status_code=502, detail=msg)
+    results = data.get("results")
+    if not isinstance(results, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for gr in results[:12]:
+        conv = _google_geocode_result_to_nominatim(gr)
+        if conv:
+            out.append(conv)
+    return out
+
+
+async def _fetch_mapbox_geocode_results(
+    client: httpx.AsyncClient, q: str, lang: str, token: str
+) -> list[dict[str, Any]]:
+    enc = quote(q, safe="")
+    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{enc}.json"
+    lang_m = lang[:2] if len(lang) >= 2 else "en"
+    params = {"access_token": token, "limit": "12", "language": lang_m}
+    try:
+        r = await client.get(
+            url,
+            params=params,
+            headers={"Accept": "application/json"},
+            timeout=httpx.Timeout(12.0, connect=6.0),
+        )
+    except (httpx.TimeoutException, httpx.RequestError):
+        return []
+    try:
+        data = r.json()
+    except ValueError:
+        data = None
+    if r.status_code >= 400:
+        m = None
+        if isinstance(data, dict):
+            raw_m = data.get("message")
+            if isinstance(raw_m, str):
+                m = raw_m.strip()[:200]
+        raise HTTPException(
+            status_code=502,
+            detail=f"Mapbox HTTP {r.status_code}: {m or 'request failed'}",
+        )
+    if not isinstance(data, dict):
+        return []
+    features = data.get("features")
+    if not isinstance(features, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for feat in features:
+        conv = _mapbox_feature_to_nominatim(feat)
+        if conv:
+            out.append(conv)
+    return out
+
+
 @app.get("/")
 async def api_root() -> dict[str, Any]:
     """Browser hits this when you open http://127.0.0.1:8000/ — the UI lives on Vite (e.g. :5173)."""
@@ -1264,6 +1544,7 @@ async def api_root() -> dict[str, Any]:
         "health": "/api/health",
         "docs": "/docs",
         "geocode_try": "/api/v1/geocode/search?q=berlin&lang=en",
+        "geocode_provider": "/api/v1/geocode/provider",
     }
 
 
@@ -1284,15 +1565,22 @@ async def health() -> dict[str, Any]:
     return {"status": "ok", "cors_origins": _cors_origins()}
 
 
+@app.get("/api/v1/geocode/provider")
+def geocode_provider_public() -> dict[str, str]:
+    """Which backend geocoder is active (for UI attribution). No secrets."""
+    return {"provider": _geocoding_provider_normalized()}
+
+
 @app.get("/api/v1/geocode/search")
 async def geocode_search(
     q: str,
     lang: str = "en",
 ) -> list[dict[str, Any]]:
-    """Address search: Photon (Komoot) + Nominatim in parallel, merged for broader OSM coverage.
+    """Address search.
 
-    Photon is tuned for autocomplete-style queries; Nominatim often finds different POIs and places.
-    Both use OpenStreetMap data — no API key. Optional: GEOCODE_DISABLE_PHOTON=1 for Nominatim only.
+    * ``GEOCODING_PROVIDER=osm`` (default): Photon + Nominatim (OpenStreetMap), merged.
+    * ``GEOCODING_PROVIDER=mapbox``: Mapbox Geocoding v5 — set ``MAPBOX_ACCESS_TOKEN``.
+    * ``GEOCODING_PROVIDER=google``: Google Geocoding API — set ``GOOGLE_MAPS_API_KEY``.
     """
     raw = (q or "").strip()
     if len(raw) < 2:
@@ -1303,17 +1591,38 @@ async def geocode_search(
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
     client: httpx.AsyncClient = _vies_http
+
+    prov = _geocoding_provider_normalized()
+    if prov == "invalid":
+        raise HTTPException(
+            status_code=503,
+            detail="Invalid GEOCODING_PROVIDER; use osm, mapbox, or google.",
+        )
+
+    if prov == "google":
+        gkey = _google_maps_api_key()
+        if not gkey:
+            raise HTTPException(
+                status_code=503,
+                detail="GEOCODING_PROVIDER=google requires GOOGLE_MAPS_API_KEY "
+                "(or GOOGLE_GEOCODING_API_KEY).",
+            )
+        return await _fetch_google_geocode_results(client, raw, lang_clean, gkey)
+
+    if prov == "mapbox":
+        tok = _mapbox_access_token()
+        if not tok:
+            raise HTTPException(
+                status_code=503,
+                detail="GEOCODING_PROVIDER=mapbox requires MAPBOX_ACCESS_TOKEN.",
+            )
+        return await _fetch_mapbox_geocode_results(client, raw, lang_clean, tok)
+
     photon_list, nomi_list = await asyncio.gather(
         _fetch_photon_results(client, raw, lang_clean),
         _fetch_nominatim_results(client, raw, lang_clean),
     )
-    merged = _merge_geocode_results(photon_list, nomi_list, max_items=18)
-    if not merged:
-        raise HTTPException(
-            status_code=502,
-            detail="Geocoding unavailable from OSM sources (Photon and Nominatim)",
-        )
-    return merged
+    return _merge_geocode_results(photon_list, nomi_list, max_items=18)
 
 
 @app.get("/api/v1/demo/customers-db")

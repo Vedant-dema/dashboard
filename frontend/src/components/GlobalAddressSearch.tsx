@@ -5,12 +5,13 @@ import {
   useLayoutEffect,
   useCallback,
   useId,
+  useMemo,
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import { Search, MapPin, Globe, Loader2, X, AlertCircle } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
-import { buildGeocodeSearchUrl } from "../services/geocodeApi";
+import { buildGeocodeSearchUrl, buildGeocodeProviderUrl } from "../services/geocodeApi";
 
 export type GlobalAddressResult = {
   label: string;
@@ -103,9 +104,13 @@ type Props = {
   onSelect: (result: GlobalAddressResult) => void;
 };
 
+type GeocodeProviderId = "osm" | "mapbox" | "google" | "invalid";
+
 export function GlobalAddressSearch({ onSelect }: Props) {
   const { t, language } = useLanguage();
   const uid = useId().replace(/:/g, "");
+
+  const [geoProvider, setGeoProvider] = useState<GeocodeProviderId | null>(null);
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalAddressResult[]>([]);
@@ -131,6 +136,43 @@ export function GlobalAddressSearch({ onSelect }: Props) {
     : language === "es" ? "es"
     : language === "ru" ? "ru"
     : "en";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(buildGeocodeProviderUrl(), {
+          headers: { Accept: "application/json" },
+        });
+        const j = (await r.json()) as { provider?: string };
+        const p = j?.provider;
+        if (cancelled) return;
+        if (p === "osm" || p === "mapbox" || p === "google" || p === "invalid") {
+          setGeoProvider(p);
+        } else {
+          setGeoProvider("osm");
+        }
+      } catch {
+        if (!cancelled) setGeoProvider("osm");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const poweredAttribution = useMemo(() => {
+    if (geoProvider === "mapbox") {
+      return t("globalAddrPoweredMapbox", "Mapbox");
+    }
+    if (geoProvider === "google") {
+      return t("globalAddrPoweredGoogle", "Google Geocoding");
+    }
+    if (geoProvider === "invalid") {
+      return t("globalAddrPoweredGeneric", "Geocoding");
+    }
+    return t("globalAddrPowered", "OpenStreetMap · Photon & Nominatim");
+  }, [geoProvider, t]);
 
   const applyDropdownGeometry = useCallback(() => {
     const el = inputRef.current;
@@ -435,7 +477,7 @@ export function GlobalAddressSearch({ onSelect }: Props) {
             );
           })}
           <li className="border-t border-slate-100 px-3 py-1.5 text-[10px] text-slate-400">
-            {t("globalAddrPowered", "Powered by OpenStreetMap · Photon & Nominatim")}
+            {poweredAttribution}
           </li>
         </ul>
       )}

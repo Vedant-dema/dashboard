@@ -1677,12 +1677,17 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         nextKundenNrPreview={generateNextKundenNr(db)}
         onSubmit={handleNewCustomerSubmit}
         fieldSuggestions={fieldSuggestions}
-        duplicateCheck={(name) => {
-          const q = name.trim().toLowerCase();
-          if (!q) return [];
+        duplicateCheck={(name, street) => {
+          const qName = name.trim().toLowerCase();
+          const qStreet = street.trim().toLowerCase();
+          if (!qName && !qStreet) return [];
           return db.kunden
-            .filter((k) => k.firmenname.trim().toLowerCase() === q)
-            .map((k) => ({ kuNr: k.kunden_nr, firmenname: k.firmenname }));
+            .filter((k) => {
+              const sameName = qName ? k.firmenname.trim().toLowerCase() === qName : false;
+              const sameStreet = qStreet ? (k.strasse ?? "").trim().toLowerCase() === qStreet : false;
+              return sameName || sameStreet;
+            })
+            .map((k) => ({ kuNr: k.kunden_nr, firmenname: k.firmenname, strasse: k.strasse }));
         }}
       />
 

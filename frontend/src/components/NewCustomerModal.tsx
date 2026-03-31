@@ -1303,8 +1303,11 @@ type Props = {
     wash: KundenWashUpsertFields | null,
     scannedAttachment?: NewKundenUnterlageInput | null
   ) => void;
-  /** Optional: checks whether a company name already exists. Returns matching entries. Create mode only. */
-  duplicateCheck?: (firmenname: string) => { kuNr: string; firmenname: string }[];
+  /** Optional: checks whether a company name or street already exists. Returns matching entries. Create mode only. */
+  duplicateCheck?: (
+    firmenname: string,
+    strasse: string
+  ) => { kuNr: string; firmenname: string; strasse?: string }[];
   /** Edit mode only — called when the user confirms customer deletion. */
   onDelete?: () => void;
   /** Edit mode only — full change history for the current customer, newest first. */
@@ -1425,7 +1428,9 @@ export function NewCustomerModal({
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
   const [scannedAttachment, setScannedAttachment] = useState<NewKundenUnterlageInput | null>(null);
   const [showAttachPrompt, setShowAttachPrompt] = useState(false);
-  const [duplicateMatches, setDuplicateMatches] = useState<{ kuNr: string; firmenname: string }[]>([]);
+  const [duplicateMatches, setDuplicateMatches] = useState<
+    { kuNr: string; firmenname: string; strasse?: string }[]
+  >([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   /** Fields this mock extractor can fill — maps form keys to realistic demo values */
@@ -1752,7 +1757,10 @@ export function NewCustomerModal({
       return;
     }
     if (!isEditMode && duplicateCheck) {
-      const matches = duplicateCheck(form.firmenname.trim());
+      const matches = duplicateCheck(
+        form.firmenname.trim(),
+        form.adressen[0]?.strasse?.trim() ?? ""
+      );
       if (matches.length > 0) {
         setDuplicateMatches(matches);
         setShowDuplicateWarning(true);
@@ -3468,12 +3476,19 @@ export function NewCustomerModal({
                 </h3>
               </div>
               <div className="space-y-3 px-5 py-4 text-sm text-slate-700">
-                <p>{t("customersDuplicateMsg", "A customer with a similar company name already exists:")}</p>
+                <p>{t("customersDuplicateMsg", "A customer with the same company name or street already exists:")}</p>
                 <ul className="space-y-1.5">
                   {duplicateMatches.map((m) => (
-                    <li key={m.kuNr} className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2">
+                    <li key={m.kuNr} className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2">
+                      <div className="flex items-center gap-3">
                       <span className="font-mono text-xs font-semibold text-slate-500">{m.kuNr}</span>
                       <span className="font-medium text-slate-800">{m.firmenname}</span>
+                      </div>
+                      {m.strasse?.trim() ? (
+                        <p className="mt-1 text-xs text-slate-600">
+                          {t("newCustomerLabelStrasse", "Street")}: {m.strasse}
+                        </p>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

@@ -833,6 +833,8 @@ function extractViesCountryCodeForForm(r: ViesCheckResult, viesMemberStateFallba
 
 /** Two-letter prefix for USt-IdNr. (may be valid VoW code even if not in `LAND_OPTIONS`). */
 function viesAlpha2ForUst(r: ViesCheckResult, viesMemberStateFallback: string): string {
+  // Keep the exact VIES member-state prefix for VAT IDs (e.g. EL for Greece).
+  // Address-land mapping (EL -> GR) is only for the country picker, never for USt prefix.
   const chain = [
     String(r.country_code ?? "").trim().toUpperCase(),
     digCountryCodeFromViesRaw(r.vies_raw ?? null),

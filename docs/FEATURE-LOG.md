@@ -147,7 +147,7 @@
 | FEATURE-122 | Restrict transliteration/normalization to VAT tab flow only | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 | FEATURE-123 | Customer page filters enforce field-specific matching | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 | FEATURE-124 | Remove Latin/English name variant suggestions from customer form | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
-| FEATURE-125 | Preserve VIES VAT prefix on Apply to form (EL remains EL) | Fixed | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-125 | Preserve VIES EL prefix for VAT Apply-to-form | Fixed | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

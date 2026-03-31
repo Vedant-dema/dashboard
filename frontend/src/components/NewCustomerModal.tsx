@@ -1303,11 +1303,13 @@ type Props = {
     wash: KundenWashUpsertFields | null,
     scannedAttachment?: NewKundenUnterlageInput | null
   ) => void;
-  /** Optional: checks whether a company name or street already exists. Returns matching entries. Create mode only. */
+  /** Optional: checks whether a possible duplicate exists. Create mode only. */
   duplicateCheck?: (
     firmenname: string,
-    strasse: string
-  ) => { kuNr: string; firmenname: string; strasse?: string }[];
+    strasse: string,
+    plz: string,
+    ort: string
+  ) => { kuNr: string; firmenname: string; strasse?: string; plz?: string; ort?: string }[];
   /** Edit mode only — called when the user confirms customer deletion. */
   onDelete?: () => void;
   /** Edit mode only — full change history for the current customer, newest first. */
@@ -1429,7 +1431,7 @@ export function NewCustomerModal({
   const [scannedAttachment, setScannedAttachment] = useState<NewKundenUnterlageInput | null>(null);
   const [showAttachPrompt, setShowAttachPrompt] = useState(false);
   const [duplicateMatches, setDuplicateMatches] = useState<
-    { kuNr: string; firmenname: string; strasse?: string }[]
+    { kuNr: string; firmenname: string; strasse?: string; plz?: string; ort?: string }[]
   >([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
@@ -1759,7 +1761,9 @@ export function NewCustomerModal({
     if (!isEditMode && duplicateCheck) {
       const matches = duplicateCheck(
         form.firmenname.trim(),
-        form.adressen[0]?.strasse?.trim() ?? ""
+        form.adressen[0]?.strasse?.trim() ?? "",
+        form.adressen[0]?.plz?.trim() ?? "",
+        form.adressen[0]?.ort?.trim() ?? ""
       );
       if (matches.length > 0) {
         setDuplicateMatches(matches);
@@ -3476,7 +3480,12 @@ export function NewCustomerModal({
                 </h3>
               </div>
               <div className="space-y-3 px-5 py-4 text-sm text-slate-700">
-                <p>{t("customersDuplicateMsg", "A customer with the same company name or street already exists:")}</p>
+                <p>
+                  {t(
+                    "customersDuplicateMsg",
+                    "A customer with the same company name, street, or same company + ZIP + city already exists:"
+                  )}
+                </p>
                 <ul className="space-y-1.5">
                   {duplicateMatches.map((m) => (
                     <li key={m.kuNr} className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2">
@@ -3487,6 +3496,11 @@ export function NewCustomerModal({
                       {m.strasse?.trim() ? (
                         <p className="mt-1 text-xs text-slate-600">
                           {t("newCustomerLabelStrasse", "Street")}: {m.strasse}
+                        </p>
+                      ) : null}
+                      {(m.plz?.trim() || m.ort?.trim()) ? (
+                        <p className="mt-1 text-xs text-slate-600">
+                          {m.plz ?? ""}{m.plz?.trim() && m.ort?.trim() ? " " : ""}{m.ort ?? ""}
                         </p>
                       ) : null}
                     </li>

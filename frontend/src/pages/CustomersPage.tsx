@@ -1677,17 +1677,28 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         nextKundenNrPreview={generateNextKundenNr(db)}
         onSubmit={handleNewCustomerSubmit}
         fieldSuggestions={fieldSuggestions}
-        duplicateCheck={(name, street) => {
+        duplicateCheck={(name, street, plz, city) => {
           const qName = name.trim().toLowerCase();
           const qStreet = street.trim().toLowerCase();
-          if (!qName && !qStreet) return [];
+          const qPlz = plz.trim().toLowerCase();
+          const qCity = city.trim().toLowerCase();
+          if (!qName && !qStreet && !qPlz && !qCity) return [];
           return db.kunden
             .filter((k) => {
               const sameName = qName ? k.firmenname.trim().toLowerCase() === qName : false;
               const sameStreet = qStreet ? (k.strasse ?? "").trim().toLowerCase() === qStreet : false;
-              return sameName || sameStreet;
+              const samePlz = qPlz ? (k.plz ?? "").trim().toLowerCase() === qPlz : false;
+              const sameCity = qCity ? (k.ort ?? "").trim().toLowerCase() === qCity : false;
+              const sameNamePlzCity = sameName && samePlz && sameCity;
+              return sameName || sameStreet || sameNamePlzCity;
             })
-            .map((k) => ({ kuNr: k.kunden_nr, firmenname: k.firmenname, strasse: k.strasse }));
+            .map((k) => ({
+              kuNr: k.kunden_nr,
+              firmenname: k.firmenname,
+              strasse: k.strasse,
+              plz: k.plz,
+              ort: k.ort,
+            }));
         }}
       />
 

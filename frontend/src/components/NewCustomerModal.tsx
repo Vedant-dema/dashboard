@@ -299,6 +299,28 @@ function coerceViesCheckValid(v: unknown): boolean {
   return Boolean(v);
 }
 
+function toTitleCaseLatin(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\b([a-z])([a-z]*)/g, (_m, a: string, b: string) => `${a.toUpperCase()}${b}`);
+}
+
+function normalizeVatNameForUi(raw: string | null): string | null {
+  if (!raw?.trim()) return null;
+  const latin = transliterateToAscii(raw).replace(/\s+/g, " ").trim();
+  return latin ? toTitleCaseLatin(latin) : null;
+}
+
+function normalizeVatAddressForUi(raw: string | null): string | null {
+  if (!raw?.trim()) return null;
+  const lines = transliterateToAsciiMultiline(raw)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .map((line) => toTitleCaseLatin(line));
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
 /** Allow Apply / payload merge when VAT is valid or trader text is present (some proxies mis-set `valid`). */
 function viesResultAllowsFormMerge(r: ViesCheckResult | null | undefined): boolean {
   if (!r) return false;
@@ -322,8 +344,8 @@ function normalizeViesCheckResponseFromApi(raw: unknown): ViesCheckResult | null
     if (!nr) nr = firstNonEmptyStr(vies_raw, "vatNumber", "vat_number");
   }
 
-  const nameS = firstNonEmptyStr(o, "name") || null;
-  const addrS = firstNonEmptyStr(o, "address") || null;
+  const nameS = normalizeVatNameForUi(firstNonEmptyStr(o, "name") || null);
+  const addrS = normalizeVatAddressForUi(firstNonEmptyStr(o, "address") || null);
   const rd = firstNonEmptyStr(o, "request_date", "requestDate") || null;
   const rid = firstNonEmptyStr(o, "request_identifier", "requestIdentifier") || null;
   const tda = o.trader_details_available ?? o.traderDetailsAvailable;
@@ -376,9 +398,9 @@ function parseViesSingleLineAddress(one: string): { strasse?: string; plz?: stri
     const pc = tryPostalAndCity(right);
     if (pc && left.length > 0) {
       return {
-        strasse: normalizeLatinAddressLine(left, "street"),
+        strasse: toTitleCaseLatin(normalizeLatinAddressLine(left, "street")),
         plz: normalizeLatinAddressLine(pc.plz, "postal"),
-        ort: normalizeLatinAddressLine(pc.ort, "city"),
+        ort: toTitleCaseLatin(normalizeLatinAddressLine(pc.ort, "city")),
       };
     }
   }
@@ -391,15 +413,15 @@ function parseViesSingleLineAddress(one: string): { strasse?: string; plz?: stri
         const streetTokens = tokens.slice(0, -n);
         if (streetTokens.length > 0) {
           return {
-            strasse: normalizeLatinAddressLine(streetTokens.join(" "), "street"),
+            strasse: toTitleCaseLatin(normalizeLatinAddressLine(streetTokens.join(" "), "street")),
             plz: normalizeLatinAddressLine(pc.plz, "postal"),
-            ort: normalizeLatinAddressLine(pc.ort, "city"),
+            ort: toTitleCaseLatin(normalizeLatinAddressLine(pc.ort, "city")),
           };
         }
       }
     }
   }
-  return { strasse: normalizeLatinAddressLine(one, "street") };
+  return { strasse: toTitleCaseLatin(normalizeLatinAddressLine(one, "street")) };
 }
 
 function parseViesAddress(block: string | null | undefined): {
@@ -419,14 +441,14 @@ function parseViesAddress(block: string | null | undefined): {
   if (pc) {
     const streetRaw = lines.length > 2 ? lines.slice(0, -1).join(", ") : lines[0]!;
     return {
-      strasse: normalizeLatinAddressLine(streetRaw, "street"),
+      strasse: toTitleCaseLatin(normalizeLatinAddressLine(streetRaw, "street")),
       plz: normalizeLatinAddressLine(pc.plz, "postal"),
-      ort: normalizeLatinAddressLine(pc.ort, "city"),
+      ort: toTitleCaseLatin(normalizeLatinAddressLine(pc.ort, "city")),
     };
   }
   return {
-    strasse: normalizeLatinAddressLine(lines[0]!, "street"),
-    ort: normalizeLatinAddressLine(lines.slice(1).join(", "), "city"),
+    strasse: toTitleCaseLatin(normalizeLatinAddressLine(lines[0]!, "street")),
+    ort: toTitleCaseLatin(normalizeLatinAddressLine(lines.slice(1).join(", "), "city")),
   };
 }
 
@@ -445,9 +467,9 @@ function extractViesAddressForForm(r: ViesCheckResult): {
     const s = firstNonEmptyStr(o, "traderStreet", "trader_street");
     const p = firstNonEmptyStr(o, "traderPostalCode", "trader_postal_code");
     const c = firstNonEmptyStr(o, "traderCity", "trader_city");
-    if (s) strasse = normalizeLatinAddressLine(s, "street");
+    if (s) strasse = toTitleCaseLatin(normalizeLatinAddressLine(s, "street"));
     if (p) plz = normalizeLatinAddressLine(p, "postal");
-    if (c) ort = normalizeLatinAddressLine(c, "city");
+    if (c) ort = toTitleCaseLatin(normalizeLatinAddressLine(c, "city"));
   }
   const parsed = isMeaningfulViesText(r.address) ? parseViesAddress(r.address) : {};
   const structComplete =
@@ -478,7 +500,7 @@ function extractViesAddressForForm(r: ViesCheckResult): {
   if (!hasAny && isMeaningfulViesText(r.address)) {
     const lines = r.address!.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const first = lines[0] ?? r.address!.trim();
-    const s = normalizeLatinAddressLine(first, "street");
+    const s = toTitleCaseLatin(normalizeLatinAddressLine(first, "street"));
     if (s) return { strasse: s };
   }
   return merged;

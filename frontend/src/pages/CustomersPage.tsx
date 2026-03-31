@@ -1678,19 +1678,35 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         onSubmit={handleNewCustomerSubmit}
         fieldSuggestions={fieldSuggestions}
         duplicateCheck={(name, street, plz, city) => {
+          const canonicalCompanyName = (value: string): string => {
+            const tokens = value
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/\p{M}/gu, "")
+              .replace(/[^\p{L}\p{N}\s]/gu, " ")
+              .split(/\s+/)
+              .map((t) => t.trim())
+              .filter(Boolean)
+              .sort();
+            return tokens.join(" ");
+          };
           const qName = name.trim().toLowerCase();
           const qStreet = street.trim().toLowerCase();
           const qPlz = plz.trim().toLowerCase();
           const qCity = city.trim().toLowerCase();
+          const qNameCanonical = canonicalCompanyName(name);
           if (!qName && !qStreet && !qPlz && !qCity) return [];
           return db.kunden
             .filter((k) => {
-              const sameName = qName ? k.firmenname.trim().toLowerCase() === qName : false;
+              const storedName = k.firmenname.trim().toLowerCase();
+              const sameName = qName ? storedName === qName : false;
+              const sameNameReordered =
+                qNameCanonical && canonicalCompanyName(k.firmenname) === qNameCanonical;
               const sameStreet = qStreet ? (k.strasse ?? "").trim().toLowerCase() === qStreet : false;
               const samePlz = qPlz ? (k.plz ?? "").trim().toLowerCase() === qPlz : false;
               const sameCity = qCity ? (k.ort ?? "").trim().toLowerCase() === qCity : false;
-              const sameNamePlzCity = sameName && samePlz && sameCity;
-              return sameName || sameStreet || sameNamePlzCity;
+              const sameNamePlzCity = (sameName || sameNameReordered) && samePlz && sameCity;
+              return sameName || sameNameReordered || sameStreet || sameNamePlzCity;
             })
             .map((k) => ({
               kuNr: k.kunden_nr,

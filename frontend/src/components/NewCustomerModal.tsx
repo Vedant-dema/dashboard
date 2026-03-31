@@ -725,6 +725,52 @@ const LAND_OPTIONS: { code: string; label: string }[] = [
   { code: "CY", label: "Zypern" },
 ];
 
+type ContinentId = "europe" | "asia" | "africa" | "northAmerica" | "southAmerica" | "oceania";
+
+const CONTINENT_ORDER: ContinentId[] = [
+  "europe",
+  "asia",
+  "africa",
+  "northAmerica",
+  "southAmerica",
+  "oceania",
+];
+
+const COUNTRY_CONTINENT_BY_CODE: Record<string, ContinentId> = {
+  DE: "europe", AL: "europe", AD: "europe", AM: "europe", AT: "europe", AZ: "europe", BE: "europe",
+  BA: "europe", BG: "europe", BY: "europe", HR: "europe", CY: "europe", CZ: "europe", DK: "europe",
+  EE: "europe", FI: "europe", FR: "europe", GE: "europe", GR: "europe", HU: "europe", IS: "europe",
+  IE: "europe", IT: "europe", LV: "europe", LI: "europe", LT: "europe", LU: "europe", MT: "europe",
+  MD: "europe", MC: "europe", ME: "europe", MK: "europe", NL: "europe", XI: "europe", NO: "europe",
+  PL: "europe", PT: "europe", RO: "europe", RU: "europe", SM: "europe", RS: "europe", SK: "europe",
+  SI: "europe", ES: "europe", SE: "europe", CH: "europe", TR: "europe", UA: "europe", GB: "europe",
+  AF: "asia", BH: "asia", BD: "asia", BT: "asia", BN: "asia", KH: "asia", CN: "asia", IN: "asia",
+  ID: "asia", IR: "asia", IQ: "asia", IL: "asia", JP: "asia", JO: "asia", KZ: "asia", KW: "asia",
+  KG: "asia", LA: "asia", LB: "asia", MY: "asia", MV: "asia", MN: "asia", MM: "asia", NP: "asia",
+  KP: "asia", KR: "asia", OM: "asia", PK: "asia", PH: "asia", QA: "asia", SA: "asia", SG: "asia",
+  LK: "asia", SY: "asia", TW: "asia", TJ: "asia", TH: "asia", TL: "asia", TM: "asia", AE: "asia",
+  UZ: "asia", VN: "asia", YE: "asia",
+  DZ: "africa", AO: "africa", BJ: "africa", BW: "africa", BF: "africa", BI: "africa", CM: "africa",
+  CV: "africa", CF: "africa", TD: "africa", KM: "africa", CG: "africa", CD: "africa", CI: "africa",
+  DJ: "africa", EG: "africa", GQ: "africa", ER: "africa", SZ: "africa", ET: "africa", GA: "africa",
+  GM: "africa", GH: "africa", GN: "africa", GW: "africa", KE: "africa", LS: "africa", LR: "africa",
+  LY: "africa", MG: "africa", MW: "africa", ML: "africa", MR: "africa", MU: "africa", MA: "africa",
+  MZ: "africa", NA: "africa", NE: "africa", NG: "africa", RW: "africa", ST: "africa", SN: "africa",
+  SC: "africa", SL: "africa", SO: "africa", ZA: "africa", SS: "africa", SD: "africa", TZ: "africa",
+  TG: "africa", TN: "africa", UG: "africa", ZM: "africa", ZW: "africa",
+  AG: "northAmerica", BS: "northAmerica", BB: "northAmerica", BZ: "northAmerica", CA: "northAmerica",
+  CR: "northAmerica", CU: "northAmerica", DM: "northAmerica", DO: "northAmerica", SV: "northAmerica",
+  GD: "northAmerica", GT: "northAmerica", HT: "northAmerica", HN: "northAmerica", JM: "northAmerica",
+  MX: "northAmerica", NI: "northAmerica", PA: "northAmerica", KN: "northAmerica", LC: "northAmerica",
+  VC: "northAmerica", TT: "northAmerica", US: "northAmerica",
+  AR: "southAmerica", BO: "southAmerica", BR: "southAmerica", CL: "southAmerica", CO: "southAmerica",
+  EC: "southAmerica", GY: "southAmerica", PY: "southAmerica", PE: "southAmerica", SR: "southAmerica",
+  UY: "southAmerica", VE: "southAmerica",
+  AU: "oceania", FJ: "oceania", KI: "oceania", MH: "oceania", FM: "oceania", NR: "oceania",
+  NZ: "oceania", PW: "oceania", PG: "oceania", WS: "oceania", SB: "oceania", TO: "oceania",
+  TV: "oceania", VU: "oceania",
+};
+
 const LAND_CODE_SET = new Set(LAND_OPTIONS.map((l) => l.code));
 
 /** German (and parenthetical) labels from `LAND_OPTIONS` → ISO code for matching VIES country lines. */
@@ -1354,6 +1400,28 @@ export function NewCustomerModal({
     waschanlage: t("newCustomerTabWaschanlage", "Car wash"),
     history: t("historyTabLabel", "History"),
   }), [t]);
+  const continentLabels = useMemo(
+    (): Record<ContinentId, string> => ({
+      europe: t("newCustomerContinentEurope", "Europe"),
+      asia: t("newCustomerContinentAsia", "Asia"),
+      africa: t("newCustomerContinentAfrica", "Africa"),
+      northAmerica: t("newCustomerContinentNorthAmerica", "North America"),
+      southAmerica: t("newCustomerContinentSouthAmerica", "South America"),
+      oceania: t("newCustomerContinentOceania", "Oceania"),
+    }),
+    [t]
+  );
+  const groupedLandOptions = useMemo(() => {
+    const buckets = new Map<ContinentId, { code: string; label: string }[]>();
+    for (const id of CONTINENT_ORDER) buckets.set(id, []);
+    for (const option of LAND_OPTIONS) {
+      const continent = COUNTRY_CONTINENT_BY_CODE[option.code] ?? "europe";
+      buckets.get(continent)?.push(option);
+    }
+    return CONTINENT_ORDER
+      .map((id) => ({ id, label: continentLabels[id], options: buckets.get(id) ?? [] }))
+      .filter((group) => group.options.length > 0);
+  }, [continentLabels]);
 
   const [tab, setTab] = useState<TabId>("vat");
   const [form, setForm] = useState<FormState>(initialForm);
@@ -2549,8 +2617,14 @@ export function NewCustomerModal({
                                 }}
                                 className={inputClass}
                               >
-                                {LAND_OPTIONS.map((l) => (
-                                  <option key={l.code} value={l.code}>{l.label}</option>
+                                {groupedLandOptions.map((group) => (
+                                  <optgroup key={group.id} label={group.label}>
+                                    {group.options.map((l) => (
+                                      <option key={l.code} value={l.code}>
+                                        {l.label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
                                 ))}
                               </select>
                             </div>

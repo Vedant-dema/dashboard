@@ -90,8 +90,8 @@ export function getCustomerFieldSuggestions(db: KundenDbState): CustomerFieldSug
   };
 }
 
-/** Für globale Suche / Schnellsuche: KU-Nr. + Firmennamen gemischt. */
+/** Suggestions for company quick search (company names only). */
 export function getQuickSearchSuggestions(db: KundenDbState): string[] {
   const s = getCustomerFieldSuggestions(db);
-  return uniqSorted([...s.kunden_nr, ...s.firmenname]);
+  return uniqSorted(s.firmenname);
 }

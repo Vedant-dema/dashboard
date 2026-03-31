@@ -9,6 +9,9 @@ export function commitAsciiNormalized(
   normalize: (raw: string) => string,
   apply: (next: string) => void
 ): void {
-  const v = normalize(el.value);
-  if (v !== el.value) apply(v);
+  // Conversion is now restricted to VAT-tab workflows only.
+  // Keep other form fields untouched even on blur/composition end.
+  void el;
+  void normalize;
+  void apply;
 }

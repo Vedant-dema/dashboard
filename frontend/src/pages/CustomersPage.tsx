@@ -25,7 +25,6 @@ import {
   Pencil,
 } from "lucide-react";
 import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
-import { combinedMatch } from "../lib/globalSearchMatch";
 import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
   loadKundenDb,
@@ -469,44 +468,37 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const filtered = useMemo(() => {
     let list: KundenListRow[] = [...listSource];
     if (quickSearch.trim()) {
-      const raw = quickSearch.trim();
-      list = list.filter((r) => {
-        const k = db.kunden.find((x) => x.kunden_nr === r.kuNr && !x.deleted);
-        if (!k) return false;
-        return combinedMatch(
-          raw,
-          [
-            r.firmenname,
-            r.kuNr,
-            k.email,
-            k.telefonnummer,
-            k.faxnummer,
-            k.strasse,
-            r.plz,
-            r.ort,
-            r.land,
-            k.ansprechpartner,
-            k.ust_id_nr,
-            k.steuer_nr,
-            k.branche,
-            k.internet_adr,
-            k.bemerkungen,
-          ],
-          [k.telefonnummer, k.faxnummer, k.kunden_nr]
-        );
-      });
+      const q = quickSearch.trim().toLowerCase();
+      list = list.filter((r) => r.firmenname.toLowerCase().includes(q));
     }
     if (kundenNr.trim()) list = list.filter((r) => r.kuNr.includes(kundenNr.trim()));
     if (firmenname.trim()) {
       const f = firmenname.toLowerCase();
       list = list.filter((r) => r.firmenname.toLowerCase().includes(f));
     }
+    if (ansprechpartner.trim()) {
+      const q = ansprechpartner.trim().toLowerCase();
+      list = list.filter((r) => {
+        const kunde = db.kunden.find((k) => k.kunden_nr === r.kuNr);
+        return kunde?.ansprechpartner?.toLowerCase().includes(q) ?? false;
+      });
+    }
+    if (telefon.trim()) {
+      const q = telefon.trim().toLowerCase();
+      list = list.filter((r) => {
+        const kunde = db.kunden.find((k) => k.kunden_nr === r.kuNr);
+        return kunde?.telefonnummer?.toLowerCase().includes(q) ?? false;
+      });
+    }
     if (plz.trim()) list = list.filter((r) => r.plz.includes(plz.trim()));
     if (ort.trim()) {
       const o = ort.toLowerCase();
       list = list.filter((r) => r.ort.toLowerCase().includes(o));
     }
-    if (land.trim()) list = list.filter((r) => r.land.toLowerCase().includes(land.trim()));
+    if (land.trim()) {
+      const l = land.trim().toLowerCase();
+      list = list.filter((r) => r.land.toLowerCase().includes(l));
+    }
     if (vatId.trim()) {
       const v = vatId.trim().toLowerCase();
       list = list.filter((r) => {
@@ -521,7 +513,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     if (sortierung === "plz") list.sort((a, b) => a.plz.localeCompare(b.plz));
     if (sortierung === "termin") list.sort((a, b) => a.termin.localeCompare(b.termin));
     return list;
-  }, [listSource, quickSearch, kundenNr, firmenname, plz, ort, land, vatId, sortierung, db.kunden]);
+  }, [listSource, quickSearch, kundenNr, firmenname, ansprechpartner, telefon, plz, ort, land, vatId, sortierung, db.kunden]);
 
   const applyFilters = () => {};
   const showAll = () => {

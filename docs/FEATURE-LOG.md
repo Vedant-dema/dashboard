@@ -16,7 +16,7 @@
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
 | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046, FEATURE-047, FEATURE-048, FEATURE-049, FEATURE-050, FEATURE-051, FEATURE-052, FEATURE-053, FEATURE-054, FEATURE-055, FEATURE-056, FEATURE-057, FEATURE-058, FEATURE-059, FEATURE-060, FEATURE-061, FEATURE-062, FEATURE-063, FEATURE-064, FEATURE-065, FEATURE-066, FEATURE-067, FEATURE-068, FEATURE-069, FEATURE-070 |
 | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071 … FEATURE-108 |
-| 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-121 |
+| 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-125 |
 
 ---
 
@@ -144,6 +144,10 @@
 | FEATURE-119 | Settings i18n hardening: add missing subtitle key + replace German fallbacks with English defaults | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 | FEATURE-120 | VIES country-aware normalization: keep DE original, normalize non-DE for display/search | Extended | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 | FEATURE-121 | VIES legal-name lock: never alter company name | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-122 | Restrict transliteration/normalization to VAT tab flow only | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-123 | Customer page filters enforce field-specific matching | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-124 | Remove Latin/English name variant suggestions from customer form | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-125 | Preserve VIES VAT prefix on Apply to form (EL remains EL) | Fixed | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

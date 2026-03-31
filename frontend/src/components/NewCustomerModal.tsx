@@ -21,12 +21,10 @@ import type { DepartmentArea } from "../types/departmentArea";
 import type { KundenStamm, KundenWashStamm, ViesCustomerSnapshot } from "../types/kunden";
 import { normalizeLatinAddressLine } from "../common/utils/addressLatinNormalize";
 import {
-  localLatinNameVariants,
   transliterateToAscii,
   transliterateToAsciiMultiline,
 } from "../common/utils/transliterateToAscii";
 import { commitAsciiNormalized } from "../common/utils/commitAsciiNormalized";
-import { fetchNameVariantsAiEnabled, suggestNameVariants } from "../services/nameVariantsApi";
 import { isViesProxyHttpErrorGarbage } from "../common/utils/viesProxyErrorText";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -835,8 +833,6 @@ function extractViesCountryCodeForForm(r: ViesCheckResult, viesMemberStateFallba
 
 /** Two-letter prefix for USt-IdNr. (may be valid VoW code even if not in `LAND_OPTIONS`). */
 function viesAlpha2ForUst(r: ViesCheckResult, viesMemberStateFallback: string): string {
-  const fromLand = extractViesCountryCodeForForm(r, viesMemberStateFallback);
-  if (fromLand) return fromLand;
   const chain = [
     String(r.country_code ?? "").trim().toUpperCase(),
     digCountryCodeFromViesRaw(r.vies_raw ?? null),
@@ -881,20 +877,6 @@ const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string
   { from: "from-slate-600",   to: "to-slate-800",   dot: "bg-slate-400",   dotActive: "bg-slate-600",   activePill: "bg-slate-600"   },
   { from: "from-sky-500",     to: "to-indigo-500",  dot: "bg-sky-300",     dotActive: "bg-sky-500",     activePill: "bg-sky-500"     },
 ];
-
-type NameVariantPanelState = {
-  loading: boolean;
-  variants: string[];
-  err: string | null;
-  hasRun: boolean;
-};
-
-const NAME_VARIANT_PANEL_IDLE: NameVariantPanelState = {
-  loading: false,
-  variants: [],
-  err: null,
-  hasRun: false,
-};
 
 type WashProgramOption = {
   label: string;
@@ -1092,27 +1074,25 @@ function formToPayload(form: FormState): NewKundeInput {
 
   return {
     aufnahme: emptyToUndef(form.aufnahme),
-    firmenname: transliterateToAscii(form.firmenname.trim()),
-    branche: emptyToUndef(transliterateToAscii(form.branche)),
+    firmenname: form.firmenname.trim(),
+    branche: emptyToUndef(form.branche),
     fzg_haendler,
     juristische_person: form.juristische_person,
     natuerliche_person: form.natuerliche_person,
-    gesellschaftsform: emptyToUndef(transliterateToAscii(form.gesellschaftsform)),
-    firmenvorsatz: emptyToUndef(transliterateToAscii(form.firmenvorsatz)),
-    bemerkungen: emptyToUndef(transliterateToAsciiMultiline(form.bemerkungen)),
+    gesellschaftsform: emptyToUndef(form.gesellschaftsform),
+    firmenvorsatz: emptyToUndef(form.firmenvorsatz),
+    bemerkungen: emptyToUndef(form.bemerkungen),
     zustaendige_person_name,
-    strasse: emptyToUndef(
-      normalizeLatinAddressLine(form.adressen[0]?.strasse ?? "", "street")
-    ),
-    plz: emptyToUndef(normalizeLatinAddressLine(form.adressen[0]?.plz ?? "", "postal")),
-    ort: emptyToUndef(normalizeLatinAddressLine(form.adressen[0]?.ort ?? "", "city")),
+    strasse: emptyToUndef(form.adressen[0]?.strasse ?? ""),
+    plz: emptyToUndef(form.adressen[0]?.plz ?? ""),
+    ort: emptyToUndef(form.adressen[0]?.ort ?? ""),
     land_code: form.adressen[0]?.land_code ?? "DE",
     art_land_code: emptyToUndef(form.adressen[0]?.art_land_code ?? ""),
     ust_id_nr: emptyToUndef(form.adressen[0]?.ust_id_nr ?? ""),
     steuer_nr: emptyToUndef(form.adressen[0]?.steuer_nr ?? ""),
     branchen_nr: emptyToUndef(form.adressen[0]?.branchen_nr ?? ""),
-    ansprechpartner: emptyToUndef(transliterateToAscii(form.kontakte[0]?.name ?? "")),
-    rolle_kontakt: emptyToUndef(transliterateToAscii(form.kontakte[0]?.rolle ?? "")),
+    ansprechpartner: emptyToUndef(form.kontakte[0]?.name ?? ""),
+    rolle_kontakt: emptyToUndef(form.kontakte[0]?.rolle ?? ""),
     telefonnummer: emptyToUndef(
       form.kontakte[0]?.telefon
         ? `${form.kontakte[0].telefonCode} ${form.kontakte[0].telefon}`
@@ -1125,12 +1105,10 @@ function formToPayload(form: FormState): NewKundeInput {
     ),
     email: emptyToUndef(form.kontakte[0]?.email ?? ""),
     internet_adr: emptyToUndef(form.internet_adr),
-    bemerkungen_kontakt: emptyToUndef(
-      transliterateToAsciiMultiline(form.kontakte[0]?.bemerkung ?? "")
-    ),
+    bemerkungen_kontakt: emptyToUndef(form.kontakte[0]?.bemerkung ?? ""),
     faxen_flag: false,
-    art_kunde: emptyToUndef(transliterateToAscii(form.art_kunde)),
-    buchungskonto_haupt: emptyToUndef(transliterateToAscii(form.buchungskonto_haupt)),
+    art_kunde: emptyToUndef(form.art_kunde),
+    buchungskonto_haupt: emptyToUndef(form.buchungskonto_haupt),
   };
 }
 
@@ -1233,20 +1211,18 @@ function mergeVatCheckIntoPayload(
 function washFormToPayload(form: FormState): KundenWashUpsertFields {
   const limit = Math.max(0, Number(form.wash_limit) || 0);
   return {
-    bukto: emptyToUndef(transliterateToAscii(form.wash_bukto)),
+    bukto: emptyToUndef(form.wash_bukto),
     limit_betrag: limit,
-    rechnung_zusatz: emptyToUndef(transliterateToAscii(form.wash_rechnung_zusatz)),
-    rechnung_plz: emptyToUndef(normalizeLatinAddressLine(form.wash_rechnung_plz ?? "", "postal")),
-    rechnung_ort: emptyToUndef(normalizeLatinAddressLine(form.wash_rechnung_ort ?? "", "city")),
-    rechnung_strasse: emptyToUndef(
-      normalizeLatinAddressLine(form.wash_rechnung_strasse ?? "", "street")
-    ),
+    rechnung_zusatz: emptyToUndef(form.wash_rechnung_zusatz),
+    rechnung_plz: emptyToUndef(form.wash_rechnung_plz ?? ""),
+    rechnung_ort: emptyToUndef(form.wash_rechnung_ort ?? ""),
+    rechnung_strasse: emptyToUndef(form.wash_rechnung_strasse ?? ""),
     kunde_gesperrt: form.wash_kunde_gesperrt,
-    bankname: emptyToUndef(transliterateToAscii(form.wash_bankname)),
+    bankname: emptyToUndef(form.wash_bankname),
     bic: emptyToUndef(form.wash_bic),
     iban: emptyToUndef(form.wash_iban),
-    wichtige_infos: emptyToUndef(transliterateToAsciiMultiline(form.wash_wichtige_infos)),
-    bemerkungen: emptyToUndef(transliterateToAsciiMultiline(form.wash_bemerkungen)),
+    wichtige_infos: emptyToUndef(form.wash_wichtige_infos),
+    bemerkungen: emptyToUndef(form.wash_bemerkungen),
     lastschrift: form.wash_lastschrift,
     kennzeichen: form.wash_kennzeichen_list.length > 0
       ? form.wash_kennzeichen_list.join(", ")
@@ -1367,13 +1343,6 @@ export function NewCustomerModal({
     if (!a.plz?.trim() && !a.ort?.trim()) return null;
     return a;
   }, [vatCheckResult]);
-  /** Optional: server has OpenAI-compatible key; local on-device variants always work without it. */
-  const [nameVarAiEnabled, setNameVarAiEnabled] = useState(false);
-  const [nameVarCompany, setNameVarCompany] =
-    useState<NameVariantPanelState>(NAME_VARIANT_PANEL_IDLE);
-  const [nameVarContact, setNameVarContact] = useState<
-    (NameVariantPanelState & { idx: number }) | null
-  >(null);
   const isEditMode = mode === "edit";
   const hasEditKundeSideContent = isEditMode && Boolean(editKundeSideContent);
   const tabOrder: TabId[] = isEditMode
@@ -1410,8 +1379,6 @@ export function NewCustomerModal({
     setVatCheckLoading(false);
     setVatCheckResult(null);
     setVatCheckError(null);
-    setNameVarCompany(NAME_VARIANT_PANEL_IDLE);
-    setNameVarContact(null);
     if (isEditMode && editInitial?.kunde.vies_snapshot) {
       const vs = editInitial.kunde.vies_snapshot;
       setViesCountry((vs.country_code || "DE").trim() || "DE");
@@ -1424,68 +1391,9 @@ export function NewCustomerModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, department, isEditMode, editInitial]);
 
-  useEffect(() => {
-    if (!open) return;
-    let cancel = false;
-    void fetchNameVariantsAiEnabled().then((en) => {
-      if (!cancel) setNameVarAiEnabled(en);
-    });
-    return () => {
-      cancel = true;
-    };
-  }, [open]);
-
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
   }, []);
-
-  const applyLocalCompanyVariants = (raw: string) => {
-    const variants = localLatinNameVariants(raw);
-    setNameVarCompany({ loading: false, variants, err: null, hasRun: true });
-  };
-
-  const runCompanyNameVariants = () => {
-    const raw = form.firmenname.trim();
-    if (!raw) return;
-    setNameVarCompany({ loading: true, variants: [], err: null, hasRun: false });
-    if (!nameVarAiEnabled) {
-      applyLocalCompanyVariants(raw);
-      return;
-    }
-    void suggestNameVariants(raw, "company")
-      .then((variants) => {
-        if (variants.length > 0) {
-          setNameVarCompany({ loading: false, variants, err: null, hasRun: true });
-        } else {
-          applyLocalCompanyVariants(raw);
-        }
-      })
-      .catch(() => applyLocalCompanyVariants(raw));
-  };
-
-  const applyLocalContactVariants = (idx: number, raw: string) => {
-    const variants = localLatinNameVariants(raw);
-    setNameVarContact({ idx, loading: false, variants, err: null, hasRun: true });
-  };
-
-  const runContactNameVariants = (idx: number, rawName: string) => {
-    const raw = rawName.trim();
-    if (!raw) return;
-    setNameVarContact({ idx, loading: true, variants: [], err: null, hasRun: false });
-    if (!nameVarAiEnabled) {
-      applyLocalContactVariants(idx, raw);
-      return;
-    }
-    void suggestNameVariants(raw, "person")
-      .then((variants) => {
-        if (variants.length > 0) {
-          setNameVarContact({ idx, loading: false, variants, err: null, hasRun: true });
-        } else {
-          applyLocalContactVariants(idx, raw);
-        }
-      })
-      .catch(() => applyLocalContactVariants(idx, raw));
-  };
 
   // ── Document extraction state ──
   const [docScanState, setDocScanState] = useState<ScanState>("idle");
@@ -2358,63 +2266,6 @@ export function NewCustomerModal({
                         title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                       />
                     </ExtractedFieldWrapper>
-                    <div className="mt-2 space-y-2 rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2">
-                        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                          <button
-                            type="button"
-                            onClick={runCompanyNameVariants}
-                            disabled={nameVarCompany.loading || !form.firmenname.trim()}
-                            className="w-fit rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {t("newCustomerNameVariantsBtn", "Latin / English variants")}
-                          </button>
-                          <p className="text-[10px] leading-snug text-slate-500">
-                            {nameVarAiEnabled
-                              ? t(
-                                  "newCustomerNameVariantsHintAi",
-                                  "On-device transliteration variants; AI may add more when the server has an API key. Save still runs automatic transliteration."
-                                )
-                              : t(
-                                  "newCustomerNameVariantsHintLocal",
-                                  "On-device Latin spellings (no API key). Uses several transliteration options; save still applies the normal automatic pass."
-                                )}
-                          </p>
-                        </div>
-                        {nameVarCompany.loading ? (
-                          <p className="text-xs text-slate-600">
-                            {t("newCustomerNameVariantsLoading", "Loading suggestions…")}
-                          </p>
-                        ) : null}
-                        {nameVarCompany.err ? (
-                          <p className="text-xs text-red-700">{nameVarCompany.err}</p>
-                        ) : null}
-                        {nameVarCompany.hasRun &&
-                        !nameVarCompany.loading &&
-                        !nameVarCompany.err &&
-                        nameVarCompany.variants.length === 0 ? (
-                          <p className="text-xs text-slate-600">
-                            {t("newCustomerNameVariantsEmpty", "No variants returned.")}
-                          </p>
-                        ) : null}
-                        {nameVarCompany.variants.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {nameVarCompany.variants.map((v, vi) => (
-                              <button
-                                key={`c-${vi}-${v.slice(0, 48)}`}
-                                type="button"
-                                onClick={() => {
-                                  set("firmenname", transliterateToAscii(v));
-                                  setNameVarCompany(NAME_VARIANT_PANEL_IDLE);
-                                }}
-                                className="max-w-full break-words rounded-md border border-slate-200 bg-white px-2 py-1 text-left text-xs font-medium text-slate-800 hover:border-blue-300 hover:bg-blue-50"
-                                title={t("newCustomerNameVariantsUse", "Use")}
-                              >
-                                {v}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
                   </div>
 
 
@@ -2555,9 +2406,9 @@ export function NewCustomerModal({
                                 const landOk =
                                   code !== "" && LAND_OPTIONS.some((l) => l.code === code);
                                 patchAdresse({
-                                  strasse: normalizeLatinAddressLine(line1, "street"),
-                                  plz: normalizeLatinAddressLine(r.plz ?? "", "postal"),
-                                  ort: normalizeLatinAddressLine(r.ort ?? "", "city"),
+                                  strasse: line1,
+                                  plz: r.plz ?? "",
+                                  ort: r.ort ?? "",
                                   ...(landOk
                                     ? { land_code: code, art_land_code: landCodeToArtLand(code) }
                                     : {}),
@@ -2845,73 +2696,6 @@ export function NewCustomerModal({
                               className={inputClass}
                               placeholder={t("newCustomerNamePh", "First and last name")}
                             />
-                            <div className="mt-2 space-y-2 rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2">
-                                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => runContactNameVariants(safeIdx, k.name)}
-                                    disabled={
-                                      (nameVarContact?.idx === safeIdx && nameVarContact.loading) ||
-                                      !k.name.trim()
-                                    }
-                                    className="w-fit rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {t("newCustomerNameVariantsBtn", "Latin / English variants")}
-                                  </button>
-                                  <p className="text-[10px] leading-snug text-slate-500">
-                                    {nameVarAiEnabled
-                                      ? t(
-                                          "newCustomerNameVariantsHintAi",
-                                          "On-device transliteration variants; AI may add more when the server has an API key. Save still runs automatic transliteration."
-                                        )
-                                      : t(
-                                          "newCustomerNameVariantsHintLocal",
-                                          "On-device Latin spellings (no API key). Uses several transliteration options; save still applies the normal automatic pass."
-                                        )}
-                                  </p>
-                                </div>
-                                {nameVarContact?.idx === safeIdx && nameVarContact.loading ? (
-                                  <p className="text-xs text-slate-600">
-                                    {t("newCustomerNameVariantsLoading", "Loading suggestions…")}
-                                  </p>
-                                ) : null}
-                                {nameVarContact?.idx === safeIdx && nameVarContact.err ? (
-                                  <p className="text-xs text-red-700">{nameVarContact.err}</p>
-                                ) : null}
-                                {nameVarContact?.idx === safeIdx &&
-                                nameVarContact.hasRun &&
-                                !nameVarContact.loading &&
-                                !nameVarContact.err &&
-                                nameVarContact.variants.length === 0 ? (
-                                  <p className="text-xs text-slate-600">
-                                    {t("newCustomerNameVariantsEmpty", "No variants returned.")}
-                                  </p>
-                                ) : null}
-                                {nameVarContact?.idx === safeIdx && nameVarContact.variants.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {nameVarContact.variants.map((v, vi) => (
-                                      <button
-                                        key={`k-${vi}-${v.slice(0, 48)}`}
-                                        type="button"
-                                        onClick={() => {
-                                          const x = transliterateToAscii(v);
-                                          setForm((f) => ({
-                                            ...f,
-                                            kontakte: f.kontakte.map((c, i) =>
-                                              i === safeIdx ? { ...c, name: x } : c
-                                            ),
-                                          }));
-                                          setNameVarContact(null);
-                                        }}
-                                        className="max-w-full break-words rounded-md border border-slate-200 bg-white px-2 py-1 text-left text-xs font-medium text-slate-800 hover:border-blue-300 hover:bg-blue-50"
-                                        title={t("newCustomerNameVariantsUse", "Use")}
-                                      >
-                                        {v}
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </div>
                           </div>
 
                           {/* Role / job title */}

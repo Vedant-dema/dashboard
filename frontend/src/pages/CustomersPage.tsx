@@ -924,12 +924,6 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterAufnahmeBis", "Entry to")}</label>
                 <input type="date" className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" />
               </div>
-              <div className="flex items-center">
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input type="checkbox" className="rounded border-slate-300" />
-                  {t("customersFilterKeinKii", "not KIL/KEG/KSL")}
-                </label>
-              </div>
             </div>
           )}
         </div>

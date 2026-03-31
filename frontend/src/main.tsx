@@ -1,10 +1,16 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
+import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import "./index.css";
+import "./app-font-cascade.css";
+
+hydrateAppFontScaleFromStorage();
+hydrateAppFontFamilyFromStorage();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

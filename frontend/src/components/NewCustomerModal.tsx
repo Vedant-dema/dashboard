@@ -19,6 +19,15 @@ import { SuggestTextInput } from "./SuggestTextInput";
 import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
 import type { DepartmentArea } from "../types/departmentArea";
 import type { KundenStamm, KundenWashStamm, ViesCustomerSnapshot } from "../types/kunden";
+import { normalizeLatinAddressLine } from "../common/utils/addressLatinNormalize";
+import {
+  localLatinNameVariants,
+  transliterateToAscii,
+  transliterateToAsciiMultiline,
+} from "../common/utils/transliterateToAscii";
+import { commitAsciiNormalized } from "../common/utils/commitAsciiNormalized";
+import { fetchNameVariantsAiEnabled, suggestNameVariants } from "../services/nameVariantsApi";
+import { isViesProxyHttpErrorGarbage } from "../common/utils/viesProxyErrorText";
 import { useLanguage } from "../contexts/LanguageContext";
 
 type TabId = "vat" | "kunde" | "art" | "waschanlage" | "history";
@@ -236,20 +245,163 @@ function isMeaningfulViesText(s: string | null | undefined): boolean {
   if (s == null) return false;
   const t = String(s).trim();
   if (!t) return false;
+  if (isViesProxyHttpErrorGarbage(t)) return false;
+  if (/not\s+provided\s+by\s+vies/i.test(t)) return false;
   const low = t.toLowerCase();
   if (["---", "n/a", "na", "none", "...", "..", "-", "unknown"].includes(low)) return false;
   const core = t.replace(/[\s\-\u00ad\u2010-\u2015\u2212\u00a0·.]+/gu, "");
   return core.length > 0;
 }
 
-function viesLandToFormLand(viesCode: string): string {
-  const m: Record<string, string> = {
-    DE: "DE",
-    AT: "AT",
-    NL: "NL",
-    PL: "PL",
+function firstNonEmptyStr(o: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = o[k];
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s) return s;
+  }
+  return "";
+}
+
+/** Gateways sometimes wrap the body as `{ data: { valid, … } }`. */
+function unwrapViesCheckJsonEnvelope(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const o = raw as Record<string, unknown>;
+  for (const key of ["data", "result", "payload"] as const) {
+    const inner = o[key];
+    if (!inner || typeof inner !== "object" || Array.isArray(inner)) continue;
+    const io = inner as Record<string, unknown>;
+    if (
+      "valid" in io ||
+      "Valid" in io ||
+      "country_code" in io ||
+      "countryCode" in io ||
+      "vat_number" in io ||
+      "vatNumber" in io
+    ) {
+      return inner;
+    }
+  }
+  return raw;
+}
+
+/**
+ * JSON booleans must stay real booleans — `Boolean("false")` is true in JS, which hid the Apply button
+ * and blocked merge while the network returned a string.
+ */
+function coerceViesCheckValid(v: unknown): boolean {
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0) return false;
+  if (v == null) return false;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "true" || s === "1" || s === "yes") return true;
+    if (s === "false" || s === "0" || s === "no" || s === "") return false;
+  }
+  return Boolean(v);
+}
+
+/** Allow Apply / payload merge when VAT is valid or trader text is present (some proxies mis-set `valid`). */
+function viesResultAllowsFormMerge(r: ViesCheckResult | null | undefined): boolean {
+  if (!r) return false;
+  if (coerceViesCheckValid(r.valid)) return true;
+  return isMeaningfulViesText(r.name) || isMeaningfulViesText(r.address);
+}
+
+/** Normalise `/vat/check` JSON whether keys are snake_case (FastAPI) or camelCase (proxies). */
+function normalizeViesCheckResponseFromApi(raw: unknown): ViesCheckResult | null {
+  const unwrapped = unwrapViesCheckJsonEnvelope(raw);
+  if (!unwrapped || typeof unwrapped !== "object" || Array.isArray(unwrapped)) return null;
+  const o = unwrapped as Record<string, unknown>;
+  const vrTop = o.vies_raw ?? o.viesRaw;
+  let vies_raw: Record<string, unknown> | null =
+    vrTop && typeof vrTop === "object" && !Array.isArray(vrTop) ? (vrTop as Record<string, unknown>) : null;
+
+  let cc = firstNonEmptyStr(o, "country_code", "countryCode").toUpperCase();
+  let nr = firstNonEmptyStr(o, "vat_number", "vatNumber");
+  if (vies_raw) {
+    if (!cc) cc = firstNonEmptyStr(vies_raw, "countryCode", "country_code").toUpperCase();
+    if (!nr) nr = firstNonEmptyStr(vies_raw, "vatNumber", "vat_number");
+  }
+
+  const nameS = firstNonEmptyStr(o, "name") || null;
+  const addrS = firstNonEmptyStr(o, "address") || null;
+  const rd = firstNonEmptyStr(o, "request_date", "requestDate") || null;
+  const rid = firstNonEmptyStr(o, "request_identifier", "requestIdentifier") || null;
+  const tda = o.trader_details_available ?? o.traderDetailsAvailable;
+
+  return {
+    valid: coerceViesCheckValid(o.valid ?? o["Valid"]),
+    country_code: cc,
+    vat_number: nr,
+    name: nameS,
+    address: addrS,
+    request_date: rd,
+    request_identifier: rid,
+    trader_details_available: typeof tda === "boolean" ? tda : Boolean(tda),
+    vies_raw,
+    trader_name_match: firstNonEmptyStr(o, "trader_name_match", "traderNameMatch") || null,
+    trader_street_match: firstNonEmptyStr(o, "trader_street_match", "traderStreetMatch") || null,
+    trader_postal_code_match: firstNonEmptyStr(o, "trader_postal_code_match", "traderPostalCodeMatch") || null,
+    trader_city_match: firstNonEmptyStr(o, "trader_city_match", "traderCityMatch") || null,
+    trader_company_type_match:
+      firstNonEmptyStr(o, "trader_company_type_match", "traderCompanyTypeMatch") || null,
   };
-  return m[viesCode] ?? "OTHER";
+}
+
+/** Last line of a VIES address: postal code + city (EU + common variants). */
+function tryPostalAndCity(lastLine: string): { plz: string; ort: string } | null {
+  const t = lastLine.trim();
+  const patterns: RegExp[] = [
+    /^(\d{2}-\d{3})\s+(.+)$/i,
+    /^([A-Z]\d{2}\s*[A-Z0-9]{4})\s+(.+)$/i,
+    /^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s+(.+)$/i,
+    /^(\d{4}\s*[A-Z]{2})\s+(.+)$/i,
+    /^(?:[A-Z]-)?(\d{4,6})\s+(.+)$/i,
+  ];
+  for (const re of patterns) {
+    const m = t.match(re);
+    if (m) {
+      const ortRaw = m[2]!.trim().replace(/^\s*[-–—]\s*/u, "").trim();
+      return { plz: m[1]!.trim(), ort: ortRaw };
+    }
+  }
+  return null;
+}
+
+function parseViesSingleLineAddress(one: string): { strasse?: string; plz?: string; ort?: string } {
+  for (const sep of [",", ";"] as const) {
+    const idx = one.lastIndexOf(sep);
+    if (idx <= 0) continue;
+    const left = one.slice(0, idx).trim();
+    const right = one.slice(idx + 1).trim();
+    const pc = tryPostalAndCity(right);
+    if (pc && left.length > 0) {
+      return {
+        strasse: normalizeLatinAddressLine(left, "street"),
+        plz: normalizeLatinAddressLine(pc.plz, "postal"),
+        ort: normalizeLatinAddressLine(pc.ort, "city"),
+      };
+    }
+  }
+  const tokens = one.trim().split(/\s+/);
+  if (tokens.length >= 3) {
+    for (let n = 2; n <= Math.min(5, tokens.length - 1); n++) {
+      const tryLine = tokens.slice(-n).join(" ");
+      const pc = tryPostalAndCity(tryLine);
+      if (pc) {
+        const streetTokens = tokens.slice(0, -n);
+        if (streetTokens.length > 0) {
+          return {
+            strasse: normalizeLatinAddressLine(streetTokens.join(" "), "street"),
+            plz: normalizeLatinAddressLine(pc.plz, "postal"),
+            ort: normalizeLatinAddressLine(pc.ort, "city"),
+          };
+        }
+      }
+    }
+  }
+  return { strasse: normalizeLatinAddressLine(one, "street") };
 }
 
 function parseViesAddress(block: string | null | undefined): {
@@ -263,14 +415,75 @@ function parseViesAddress(block: string | null | undefined): {
     .map((l) => l.trim())
     .filter(Boolean);
   if (lines.length === 0) return {};
-  const strasse = lines[0];
-  if (lines.length === 1) return { strasse };
+  if (lines.length === 1) return parseViesSingleLineAddress(lines[0]!);
   const last = lines[lines.length - 1]!;
-  const plzOrt = last.match(/^(\d{4,6})\s+(.+)$/);
-  if (plzOrt) {
-    return { strasse, plz: plzOrt[1], ort: plzOrt[2] };
+  const pc = tryPostalAndCity(last);
+  if (pc) {
+    const streetRaw = lines.length > 2 ? lines.slice(0, -1).join(", ") : lines[0]!;
+    return {
+      strasse: normalizeLatinAddressLine(streetRaw, "street"),
+      plz: normalizeLatinAddressLine(pc.plz, "postal"),
+      ort: normalizeLatinAddressLine(pc.ort, "city"),
+    };
   }
-  return { strasse, ort: lines.slice(1).join(", ") };
+  return {
+    strasse: normalizeLatinAddressLine(lines[0]!, "street"),
+    ort: normalizeLatinAddressLine(lines.slice(1).join(", "), "city"),
+  };
+}
+
+/** Prefer structured VoW fields from `vies_raw`, then parse the combined `address` string. */
+function extractViesAddressForForm(r: ViesCheckResult): {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+} {
+  let strasse: string | undefined;
+  let plz: string | undefined;
+  let ort: string | undefined;
+  const raw = r.vies_raw;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>;
+    const s = firstNonEmptyStr(o, "traderStreet", "trader_street");
+    const p = firstNonEmptyStr(o, "traderPostalCode", "trader_postal_code");
+    const c = firstNonEmptyStr(o, "traderCity", "trader_city");
+    if (s) strasse = normalizeLatinAddressLine(s, "street");
+    if (p) plz = normalizeLatinAddressLine(p, "postal");
+    if (c) ort = normalizeLatinAddressLine(c, "city");
+  }
+  const parsed = isMeaningfulViesText(r.address) ? parseViesAddress(r.address) : {};
+  const structComplete =
+    Boolean(strasse?.trim()) && Boolean(plz?.trim()) && Boolean(ort?.trim());
+  if (structComplete) {
+    return { strasse, plz, ort };
+  }
+  const parsedPlz = parsed.plz?.trim();
+  const parsedStr = parsed.strasse?.trim();
+  const rawPlzMissing = !plz?.trim();
+  const streetLooksLikeFullLine =
+    Boolean(strasse?.trim() && parsedPlz && strasse.includes(parsedPlz));
+  if (parsedPlz && parsedStr && (rawPlzMissing || streetLooksLikeFullLine)) {
+    return {
+      strasse: parsed.strasse,
+      plz: plz?.trim() ? plz : parsed.plz,
+      ort: ort?.trim() ? ort : parsed.ort,
+    };
+  }
+  const merged = {
+    strasse: strasse ?? parsed.strasse,
+    plz: plz ?? parsed.plz,
+    ort: ort ?? parsed.ort,
+  };
+  const hasAny = Boolean(
+    merged.strasse?.trim() || merged.plz?.trim() || merged.ort?.trim()
+  );
+  if (!hasAny && isMeaningfulViesText(r.address)) {
+    const lines = r.address!.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const first = lines[0] ?? r.address!.trim();
+    const s = normalizeLatinAddressLine(first, "street");
+    if (s) return { strasse: s };
+  }
+  return merged;
 }
 
 function normalizeViesRequestDate(raw: string | null | undefined, locale = "en-GB"): string | undefined {
@@ -418,6 +631,7 @@ const LAND_OPTIONS: { code: string; label: string }[] = [
   { code: "NL", label: "Niederlande" },
   { code: "NE", label: "Niger" },
   { code: "NG", label: "Nigeria" },
+  { code: "XI", label: "Nordirland (XI)" },
   { code: "MK", label: "Nordmazedonien" },
   { code: "NO", label: "Norwegen" },
   { code: "AT", label: "Österreich" },
@@ -491,6 +705,161 @@ const LAND_OPTIONS: { code: string; label: string }[] = [
   { code: "CY", label: "Zypern" },
 ];
 
+const LAND_CODE_SET = new Set(LAND_OPTIONS.map((l) => l.code));
+
+/** German (and parenthetical) labels from `LAND_OPTIONS` → ISO code for matching VIES country lines. */
+const LAND_LABEL_TO_CODE: Map<string, string> = (() => {
+  const m = new Map<string, string>();
+  const fold = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .replace(/\s+/g, " ");
+  for (const { code, label } of LAND_OPTIONS) {
+    const noParen = label.replace(/\s*\([^)]*\)\s*/g, "").trim();
+    m.set(fold(label), code);
+    m.set(fold(noParen), code);
+  }
+  return m;
+})();
+
+function foldCountryLabelKey(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ");
+}
+
+/** Two-letter member-state / ISO code from a string (empty if not exactly A–Z × 2). */
+function normalizeAlpha2Country(s: string | null | undefined): string {
+  const t = String(s ?? "")
+    .trim()
+    .toUpperCase();
+  return /^[A-Z]{2}$/.test(t) ? t : "";
+}
+
+/** Map a VIES address footer (country name or `DE`-style code) to a `land_code` in `LAND_OPTIONS`. */
+function viesCountryNameLineToLandCode(line: string): string {
+  const trimmed = line.trim();
+  if (!trimmed) return "";
+  const iso = normalizeAlpha2Country(trimmed);
+  if (iso && LAND_CODE_SET.has(iso)) return iso;
+  const fromDe = LAND_LABEL_TO_CODE.get(foldCountryLabelKey(trimmed.replace(/\s*\([^)]*\)\s*/g, "")));
+  if (fromDe) return fromDe;
+  const lower = trimmed.toLowerCase();
+  for (const loc of ["en", "de", "fr"] as const) {
+    try {
+      const dn = new Intl.DisplayNames([loc], { type: "region" });
+      for (const code of LAND_CODE_SET) {
+        const lbl = dn.of(code);
+        if (!lbl) continue;
+        if (lbl.toLowerCase() === lower || foldCountryLabelKey(lbl) === foldCountryLabelKey(trimmed)) {
+          return code;
+        }
+      }
+    } catch {
+      /* Intl.DisplayNames unsupported */
+    }
+  }
+  return "";
+}
+
+/** Read `countryCode` / `country` from VIES raw JSON (root, nested `address`, `data`, trader blocks). */
+function digCountryCodeFromViesRaw(raw: Record<string, unknown> | null | undefined): string {
+  if (!raw) return "";
+  const fromObj = (o: Record<string, unknown>): string => {
+    const c = normalizeAlpha2Country(
+      firstNonEmptyStr(o, "countryCode", "country_code", "memberStateCode", "member_state_code")
+    );
+    if (c) return c;
+    const cn = firstNonEmptyStr(o, "country");
+    return viesCountryNameLineToLandCode(cn);
+  };
+  const root = fromObj(raw);
+  if (root) return root;
+  for (const k of ["address", "traderAddress", "trader_address", "data"] as const) {
+    const nest = raw[k];
+    if (!nest || typeof nest !== "object" || Array.isArray(nest)) continue;
+    const got = fromObj(nest as Record<string, unknown>);
+    if (got) return got;
+  }
+  return "";
+}
+
+/** If the last line of a multiline VIES address is a country (not PLZ+Ort), resolve it to a land code. */
+function tryCountryCodeFromViesAddressFooter(address: string | null | undefined): string {
+  if (!address?.trim()) return "";
+  const lines = address
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return "";
+  if (lines.length === 1) {
+    const parts = lines[0]!.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const tail = parts[parts.length - 1]!;
+      if (!tryPostalAndCity(tail)) {
+        const c = viesCountryNameLineToLandCode(tail);
+        if (c) return c;
+      }
+    }
+    return "";
+  }
+  const last = lines[lines.length - 1]!;
+  if (tryPostalAndCity(last)) return "";
+  return viesCountryNameLineToLandCode(last);
+}
+
+/**
+ * Land (country) for the form: top-level `country_code`, then `vies_raw`, then address footer, then VAT-tab dropdown.
+ * Only returns codes present in `LAND_OPTIONS`.
+ */
+function extractViesCountryCodeForForm(r: ViesCheckResult, viesMemberStateFallback: string): string {
+  const chain = [
+    String(r.country_code ?? "").trim().toUpperCase(),
+    digCountryCodeFromViesRaw(r.vies_raw ?? null),
+    tryCountryCodeFromViesAddressFooter(r.address),
+    String(viesMemberStateFallback ?? "").trim().toUpperCase(),
+  ];
+  for (const c of chain) {
+    if (!c) continue;
+    const land = viesLandToFormLand(c);
+    if (land) return land;
+  }
+  return "";
+}
+
+/** Two-letter prefix for USt-IdNr. (may be valid VoW code even if not in `LAND_OPTIONS`). */
+function viesAlpha2ForUst(r: ViesCheckResult, viesMemberStateFallback: string): string {
+  const fromLand = extractViesCountryCodeForForm(r, viesMemberStateFallback);
+  if (fromLand) return fromLand;
+  const chain = [
+    String(r.country_code ?? "").trim().toUpperCase(),
+    digCountryCodeFromViesRaw(r.vies_raw ?? null),
+    String(viesMemberStateFallback ?? "").trim().toUpperCase(),
+  ];
+  for (const c of chain) {
+    const a = normalizeAlpha2Country(c);
+    if (a) return a;
+  }
+  return "";
+}
+
+/** Map VIES `country_code` to a `land_code` that exists in `LAND_OPTIONS` (never use a synthetic code). */
+function viesLandToFormLand(viesCode: string | null | undefined): string {
+  const c = String(viesCode ?? "")
+    .trim()
+    .toUpperCase();
+  if (!c) return "";
+  // VIES uses EL for Greece; the address list uses ISO GR.
+  const normalized = c === "EL" ? "GR" : c;
+  return LAND_CODE_SET.has(normalized) ? normalized : "";
+}
+
 /** EU member state codes (excluding DE which maps to IL). GR and EL both included (ISO vs. VIES). */
 const EU_LAND_CODES = new Set(["AT", "BE", "BG", "CY", "CZ", "DK", "EE", "EL", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK", "XI"]);
 
@@ -512,6 +881,20 @@ const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string
   { from: "from-slate-600",   to: "to-slate-800",   dot: "bg-slate-400",   dotActive: "bg-slate-600",   activePill: "bg-slate-600"   },
   { from: "from-sky-500",     to: "to-indigo-500",  dot: "bg-sky-300",     dotActive: "bg-sky-500",     activePill: "bg-sky-500"     },
 ];
+
+type NameVariantPanelState = {
+  loading: boolean;
+  variants: string[];
+  err: string | null;
+  hasRun: boolean;
+};
+
+const NAME_VARIANT_PANEL_IDLE: NameVariantPanelState = {
+  loading: false,
+  variants: [],
+  err: null,
+  hasRun: false,
+};
 
 type WashProgramOption = {
   label: string;
@@ -709,25 +1092,27 @@ function formToPayload(form: FormState): NewKundeInput {
 
   return {
     aufnahme: emptyToUndef(form.aufnahme),
-    firmenname: form.firmenname.trim(),
-    branche: emptyToUndef(form.branche),
+    firmenname: transliterateToAscii(form.firmenname.trim()),
+    branche: emptyToUndef(transliterateToAscii(form.branche)),
     fzg_haendler,
     juristische_person: form.juristische_person,
     natuerliche_person: form.natuerliche_person,
-    gesellschaftsform: emptyToUndef(form.gesellschaftsform),
-    firmenvorsatz: emptyToUndef(form.firmenvorsatz),
-    bemerkungen: emptyToUndef(form.bemerkungen),
+    gesellschaftsform: emptyToUndef(transliterateToAscii(form.gesellschaftsform)),
+    firmenvorsatz: emptyToUndef(transliterateToAscii(form.firmenvorsatz)),
+    bemerkungen: emptyToUndef(transliterateToAsciiMultiline(form.bemerkungen)),
     zustaendige_person_name,
-    strasse: emptyToUndef(form.adressen[0]?.strasse ?? ""),
-    plz: emptyToUndef(form.adressen[0]?.plz ?? ""),
-    ort: emptyToUndef(form.adressen[0]?.ort ?? ""),
+    strasse: emptyToUndef(
+      normalizeLatinAddressLine(form.adressen[0]?.strasse ?? "", "street")
+    ),
+    plz: emptyToUndef(normalizeLatinAddressLine(form.adressen[0]?.plz ?? "", "postal")),
+    ort: emptyToUndef(normalizeLatinAddressLine(form.adressen[0]?.ort ?? "", "city")),
     land_code: form.adressen[0]?.land_code ?? "DE",
     art_land_code: emptyToUndef(form.adressen[0]?.art_land_code ?? ""),
     ust_id_nr: emptyToUndef(form.adressen[0]?.ust_id_nr ?? ""),
     steuer_nr: emptyToUndef(form.adressen[0]?.steuer_nr ?? ""),
     branchen_nr: emptyToUndef(form.adressen[0]?.branchen_nr ?? ""),
-    ansprechpartner: emptyToUndef(form.kontakte[0]?.name ?? ""),
-    rolle_kontakt: emptyToUndef(form.kontakte[0]?.rolle ?? ""),
+    ansprechpartner: emptyToUndef(transliterateToAscii(form.kontakte[0]?.name ?? "")),
+    rolle_kontakt: emptyToUndef(transliterateToAscii(form.kontakte[0]?.rolle ?? "")),
     telefonnummer: emptyToUndef(
       form.kontakte[0]?.telefon
         ? `${form.kontakte[0].telefonCode} ${form.kontakte[0].telefon}`
@@ -740,10 +1125,12 @@ function formToPayload(form: FormState): NewKundeInput {
     ),
     email: emptyToUndef(form.kontakte[0]?.email ?? ""),
     internet_adr: emptyToUndef(form.internet_adr),
-    bemerkungen_kontakt: emptyToUndef(form.kontakte[0]?.bemerkung ?? ""),
+    bemerkungen_kontakt: emptyToUndef(
+      transliterateToAsciiMultiline(form.kontakte[0]?.bemerkung ?? "")
+    ),
     faxen_flag: false,
-    art_kunde: emptyToUndef(form.art_kunde),
-    buchungskonto_haupt: emptyToUndef(form.buchungskonto_haupt),
+    art_kunde: emptyToUndef(transliterateToAscii(form.art_kunde)),
+    buchungskonto_haupt: emptyToUndef(transliterateToAscii(form.buchungskonto_haupt)),
   };
 }
 
@@ -768,7 +1155,7 @@ function viesResultToSnapshot(r: ViesCheckResult): ViesCustomerSnapshot {
 
 function snapshotToViesCheckResult(s: ViesCustomerSnapshot): ViesCheckResult {
   return {
-    valid: s.valid,
+    valid: coerceViesCheckValid(s.valid),
     country_code: s.country_code,
     vat_number: s.vat_number,
     name: s.name,
@@ -788,34 +1175,52 @@ function snapshotToViesCheckResult(s: ViesCustomerSnapshot): ViesCheckResult {
 function mergeVatCheckIntoPayload(
   base: NewKundeInput,
   vatCheckResult: ViesCheckResult | null,
-  localeTag: string
+  localeTag: string,
+  /** Member state chosen in the VAT tab — used if the API omits `country_code` (same as Apply to form). */
+  viesMemberStateFallback: string,
+  /** VAT digits typed in the modal when the API omits `vat_number`. */
+  viesVatInputFallback: string
 ): NewKundeInput {
   if (!vatCheckResult) return base;
   const out: NewKundeInput = { ...base, vies_snapshot: viesResultToSnapshot(vatCheckResult) };
-  if (!vatCheckResult.valid) return out;
+  if (!viesResultAllowsFormMerge(vatCheckResult)) return out;
 
-  const cc = vatCheckResult.country_code;
-  const nr = vatCheckResult.vat_number;
-  const ustFromVies = `${cc}${nr}`.replace(/\s+/g, "");
-  const addr = isMeaningfulViesText(vatCheckResult.address)
-    ? parseViesAddress(vatCheckResult.address)
-    : {};
+  const ccUst = viesAlpha2ForUst(vatCheckResult, viesMemberStateFallback);
+  let nr = String(vatCheckResult.vat_number ?? "").trim();
+  if (!nr) {
+    let raw = String(viesVatInputFallback ?? "").replace(/\s+/g, "");
+    const pfx = (ccUst || viesMemberStateFallback).toUpperCase();
+    if (pfx && raw.toUpperCase().startsWith(pfx)) raw = raw.slice(pfx.length);
+    nr = raw;
+  }
+  const ustFromVies = `${ccUst}${nr}`.replace(/\s+/g, "");
+  const addr = extractViesAddressForForm(vatCheckResult);
   const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
-  const derivedLandCode = viesLandToFormLand(cc);
+  const derivedLandCode =
+    extractViesCountryCodeForForm(vatCheckResult, viesMemberStateFallback) ||
+    viesLandToFormLand(viesMemberStateFallback);
   const viesRequestDate = normalizeViesRequestDate(vatCheckResult.request_date, localeTag);
   const hadUst = Boolean((base.ust_id_nr ?? "").trim());
 
+  const applyLandFromVies = Boolean(derivedLandCode);
+
   if (!hadUst) {
     out.ust_id_nr = ustFromVies;
-    out.land_code = derivedLandCode;
-    out.art_land_code = landCodeToArtLand(derivedLandCode);
-    if (nm && !(base.firmenname ?? "").trim()) out.firmenname = nm;
+    if (applyLandFromVies) {
+      out.land_code = derivedLandCode;
+      out.art_land_code = landCodeToArtLand(derivedLandCode);
+    }
+    if (nm && !(base.firmenname ?? "").trim()) out.firmenname = transliterateToAscii(nm);
     if (addr.strasse && !(base.strasse ?? "").trim()) out.strasse = addr.strasse;
     if (addr.plz && !(base.plz ?? "").trim()) out.plz = addr.plz;
     if (addr.ort && !(base.ort ?? "").trim()) out.ort = addr.ort;
     if (viesRequestDate && !(base.aufnahme ?? "").trim()) out.aufnahme = viesRequestDate;
   } else {
-    if (!(base.firmenname ?? "").trim() && nm) out.firmenname = nm;
+    if (applyLandFromVies) {
+      out.land_code = derivedLandCode;
+      out.art_land_code = landCodeToArtLand(derivedLandCode);
+    }
+    if (!(base.firmenname ?? "").trim() && nm) out.firmenname = transliterateToAscii(nm);
     if (!(base.strasse ?? "").trim() && addr.strasse) out.strasse = addr.strasse;
     if (!(base.plz ?? "").trim() && addr.plz) out.plz = addr.plz;
     if (!(base.ort ?? "").trim() && addr.ort) out.ort = addr.ort;
@@ -828,18 +1233,20 @@ function mergeVatCheckIntoPayload(
 function washFormToPayload(form: FormState): KundenWashUpsertFields {
   const limit = Math.max(0, Number(form.wash_limit) || 0);
   return {
-    bukto: emptyToUndef(form.wash_bukto),
+    bukto: emptyToUndef(transliterateToAscii(form.wash_bukto)),
     limit_betrag: limit,
-    rechnung_zusatz: emptyToUndef(form.wash_rechnung_zusatz),
-    rechnung_plz: emptyToUndef(form.wash_rechnung_plz),
-    rechnung_ort: emptyToUndef(form.wash_rechnung_ort),
-    rechnung_strasse: emptyToUndef(form.wash_rechnung_strasse),
+    rechnung_zusatz: emptyToUndef(transliterateToAscii(form.wash_rechnung_zusatz)),
+    rechnung_plz: emptyToUndef(normalizeLatinAddressLine(form.wash_rechnung_plz ?? "", "postal")),
+    rechnung_ort: emptyToUndef(normalizeLatinAddressLine(form.wash_rechnung_ort ?? "", "city")),
+    rechnung_strasse: emptyToUndef(
+      normalizeLatinAddressLine(form.wash_rechnung_strasse ?? "", "street")
+    ),
     kunde_gesperrt: form.wash_kunde_gesperrt,
-    bankname: emptyToUndef(form.wash_bankname),
+    bankname: emptyToUndef(transliterateToAscii(form.wash_bankname)),
     bic: emptyToUndef(form.wash_bic),
     iban: emptyToUndef(form.wash_iban),
-    wichtige_infos: emptyToUndef(form.wash_wichtige_infos),
-    bemerkungen: emptyToUndef(form.wash_bemerkungen),
+    wichtige_infos: emptyToUndef(transliterateToAsciiMultiline(form.wash_wichtige_infos)),
+    bemerkungen: emptyToUndef(transliterateToAsciiMultiline(form.wash_bemerkungen)),
     lastschrift: form.wash_lastschrift,
     kennzeichen: form.wash_kennzeichen_list.length > 0
       ? form.wash_kennzeichen_list.join(", ")
@@ -953,6 +1360,20 @@ export function NewCustomerModal({
   const [vatCheckLoading, setVatCheckLoading] = useState(false);
   const [vatCheckResult, setVatCheckResult] = useState<ViesCheckResult | null>(null);
   const [vatCheckError, setVatCheckError] = useState<string | null>(null);
+  /** Parsed Straße/PLZ/Ort preview — same logic as Apply to form (only when PLZ or Ort was derived). */
+  const viesFormAddressSplitPreview = useMemo(() => {
+    if (!vatCheckResult || !isMeaningfulViesText(vatCheckResult.address)) return null;
+    const a = extractViesAddressForForm(vatCheckResult);
+    if (!a.plz?.trim() && !a.ort?.trim()) return null;
+    return a;
+  }, [vatCheckResult]);
+  /** Optional: server has OpenAI-compatible key; local on-device variants always work without it. */
+  const [nameVarAiEnabled, setNameVarAiEnabled] = useState(false);
+  const [nameVarCompany, setNameVarCompany] =
+    useState<NameVariantPanelState>(NAME_VARIANT_PANEL_IDLE);
+  const [nameVarContact, setNameVarContact] = useState<
+    (NameVariantPanelState & { idx: number }) | null
+  >(null);
   const isEditMode = mode === "edit";
   const hasEditKundeSideContent = isEditMode && Boolean(editKundeSideContent);
   const tabOrder: TabId[] = isEditMode
@@ -989,6 +1410,8 @@ export function NewCustomerModal({
     setVatCheckLoading(false);
     setVatCheckResult(null);
     setVatCheckError(null);
+    setNameVarCompany(NAME_VARIANT_PANEL_IDLE);
+    setNameVarContact(null);
     if (isEditMode && editInitial?.kunde.vies_snapshot) {
       const vs = editInitial.kunde.vies_snapshot;
       setViesCountry((vs.country_code || "DE").trim() || "DE");
@@ -1001,9 +1424,68 @@ export function NewCustomerModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, department, isEditMode, editInitial]);
 
+  useEffect(() => {
+    if (!open) return;
+    let cancel = false;
+    void fetchNameVariantsAiEnabled().then((en) => {
+      if (!cancel) setNameVarAiEnabled(en);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [open]);
+
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
   }, []);
+
+  const applyLocalCompanyVariants = (raw: string) => {
+    const variants = localLatinNameVariants(raw);
+    setNameVarCompany({ loading: false, variants, err: null, hasRun: true });
+  };
+
+  const runCompanyNameVariants = () => {
+    const raw = form.firmenname.trim();
+    if (!raw) return;
+    setNameVarCompany({ loading: true, variants: [], err: null, hasRun: false });
+    if (!nameVarAiEnabled) {
+      applyLocalCompanyVariants(raw);
+      return;
+    }
+    void suggestNameVariants(raw, "company")
+      .then((variants) => {
+        if (variants.length > 0) {
+          setNameVarCompany({ loading: false, variants, err: null, hasRun: true });
+        } else {
+          applyLocalCompanyVariants(raw);
+        }
+      })
+      .catch(() => applyLocalCompanyVariants(raw));
+  };
+
+  const applyLocalContactVariants = (idx: number, raw: string) => {
+    const variants = localLatinNameVariants(raw);
+    setNameVarContact({ idx, loading: false, variants, err: null, hasRun: true });
+  };
+
+  const runContactNameVariants = (idx: number, rawName: string) => {
+    const raw = rawName.trim();
+    if (!raw) return;
+    setNameVarContact({ idx, loading: true, variants: [], err: null, hasRun: false });
+    if (!nameVarAiEnabled) {
+      applyLocalContactVariants(idx, raw);
+      return;
+    }
+    void suggestNameVariants(raw, "person")
+      .then((variants) => {
+        if (variants.length > 0) {
+          setNameVarContact({ idx, loading: false, variants, err: null, hasRun: true });
+        } else {
+          applyLocalContactVariants(idx, raw);
+        }
+      })
+      .catch(() => applyLocalContactVariants(idx, raw));
+  };
 
   // ── Document extraction state ──
   const [docScanState, setDocScanState] = useState<ScanState>("idle");
@@ -1197,7 +1679,6 @@ export function NewCustomerModal({
         body: JSON.stringify({
           country_code: viesCountry,
           vat_number: trimmed,
-          text_locale: language === "de" ? "de" : "en",
         }),
       });
       // status 0 means the browser blocked the request (CORS / network).
@@ -1240,8 +1721,15 @@ export function NewCustomerModal({
         setVatCheckError(formatVatCheckDetail(body));
         return;
       }
-      const body = parsedBody as ViesCheckResult;
+      const body =
+        normalizeViesCheckResponseFromApi(parsedBody) ?? (parsedBody as ViesCheckResult);
       setVatCheckResult(body);
+      const apiCc = String(body.country_code ?? "")
+        .trim()
+        .toUpperCase();
+      if (apiCc && VIES_MS_OPTIONS.some((o) => o.code === apiCc)) {
+        setViesCountry(apiCc);
+      }
     } catch (err) {
       const jsMsg = err instanceof Error ? err.message : String(err)
       const targetUrl = `${API_BASE || "(Vite-Proxy)"}/api/v1/vat/check`
@@ -1257,34 +1745,51 @@ export function NewCustomerModal({
   };
 
   const applyViesResultToForm = () => {
-    if (!vatCheckResult?.valid) return;
-    const cc = vatCheckResult.country_code;
-    const nr = vatCheckResult.vat_number;
-    const ust = `${cc}${nr}`.replace(/\s+/g, "");
-    const addr = isMeaningfulViesText(vatCheckResult.address)
-      ? parseViesAddress(vatCheckResult.address)
-      : {};
+    if (!vatCheckResult || !viesResultAllowsFormMerge(vatCheckResult)) return;
+    const ccUst = viesAlpha2ForUst(vatCheckResult, viesCountry);
+    let nr = String(vatCheckResult.vat_number ?? "").trim();
+    if (!nr) {
+      let raw = String(viesVatInput ?? "").replace(/\s+/g, "");
+      const pfx = (ccUst || viesCountry).toUpperCase();
+      if (pfx && raw.toUpperCase().startsWith(pfx)) raw = raw.slice(pfx.length);
+      nr = raw;
+    }
+    const ust = `${ccUst}${nr}`.replace(/\s+/g, "");
+    const addr = extractViesAddressForForm(vatCheckResult);
     const nm = isMeaningfulViesText(vatCheckResult.name) ? vatCheckResult.name!.trim() : "";
     const viesRequestDate = normalizeViesRequestDate(vatCheckResult.request_date, localeTag);
-    const derivedLandCode = viesLandToFormLand(cc);
-    setForm((f) => ({
-      ...f,
-      ...(viesRequestDate ? { aufnahme: viesRequestDate } : {}),
-      ...(nm ? { firmenname: nm } : {}),
-      adressen: f.adressen.map((a, i) =>
-        i === 0
-          ? {
-              ...a,
-              ust_id_nr: ust,
-              land_code: derivedLandCode,
-              art_land_code: landCodeToArtLand(derivedLandCode),
-              ...(addr.strasse ? { strasse: addr.strasse } : {}),
-              ...(addr.plz ? { plz: addr.plz } : {}),
-              ...(addr.ort ? { ort: addr.ort } : {}),
-            }
-          : a
-      ),
-    }));
+    const derivedLandCode =
+      extractViesCountryCodeForForm(vatCheckResult, viesCountry) ||
+      viesLandToFormLand(viesCountry);
+    /** Customer master record and `formToPayload` use `adressen[0]` only — always fill the main address. */
+    const mainIdx = 0;
+    setForm((f) => {
+      const list = f.adressen.length > 0 ? f.adressen : [emptyAdresse()];
+      const idx = Math.min(mainIdx, Math.max(0, list.length - 1));
+      return {
+        ...f,
+        ...(viesRequestDate ? { aufnahme: viesRequestDate } : {}),
+        ...(nm ? { firmenname: transliterateToAscii(nm) } : {}),
+        adressen: list.map((a, i) =>
+          i === idx
+            ? {
+                ...a,
+                ust_id_nr: ust,
+                ...(derivedLandCode
+                  ? {
+                      land_code: derivedLandCode,
+                      art_land_code: landCodeToArtLand(derivedLandCode),
+                    }
+                  : {}),
+                ...(addr.strasse ? { strasse: addr.strasse } : {}),
+                ...(addr.plz ? { plz: addr.plz } : {}),
+                ...(addr.ort ? { ort: addr.ort } : {}),
+              }
+            : a
+        ),
+      };
+    });
+    setActiveAdresseIdx(0);
     if (viesRequestDate) {
       setAufnahmePreview(viesRequestDate);
     }
@@ -1293,7 +1798,13 @@ export function NewCustomerModal({
 
   const submitCustomer = (attachScanned: boolean) => {
     const wash = form.includeWashProfile ? washFormToPayload(form) : null;
-    const payload = mergeVatCheckIntoPayload(formToPayload(form), vatCheckResult, localeTag);
+    const payload = mergeVatCheckIntoPayload(
+      formToPayload(form),
+      vatCheckResult,
+      localeTag,
+      viesCountry,
+      viesVatInput
+    );
     const finalPayload =
       isEditMode && editInitial
         ? { ...payload, kunden_nr: editInitial.kunde.kunden_nr }
@@ -1466,7 +1977,23 @@ export function NewCustomerModal({
                     <label className={labelClass}>{t("newCustomerVatMemberState", "Member state / scheme")}</label>
                     <select
                       value={viesCountry}
-                      onChange={(e) => setViesCountry(e.target.value)}
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setViesCountry(code);
+                        const land = viesLandToFormLand(code);
+                        if (!land) return;
+                        setForm((f) => {
+                          const list = f.adressen.length > 0 ? f.adressen : [emptyAdresse()];
+                          return {
+                            ...f,
+                            adressen: list.map((a, i) =>
+                              i === 0
+                                ? { ...a, land_code: land, art_land_code: landCodeToArtLand(land) }
+                                : a
+                            ),
+                          };
+                        });
+                      }}
                       className={inputClass}
                     >
                       {VIES_MS_OPTIONS.map((o) => (
@@ -1497,7 +2024,7 @@ export function NewCustomerModal({
                   >
                     {vatCheckLoading ? t("newCustomerVatChecking", "Checking…") : t("newCustomerVatCheck", "Check with VIES")}
                   </button>
-                  {vatCheckResult?.valid ? (
+                  {vatCheckResult && viesResultAllowsFormMerge(vatCheckResult) ? (
                     <button
                       type="button"
                       onClick={applyViesResultToForm}
@@ -1515,13 +2042,13 @@ export function NewCustomerModal({
                 {vatCheckResult ? (
                   <div
                     className={`mt-4 rounded-lg border px-3 py-3 text-sm ${
-                      vatCheckResult.valid
+                      coerceViesCheckValid(vatCheckResult.valid)
                         ? "border-emerald-200 bg-emerald-50 text-emerald-950"
                         : "border-amber-200 bg-amber-50 text-amber-950"
                     }`}
                   >
                     <p className="font-semibold">
-                      {vatCheckResult.valid
+                      {coerceViesCheckValid(vatCheckResult.valid)
                         ? t("newCustomerVatValid", "VAT ID valid according to VIES")
                         : t("newCustomerVatInvalid", "VAT ID invalid or not confirmed")}
                     </p>
@@ -1529,7 +2056,7 @@ export function NewCustomerModal({
                       {vatCheckResult.country_code}
                       {vatCheckResult.vat_number}
                     </p>
-                    {vatCheckResult.valid &&
+                    {coerceViesCheckValid(vatCheckResult.valid) &&
                     !isMeaningfulViesText(vatCheckResult.name) &&
                     !isMeaningfulViesText(vatCheckResult.address) ? (
                       <p className="mt-2 rounded-md border border-emerald-300/60 bg-white/80 px-2 py-2 text-xs leading-relaxed text-slate-700">
@@ -1555,10 +2082,48 @@ export function NewCustomerModal({
                       </p>
                     ) : null}
                     {isMeaningfulViesText(vatCheckResult.address) ? (
-                      <p className="mt-1 whitespace-pre-line text-slate-800">
-                        <span className="font-medium text-slate-600">{t("newCustomerVatAddressLabel", "Address:")} </span>
-                        {vatCheckResult.address}
-                      </p>
+                      <div className="mt-1 text-slate-800">
+                        <p className="whitespace-pre-line">
+                          <span className="font-medium text-slate-600">
+                            {t("newCustomerVatAddressLabel", "Address:")}{" "}
+                          </span>
+                          {vatCheckResult.address}
+                        </p>
+                        {viesFormAddressSplitPreview ? (
+                          <div className="mt-2 rounded-md border border-emerald-200/80 bg-white/90 px-2.5 py-2 text-xs text-slate-800">
+                            <p className="font-semibold text-emerald-900">
+                              {t(
+                                "newCustomerVatAddressFormSplitHint",
+                                "Split for the form (same as Apply to form)"
+                              )}
+                            </p>
+                            {viesFormAddressSplitPreview.strasse?.trim() ? (
+                              <p className="mt-1">
+                                <span className="font-medium text-slate-600">
+                                  {t("newCustomerLabelStrasse", "Street")}:
+                                </span>{" "}
+                                {viesFormAddressSplitPreview.strasse}
+                              </p>
+                            ) : null}
+                            {viesFormAddressSplitPreview.plz?.trim() ? (
+                              <p className="mt-0.5">
+                                <span className="font-medium text-slate-600">
+                                  {t("newCustomerLabelPLZ", "ZIP")}:
+                                </span>{" "}
+                                {viesFormAddressSplitPreview.plz}
+                              </p>
+                            ) : null}
+                            {viesFormAddressSplitPreview.ort?.trim() ? (
+                              <p className="mt-0.5">
+                                <span className="font-medium text-slate-600">
+                                  {t("newCustomerLabelOrt", "City")}:
+                                </span>{" "}
+                                {viesFormAddressSplitPreview.ort}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                     {vatCheckResult.request_identifier ? (
                       <p className="mt-2 break-all font-mono text-[11px] text-slate-700">
@@ -1654,6 +2219,16 @@ export function NewCustomerModal({
                           type="text"
                           value={form.branche}
                           onChange={(e) => set("branche", e.target.value)}
+                          onBlur={(e) =>
+                            commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                              set("branche", v)
+                            )
+                          }
+                          onCompositionEnd={(e) =>
+                            commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                              set("branche", v)
+                            )
+                          }
                           className={inputClass}
                           suggestions={fieldSuggestions.branche}
                           title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
@@ -1694,6 +2269,16 @@ export function NewCustomerModal({
                           type="text"
                           value={form.gesellschaftsform}
                           onChange={(e) => set("gesellschaftsform", e.target.value)}
+                          onBlur={(e) =>
+                            commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                              set("gesellschaftsform", v)
+                            )
+                          }
+                          onCompositionEnd={(e) =>
+                            commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                              set("gesellschaftsform", v)
+                            )
+                          }
                           placeholder={t("newCustomerGesellschaftsformPh", "e.g. GmbH, AG")}
                           className={inputClass}
                           suggestions={fieldSuggestions.gesellschaftsform}
@@ -1731,6 +2316,16 @@ export function NewCustomerModal({
                         type="text"
                         value={form.firmenvorsatz}
                         onChange={(e) => set("firmenvorsatz", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("firmenvorsatz", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("firmenvorsatz", v)
+                          )
+                        }
                         className={inputClass}
                         suggestions={fieldSuggestions.firmenvorsatz}
                         title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
@@ -1748,11 +2343,78 @@ export function NewCustomerModal({
                         type="text"
                         value={form.firmenname}
                         onChange={(e) => set("firmenname", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("firmenname", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("firmenname", v)
+                          )
+                        }
                         className={inputClass}
                         suggestions={fieldSuggestions.firmenname}
                         title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                       />
                     </ExtractedFieldWrapper>
+                    <div className="mt-2 space-y-2 rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                          <button
+                            type="button"
+                            onClick={runCompanyNameVariants}
+                            disabled={nameVarCompany.loading || !form.firmenname.trim()}
+                            className="w-fit rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {t("newCustomerNameVariantsBtn", "Latin / English variants")}
+                          </button>
+                          <p className="text-[10px] leading-snug text-slate-500">
+                            {nameVarAiEnabled
+                              ? t(
+                                  "newCustomerNameVariantsHintAi",
+                                  "On-device transliteration variants; AI may add more when the server has an API key. Save still runs automatic transliteration."
+                                )
+                              : t(
+                                  "newCustomerNameVariantsHintLocal",
+                                  "On-device Latin spellings (no API key). Uses several transliteration options; save still applies the normal automatic pass."
+                                )}
+                          </p>
+                        </div>
+                        {nameVarCompany.loading ? (
+                          <p className="text-xs text-slate-600">
+                            {t("newCustomerNameVariantsLoading", "Loading suggestions…")}
+                          </p>
+                        ) : null}
+                        {nameVarCompany.err ? (
+                          <p className="text-xs text-red-700">{nameVarCompany.err}</p>
+                        ) : null}
+                        {nameVarCompany.hasRun &&
+                        !nameVarCompany.loading &&
+                        !nameVarCompany.err &&
+                        nameVarCompany.variants.length === 0 ? (
+                          <p className="text-xs text-slate-600">
+                            {t("newCustomerNameVariantsEmpty", "No variants returned.")}
+                          </p>
+                        ) : null}
+                        {nameVarCompany.variants.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {nameVarCompany.variants.map((v, vi) => (
+                              <button
+                                key={`c-${vi}-${v.slice(0, 48)}`}
+                                type="button"
+                                onClick={() => {
+                                  set("firmenname", transliterateToAscii(v));
+                                  setNameVarCompany(NAME_VARIANT_PANEL_IDLE);
+                                }}
+                                className="max-w-full break-words rounded-md border border-slate-200 bg-white px-2 py-1 text-left text-xs font-medium text-slate-800 hover:border-blue-300 hover:bg-blue-50"
+                                title={t("newCustomerNameVariantsUse", "Use")}
+                              >
+                                {v}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                   </div>
 
 
@@ -1761,6 +2423,16 @@ export function NewCustomerModal({
                     <textarea
                       value={form.bemerkungen}
                       onChange={(e) => set("bemerkungen", e.target.value)}
+                      onBlur={(e) =>
+                        commitAsciiNormalized(e.target, transliterateToAsciiMultiline, (v) =>
+                          set("bemerkungen", v)
+                        )
+                      }
+                      onCompositionEnd={(e) =>
+                        commitAsciiNormalized(e.currentTarget, transliterateToAsciiMultiline, (v) =>
+                          set("bemerkungen", v)
+                        )
+                      }
                       rows={8}
                       className={`${inputClass} resize-y py-2 min-h-[120px]`}
                     />
@@ -1883,9 +2555,9 @@ export function NewCustomerModal({
                                 const landOk =
                                   code !== "" && LAND_OPTIONS.some((l) => l.code === code);
                                 patchAdresse({
-                                  strasse: line1,
-                                  plz: r.plz ?? "",
-                                  ort: r.ort ?? "",
+                                  strasse: normalizeLatinAddressLine(line1, "street"),
+                                  plz: normalizeLatinAddressLine(r.plz ?? "", "postal"),
+                                  ort: normalizeLatinAddressLine(r.ort ?? "", "city"),
                                   ...(landOk
                                     ? { land_code: code, art_land_code: landCodeToArtLand(code) }
                                     : {}),
@@ -1900,6 +2572,20 @@ export function NewCustomerModal({
                                 type="text"
                                 value={a.strasse}
                                 onChange={(e) => patchAdresse({ strasse: e.target.value })}
+                                onBlur={(e) =>
+                                  commitAsciiNormalized(
+                                    e.target,
+                                    (s) => normalizeLatinAddressLine(s, "street"),
+                                    (v) => patchAdresse({ strasse: v })
+                                  )
+                                }
+                                onCompositionEnd={(e) =>
+                                  commitAsciiNormalized(
+                                    e.currentTarget,
+                                    (s) => normalizeLatinAddressLine(s, "street"),
+                                    (v) => patchAdresse({ strasse: v })
+                                  )
+                                }
                                 placeholder={t("newCustomerStrassePh", "unknown")}
                                 className={inputClass}
                                 suggestions={fieldSuggestions.strasse}
@@ -1916,6 +2602,20 @@ export function NewCustomerModal({
                                   type="text"
                                   value={a.plz}
                                   onChange={(e) => patchAdresse({ plz: e.target.value })}
+                                  onBlur={(e) =>
+                                    commitAsciiNormalized(
+                                      e.target,
+                                      (s) => normalizeLatinAddressLine(s, "postal"),
+                                      (v) => patchAdresse({ plz: v })
+                                    )
+                                  }
+                                  onCompositionEnd={(e) =>
+                                    commitAsciiNormalized(
+                                      e.currentTarget,
+                                      (s) => normalizeLatinAddressLine(s, "postal"),
+                                      (v) => patchAdresse({ plz: v })
+                                    )
+                                  }
                                   className={inputClass}
                                   suggestions={fieldSuggestions.plz}
                                   title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
@@ -1929,6 +2629,20 @@ export function NewCustomerModal({
                                   type="text"
                                   value={a.ort}
                                   onChange={(e) => patchAdresse({ ort: e.target.value })}
+                                  onBlur={(e) =>
+                                    commitAsciiNormalized(
+                                      e.target,
+                                      (s) => normalizeLatinAddressLine(s, "city"),
+                                      (v) => patchAdresse({ ort: v })
+                                    )
+                                  }
+                                  onCompositionEnd={(e) =>
+                                    commitAsciiNormalized(
+                                      e.currentTarget,
+                                      (s) => normalizeLatinAddressLine(s, "city"),
+                                      (v) => patchAdresse({ ort: v })
+                                    )
+                                  }
                                   className={inputClass}
                                   suggestions={fieldSuggestions.ort}
                                   title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
@@ -2108,9 +2822,96 @@ export function NewCustomerModal({
                                   ),
                                 }))
                               }
+                              onBlur={(e) =>
+                                commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, name: v } : c
+                                    ),
+                                  }))
+                                )
+                              }
+                              onCompositionEnd={(e) =>
+                                commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, name: v } : c
+                                    ),
+                                  }))
+                                )
+                              }
                               className={inputClass}
                               placeholder={t("newCustomerNamePh", "First and last name")}
                             />
+                            <div className="mt-2 space-y-2 rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2">
+                                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => runContactNameVariants(safeIdx, k.name)}
+                                    disabled={
+                                      (nameVarContact?.idx === safeIdx && nameVarContact.loading) ||
+                                      !k.name.trim()
+                                    }
+                                    className="w-fit rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {t("newCustomerNameVariantsBtn", "Latin / English variants")}
+                                  </button>
+                                  <p className="text-[10px] leading-snug text-slate-500">
+                                    {nameVarAiEnabled
+                                      ? t(
+                                          "newCustomerNameVariantsHintAi",
+                                          "On-device transliteration variants; AI may add more when the server has an API key. Save still runs automatic transliteration."
+                                        )
+                                      : t(
+                                          "newCustomerNameVariantsHintLocal",
+                                          "On-device Latin spellings (no API key). Uses several transliteration options; save still applies the normal automatic pass."
+                                        )}
+                                  </p>
+                                </div>
+                                {nameVarContact?.idx === safeIdx && nameVarContact.loading ? (
+                                  <p className="text-xs text-slate-600">
+                                    {t("newCustomerNameVariantsLoading", "Loading suggestions…")}
+                                  </p>
+                                ) : null}
+                                {nameVarContact?.idx === safeIdx && nameVarContact.err ? (
+                                  <p className="text-xs text-red-700">{nameVarContact.err}</p>
+                                ) : null}
+                                {nameVarContact?.idx === safeIdx &&
+                                nameVarContact.hasRun &&
+                                !nameVarContact.loading &&
+                                !nameVarContact.err &&
+                                nameVarContact.variants.length === 0 ? (
+                                  <p className="text-xs text-slate-600">
+                                    {t("newCustomerNameVariantsEmpty", "No variants returned.")}
+                                  </p>
+                                ) : null}
+                                {nameVarContact?.idx === safeIdx && nameVarContact.variants.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {nameVarContact.variants.map((v, vi) => (
+                                      <button
+                                        key={`k-${vi}-${v.slice(0, 48)}`}
+                                        type="button"
+                                        onClick={() => {
+                                          const x = transliterateToAscii(v);
+                                          setForm((f) => ({
+                                            ...f,
+                                            kontakte: f.kontakte.map((c, i) =>
+                                              i === safeIdx ? { ...c, name: x } : c
+                                            ),
+                                          }));
+                                          setNameVarContact(null);
+                                        }}
+                                        className="max-w-full break-words rounded-md border border-slate-200 bg-white px-2 py-1 text-left text-xs font-medium text-slate-800 hover:border-blue-300 hover:bg-blue-50"
+                                        title={t("newCustomerNameVariantsUse", "Use")}
+                                      >
+                                        {v}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
                           </div>
 
                           {/* Role / job title */}
@@ -2247,6 +3048,26 @@ export function NewCustomerModal({
                                   ),
                                 }))
                               }
+                              onBlur={(e) =>
+                                commitAsciiNormalized(e.target, transliterateToAsciiMultiline, (v) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, bemerkung: v } : c
+                                    ),
+                                  }))
+                                )
+                              }
+                              onCompositionEnd={(e) =>
+                                commitAsciiNormalized(e.currentTarget, transliterateToAsciiMultiline, (v) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx ? { ...c, bemerkung: v } : c
+                                    ),
+                                  }))
+                                )
+                              }
                               rows={8}
                               className={`${inputClass} resize-y py-2 min-h-[120px]`}
                             />
@@ -2277,6 +3098,14 @@ export function NewCustomerModal({
                   type="text"
                   value={form.art_kunde}
                   onChange={(e) => set("art_kunde", e.target.value)}
+                  onBlur={(e) =>
+                    commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("art_kunde", v))
+                  }
+                  onCompositionEnd={(e) =>
+                    commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                      set("art_kunde", v)
+                    )
+                  }
                   className={inputClass}
                   suggestions={fieldSuggestions.art_kunde}
                   title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
@@ -2288,6 +3117,16 @@ export function NewCustomerModal({
                   type="text"
                   value={form.buchungskonto_haupt}
                   onChange={(e) => set("buchungskonto_haupt", e.target.value)}
+                  onBlur={(e) =>
+                    commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                      set("buchungskonto_haupt", v)
+                    )
+                  }
+                  onCompositionEnd={(e) =>
+                    commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                      set("buchungskonto_haupt", v)
+                    )
+                  }
                   className={inputClass}
                   suggestions={fieldSuggestions.buchungskonto_haupt}
                   title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
@@ -2331,6 +3170,16 @@ export function NewCustomerModal({
                           type="text"
                           value={form.wash_bankname}
                           onChange={(e) => set("wash_bankname", e.target.value)}
+                          onBlur={(e) =>
+                            commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                              set("wash_bankname", v)
+                            )
+                          }
+                          onCompositionEnd={(e) =>
+                            commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                              set("wash_bankname", v)
+                            )
+                          }
                           className={inputClass}
                           suggestions={fieldSuggestions.wash_bankname}
                           title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
@@ -2381,6 +3230,16 @@ export function NewCustomerModal({
                         type="text"
                         value={form.wash_bukto}
                         onChange={(e) => set("wash_bukto", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("wash_bukto", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("wash_bukto", v)
+                          )
+                        }
                         className={inputClass}
                         suggestions={fieldSuggestions.wash_bukto}
                         title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
@@ -2571,6 +3430,16 @@ export function NewCustomerModal({
                         type="text"
                         value={form.wasch_intervall}
                         onChange={(e) => set("wasch_intervall", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("wasch_intervall", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("wasch_intervall", v)
+                          )
+                        }
                         placeholder={t("newCustomerIntervallPh", "e.g. weekly")}
                         className={inputClass}
                         suggestions={fieldSuggestions.wasch_intervall}
@@ -2582,6 +3451,16 @@ export function NewCustomerModal({
                       <textarea
                         value={form.wash_wichtige_infos}
                         onChange={(e) => set("wash_wichtige_infos", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAsciiMultiline, (v) =>
+                            set("wash_wichtige_infos", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAsciiMultiline, (v) =>
+                            set("wash_wichtige_infos", v)
+                          )
+                        }
                         rows={2}
                         className={`${inputClass} min-h-[64px] resize-y py-2`}
                       />
@@ -2591,6 +3470,16 @@ export function NewCustomerModal({
                       <textarea
                         value={form.wash_bemerkungen}
                         onChange={(e) => set("wash_bemerkungen", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAsciiMultiline, (v) =>
+                            set("wash_bemerkungen", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAsciiMultiline, (v) =>
+                            set("wash_bemerkungen", v)
+                          )
+                        }
                         rows={3}
                         className={`${inputClass} min-h-[80px] resize-y py-2`}
                       />

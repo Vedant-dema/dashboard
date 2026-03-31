@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Bell,
   Briefcase,
@@ -7,15 +7,33 @@ import {
   KeyRound,
   Mail,
   MapPin,
+  Minus,
   Monitor,
   Moon,
   Phone,
+  Plus,
   Shield,
   Smartphone,
   Sun,
   Trash2,
+  Type,
   UserCog,
 } from "lucide-react";
+import {
+  applyFontFamilyPreset,
+  clampFontFamilyPreset,
+  FONT_FAMILY_PRESET_IDS,
+  FONT_FAMILY_STACKS,
+  readFontFamilyPresetFromStorage,
+  type FontFamilyPresetId,
+} from "../common/utils/appFontFamily";
+import {
+  applyFontSizeStepIndex,
+  clampFontSizeStepIndex,
+  FONT_SIZE_STEP_MULTIPLIERS,
+  fontSizeStepLabelPercent,
+  readFontSizeStepIndexFromStorage,
+} from "../common/utils/appFontScale";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import {
@@ -103,6 +121,10 @@ export function SettingsPage() {
       ? "dark"
       : "light";
   });
+  const [fontSizeStepIndex, setFontSizeStepIndex] = useState(() => readFontSizeStepIndexFromStorage());
+  const [fontFamilyPreset, setFontFamilyPreset] = useState<FontFamilyPresetId>(() =>
+    readFontFamilyPresetFromStorage()
+  );
   const [dateFormat, setDateFormat] = useState("TT.MM.JJJJ");
   const [mfaEnabled, setMfaEnabled] = useState(true);
   const [roleProfile, setRoleProfile] = useState<"employee" | "manager">("employee");
@@ -146,8 +168,14 @@ export function SettingsPage() {
         quietHours?: boolean;
         region?: string;
         activity?: string[];
+        fontSizeStepIndex?: number;
+        fontFamilyPreset?: string;
       };
       if (s.theme) setTheme(s.theme);
+      if (typeof s.fontSizeStepIndex === "number") {
+        setFontSizeStepIndex(clampFontSizeStepIndex(s.fontSizeStepIndex));
+      }
+      if (s.fontFamilyPreset) setFontFamilyPreset(clampFontFamilyPreset(s.fontFamilyPreset));
       if (s.dateFormat) setDateFormat(s.dateFormat);
       if (s.notify) {
         setNotify((prev) => ({
@@ -190,6 +218,8 @@ export function SettingsPage() {
         "dema-app-settings",
         JSON.stringify({
           theme,
+          fontSizeStepIndex,
+          fontFamilyPreset,
           language,
           dateFormat,
           notify,
@@ -204,7 +234,55 @@ export function SettingsPage() {
     } catch {
       // ignore
     }
-  }, [theme, language, dateFormat, notify, mfaEnabled, roleProfile, passwordUpdatedAt, quietHours, region, activity]);
+  }, [
+    theme,
+    fontSizeStepIndex,
+    fontFamilyPreset,
+    language,
+    dateFormat,
+    notify,
+    mfaEnabled,
+    roleProfile,
+    passwordUpdatedAt,
+    quietHours,
+    region,
+    activity,
+  ]);
+
+  useLayoutEffect(() => {
+    applyFontSizeStepIndex(fontSizeStepIndex);
+  }, [fontSizeStepIndex]);
+
+  useLayoutEffect(() => {
+    applyFontFamilyPreset(fontFamilyPreset);
+  }, [fontFamilyPreset]);
+
+  const fontFamilyOptions = useMemo(
+    () =>
+      FONT_FAMILY_PRESET_IDS.map((id) => ({
+        id,
+        label:
+          id === "inter"
+            ? t("settingsFontFamilyInter", "Inter")
+            : id === "system"
+              ? t("settingsFontFamilySystem", "System UI")
+              : id === "serif"
+                ? t("settingsFontFamilySerif", "Serif")
+                : t("settingsFontFamilyMono", "Monospace"),
+        description:
+          id === "inter"
+            ? t("settingsFontFamilyDescInter", "Clean sans-serif tuned for dashboards and dense UIs.")
+            : id === "system"
+              ? t("settingsFontFamilyDescSystem", "Uses your operating system’s interface font.")
+              : id === "serif"
+                ? t("settingsFontFamilyDescSerif", "Source Serif 4 — editorial serif for comfortable reading.")
+                : t(
+                    "settingsFontFamilyDescMono",
+                    "JetBrains Mono — technical monospace across the entire UI."
+                  ),
+      })),
+    [t]
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -314,14 +392,14 @@ export function SettingsPage() {
     <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-slate-50/70">
       <div className="border-b border-slate-200/80 bg-white/90 px-6 py-6 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-7xl">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">{t("settingsTitle", "Einstellungen")}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">{t("settingsTitle", "Settings")}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-            {t("settingsProfileAndSettingsHeadline", "Profil & Einstellungen")}
+            {t("settingsProfileAndSettingsHeadline", "Profile & Settings")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
             {t(
               "settingsProfileAndSettingsSub",
-              "Verwalten Sie Ihre persönlichen Daten, Sicherheit, Benachrichtigungen und Darstellung an einem Ort."
+              "Manage your personal details, security, notifications, and display settings in one place."
             )}
           </p>
         </div>
@@ -329,7 +407,7 @@ export function SettingsPage() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 py-6 xl:grid-cols-12">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-4">
-          <h2 className="text-base font-bold text-slate-900">{t("settingsProfileAndAccount", "Profil & Konto")}</h2>
+          <h2 className="text-base font-bold text-slate-900">{t("settingsProfileAndAccount", "Profile & Account")}</h2>
           <div className="mt-4 space-y-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
               <p className="text-xs uppercase tracking-wide text-slate-400">{t("settingsProfilePhoto", "Profile photo")}</p>
@@ -442,12 +520,12 @@ export function SettingsPage() {
               </div>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-400">{t("settingsInternalId", "Interne ID")}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-400">{t("settingsInternalId", "Internal ID")}</p>
               <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
                 <Mail className="h-4 w-4 shrink-0 text-blue-600" aria-hidden />
                 EMP-1042
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">{t("settingsInternalIdHint", "Demo — später aus dem Verzeichnisdienst.")}</p>
+              <p className="mt-1 text-[11px] text-slate-500">{t("settingsInternalIdHint", "Demo — later from directory service.")}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-400">{t("settingsTimezone", "Timezone")}</p>
@@ -464,14 +542,14 @@ export function SettingsPage() {
               onClick={saveProfileDetails}
               className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
-              {t("settingsSaveProfile", "Profil speichern")}
+              {t("settingsSaveProfile", "Save profile")}
             </button>
           </div>
         </section>
 
         <div className="flex flex-col gap-6 xl:col-span-8 xl:col-start-5">
           <section className="h-fit w-full self-start rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-900">{t("settingsNotifications", "Benachrichtigungen")}</h2>
+            <h2 className="text-sm font-bold text-slate-900">{t("settingsNotifications", "Notifications")}</h2>
             <div className="mt-2 space-y-1">
               {[
                 { label: t("settingsNotifySalesAlerts", "Sales alerts"), enabled: notify.sales, onToggle: () => setNotify((s) => ({ ...s, sales: !s.sales })) },
@@ -496,7 +574,7 @@ export function SettingsPage() {
           </section>
 
           <section className="w-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-bold text-slate-900">{t("settingsDisplay", "Darstellung")}</h2>
+            <h2 className="text-base font-bold text-slate-900">{t("settingsDisplay", "Display")}</h2>
             <div className="mt-4 grid grid-cols-3 gap-3">
               <button
                 type="button"
@@ -535,10 +613,151 @@ export function SettingsPage() {
                 {t("themeSystem", "System")}
               </button>
             </div>
+            <div className="mt-6 border-t border-slate-100 pt-6">
+              <div className="mb-4 flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <Type className="h-4 w-4 shrink-0" aria-hidden />
+                </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {t("settingsTypographyTitle", "Typography")}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {t("settingsTypographySubtitle", "Fine-tune how text appears everywhere in the app.")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm">
+                <p
+                  id="settings-font-family-label"
+                  className="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  {t("settingsFontFamily", "Typeface")}
+                </p>
+                <p className="mt-1 max-w-prose text-xs leading-relaxed text-slate-600">
+                  {t(
+                    "settingsFontFamilyHelp",
+                    "Applies instantly across the whole dashboard, including tables and modals. The preview line shows each face."
+                  )}
+                </p>
+                <div
+                  className="mt-4 grid gap-3 sm:grid-cols-2"
+                  role="radiogroup"
+                  aria-labelledby="settings-font-family-label"
+                >
+                  {fontFamilyOptions.map(({ id, label, description }) => {
+                    const selected = fontFamilyPreset === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setFontFamilyPreset(id)}
+                        className={`rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 ${
+                          selected
+                            ? "border-blue-500 bg-blue-50/60 shadow-sm ring-1 ring-blue-500/15"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+                        }`}
+                      >
+                        <span
+                          className={`block text-base font-semibold ${selected ? "text-blue-900" : "text-slate-900"}`}
+                          style={{ fontFamily: FONT_FAMILY_STACKS[id] }}
+                        >
+                          {label}
+                        </span>
+                        <span className="mt-1.5 block text-xs leading-snug text-slate-600">{description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p
+                      id="settings-font-size-label"
+                      className="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
+                      {t("settingsFontSize", "Text size")}
+                    </p>
+                    <p className="mt-1 max-w-prose text-xs leading-relaxed text-slate-600">
+                      {t(
+                        "settingsFontSizeHelp",
+                        "Scales text only — spacing and icons stay aligned. Applies immediately."
+                      )}
+                    </p>
+                  </div>
+                  <p
+                    className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-800 sm:mt-0.5 sm:text-right"
+                    role="status"
+                    aria-live="polite"
+                    aria-labelledby="settings-font-size-label"
+                  >
+                    {t("settingsFontSizePercent", "{n}%").replace(
+                      "{n}",
+                      String(fontSizeStepLabelPercent(fontSizeStepIndex))
+                    )}
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={fontSizeStepIndex <= 0}
+                    onClick={() =>
+                      setFontSizeStepIndex((i) => Math.max(0, i - 1))
+                    }
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={t("settingsFontSizeDecrease", "Decrease text size")}
+                  >
+                    <Minus className="h-4 w-4" aria-hidden />
+                  </button>
+                  <input
+                    id="dema-font-size-slider"
+                    type="range"
+                    min={0}
+                    max={FONT_SIZE_STEP_MULTIPLIERS.length - 1}
+                    step={1}
+                    value={fontSizeStepIndex}
+                    onChange={(e) =>
+                      setFontSizeStepIndex(clampFontSizeStepIndex(Number(e.target.value)))
+                    }
+                    aria-valuemin={0}
+                    aria-valuemax={FONT_SIZE_STEP_MULTIPLIERS.length - 1}
+                    aria-valuenow={fontSizeStepIndex}
+                    aria-valuetext={t("settingsFontSizePercent", "{n}%").replace(
+                      "{n}",
+                      String(fontSizeStepLabelPercent(fontSizeStepIndex))
+                    )}
+                    aria-label={t("settingsFontSizeSlider", "Text size")}
+                    className="h-2 w-full min-w-0 flex-1 cursor-pointer accent-blue-600"
+                  />
+                  <button
+                    type="button"
+                    disabled={fontSizeStepIndex >= FONT_SIZE_STEP_MULTIPLIERS.length - 1}
+                    onClick={() =>
+                      setFontSizeStepIndex((i) =>
+                        Math.min(FONT_SIZE_STEP_MULTIPLIERS.length - 1, i + 1)
+                      )
+                    }
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={t("settingsFontSizeIncrease", "Increase text size")}
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+                <div className="mt-3 flex justify-between text-xs font-medium text-slate-500">
+                  <span>{t("settingsFontSizeSmaller", "Smaller")}</span>
+                  <span>{t("settingsFontSizeLarger", "Larger")}</span>
+                </div>
+              </div>
+            </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left">
                 <label className="text-xs uppercase tracking-wide text-slate-400" htmlFor="language-select">
-                  {t("settingsLanguage", "Sprache")}
+                  {t("settingsLanguage", "Language")}
                 </label>
                 <select
                   id="language-select"
@@ -553,8 +772,16 @@ export function SettingsPage() {
                   ))}
                 </select>
                 <p className="mt-2 text-[11px] text-slate-500">
-                  {t("settingsLanguageHelp", "Die ausgewählte Sprache wird im Dashboard angewendet.")}
+                  {t("settingsLanguageHelp", "The selected language is applied across the dashboard.")}
                 </p>
+                {import.meta.env.VITE_ENABLE_LIVE_UI_TRANSLATION === "true" ? (
+                  <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50/80 px-2 py-1.5 text-[11px] text-amber-900">
+                    {t(
+                      "settingsLiveTranslationBanner",
+                      "Live translation is on: strings are translated from English via the API and applied in batches across the dashboard."
+                    )}
+                  </p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -646,7 +873,7 @@ export function SettingsPage() {
 
         {activeAction === "rules" ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-8 xl:col-start-5">
-            <h2 className="text-base font-bold text-slate-900">{t("settingsNotificationRules", "Benachrichtigungsregeln")}</h2>
+            <h2 className="text-base font-bold text-slate-900">{t("settingsNotificationRules", "Notification rules")}</h2>
             <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
               <span className="text-sm font-medium text-slate-700">{t("settingsQuietHours", "Ruhezeiten aktivieren (22:00 - 07:00)")}</span>
               <Toggle checked={quietHours} onToggle={() => setQuietHours((v) => !v)} />
@@ -665,7 +892,7 @@ export function SettingsPage() {
 
         {activeAction === "region" ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-8 xl:col-start-5">
-            <h2 className="text-base font-bold text-slate-900">{t("settingsLanguageRegion", "Sprache & Region")}</h2>
+            <h2 className="text-base font-bold text-slate-900">{t("settingsLanguageRegion", "Language & region")}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 onClick={() => setRegion("de")}
@@ -703,22 +930,22 @@ export function SettingsPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-12">
           <div className="flex items-center gap-2">
             <Smartphone className="h-5 w-5 text-blue-600" aria-hidden />
-            <h2 className="text-base font-bold text-slate-900">{t("settingsSessionsDevices", "Sitzungen & Geräte")}</h2>
+            <h2 className="text-base font-bold text-slate-900">{t("settingsSessionsDevices", "Sessions & devices")}</h2>
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            {t("settingsSessionsIntro", "Geräte, die kürzlich mit diesem Konto verwendet wurden (Demo).")}
+            {t("settingsSessionsIntro", "Devices recently used with this account (demo).")}
           </p>
           <button
             type="button"
             onClick={() => setShowSessions((v) => !v)}
             className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 sm:w-auto"
           >
-            {showSessions ? t("settingsHideSessions", "Sitzungen ausblenden") : t("settingsShowSessions", "Sitzungen anzeigen")}
+            {showSessions ? t("settingsHideSessions", "Hide sessions") : t("settingsShowSessions", "Show sessions")}
           </button>
           {showSessions ? (
             <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
               {demoSessions.length === 0 ? (
-                <p className="py-2 text-center text-xs text-slate-500">{t("settingsSessionsEmpty", "Keine Sitzungen in dieser Liste.")}</p>
+                <p className="py-2 text-center text-xs text-slate-500">{t("settingsSessionsEmpty", "No sessions in this list.")}</p>
               ) : (
                 demoSessions.map((s) => (
                   <div
@@ -738,19 +965,19 @@ export function SettingsPage() {
                       type="button"
                       onClick={() => {
                         setDemoSessions((prev) => prev.filter((row) => row.id !== s.id));
-                        ping(t("settingsSessionRemoved", "Sitzung aus der Liste entfernt (Demo)."));
+                        ping(t("settingsSessionRemoved", "Session removed from list (demo)."));
                       }}
-                      title={t("settingsSessionRemove", "Gerät entfernen")}
-                      aria-label={t("settingsSessionRemove", "Gerät entfernen")}
+                      title={t("settingsSessionRemove", "Remove device")}
+                      aria-label={t("settingsSessionRemove", "Remove device")}
                       className="inline-flex shrink-0 items-center justify-center gap-1.5 self-end rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:border-red-200 hover:bg-red-50 sm:self-center"
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      <span className="sm:hidden">{t("settingsSessionRemove", "Gerät entfernen")}</span>
+                      <span className="sm:hidden">{t("settingsSessionRemove", "Remove device")}</span>
                     </button>
                   </div>
                 ))
               )}
-              <p className="pt-1 text-[11px] text-slate-500">{t("settingsSessionsDemoNote", "Abmeldung einzelner Sitzungen folgt mit Backend-Anbindung.")}</p>
+              <p className="pt-1 text-[11px] text-slate-500">{t("settingsSessionsDemoNote", "Per-device sign-out will be available once backend integration is connected.")}</p>
             </div>
           ) : null}
         </section>

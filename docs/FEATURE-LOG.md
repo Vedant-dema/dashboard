@@ -15,7 +15,8 @@
 | 2026-03-25 | [2026-03-25.md](feature-logs/2026-03-25.md) | FEATURE-002, FEATURE-003, FEATURE-004, FEATURE-005, FEATURE-006, FEATURE-008, FEATURE-009, FEATURE-010, FEATURE-013 |
 | 2026-03-26 | [2026-03-26.md](feature-logs/2026-03-26.md) | FEATURE-014, FEATURE-015, FEATURE-016, FEATURE-017, FEATURE-018, FEATURE-019, FEATURE-019b, FEATURE-020, FEATURE-021, FEATURE-022, FEATURE-022b, FEATURE-023, FEATURE-024 |
 | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046, FEATURE-047, FEATURE-048, FEATURE-049, FEATURE-050, FEATURE-051, FEATURE-052, FEATURE-053, FEATURE-054, FEATURE-055, FEATURE-056, FEATURE-057, FEATURE-058, FEATURE-059, FEATURE-060, FEATURE-061, FEATURE-062, FEATURE-063, FEATURE-064, FEATURE-065, FEATURE-066, FEATURE-067, FEATURE-068, FEATURE-069, FEATURE-070 |
-| 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071 … FEATURE-092 |
+| 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071 … FEATURE-108 |
+| 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-121 |
 
 ---
 
@@ -114,6 +115,35 @@
 | FEATURE-090 | Customer history — full modal fields, VIES snapshot, Waschanlage diffs | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 | FEATURE-091 | Customer edit sidebar — section chrome aligned with Contacts column | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
 | FEATURE-092 | Customer edit — relationships/appointments/risk column as wide as Contacts | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-093 | Latin/ASCII address normalization (no name translation) | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-094 | VIES trader text — extended Latin + script conversion (de/en) | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-095 | VIES Apply to form — country (Land) uses real picker codes | Fixed | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-096 | VIES trader text — Unidecode only (no Google Translate) | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-097 | Customer form ASCII transliteration (German umlauts + `transliteration`) | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-098 | Address lines — full-script transliteration before Latin whitelist | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-099 | VIES Apply to form — main address slot + smarter street/PLZ/city merge | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-100 | VIES + customer form — transliteration depth (IME, fallbacks, raw JSON, DIN umlauts) | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-101 | VIES save/apply — Land + member state from check (merge + dropdown sync) | Fixed | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-102 | VIES Apply — API shape normalisation, vies_raw fields, smarter PLZ/Ort split | Fixed | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-103 | Optional AI Latin/English name variants (OpenAI-compatible backend + customer modal) | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-104 | Name variants — always-on local transliteration (no API key required) | Extended | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-105 | VIES — extract Land from raw JSON + address country line | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-106 | VIES Apply — fix `valid` string bug, unwrap `{data}`, Land/UST fallbacks | Fixed | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-107 | VAT member state → main address country sync (EL→GR, XI in list) | Modified | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-108 | VIES result panel — Straße/PLZ/Ort preview matching Apply to form | Added | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) |
+| FEATURE-109 | Settings — global text size (root font scale, immediate apply) | Added | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-110 | Settings text size — typography-only scale (`--dema-font-scale`, no layout zoom) | Extended | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-111 | Settings — global font family presets (`--dema-font-stack`) | Added | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-112 | Typography UI + `data-dema-font-preset` / `body` font stack (reliable apply) | Extended | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-113 | Secondary locale merge: FR base for es/it/pt, DE base for tr/ru/hi/ar/zh/ja; zh task tabs fixed | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-114 | Settings typeface: inline `--dema-font-stack` so preset changes apply app-wide | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-115 | Global dashboard typography: Tailwind serif/mono use preset stack; Source Serif 4 + JetBrains Mono | Extended | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-116 | Optional live UI translation: `/api/v1/ui-translate/*` + batched EN→secondary overlay in LanguageContext | Added | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-117 | Typeface: `app-font-cascade.css` after Tailwind + `--dema-font-stack` on `#root` so Settings fonts apply | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-118 | Live translation cache: persist EN→target MT map per language for instant repeat switches | Extended | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-119 | Settings i18n hardening: add missing subtitle key + replace German fallbacks with English defaults | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-120 | VIES country-aware normalization: keep DE original, normalize non-DE for display/search | Extended | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
+| FEATURE-121 | VIES legal-name lock: never alter company name | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

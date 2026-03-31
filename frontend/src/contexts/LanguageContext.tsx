@@ -4,9 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import {
+  fetchUiTranslateStatus,
+  postUiTranslateBatch,
+  translationTargetForLanguage,
+} from "../services/uiTranslateApi";
 
 export type LanguageCode =
   | "de"
@@ -231,6 +237,31 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     settingsDisplay: "Darstellung",
     settingsLanguage: "Sprache",
     settingsLanguageHelp: "Die ausgewählte Sprache wird im Dashboard angewendet.",
+    settingsLiveTranslationBanner:
+      "Hinweis: Mit aktivem Live-Übersetzer werden die Texte aus dem Englischen über die API nachgeladen und stückweise im UI ersetzt.",
+    settingsFontSize: "Textgröße",
+    settingsFontSizeHelp:
+      "Nur Text skalieren — Abstände und Symbole bleiben ausgerichtet. Sofort wirksam.",
+    settingsFontSizeSmaller: "Kleiner",
+    settingsFontSizeLarger: "Größer",
+    settingsFontSizeDecrease: "Text verkleinern",
+    settingsFontSizeIncrease: "Text vergrößern",
+    settingsFontSizeSlider: "Textgröße",
+    settingsFontSizePercent: "{n} %",
+    settingsTypographyTitle: "Typografie",
+    settingsTypographySubtitle: "Feinabstimmung, wie Text in der App dargestellt wird.",
+    settingsFontFamily: "Schriftart",
+    settingsFontFamilyHelp:
+      "Die Auswahl wirkt sofort. Die erste Zeile jeder Karte zeigt die Schriftart.",
+    settingsFontFamilyInter: "Inter",
+    settingsFontFamilySystem: "System",
+    settingsFontFamilySerif: "Serif",
+    settingsFontFamilyMono: "Monospace",
+    settingsFontFamilyDescInter: "Klare Sans-serif für Bildschirme und dichte Oberflächen.",
+    settingsFontFamilyDescSystem: "Nutzt die Systemschrift Ihres Betriebssystems.",
+    settingsFontFamilyDescSerif: "Klassische Serif für längeres Lesen.",
+    settingsFontFamilyDescMono:
+      "Feste Zeichenbreite — hilfreich für Zahlen, Codes und Tabellen.",
     settingsSystemAccount: "System & Konto",
     settingsAccount: "Konto",
     settingsNotifications: "Benachrichtigungen",
@@ -692,6 +723,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     newCustomerVatInvalid: "USt-IdNr. ungültig oder nicht bestätigt",
     newCustomerVatNameLabel: "Name:",
     newCustomerVatAddressLabel: "Adresse:",
+    newCustomerVatAddressFormSplitHint: "Aufteilung fürs Formular (wie bei „Ins Formular übernehmen“)",
     newCustomerVatMatchTitle: "Näherungsabgleich (VIES Match)",
     newCustomerRequiredFirmenname: "Bitte geben Sie einen Firmennamen ein.",
     newCustomerSectionFirma: "Firmendaten",
@@ -706,6 +738,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     newCustomerLabelNatuerlichePerson: "Natürliche Person",
     newCustomerLabelFirmenvorsatz: "Firmenvorsatz",
     newCustomerLabelFirmenname: "Firmenname",
+    newCustomerNameVariantsBtn: "Varianten (Latein / Englisch)",
+    newCustomerNameVariantsHintLocal:
+      "Reine Browser-Umschrift (ohne API-Schlüssel): mehrere Schreibweisen, wo die Bibliothek Unterschiede liefert. Beim Speichern läuft weiter die normale automatische Umschrift.",
+    newCustomerNameVariantsHintAi:
+      "Zuerst lokale Umschrift-Varianten; mit Server-Schlüssel (NAME_VARIANTS_API_KEY oder OPENAI_API_KEY) zusätzlich KI-Vorschläge. Beim Speichern bleibt die automatische Umschrift aktiv.",
+    newCustomerNameVariantsLoading: "Vorschläge werden geladen…",
+    newCustomerNameVariantsError: "Vorschläge konnten nicht geladen werden.",
+    newCustomerNameVariantsEmpty: "Keine Varianten zurückgegeben.",
+    newCustomerNameVariantsUse: "Übernehmen",
     newCustomerLabelBemerkungen: "Bemerkungen",
     newCustomerSectionAdresse: "Adresse & Steuer",
     newCustomerAdresseNewBtn: "Neu",
@@ -951,6 +992,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     dynamicPinned: "Angeheftete Widgets",
     dynamicPinnedWidget: "Widget anheften",
     settingsProfileAndSettingsHeadline: "Profil & Einstellungen",
+    settingsProfileAndSettingsSub:
+      "Verwalten Sie Ihre persönlichen Daten, Sicherheit, Benachrichtigungen und Darstellung an einem Ort.",
     settingsProfileAndAccount: "Profil & Konto",
     settingsProfilePhoto: "Profilfoto",
     settingsUploadPhoto: "Foto hochladen",
@@ -1247,6 +1290,30 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     settingsDisplay: "Display",
     settingsLanguage: "Language",
     settingsLanguageHelp: "The selected language is applied across the dashboard.",
+    settingsLiveTranslationBanner:
+      "Live translation is on: strings are translated from English via the API and applied in batches across the dashboard.",
+    settingsFontSize: "Text size",
+    settingsFontSizeHelp:
+      "Scales text only — spacing and icons stay aligned. Applies immediately.",
+    settingsFontSizeSmaller: "Smaller",
+    settingsFontSizeLarger: "Larger",
+    settingsFontSizeDecrease: "Decrease text size",
+    settingsFontSizeIncrease: "Increase text size",
+    settingsFontSizeSlider: "Text size",
+    settingsFontSizePercent: "{n}%",
+    settingsTypographyTitle: "Typography",
+    settingsTypographySubtitle: "Fine-tune how text appears everywhere in the app.",
+    settingsFontFamily: "Typeface",
+    settingsFontFamilyHelp:
+      "Selection applies instantly. The preview line uses each typeface.",
+    settingsFontFamilyInter: "Inter",
+    settingsFontFamilySystem: "System UI",
+    settingsFontFamilySerif: "Serif",
+    settingsFontFamilyMono: "Monospace",
+    settingsFontFamilyDescInter: "Clean sans-serif tuned for dashboards and dense UIs.",
+    settingsFontFamilyDescSystem: "Uses your operating system's interface font.",
+    settingsFontFamilyDescSerif: "Source Serif 4 — editorial serif for comfortable reading.",
+    settingsFontFamilyDescMono: "JetBrains Mono — technical monospace across the entire UI.",
     settingsSystemAccount: "System & Account",
     settingsAccount: "Account",
     settingsNotifications: "Notifications",
@@ -1708,6 +1775,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     newCustomerVatInvalid: "VAT ID invalid or not confirmed",
     newCustomerVatNameLabel: "Name:",
     newCustomerVatAddressLabel: "Address:",
+    newCustomerVatAddressFormSplitHint: "Split for the form (same as Apply to form)",
     newCustomerVatMatchTitle: "Approximate match (VIES Match)",
     newCustomerRequiredFirmenname: "Please enter a company name.",
     newCustomerSectionFirma: "Company data",
@@ -1722,6 +1790,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     newCustomerLabelNatuerlichePerson: "Natural person",
     newCustomerLabelFirmenvorsatz: "Company prefix",
     newCustomerLabelFirmenname: "Company name",
+    newCustomerNameVariantsBtn: "Latin / English variants",
+    newCustomerNameVariantsHintLocal:
+      "On-device transliteration only (no API key): several spellings when the library differs. Save still runs the usual automatic pass.",
+    newCustomerNameVariantsHintAi:
+      "Local transliteration variants first; with a server API key, AI may add more. Save still runs automatic transliteration.",
+    newCustomerNameVariantsLoading: "Loading suggestions…",
+    newCustomerNameVariantsError: "Could not load suggestions.",
+    newCustomerNameVariantsEmpty: "No variants returned.",
+    newCustomerNameVariantsUse: "Use",
     newCustomerLabelBemerkungen: "Remarks",
     newCustomerSectionAdresse: "Address & Tax",
     newCustomerAdresseNewBtn: "New",
@@ -1966,6 +2043,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     dynamicPinned: "Pinned widgets",
     dynamicPinnedWidget: "Pin widget",
     settingsProfileAndSettingsHeadline: "Profile & Settings",
+    settingsProfileAndSettingsSub:
+      "Manage your personal details, security, notifications, and display settings in one place.",
     settingsProfileAndAccount: "Profile & Account",
     settingsProfilePhoto: "Profile photo",
     settingsUploadPhoto: "Upload photo",
@@ -2207,6 +2286,31 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     settingsDisplay: "Affichage",
     settingsLanguage: "Langue",
     settingsLanguageHelp: "La langue sélectionnée est appliquée dans le tableau de bord.",
+    settingsLiveTranslationBanner:
+      "Traduction active : les textes sont traduits depuis l'anglais via l'API et appliqués par lots dans le tableau de bord.",
+    settingsFontSize: "Taille du texte",
+    settingsFontSizeHelp:
+      "Agrandit ou réduit le texte seul — espacements et icônes restent alignés. Effet immédiat.",
+    settingsFontSizeSmaller: "Plus petit",
+    settingsFontSizeLarger: "Plus grand",
+    settingsFontSizeDecrease: "Réduire la taille du texte",
+    settingsFontSizeIncrease: "Augmenter la taille du texte",
+    settingsFontSizeSlider: "Taille du texte",
+    settingsFontSizePercent: "{n} %",
+    settingsTypographyTitle: "Typographie",
+    settingsTypographySubtitle: "Affinez l’affichage du texte dans toute l’application.",
+    settingsFontFamily: "Police",
+    settingsFontFamilyHelp:
+      "Effet immédiat sur tout le tableau de bord (tableaux et fenêtres inclus). L’aperçu montre chaque police.",
+    settingsFontFamilyInter: "Inter",
+    settingsFontFamilySystem: "Système",
+    settingsFontFamilySerif: "Serif",
+    settingsFontFamilyMono: "Monospace",
+    settingsFontFamilyDescInter: "Sans empattement claire, adaptée aux tableaux de bord.",
+    settingsFontFamilyDescSystem: "Utilise la police d’interface de votre système.",
+    settingsFontFamilyDescSerif: "Source Serif 4 — serif éditoriale pour une lecture confortable.",
+    settingsFontFamilyDescMono:
+      "JetBrains Mono — monospace technique sur toute l’interface.",
     settingsSystemAccount: "Système & compte",
     settingsAccount: "Compte",
     settingsNotifications: "Notifications",
@@ -2624,6 +2728,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     newCustomerVatInvalid: "N° de TVA invalide ou non confirmé",
     newCustomerVatNameLabel: "Nom:",
     newCustomerVatAddressLabel: "Adresse:",
+    newCustomerVatAddressFormSplitHint: "Répartition pour le formulaire (comme « Appliquer au formulaire »)",
     newCustomerVatMatchTitle: "Correspondance approchée (VIES Match)",
     newCustomerRequiredFirmenname: "Veuillez saisir un nom d'entreprise.",
     newCustomerSectionFirma: "Données entreprise",
@@ -2638,6 +2743,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     newCustomerLabelNatuerlichePerson: "Personne physique",
     newCustomerLabelFirmenvorsatz: "Préfixe entreprise",
     newCustomerLabelFirmenname: "Nom de l'entreprise",
+    newCustomerNameVariantsBtn: "Variantes (latin / anglais)",
+    newCustomerNameVariantsHintLocal:
+      "Translittération locale uniquement (sans clé API) : plusieurs graphies lorsque la bibliothèque diffère. L'enregistrement applique toujours la passe automatique habituelle.",
+    newCustomerNameVariantsHintAi:
+      "Variantes locales d'abord ; avec une clé API sur le serveur, l'IA peut en ajouter. L'enregistrement conserve la translittération automatique.",
+    newCustomerNameVariantsLoading: "Chargement des suggestions…",
+    newCustomerNameVariantsError: "Impossible de charger les suggestions.",
+    newCustomerNameVariantsEmpty: "Aucune variante renvoyée.",
+    newCustomerNameVariantsUse: "Utiliser",
     newCustomerLabelBemerkungen: "Remarques",
     newCustomerSectionAdresse: "Adresse & Fiscalité",
     newCustomerAdresseNewBtn: "Nouveau",
@@ -2790,6 +2904,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     dynamicPinned: "Widgets épinglés",
     dynamicPinnedWidget: "Épingler le widget",
     settingsProfileAndSettingsHeadline: "Profil & Paramètres",
+    settingsProfileAndSettingsSub:
+      "Gérez vos informations personnelles, la sécurité, les notifications et l'affichage en un seul endroit.",
     settingsProfileAndAccount: "Profil & Compte",
     settingsProfilePhoto: "Photo de profil",
     settingsUploadPhoto: "Télécharger une photo",
@@ -3706,21 +3822,21 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     settingsDisplayName: "显示名称",
     settingsPhone: "电话",
     settingsSaveProfile: "保存个人资料",
-    tabToday: "今日",
-    tabWeek: "今週",
-    tabOverdue: "期限超過",
-    tabNoDate: "日付なし",
-    tabAssigned: "割り当て済み",
-    tabAll: "すべて",
-    tasksSectionLater: "後で",
-    tasksEmptyToday: "今日のタスクはありません",
-    tasksEmptyOverdue: "期限超過のタスクはありません",
-    tasksEmptyAssigned: "割り当てられたタスクはありません",
-    tasksMarkDone: "完了としてマーク",
-    tasksMarkUndone: "未完了としてマーク",
-    optionalLabel: "（任意）",
-    dueDateToday: "今日",
-    dueDateTomorrow: "明日",
+    tabToday: "今天",
+    tabWeek: "本周",
+    tabOverdue: "已逾期",
+    tabNoDate: "无日期",
+    tabAssigned: "已分配",
+    tabAll: "全部",
+    tasksSectionLater: "稍后",
+    tasksEmptyToday: "今天没有任务",
+    tasksEmptyOverdue: "没有逾期任务",
+    tasksEmptyAssigned: "没有已分配任务",
+    tasksMarkDone: "标记为已完成",
+    tasksMarkUndone: "标记为未完成",
+    optionalLabel: "（可选）",
+    dueDateToday: "今天",
+    dueDateTomorrow: "明天",
   },
   ja: {
     navSettings: "設定",
@@ -3786,8 +3902,49 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   },
 };
 
+/** Romance locales: full French catalog + explicit overrides (Spanish etc.). Others: German base + overrides for DEMA defaults. */
+const ROMANCE_FALLBACK_BASE: ReadonlySet<LanguageCode> = new Set(["es", "it", "pt"]);
+
 for (const code of Object.keys(LANGUAGE_OVERRIDES) as Array<keyof typeof LANGUAGE_OVERRIDES>) {
-  MESSAGES[code] = { ...MESSAGES.en, ...LANGUAGE_OVERRIDES[code] };
+  const base = ROMANCE_FALLBACK_BASE.has(code) ? MESSAGES.fr : MESSAGES.de;
+  MESSAGES[code] = { ...base, ...LANGUAGE_OVERRIDES[code] };
+}
+
+/** When true, nine secondary locales load machine translations from English via the backend (see .env.example). */
+const LIVE_UI_TRANSLATION = import.meta.env.VITE_ENABLE_LIVE_UI_TRANSLATION === "true";
+
+const LIVE_MT_SECONDARY_LOCALES: ReadonlySet<LanguageCode> = new Set([
+  "es",
+  "it",
+  "pt",
+  "tr",
+  "ru",
+  "hi",
+  "ar",
+  "zh",
+  "ja",
+]);
+
+const MT_CACHE_PREFIX = "dema-ui-mt-v1:";
+
+function readMtCache(language: LanguageCode): Record<string, string> | null {
+  try {
+    const raw = localStorage.getItem(`${MT_CACHE_PREFIX}${language}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeMtCache(language: LanguageCode, value: Record<string, string>): void {
+  try {
+    localStorage.setItem(`${MT_CACHE_PREFIX}${language}`, JSON.stringify(value));
+  } catch {
+    // ignore cache write failures (quota/private mode)
+  }
 }
 
 export type LanguageContextType = {
@@ -3827,6 +3984,8 @@ function getInitialLanguage(): LanguageCode {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<LanguageCode>(getInitialLanguage);
+  const [mtByKey, setMtByKey] = useState<Record<string, string>>({});
+  const mtGeneration = useRef(0);
 
   const setLanguage = useCallback((next: LanguageCode) => {
     try {
@@ -3846,16 +4005,65 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
   }, [language]);
 
+  useEffect(() => {
+    if (!LIVE_UI_TRANSLATION || language === "en" || !LIVE_MT_SECONDARY_LOCALES.has(language)) {
+      setMtByKey({});
+      return;
+    }
+    const gen = ++mtGeneration.current;
+    setMtByKey(readMtCache(language) ?? {});
+    const ac = new AbortController();
+    const targetTag = translationTargetForLanguage(language);
+    const entries = Object.entries(MESSAGES.en) as [string, string][];
+    const BATCH = 48;
+
+    void (async () => {
+      try {
+        const st = await fetchUiTranslateStatus(ac.signal);
+        if (!st.enabled || gen !== mtGeneration.current) return;
+        const acc: Record<string, string> = {};
+        for (let i = 0; i < entries.length; i += BATCH) {
+          if (gen !== mtGeneration.current) return;
+          const slice = entries.slice(i, i + BATCH);
+          const keys = slice.map(([k]) => k);
+          const texts = slice.map(([, v]) => v);
+          const tr = await postUiTranslateBatch(texts, targetTag, "en", ac.signal);
+          for (let j = 0; j < keys.length; j++) {
+            acc[keys[j]!] = tr[j] ?? texts[j]!;
+          }
+          if (gen !== mtGeneration.current) return;
+          setMtByKey({ ...acc });
+          writeMtCache(language, acc);
+        }
+      } catch {
+        if (gen === mtGeneration.current) setMtByKey({});
+      }
+    })();
+
+    return () => {
+      ac.abort();
+    };
+  }, [language]);
+
   const value = useMemo<LanguageContextType>(
     () => ({
       language,
       setLanguage,
-      t: (key, fallback = key) =>
-        MESSAGES[language]?.[key] ?? MESSAGES.en[key] ?? fallback,
+      t: (key, fallback = key) => {
+        if (
+          LIVE_UI_TRANSLATION &&
+          language !== "en" &&
+          LIVE_MT_SECONDARY_LOCALES.has(language)
+        ) {
+          const mt = mtByKey[key];
+          if (mt !== undefined && mt !== "") return mt;
+        }
+        return MESSAGES[language]?.[key] ?? MESSAGES.en[key] ?? fallback;
+      },
       localeTag: localeTagForLanguage(language),
       languageOptions: LANGUAGE_OPTIONS,
     }),
-    [language, setLanguage]
+    [language, setLanguage, mtByKey]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

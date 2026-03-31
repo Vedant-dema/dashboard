@@ -1,0 +1,12 @@
+/*
+ * Loaded after `index.css` so this wins over every Tailwind utility.
+ * `--dema-font-stack` is set on `html` and `#root` from `applyFontFamilyPreset` (+ defaults in index.css).
+ */
+html {
+  font-family: var(--dema-font-stack);
+}
+
+#root,
+#root * {
+  font-family: var(--dema-font-stack) !important;
+}

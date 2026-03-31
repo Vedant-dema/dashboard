@@ -19,6 +19,8 @@ import { OnGroundTeamPage } from "./pages/OnGroundTeamPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ChatPage } from "./pages/ChatPage";
 import { PresenceReporter } from "./components/PresenceReporter";
+import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
+import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
 import { useAuth, setReturnHash } from "./contexts/AuthContext";
 import { useLanguage } from "./contexts/LanguageContext";
 import type { DepartmentArea } from "./types/departmentArea";
@@ -144,6 +146,11 @@ export default function App() {
   const { t } = useLanguage();
   const [route, setRoute] = useState(getRouteFromHash);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    hydrateAppFontScaleFromStorage();
+    hydrateAppFontFamilyFromStorage();
+  }, []);
 
   useEffect(() => {
     const onHashChange = () => {

@@ -25,8 +25,6 @@ Environment:
                            checkVat is the classic operation and sometimes returns name/address when
                            checkVatApprox does not for a minimal request.
   VIES_SIMPLE_TIMEOUT_SEC   Timeout in seconds for simplified one-shot live check (default: 8).
-  VIES_DISPLAY_TEXT_LANG     Target language for normalised trader name/address: de or en (default: de).
-                             Clients may override per request with JSON field text_locale.
   NOMINATIM_API_BASE         OpenStreetMap Nominatim base URL (default: https://nominatim.openstreetmap.org).
   NOMINATIM_USER_AGENT       Required by Nominatim usage policy — identify this app (default: generic string;
                              set to your site URL + contact email in production).
@@ -36,6 +34,17 @@ Environment:
                              google: Google Geocoding API (Geocoding must be enabled for the key).
   MAPBOX_ACCESS_TOKEN        Required when GEOCODING_PROVIDER=mapbox (secret token).
   GOOGLE_MAPS_API_KEY        Google API key with Geocoding API enabled (alias: GOOGLE_GEOCODING_API_KEY).
+
+  Name variants (optional — Latin/English spelling suggestions, OpenAI-compatible Chat Completions):
+  NAME_VARIANTS_API_KEY    Secret API key (if unset, OPENAI_API_KEY is used).
+  OPENAI_API_KEY           Fallback when NAME_VARIANTS_API_KEY is not set.
+  OPENAI_BASE_URL          Default https://api.openai.com/v1 (trailing /v1; use Azure/other by full base).
+  NAME_VARIANTS_MODEL      Default gpt-4o-mini.
+
+  Live UI translation (optional — batch translate English UI strings for the SPA):
+  GOOGLE_TRANSLATE_API_KEY   Google Cloud Translation API v2 key (enable Cloud Translation API).
+  LIBRETRANSLATE_URL         Base URL of a LibreTranslate instance (e.g. https://libretranslate.com).
+  LIBRETRANSLATE_API_KEY     Optional; only if the LibreTranslate server requires a key.
 
 Note: MS_MAX_CONCURRENT_REQ is enforced by the Commission/member states. We cannot remove it;
 this app serializes outbound VIES calls and retries with backoff so many checks still succeed.
@@ -64,7 +73,7 @@ import sqlite3
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape as _xml_escape
@@ -78,29 +87,33 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 
 try:
-    from deep_translator import GoogleTranslator as _GoogleTranslator
-    _TRANSLATOR_AVAILABLE = True
+    from unidecode import unidecode as _unidecode
+
+    _UNIDECODE_AVAILABLE = True
 except ImportError:
-    _TRANSLATOR_AVAILABLE = False
+    _UNIDECODE_AVAILABLE = False
 
 
-def _resolve_vies_display_locale(request_locale: str | None) -> str:
-    """Pick de or en for normalised VIES trader strings (default: env or de)."""
-    if request_locale in ("de", "en"):
-        return request_locale
-    env = os.environ.get("VIES_DISPLAY_TEXT_LANG", "de").strip().lower()
-    return env if env in ("de", "en") else "de"
+def _needs_ascii_transliteration(text: str) -> bool:
+    """True when any code point is outside 7-bit ASCII (letters, digits, symbols, CJK, etc.)."""
+    return any(ord(ch) > 0x7F for ch in text)
 
 
-def _needs_vies_text_conversion(text: str) -> bool:
-    """True when any letter is outside Latin-1 (ISO-8859-1), e.g. Polish Ł, Greek, Cyrillic."""
-    for ch in text:
-        if ch.isalpha() and ord(ch) > 0x00FF:
-            return True
-    return False
+def _expand_german_umlauts(text: str) -> str:
+    """DIN-style umlaut expansion before ASCII transliteration (matches frontend customer form)."""
+    return (
+        text.replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("Ä", "Ae")
+        .replace("Ö", "Oe")
+        .replace("Ü", "Ue")
+        .replace("ß", "ss")
+        .replace("\u1e9e", "SS")
+    )
 
 
-# Letters NFKD does not map to ASCII alone (stroke, ligatures, Romanian comma-below, etc.).
+# When ``unidecode`` is missing: map selected Latin letters and strip combining marks only.
 _VIES_LATIN_ASCII_MANUAL: dict[str, str] = {
     "Ł": "L",
     "ł": "l",
@@ -122,8 +135,8 @@ _VIES_LATIN_ASCII_MANUAL: dict[str, str] = {
 }
 
 
-def _fold_latin_for_vies_fallback(text: str) -> str:
-    """Strip combining marks and map a few Latin letters to ASCII when translation is unavailable."""
+def _fold_latin_ascii_fallback(text: str) -> str:
+    """Best-effort Latin → ASCII without ``unidecode`` (Greek/Cyrillic not covered)."""
     mapped = "".join(_VIES_LATIN_ASCII_MANUAL.get(ch, ch) for ch in text)
     out: list[str] = []
     for ch in unicodedata.normalize("NFD", mapped):
@@ -132,31 +145,63 @@ def _fold_latin_for_vies_fallback(text: str) -> str:
     return "".join(out)
 
 
-def _normalize_vies_display_text(text: str | None, target_lang: str) -> str | None:
-    """Unicode-normalise VIES text; convert extended or non-Latin scripts to de/en when possible.
+def _transliterate_chars_to_latin(text: str) -> str:
+    """Per-character transliteration to Latin letters (no semantic translation)."""
+    text = _expand_german_umlauts(text)
+    if _UNIDECODE_AVAILABLE:
+        return _expand_german_umlauts(_unidecode(text))
+    return _expand_german_umlauts(_fold_latin_ascii_fallback(text))
 
-    1. NFKC + replace VIES ``||`` with `` / ``.
-    2. If any letter is outside Latin-1, try Google Translate → target_lang (de or en).
-    3. If still needed, fold extended Latin to ASCII (no-op for unconverted Cyrillic/CJK without translator).
-    4. Title-case for consistent CRM display.
+
+def _normalize_vies_display_text(text: str | None, country_code: str | None = None) -> str | None:
+    """Unicode-normalise VIES trader strings; map scripts to Latin/ASCII (no word translation).
+
+    Uses ``unidecode`` after German DIN umlaut expansion so behaviour aligns with the dashboard
+    frontend. Preserves letter casing from the registry (no ``.title()``), which avoids mangling
+    legal names and matches stored customer fields.
     """
     if not text:
         return None
     text = unicodedata.normalize("NFKC", text).replace("||", " / ").strip()
     if not text:
         return None
-    tgt = target_lang if target_lang in ("de", "en") else "de"
-    if _needs_vies_text_conversion(text) and _TRANSLATOR_AVAILABLE:
-        try:
-            translated = _GoogleTranslator(source="auto", target=tgt).translate(text)
-            if translated:
-                text = unicodedata.normalize("NFKC", translated).strip()
-        except Exception:
-            pass
-    if _needs_vies_text_conversion(text):
-        text = _fold_latin_for_vies_fallback(text)
+    # Keep German trader text unchanged per business policy; normalize others for Latin/ASCII-friendly UI.
+    if (country_code or "").strip().upper() == "DE":
+        text = re.sub(r" {2,}", " ", text).strip()
+        return text if text else None
+    if _needs_ascii_transliteration(text):
+        text = _transliterate_chars_to_latin(text)
     text = re.sub(r" {2,}", " ", text).strip()
-    return text.title() if text else None
+    return text if text else None
+
+
+def _normalize_vies_search_text(text: str | None, country_code: str | None = None) -> str | None:
+    """Aggressive, deterministic search key from VIES text (UI/search only; never legal output)."""
+    display = _normalize_vies_display_text(text, country_code=country_code)
+    if not display:
+        return None
+    out = display.lower()
+    out = unicodedata.normalize("NFKD", out)
+    out = "".join(ch for ch in out if unicodedata.category(ch) != "Mn")
+    out = re.sub(r"[^a-z0-9\s]", " ", out)
+    out = re.sub(r"\s+", " ", out).strip()
+    return out or None
+
+
+# Normalise human-readable trader strings inside ``vies_raw`` (REST/SOAP camelCase keys).
+_VIES_RAW_LATIN_KEYS: frozenset[str] = frozenset(
+    {
+        "address",
+        "traderstreet",
+        "traderpostalcode",
+        "tradercity",
+        "tradercompanytype",
+    }
+)
+
+
+def _vies_raw_key_needs_latin(k: str) -> bool:
+    return k.replace("_", "").lower() in _VIES_RAW_LATIN_KEYS
 
 
 def _vies_rest_base_str() -> str:
@@ -408,20 +453,6 @@ class VatCheckRequest(BaseModel):
     trader_postal_code: str | None = Field(default=None, max_length=32)
     trader_city: str | None = Field(default=None, max_length=200)
     trader_company_type: str | None = Field(default=None, max_length=100)
-    text_locale: str | None = Field(
-        default=None,
-        description='Normalise trader name/address to this language: "de" or "en" (default: VIES_DISPLAY_TEXT_LANG or de).',
-    )
-
-    @field_validator("text_locale", mode="before")
-    @classmethod
-    def _coerce_text_locale(cls, v: object) -> str | None:
-        if v is None:
-            return None
-        if isinstance(v, str) and not v.strip():
-            return None
-        s = str(v).strip().lower()
-        return s if s in ("de", "en") else None
 
 
 REQUESTER_COUNTRY_CODES: frozenset[str] = VIES_COUNTRY_CODES | {"EU"}
@@ -433,6 +464,13 @@ class VatCheckResponse(BaseModel):
     vat_number: str
     name: str | None = None
     address: str | None = None
+    name_original: str | None = None
+    address_original: str | None = None
+    name_normalized: str | None = None
+    address_normalized: str | None = None
+    name_search: str | None = None
+    address_search: str | None = None
+    normalization_version: str | None = None
     request_date: str | None = None
     request_identifier: str | None = None
     vies_error: str | None = None
@@ -464,7 +502,228 @@ class VatCheckResponse(BaseModel):
             return None
         # Any string composed entirely of dashes/dots/spaces is a masked placeholder.
         core = re.sub(r"[\s\-\u00ad\u2010-\u2015\u2212\u00a0\xb7\.]+", "", s)
-        return s if core else None
+        if not core:
+            return None
+        if _vies_is_proxy_http_error_garbage(s):
+            return None
+        return s
+
+
+class NameVariantsSuggestRequest(BaseModel):
+    """Request Latin-script spelling variants for a company or person name (any script)."""
+
+    text: str = Field(..., min_length=1, max_length=500)
+    context: Literal["company", "person"] = "company"
+
+
+class NameVariantsSuggestResponse(BaseModel):
+    variants: list[str] = Field(default_factory=list)
+
+
+class NameVariantsStatusResponse(BaseModel):
+    enabled: bool = Field(description="True when NAME_VARIANTS_API_KEY or OPENAI_API_KEY is set.")
+    local_on_device: bool = Field(
+        default=True,
+        description="The SPA always offers local transliteration variants without calling this endpoint.",
+    )
+
+
+class UiTranslateBatchRequest(BaseModel):
+    """Batch UI string translation (English source → target locale)."""
+
+    texts: list[str] = Field(..., min_length=1, max_length=80)
+    source: str = Field(default="en", min_length=2, max_length=16)
+    target: str = Field(..., min_length=2, max_length=16)
+
+
+class UiTranslateBatchResponse(BaseModel):
+    translations: list[str]
+
+
+class UiTranslateStatusResponse(BaseModel):
+    enabled: bool
+    provider: Literal["google", "libre"] | None = None
+
+
+def _google_translate_api_key() -> str | None:
+    k = (os.environ.get("GOOGLE_TRANSLATE_API_KEY") or "").strip()
+    return k or None
+
+
+def _libretranslate_base_url() -> str | None:
+    k = (os.environ.get("LIBRETRANSLATE_URL") or "").strip().rstrip("/")
+    return k or None
+
+
+def _libretranslate_api_key() -> str | None:
+    k = (os.environ.get("LIBRETRANSLATE_API_KEY") or "").strip()
+    return k or None
+
+
+async def _translate_ui_batch_google(
+    client: httpx.AsyncClient,
+    texts: list[str],
+    source: str,
+    target: str,
+    api_key: str,
+) -> list[str]:
+    """Google Cloud Translation API v2 (same key type as many GCP projects; enable Cloud Translation API)."""
+    import html as html_module
+
+    url = "https://translation.googleapis.com/language/translate/v2"
+    r = await client.post(
+        url,
+        params={"key": api_key},
+        json={"q": texts, "source": source, "target": target, "format": "text"},
+        timeout=120.0,
+    )
+    r.raise_for_status()
+    data = r.json()
+    rows = data.get("data", {}).get("translations")
+    if not isinstance(rows, list) or len(rows) != len(texts):
+        raise ValueError("google translate: unexpected response shape or count mismatch")
+    out: list[str] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            raise ValueError("google translate: bad row")
+        raw = item.get("translatedText")
+        out.append(html_module.unescape(str(raw)) if raw is not None else "")
+    return out
+
+
+async def _translate_ui_batch_libre(
+    client: httpx.AsyncClient,
+    texts: list[str],
+    source: str,
+    target: str,
+    base_url: str,
+) -> list[str]:
+    """LibreTranslate-compatible POST /translate (one segment per call for broad server compatibility)."""
+    out: list[str] = []
+    lk = _libretranslate_api_key()
+    for segment in texts:
+        payload: dict[str, Any] = {
+            "q": segment,
+            "source": source,
+            "target": target,
+            "format": "text",
+        }
+        if lk:
+            payload["api_key"] = lk
+        r = await client.post(f"{base_url}/translate", json=payload, timeout=60.0)
+        r.raise_for_status()
+        data = r.json()
+        translated = data.get("translatedText")
+        if translated is None:
+            translated = data.get("translated_text")
+        if not isinstance(translated, str):
+            raise ValueError("libretranslate: missing translatedText")
+        out.append(translated)
+    return out
+
+
+_NAME_VARIANTS_SYSTEM_PROMPT = (
+    "You assist with international business and CRM records. The user submits a name that may use "
+    "non-Latin scripts or accented Latin. Reply with JSON only (no markdown fences), exactly this "
+    'shape: {"variants":["variant1","variant2"]}. Give 2 to 4 distinct plausible Latin-script '
+    "spellings for official paperwork: romanizations, common English forms, or ASCII transliterations. "
+    "Preserve legal suffix tokens (e.g. GmbH, Ltd, SARL, AG) when they appear. Do not add explanations "
+    "or keys other than variants. Each string must be mostly ASCII, single line, at most 120 characters."
+)
+
+
+def _name_variants_api_key() -> str | None:
+    k = (os.environ.get("NAME_VARIANTS_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+    return k or None
+
+
+def _name_variants_openai_base() -> str:
+    return (os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+
+
+def _name_variants_model() -> str:
+    return (os.environ.get("NAME_VARIANTS_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
+
+
+def _parse_name_variants_content(raw: str) -> list[str]:
+    """Extract variant strings from model JSON (or a bare list); dedupe; cap count and length."""
+    s = (raw or "").strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z]*\s*", "", s)
+        s = re.sub(r"\s*```\s*$", "", s).strip()
+    try:
+        data = json.loads(s)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"invalid JSON from model: {e}") from e
+    if isinstance(data, dict) and "variants" in data:
+        seq = data["variants"]
+    elif isinstance(data, list):
+        seq = data
+    else:
+        return []
+    if not isinstance(seq, list):
+        return []
+    out: list[str] = []
+    for item in seq:
+        if not isinstance(item, str):
+            continue
+        t = " ".join(item.split())
+        if not t or len(t) > 160:
+            continue
+        out.append(t)
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for v in out:
+        k = v.casefold()
+        if k not in seen:
+            seen.add(k)
+            uniq.append(v)
+    return uniq[:6]
+
+
+async def _fetch_openai_name_variants(client: httpx.AsyncClient, text: str, context: str) -> list[str]:
+    key = _name_variants_api_key()
+    if not key:
+        raise HTTPException(status_code=503, detail="Name variants API not configured")
+    url = f"{_name_variants_openai_base()}/chat/completions"
+    user_obj = {"input_name": text, "context": context}
+    payload: dict[str, Any] = {
+        "model": _name_variants_model(),
+        "messages": [
+            {"role": "system", "content": _NAME_VARIANTS_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(user_obj, ensure_ascii=False)},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.35,
+        "max_tokens": 500,
+    }
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    try:
+        r = await client.post(url, headers=headers, json=payload, timeout=45.0)
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Name variants request timed out") from None
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Name variants upstream error: {e!s}") from e
+    if r.status_code >= 400:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Name variants API HTTP {r.status_code}: {r.text[:500]}",
+        )
+    try:
+        body = r.json()
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=502, detail="Name variants API returned non-JSON") from None
+    choices = body.get("choices")
+    if not choices or not isinstance(choices, list):
+        raise HTTPException(status_code=502, detail="Name variants API: missing choices")
+    msg = choices[0].get("message") or {}
+    content = msg.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise HTTPException(status_code=502, detail="Name variants API: empty content")
+    try:
+        return _parse_name_variants_content(content)
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
 
 def _normalize_vat(country: str, raw: str) -> str:
@@ -481,6 +740,29 @@ _VIES_MASK_CHARS = re.compile(
 )
 
 
+def _vies_is_proxy_http_error_garbage(s: str) -> bool:
+    """True when upstream returned an HTML/HTTP error page (e.g. Google 504) as if it were trader text."""
+    if len(s) < 14:
+        return False
+    low = s.lower()
+    low_ap = low.replace("\u2019", "'").replace("\u2018", "'")
+    if "<html" in low or "<!doctype" in low:
+        return True
+    if "bad gateway" in low or "gateway timeout" in low:
+        return True
+    if "please try again later" in low_ap:
+        return True
+    if "that's all we know" in low_ap:
+        return True
+    if "that's an error" in low_ap or "that is an error" in low_ap:
+        return True
+    if "server error" in low_ap and re.search(r"\b50[0-4]\b", s):
+        return True
+    if re.search(r"\berror\s*\(?\s*50[234]\s*\)?", low_ap):
+        return True
+    return False
+
+
 def _vies_text_or_none(value: Any) -> str | None:
     """Drop VIES placeholder / masked values so clients never show '---' as real data."""
     if value is None:
@@ -493,6 +775,8 @@ def _vies_text_or_none(value: Any) -> str | None:
         return None
     core = _VIES_MASK_CHARS.sub("", s)
     if not core:
+        return None
+    if _vies_is_proxy_http_error_garbage(s):
         return None
     return s
 
@@ -1605,6 +1889,8 @@ async def api_root() -> dict[str, Any]:
         "docs": "/docs",
         "geocode_try": "/api/v1/geocode/search?q=berlin&lang=en",
         "geocode_provider": "/api/v1/geocode/provider",
+        "name_variants_status": "/api/v1/name-variants/status",
+        "ui_translate_status": "/api/v1/ui-translate/status",
     }
 
 
@@ -1683,6 +1969,72 @@ async def geocode_search(
         _fetch_nominatim_results(client, raw, lang_clean),
     )
     return _merge_geocode_results(photon_list, nomi_list, max_items=18)
+
+
+@app.get("/api/v1/name-variants/status", response_model=NameVariantsStatusResponse)
+def name_variants_status() -> NameVariantsStatusResponse:
+    """Whether optional AI name-variant suggestions are configured (no secrets exposed)."""
+    return NameVariantsStatusResponse(enabled=bool(_name_variants_api_key()), local_on_device=True)
+
+
+@app.post("/api/v1/name-variants/suggest", response_model=NameVariantsSuggestResponse)
+async def name_variants_suggest(body: NameVariantsSuggestRequest) -> NameVariantsSuggestResponse:
+    """Latin-script spelling variants via OpenAI-compatible Chat Completions (optional)."""
+    if not _name_variants_api_key():
+        raise HTTPException(status_code=503, detail="Name variants API not configured")
+    if _vies_http is None:
+        raise HTTPException(status_code=503, detail="HTTP client not initialised")
+    variants = await _fetch_openai_name_variants(_vies_http, body.text.strip(), body.context)
+    return NameVariantsSuggestResponse(variants=variants)
+
+
+@app.get("/api/v1/ui-translate/status", response_model=UiTranslateStatusResponse)
+def ui_translate_status() -> UiTranslateStatusResponse:
+    """Whether live UI translation is configured (Google Translate API or LibreTranslate URL)."""
+    if _google_translate_api_key():
+        return UiTranslateStatusResponse(enabled=True, provider="google")
+    if _libretranslate_base_url():
+        return UiTranslateStatusResponse(enabled=True, provider="libre")
+    return UiTranslateStatusResponse(enabled=False, provider=None)
+
+
+@app.post("/api/v1/ui-translate/batch", response_model=UiTranslateBatchResponse)
+async def ui_translate_batch(body: UiTranslateBatchRequest) -> UiTranslateBatchResponse:
+    """Translate many short UI strings in one request (Google batch) or sequential (LibreTranslate)."""
+    if _vies_http is None:
+        raise HTTPException(status_code=503, detail="HTTP client not initialised")
+    total_chars = sum(len(t) for t in body.texts)
+    if total_chars > 14_000:
+        raise HTTPException(status_code=400, detail="Batch total text too large (max ~14000 chars)")
+    gkey = _google_translate_api_key()
+    libre = _libretranslate_base_url()
+    if not gkey and not libre:
+        raise HTTPException(
+            status_code=503,
+            detail="UI translation not configured: set GOOGLE_TRANSLATE_API_KEY or LIBRETRANSLATE_URL",
+        )
+    src = (body.source or "en").strip()
+    tgt = (body.target or "").strip()
+    if not tgt:
+        raise HTTPException(status_code=400, detail="target is required")
+    try:
+        if gkey:
+            translations = await _translate_ui_batch_google(_vies_http, body.texts, src, tgt, gkey)
+        else:
+            if not libre:
+                raise HTTPException(
+                    status_code=503,
+                    detail="UI translation not configured: set GOOGLE_TRANSLATE_API_KEY or LIBRETRANSLATE_URL",
+                )
+            translations = await _translate_ui_batch_libre(_vies_http, body.texts, src, tgt, libre)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Translation upstream error: {e.response.status_code}",
+        ) from e
+    except (ValueError, httpx.RequestError) as e:
+        raise HTTPException(status_code=502, detail=f"Translation failed: {e}") from e
+    return UiTranslateBatchResponse(translations=translations)
 
 
 @app.get("/api/v1/demo/customers-db")
@@ -1890,7 +2242,7 @@ async def _vies_call_simple_once(url: str, json_body: dict[str, Any]) -> dict[st
     return data
 
 
-def _sanitize_raw_for_display(data: dict[str, Any]) -> dict[str, Any]:
+def _sanitize_raw_for_display(data: dict[str, Any], country_code: str | None = None) -> dict[str, Any]:
     """Replace VIES placeholder values ('---' etc.) with None in the raw payload for clean display."""
     out: dict[str, Any] = {}
     for k, v in data.items():
@@ -1899,9 +2251,14 @@ def _sanitize_raw_for_display(data: dict[str, Any]) -> dict[str, Any]:
                 match_value = _soap_match_to_rest(v)
                 out[k] = None if (not match_value or match_value == "NOT_PROCESSED") else match_value
             else:
-                out[k] = _vies_text_or_none(v)
+                cleaned = _vies_text_or_none(v)
+                if cleaned and _vies_raw_key_needs_latin(k):
+                    latin = _normalize_vies_display_text(cleaned, country_code=country_code)
+                    out[k] = latin if latin else cleaned
+                else:
+                    out[k] = cleaned
         elif isinstance(v, dict):
-            out[k] = _sanitize_raw_for_display(v)
+            out[k] = _sanitize_raw_for_display(v, country_code=country_code)
         else:
             out[k] = v
     return out
@@ -1976,9 +2333,9 @@ def _map_vies_check_response(
     vat: str,
     fallback_name: str | None = None,
     fallback_address: str | None = None,
-    display_locale: str = "de",
 ) -> VatCheckResponse:
     valid = bool(data.get("valid"))
+    response_cc = str(data.get("countryCode") or cc).strip().upper() or cc
     trader_name = _vies_text_or_none(data.get("traderName")) or _vies_text_or_none(data.get("name"))
 
     street = _vies_text_or_none(data.get("traderStreet"))
@@ -1989,22 +2346,29 @@ def _map_vies_check_response(
     if not addr:
         addr = _vies_address_or_none(data.get("address"))
 
-    loc = display_locale if display_locale in ("de", "en") else _resolve_vies_display_locale(None)
-    trader_name = _normalize_vies_display_text(trader_name, loc)
-    addr = _normalize_vies_display_text(addr, loc)
+    trader_name_original = trader_name
+    addr_original = addr
+
+    # Company name is legal identity: keep it exactly as received (no transliteration/normalization).
+    trader_name = trader_name_original
+    addr = _normalize_vies_display_text(addr, country_code=response_cc)
 
     details = bool(trader_name or addr)
     if valid and not trader_name and fallback_name:
-        trader_name = fallback_name
+        trader_name = fallback_name.strip()
+        trader_name_original = fallback_name.strip()
     if valid and not addr and fallback_address:
-        addr = fallback_address
+        addr = _normalize_vies_display_text(fallback_address.strip(), country_code=response_cc) or fallback_address.strip()
+        addr_original = fallback_address.strip()
     if valid and not trader_name:
         trader_name = "Not provided by VIES"
     if valid and not addr:
         addr = "Not provided by VIES"
 
     omit_raw = os.environ.get("VIES_OMIT_RAW_IN_JSON", "").strip().lower() in ("1", "true", "yes", "on")
-    raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(dict(data))
+    raw_payload: dict[str, Any] | None = None if omit_raw else _sanitize_raw_for_display(
+        dict(data), country_code=response_cc
+    )
 
     def _m(key: str) -> str | None:
         """Expose only meaningful match values at top level."""
@@ -2017,10 +2381,17 @@ def _map_vies_check_response(
 
     return VatCheckResponse(
         valid=valid,
-        country_code=str(data.get("countryCode") or cc),
+        country_code=response_cc,
         vat_number=str(data.get("vatNumber") or vat),
         name=trader_name,
         address=addr,
+        name_original=trader_name_original,
+        address_original=addr_original,
+        name_normalized=trader_name_original,
+        address_normalized=addr,
+        name_search=_normalize_vies_search_text(trader_name_original, country_code=response_cc),
+        address_search=_normalize_vies_search_text(addr_original, country_code=response_cc),
+        normalization_version="vies_norm_v1_country_aware",
         request_date=data.get("requestDate"),
         request_identifier=req_id,
         vies_error=None,
@@ -2064,14 +2435,12 @@ async def vies_check_test_service(body: VatCheckRequest) -> VatCheckResponse:
         require_valid_field=True,
     )
     fallback_name, fallback_address = _request_fallback_name_address(body)
-    display_locale = _resolve_vies_display_locale(body.text_locale)
     return _map_vies_check_response(
         data,
         cc,
         vat,
         fallback_name=fallback_name,
         fallback_address=fallback_address,
-        display_locale=display_locale,
     )
 
 
@@ -2095,12 +2464,10 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
     )
     data = await _enrich_vies_data_with_fallbacks(payload, data)
     fallback_name, fallback_address = _request_fallback_name_address(body)
-    display_locale = _resolve_vies_display_locale(body.text_locale)
     return _map_vies_check_response(
         data,
         cc,
         vat,
         fallback_name=fallback_name,
         fallback_address=fallback_address,
-        display_locale=display_locale,
     )

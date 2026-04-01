@@ -1,5 +1,14 @@
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
-import { X, Droplets, BadgeCheck, Plus, Trash2, Car, FileText, ExternalLink } from "lucide-react";
+import {
+  X,
+  Droplets,
+  BadgeCheck,
+  Plus,
+  Trash2,
+  Car,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
 import {
   DocExtractBanner,
   KiBadge,
@@ -18,8 +27,16 @@ import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions
 import { SuggestTextInput } from "./SuggestTextInput";
 import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
 import type { DepartmentArea } from "../types/departmentArea";
-import type { KundenStamm, KundenWashStamm, ViesCustomerSnapshot } from "../types/kunden";
+import type {
+  KundenStamm,
+  KundenWashStamm,
+  ViesCustomerSnapshot,
+} from "../types/kunden";
 import { normalizeLatinAddressLine } from "../common/utils/addressLatinNormalize";
+import {
+  transliterateAddressToAscii,
+  transliterateAddressToAsciiMultiline,
+} from "../common/utils/addressTransliterate";
 import {
   transliterateToAscii,
   transliterateToAsciiMultiline,
@@ -28,7 +45,12 @@ import { commitAsciiNormalized } from "../common/utils/commitAsciiNormalized";
 import { isViesProxyHttpErrorGarbage } from "../common/utils/viesProxyErrorText";
 import { useLanguage } from "../contexts/LanguageContext";
 
-type TabId = "vat" | "kunde" | "art" | "waschanlage" | "history";
+type TabId =
+  | "vat"
+  | "kunde"
+  | "art"
+  | "waschanlage"
+  | "history";
 
 type KontaktEntry = {
   id: string;
@@ -313,12 +335,19 @@ function normalizeVatNameForUi(raw: string | null): string | null {
 
 function normalizeVatAddressForUi(raw: string | null): string | null {
   if (!raw?.trim()) return null;
-  const lines = transliterateToAsciiMultiline(raw)
+  const lines = transliterateAddressToAsciiMultiline(raw)
     .split(/\r?\n/)
     .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .map((line) => toTitleCaseLatin(line));
+    .filter(Boolean);
   return lines.length > 0 ? lines.join("\n") : null;
+}
+
+function looksAdministrativeAreaText(raw: string | null | undefined): boolean {
+  if (!raw?.trim()) return false;
+  const ascii = transliterateAddressToAscii(raw).toLowerCase();
+  return /\b(region|stadt|city|county|district|municipality|municipal|province|provincia|departamento|prefecture|oblast|obl|raion|rayon|okrug|gemeinde|grad|gr)\b/.test(
+    ascii
+  );
 }
 
 /** Allow Apply / payload merge when VAT is valid or trader text is present (some proxies mis-set `valid`). */
@@ -374,19 +403,175 @@ function tryPostalAndCity(lastLine: string): { plz: string; ort: string } | null
   const t = lastLine.trim();
   const patterns: RegExp[] = [
     /^(\d{2}-\d{3})\s+(.+)$/i,
+    /^(\d{3}\s?\d{2})\s+(.+)$/i,
+    /^(\d{4}-\d{3})\s+(.+)$/i,
+    /^([A-Z]\d{2}\s*[A-Z0-9]{4})\s*[,;]\s*(.+)$/i,
+    /^([A-Z]\d{2}\s*[A-Z0-9]{4})\s*[-–—]\s*(.+)$/i,
     /^([A-Z]\d{2}\s*[A-Z0-9]{4})\s+(.+)$/i,
     /^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s+(.+)$/i,
     /^(\d{4}\s*[A-Z]{2})\s+(.+)$/i,
-    /^(?:[A-Z]-)?(\d{4,6})\s+(.+)$/i,
+    /^(?:[A-Z]{1,2}-)?(\d{4,6})\s+(.+)$/i,
   ];
   for (const re of patterns) {
     const m = t.match(re);
     if (m) {
-      const ortRaw = m[2]!.trim().replace(/^\s*[-–—]\s*/u, "").trim();
-      return { plz: m[1]!.trim(), ort: ortRaw };
+      const plzPart = m[1]!.trim();
+      const ortRaw = (m[2] ?? "")
+        .trim()
+        .replace(/^\s*[-–—]\s*/u, "")
+        .trim();
+      if (!ortRaw) continue;
+      return { plz: plzPart, ort: ortRaw };
     }
   }
   return null;
+}
+
+/**
+ * Bulgarian registry: `..., Gr.Plovdiv` / `..., гр. …` — Grad (city). No translation; keep `obl.` as Latin.
+ */
+function tryGradAbbrevTailCity(segment: string): string | null {
+  const t = segment.trim();
+  const latin = t.match(/^Gr\.?\s*(.+)$/i);
+  if (latin) return latin[1]!.trim();
+  const cy = t.match(/^гр\.?\s*(.+)$/iu);
+  if (cy) return cy[1]!.trim();
+  return null;
+}
+
+const VIES_RAW_TRADER_NEST_KEYS = ["msLookupRaw", "soapCheckRaw", "soapApproxRaw"] as const;
+
+function digTraderAddressFieldsFromViesRaw(raw: Record<string, unknown>): {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+} {
+  const buckets: Record<string, unknown>[] = [raw];
+  for (const k of VIES_RAW_TRADER_NEST_KEYS) {
+    const nest = raw[k];
+    if (nest && typeof nest === "object" && !Array.isArray(nest)) {
+      buckets.push(nest as Record<string, unknown>);
+    }
+  }
+  let strasse = "";
+  let plz = "";
+  let ort = "";
+  for (const o of buckets) {
+    if (!strasse) strasse = firstNonEmptyStr(o, "traderStreet", "trader_street");
+    if (!plz) {
+      plz = firstNonEmptyStr(
+        o,
+        "traderPostalCode",
+        "trader_postal_code",
+        "postalCode",
+        "postal_code",
+        "traderPostcode"
+      );
+    }
+    if (!ort) ort = firstNonEmptyStr(o, "traderCity", "trader_city");
+  }
+  return {
+    strasse: strasse || undefined,
+    plz: plz || undefined,
+    ort: ort || undefined,
+  };
+}
+
+function stripTrailingViesCountryLines(lines: string[]): string[] {
+  const out = [...lines];
+  while (out.length > 0) {
+    const last = out[out.length - 1]!.trim();
+    if (!last) {
+      out.pop();
+      continue;
+    }
+    if (tryPostalAndCity(last)) break;
+    if (viesCountryNameLineToLandCode(last)) out.pop();
+    else break;
+  }
+  return out;
+}
+
+function parseViesMultilineAddressBody(linesIn: string[]): {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+} {
+  const lines = stripTrailingViesCountryLines(linesIn.map((l) => l.trim()).filter(Boolean));
+  if (lines.length === 0) return {};
+
+  for (let end = lines.length - 1; end >= 1; end--) {
+    const combined = `${lines[end - 1]!} ${lines[end]!}`.replace(/\s+/g, " ").trim();
+    const pc = tryPostalAndCity(combined);
+    if (pc) {
+      const streetLines = lines.slice(0, end - 1);
+      const streetRaw =
+        streetLines.length === 0 ? "" : streetLines.length > 1 ? streetLines.join(", ") : streetLines[0]!;
+      return {
+        strasse: streetRaw ? normalizeLatinAddressLine(streetRaw, "street") : undefined,
+        plz: normalizeLatinAddressLine(pc.plz, "postal"),
+        ort: normalizeLatinAddressLine(pc.ort, "city"),
+      };
+    }
+  }
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const pc = tryPostalAndCity(lines[i]!);
+    if (pc) {
+      const streetLines = lines.slice(0, i);
+      const streetRaw =
+        streetLines.length === 0
+          ? ""
+          : streetLines.length > 1
+            ? streetLines.join(", ")
+            : streetLines[0]!;
+      return {
+        strasse: streetRaw ? normalizeLatinAddressLine(streetRaw, "street") : undefined,
+        plz: normalizeLatinAddressLine(pc.plz, "postal"),
+        ort: normalizeLatinAddressLine(pc.ort, "city"),
+      };
+    }
+  }
+
+  if (lines.length >= 2) {
+    const maybePlz = lines[lines.length - 2]!.trim();
+    const maybeCity = lines[lines.length - 1]!.trim();
+    const soloPlz =
+      /^(\d{2}-\d{3}|\d{3}\s?\d{2}|\d{4}-\d{3}|\d{4}\s*[A-Z]{2}|[A-Z]\d{2}\s*[A-Z0-9]{4}|(?:[A-Z]{1,2}-)?\d{4,6})$/i.test(
+        maybePlz
+      );
+    if (soloPlz && maybeCity && !tryPostalAndCity(maybeCity)) {
+      const streetLines = lines.slice(0, -2);
+      const streetRaw =
+        streetLines.length === 0
+          ? ""
+          : streetLines.length > 1
+            ? streetLines.join(", ")
+            : streetLines[0]!;
+      return {
+        strasse: streetRaw ? normalizeLatinAddressLine(streetRaw, "street") : undefined,
+        plz: normalizeLatinAddressLine(maybePlz, "postal"),
+        ort: normalizeLatinAddressLine(maybeCity, "city"),
+      };
+    }
+  }
+
+  const lastLine = lines[lines.length - 1]!;
+  const gradCity = tryGradAbbrevTailCity(lastLine);
+  if (gradCity && lines.length >= 2) {
+    const streetLines = lines.slice(0, -1);
+    const streetRaw =
+      streetLines.length === 1 ? streetLines[0]! : streetLines.join(", ");
+    return {
+      strasse: normalizeLatinAddressLine(streetRaw, "street"),
+      ort: normalizeLatinAddressLine(gradCity, "city"),
+    };
+  }
+
+  return {
+    strasse: normalizeLatinAddressLine(lines[0]!, "street"),
+    ort: normalizeLatinAddressLine(lines.slice(1).join(", "), "city"),
+  };
 }
 
 function parseViesSingleLineAddress(one: string): { strasse?: string; plz?: string; ort?: string } {
@@ -398,9 +583,16 @@ function parseViesSingleLineAddress(one: string): { strasse?: string; plz?: stri
     const pc = tryPostalAndCity(right);
     if (pc && left.length > 0) {
       return {
-        strasse: toTitleCaseLatin(normalizeLatinAddressLine(left, "street")),
+        strasse: normalizeLatinAddressLine(left, "street"),
         plz: normalizeLatinAddressLine(pc.plz, "postal"),
-        ort: toTitleCaseLatin(normalizeLatinAddressLine(pc.ort, "city")),
+        ort: normalizeLatinAddressLine(pc.ort, "city"),
+      };
+    }
+    const gradOrt = tryGradAbbrevTailCity(right);
+    if (gradOrt && left.length > 0) {
+      return {
+        strasse: normalizeLatinAddressLine(left, "street"),
+        ort: normalizeLatinAddressLine(gradOrt, "city"),
       };
     }
   }
@@ -413,15 +605,15 @@ function parseViesSingleLineAddress(one: string): { strasse?: string; plz?: stri
         const streetTokens = tokens.slice(0, -n);
         if (streetTokens.length > 0) {
           return {
-            strasse: toTitleCaseLatin(normalizeLatinAddressLine(streetTokens.join(" "), "street")),
+            strasse: normalizeLatinAddressLine(streetTokens.join(" "), "street"),
             plz: normalizeLatinAddressLine(pc.plz, "postal"),
-            ort: toTitleCaseLatin(normalizeLatinAddressLine(pc.ort, "city")),
+            ort: normalizeLatinAddressLine(pc.ort, "city"),
           };
         }
       }
     }
   }
-  return { strasse: toTitleCaseLatin(normalizeLatinAddressLine(one, "street")) };
+  return { strasse: normalizeLatinAddressLine(one, "street") };
 }
 
 function parseViesAddress(block: string | null | undefined): {
@@ -436,20 +628,47 @@ function parseViesAddress(block: string | null | undefined): {
     .filter(Boolean);
   if (lines.length === 0) return {};
   if (lines.length === 1) return parseViesSingleLineAddress(lines[0]!);
-  const last = lines[lines.length - 1]!;
-  const pc = tryPostalAndCity(last);
-  if (pc) {
-    const streetRaw = lines.length > 2 ? lines.slice(0, -1).join(", ") : lines[0]!;
-    return {
-      strasse: toTitleCaseLatin(normalizeLatinAddressLine(streetRaw, "street")),
-      plz: normalizeLatinAddressLine(pc.plz, "postal"),
-      ort: toTitleCaseLatin(normalizeLatinAddressLine(pc.ort, "city")),
-    };
+  return parseViesMultilineAddressBody(lines);
+}
+
+function normalizeStructuredViesAddressParts(parts: {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+}): {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+} {
+  let { strasse, plz, ort } = parts;
+  const cityLine = ort?.trim();
+  if (cityLine && !plz?.trim()) {
+    const split = tryPostalAndCity(cityLine);
+    if (split) {
+      plz = normalizeLatinAddressLine(split.plz, "postal");
+      ort = normalizeLatinAddressLine(split.ort, "city");
+    }
   }
-  return {
-    strasse: toTitleCaseLatin(normalizeLatinAddressLine(lines[0]!, "street")),
-    ort: toTitleCaseLatin(normalizeLatinAddressLine(lines.slice(1).join(", "), "city")),
-  };
+  return { strasse, plz, ort };
+}
+
+function findOriginalAddressInViesRaw(raw: Record<string, unknown> | null): string | null {
+  if (!raw) return null;
+  const direct = firstNonEmptyStr(raw, "address", "traderAddress");
+  if (isMeaningfulViesText(direct)) return direct;
+  for (const key of VIES_RAW_TRADER_NEST_KEYS) {
+    const nest = raw[key];
+    if (!nest || typeof nest !== "object" || Array.isArray(nest)) continue;
+    const d = firstNonEmptyStr(nest as Record<string, unknown>, "address", "traderAddress");
+    if (isMeaningfulViesText(d)) return d;
+  }
+  return null;
+}
+
+function viesAddressSourceText(r: ViesCheckResult): string | null {
+  const fromRaw = r.vies_raw ? findOriginalAddressInViesRaw(r.vies_raw) : null;
+  if (fromRaw) return fromRaw;
+  return isMeaningfulViesText(r.address) ? r.address!.trim() : null;
 }
 
 /** Prefer structured VoW fields from `vies_raw`, then parse the combined `address` string. */
@@ -464,14 +683,14 @@ function extractViesAddressForForm(r: ViesCheckResult): {
   const raw = r.vies_raw;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const o = raw as Record<string, unknown>;
-    const s = firstNonEmptyStr(o, "traderStreet", "trader_street");
-    const p = firstNonEmptyStr(o, "traderPostalCode", "trader_postal_code");
-    const c = firstNonEmptyStr(o, "traderCity", "trader_city");
-    if (s) strasse = toTitleCaseLatin(normalizeLatinAddressLine(s, "street"));
-    if (p) plz = normalizeLatinAddressLine(p, "postal");
-    if (c) ort = toTitleCaseLatin(normalizeLatinAddressLine(c, "city"));
+    const dug = digTraderAddressFieldsFromViesRaw(o);
+    if (dug.strasse) strasse = normalizeLatinAddressLine(dug.strasse, "street");
+    if (dug.plz) plz = normalizeLatinAddressLine(dug.plz, "postal");
+    if (dug.ort) ort = normalizeLatinAddressLine(dug.ort, "city");
   }
-  const parsed = isMeaningfulViesText(r.address) ? parseViesAddress(r.address) : {};
+  ({ strasse, plz, ort } = normalizeStructuredViesAddressParts({ strasse, plz, ort }));
+  const sourceAddress = viesAddressSourceText(r);
+  const parsed = sourceAddress ? parseViesAddress(sourceAddress) : {};
   const structComplete =
     Boolean(strasse?.trim()) && Boolean(plz?.trim()) && Boolean(ort?.trim());
   if (structComplete) {
@@ -482,11 +701,28 @@ function extractViesAddressForForm(r: ViesCheckResult): {
   const rawPlzMissing = !plz?.trim();
   const streetLooksLikeFullLine =
     Boolean(strasse?.trim() && parsedPlz && strasse.includes(parsedPlz));
-  if (parsedPlz && parsedStr && (rawPlzMissing || streetLooksLikeFullLine)) {
+  const cityContainsPostalPrefix =
+    Boolean(
+      ort?.trim() &&
+        parsedPlz &&
+        ort.replace(/\s+/g, "").startsWith(parsedPlz.replace(/\s+/g, ""))
+    );
+  const structuredLooksAdministrative =
+    looksAdministrativeAreaText(strasse) || looksAdministrativeAreaText(ort);
+  if (
+    parsedPlz &&
+    parsedStr &&
+    (rawPlzMissing || streetLooksLikeFullLine || cityContainsPostalPrefix || structuredLooksAdministrative)
+  ) {
     return {
       strasse: parsed.strasse,
       plz: plz?.trim() ? plz : parsed.plz,
-      ort: ort?.trim() ? ort : parsed.ort,
+      ort:
+        cityContainsPostalPrefix || looksAdministrativeAreaText(ort)
+          ? parsed.ort
+          : ort?.trim()
+            ? ort
+            : parsed.ort,
     };
   }
   const merged = {
@@ -497,10 +733,10 @@ function extractViesAddressForForm(r: ViesCheckResult): {
   const hasAny = Boolean(
     merged.strasse?.trim() || merged.plz?.trim() || merged.ort?.trim()
   );
-  if (!hasAny && isMeaningfulViesText(r.address)) {
-    const lines = r.address!.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    const first = lines[0] ?? r.address!.trim();
-    const s = toTitleCaseLatin(normalizeLatinAddressLine(first, "street"));
+  if (!hasAny && sourceAddress) {
+    const lines = sourceAddress.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const first = lines[0] ?? sourceAddress.trim();
+    const s = normalizeLatinAddressLine(first, "street");
     if (s) return { strasse: s };
   }
   return merged;
@@ -2088,13 +2324,13 @@ export function NewCustomerModal({
                       </p>
                     ) : null}
                     {isMeaningfulViesText(vatCheckResult.name) ? (
-                      <p className="mt-2 text-slate-800">
+                      <p className="notranslate mt-2 text-slate-800" translate="no">
                         <span className="font-medium text-slate-600">{t("newCustomerVatNameLabel", "Name:")} </span>
                         {vatCheckResult.name}
                       </p>
                     ) : null}
                     {isMeaningfulViesText(vatCheckResult.address) ? (
-                      <div className="mt-1 text-slate-800">
+                      <div className="notranslate mt-1 text-slate-800" translate="no">
                         <p className="whitespace-pre-line">
                           <span className="font-medium text-slate-600">
                             {t("newCustomerVatAddressLabel", "Address:")}{" "}

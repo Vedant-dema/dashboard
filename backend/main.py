@@ -165,8 +165,9 @@ def _normalize_vies_display_text(text: str | None, country_code: str | None = No
     text = unicodedata.normalize("NFKC", text).replace("||", " / ").strip()
     if not text:
         return None
-    # Keep German trader text unchanged per business policy; normalize others for Latin/ASCII-friendly UI.
-    if (country_code or "").strip().upper() == "DE":
+    # Keep German / Bulgarian registry text unchanged: DE policy; BG Cyrillic is mangled by generic unidecode.
+    cc = (country_code or "").strip().upper()
+    if cc in ("DE", "BG"):
         text = re.sub(r" {2,}", " ", text).strip()
         return text if text else None
     if _needs_ascii_transliteration(text):
@@ -2243,7 +2244,12 @@ async def _vies_call_simple_once(url: str, json_body: dict[str, Any]) -> dict[st
 
 
 def _sanitize_raw_for_display(data: dict[str, Any], country_code: str | None = None) -> dict[str, Any]:
-    """Replace VIES placeholder values ('---' etc.) with None in the raw payload for clean display."""
+    """Clean placeholder values in ``vies_raw`` but keep original human text unchanged.
+
+    The frontend owns transliteration for form-apply/search usage.  Keeping the raw
+    payload semantically untouched avoids turning member-state registry text into a
+    lossy Latin paraphrase before the client can compare and normalize it.
+    """
     out: dict[str, Any] = {}
     for k, v in data.items():
         if isinstance(v, str):
@@ -2252,11 +2258,7 @@ def _sanitize_raw_for_display(data: dict[str, Any], country_code: str | None = N
                 out[k] = None if (not match_value or match_value == "NOT_PROCESSED") else match_value
             else:
                 cleaned = _vies_text_or_none(v)
-                if cleaned and _vies_raw_key_needs_latin(k):
-                    latin = _normalize_vies_display_text(cleaned, country_code=country_code)
-                    out[k] = latin if latin else cleaned
-                else:
-                    out[k] = cleaned
+                out[k] = cleaned
         elif isinstance(v, dict):
             out[k] = _sanitize_raw_for_display(v, country_code=country_code)
         else:
@@ -2273,6 +2275,46 @@ def _request_fallback_name_address(body: VatCheckRequest) -> tuple[str | None, s
     line2 = " ".join(x for x in (postal, city) if x).strip() or None
     fallback_addr = "\n".join(x for x in (street, line2) if x) or None
     return fallback_name, fallback_addr
+
+
+def _address_has_postal_hint(text: str | None) -> bool:
+    if not text:
+        return False
+    compact = " ".join(str(text).split())
+    patterns = (
+        r"\b\d{2}-\d{3}\b",
+        r"\b\d{3}\s?\d{2}\b",
+        r"\b\d{4}-\d{3}\b",
+        r"\b(?:[A-Z]{1,2}-)?\d{4,6}\b",
+        r"\b[A-Z]\d{2}\s*[A-Z0-9]{4}\b",
+        r"\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b",
+        r"\b\d{4}\s*[A-Z]{2}\b",
+    )
+    return any(re.search(pattern, compact, re.IGNORECASE) for pattern in patterns)
+
+
+def _prefer_vies_original_address(
+    raw_address: str | None,
+    structured_address: str | None,
+) -> str | None:
+    """Prefer the fuller original VIES address over stitched trader fields.
+
+    Some member states return a better complete `address` field while the split
+    trader fields (`traderStreet` / `traderCity`) are abbreviated or distorted.
+    In that case the frontend loses ZIP extraction unless we keep the original
+    combined line here.
+    """
+    if raw_address and not structured_address:
+        return raw_address
+    if structured_address and not raw_address:
+        return structured_address
+    if not raw_address and not structured_address:
+        return None
+    if _address_has_postal_hint(raw_address) and not _address_has_postal_hint(structured_address):
+        return raw_address
+    if raw_address and structured_address and len(raw_address) > len(structured_address) + 8:
+        return raw_address
+    return structured_address or raw_address
 
 
 async def _enrich_vies_data_with_fallbacks(payload: dict[str, str], initial_data: dict[str, Any]) -> dict[str, Any]:
@@ -2342,9 +2384,9 @@ def _map_vies_check_response(
     pc = _vies_text_or_none(data.get("traderPostalCode"))
     city = _vies_text_or_none(data.get("traderCity"))
     line2 = " ".join(x for x in (pc, city) if x).strip() or None
-    addr = "\n".join(x for x in (street, line2) if x) or None
-    if not addr:
-        addr = _vies_address_or_none(data.get("address"))
+    structured_addr = "\n".join(x for x in (street, line2) if x) or None
+    raw_addr = _vies_address_or_none(data.get("address"))
+    addr = _prefer_vies_original_address(raw_addr, structured_addr)
 
     trader_name_original = trader_name
     addr_original = addr

@@ -1,98 +1,187 @@
-import { transliterate as transliterateWide } from 'transliteration';
+import { transliterate as transliterateWide } from "transliteration";
 
-// #region agent log
-const _dbg = (hypothesisId: string, location: string, message: string, data: Record<string, unknown>) => {
-  fetch('http://127.0.0.1:7681/ingest/be26f82e-3233-4622-be13-a1faf77019bb', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f4aed6' },
-    body: JSON.stringify({
-      sessionId: 'f4aed6',
-      hypothesisId,
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
+const COMBINING_MARKS = /\p{M}/gu;
+const NON_ASCII_PRINTABLE = /[^\x20-\x7E]/g;
+const ASCII_PRINTABLE = /^[\x20-\x7E]*$/;
+const GREEK_SCRIPT = /[\u0370-\u03FF\u1F00-\u1FFF]/;
+
+const LATIN_ASCII_OVERRIDES: Readonly<Record<string, string>> = {
+  "\u00c4": "Ae",
+  "\u00d6": "Oe",
+  "\u00dc": "Ue",
+  "\u00e4": "ae",
+  "\u00f6": "oe",
+  "\u00fc": "ue",
+  "\u00df": "ss",
+  "\u1e9e": "SS",
+  "\u00c6": "AE",
+  "\u00e6": "ae",
+  "\u0152": "OE",
+  "\u0153": "oe",
+  "\u00d8": "O",
+  "\u00f8": "o",
+  "\u00c5": "A",
+  "\u00e5": "a",
+  "\u00d0": "D",
+  "\u00f0": "d",
+  "\u0110": "D",
+  "\u0111": "d",
+  "\u00de": "Th",
+  "\u00fe": "th",
+  "\u0141": "L",
+  "\u0142": "l",
+  "\u0131": "i",
+  "\u0132": "IJ",
+  "\u0133": "ij",
+  "\u014a": "N",
+  "\u014b": "n",
+  "\u0126": "H",
+  "\u0127": "h",
+  "\u0166": "T",
+  "\u0167": "t",
+  "\u018f": "E",
+  "\u0259": "e",
+  "\u0192": "f",
+  "\u0149": "n",
+  "\u0138": "k",
 };
-// #endregion
 
-/**
- * True when the segment still contains Greek (before wide transliteration).
- * Used to apply phonetic refinements the `transliteration` package often misses (αυ→av, ου→ou).
- */
-function sourceHasGreek(text: string): boolean {
-  return /[\u0370-\u03FF\u1F00-\u1FFF]/.test(text);
+const GREEK_SEQUENCE_OVERRIDES: ReadonlyArray<[RegExp, string]> = [
+  [/ΑΥ/g, "AV"],
+  [/Αυ/g, "Av"],
+  [/αυ/g, "av"],
+  [/ΕΥ/g, "EV"],
+  [/Ευ/g, "Ev"],
+  [/ευ/g, "ev"],
+  [/ΗΥ/g, "IV"],
+  [/Ηυ/g, "Iv"],
+  [/ηυ/g, "iv"],
+  [/ΟΥ/g, "OU"],
+  [/Ου/g, "Ou"],
+  [/ου/g, "ou"],
+];
+
+export type TransliterateOpts = { fixChineseSpacing?: boolean; unknown?: string };
+
+export type AsciiCharacterComparison = {
+  source: string;
+  ascii: string;
+  changed: boolean;
+  sourceCodePoint: string;
+  strategy: "ascii" | "compatibility" | "override" | "library" | "fallback";
+};
+
+function isAsciiPrintable(value: string): boolean {
+  return ASCII_PRINTABLE.test(value);
 }
 
-/**
- * After letter-by-letter Greek→Latin, fix common diphthong artifacts (library uses Y/OY where
- * modern Greek romanisation uses V/OU between consonants). Only safe when we know input was Greek.
- */
-function refineGreekLatinTransliteration(ascii: string): string {
-  let t = ascii;
-  t = t.replace(/AYR/g, 'AVR').replace(/ayr/g, 'avr');
-  const C = '[BCDFGHJKLMNPQRSTVWXYZ]';
-  const c = '[bcfghjklmnpqrstvwxyz]';
-  t = t.replace(new RegExp(`(?<=${C})OY(?=${C})`, 'g'), 'OU');
-  t = t.replace(new RegExp(`(?<=${c})oy(?=${c})`, 'g'), 'ou');
-  return t;
+function toAsciiCodePoint(ch: string): string {
+  return `U+${ch.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0") ?? "0000"}`;
 }
 
-/**
- * DIN-style German umlaut expansion before wide-script transliteration so
- * e.g. "Müller" becomes "Mueller" (not only "Muller" from accent stripping).
- */
-function expandGermanUmlauts(s: string): string {
-  return s
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/Ä/g, 'Ae')
-    .replace(/Ö/g, 'Oe')
-    .replace(/Ü/g, 'Ue')
-    .replace(/\u00df/g, 'ss')
-    .replace(/\u1e9e/g, 'SS');
+function cleanupSegment(raw: string): string {
+  let text = raw.normalize("NFKC");
+  text = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  text = text.replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, " ");
+  text = text.replace(/[\u2018\u2019\u201A\u201B]/g, "'");
+  text = text.replace(/[\u201C\u201D\u201E\u201F]/g, '"');
+  text = text.replace(/[\u2013\u2014\u2212]/g, "-");
+  text = text.replace(/\s+/g, " ").trim();
+  return text;
 }
 
-function cleanupSegment(s: string): string {
-  let t = s.normalize('NFKC');
-  t = t.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
-  t = t.replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ');
-  t = t.replace(/[\u2018\u2019\u201A\u201B]/g, "'");
-  t = t.replace(/[\u201C\u201D\u201E\u201F]/g, '"');
-  t = t.replace(/[\u2013\u2014\u2212]/g, '-');
-  t = t.replace(/\s+/g, ' ').trim();
-  return t;
+function stripLatinMarks(text: string): string {
+  return text.normalize("NFD").replace(COMBINING_MARKS, "");
 }
 
-type TransliterateOpts = { fixChineseSpacing?: boolean; unknown?: string };
+function finalizeAscii(text: string, unknown = ""): string {
+  return text.replace(NON_ASCII_PRINTABLE, unknown);
+}
+
+function applyGreekSequenceOverrides(text: string): string {
+  if (!GREEK_SCRIPT.test(text)) return text;
+  return GREEK_SEQUENCE_OVERRIDES.reduce(
+    (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
+    text
+  );
+}
+
+function applyLatinOverridesToSegment(text: string): string {
+  return Array.from(text, (source) => LATIN_ASCII_OVERRIDES[source] ?? source).join("");
+}
+
+function transliterateCharacter(source: string, opts?: TransliterateOpts): AsciiCharacterComparison {
+  if (isAsciiPrintable(source)) {
+    return {
+      source,
+      ascii: source,
+      changed: false,
+      sourceCodePoint: toAsciiCodePoint(source),
+      strategy: "ascii",
+    };
+  }
+
+  const override = LATIN_ASCII_OVERRIDES[source];
+  if (override !== undefined) {
+    return {
+      source,
+      ascii: override,
+      changed: true,
+      sourceCodePoint: toAsciiCodePoint(source),
+      strategy: "override",
+    };
+  }
+
+  const compatibility = finalizeAscii(stripLatinMarks(source));
+  if (compatibility && isAsciiPrintable(compatibility)) {
+    return {
+      source,
+      ascii: compatibility,
+      changed: compatibility !== source,
+      sourceCodePoint: toAsciiCodePoint(source),
+      strategy: "compatibility",
+    };
+  }
+
+  let wide = opts ? transliterateWide(source, opts) : transliterateWide(source);
+  wide = stripLatinMarks(wide);
+  wide = finalizeAscii(wide, opts?.unknown ?? "");
+  if (wide) {
+    return {
+      source,
+      ascii: wide,
+      changed: wide !== source,
+      sourceCodePoint: toAsciiCodePoint(source),
+      strategy: "library",
+    };
+  }
+
+  return {
+    source,
+    ascii: opts?.unknown ?? "",
+    changed: true,
+    sourceCodePoint: toAsciiCodePoint(source),
+    strategy: "fallback",
+  };
+}
+
+export function compareCharactersToAscii(
+  raw: string,
+  opts?: TransliterateOpts
+): AsciiCharacterComparison[] {
+  return Array.from(cleanupSegment(raw), (source) => transliterateCharacter(source, opts));
+}
 
 function foldSegmentWithOpts(segment: string, opts?: TransliterateOpts): string {
-  const s = cleanupSegment(segment);
-  if (!s) return '';
-  const hadGreek = sourceHasGreek(s);
-  let u = expandGermanUmlauts(s);
-  u = opts ? transliterateWide(u, opts) : transliterateWide(u);
-  u = u.normalize('NFD').replace(/\p{M}/gu, '');
-  u = expandGermanUmlauts(u);
-  let out = u.replace(/\s+/g, ' ').trim();
-  const beforeRefine = out;
-  if (hadGreek) {
-    out = refineGreekLatinTransliteration(out);
-  }
-  // #region agent log
-  if (hadGreek || /PLATY|DIAST|KOUL|GERMANOS|ΠΛΑΤΥ/i.test(segment)) {
-    _dbg('H1', 'transliterateToAscii.ts:foldSegmentWithOpts', 'greek fold path', {
-      hadGreek,
-      optsKey: opts ? JSON.stringify(opts) : 'default',
-      inSample: s.slice(0, 80),
-      beforeRefine: beforeRefine.slice(0, 120),
-      afterRefine: out.slice(0, 120),
-    });
-  }
-  // #endregion
-  return out;
+  const clean = cleanupSegment(segment);
+  if (!clean) return "";
+
+  const prepared = applyLatinOverridesToSegment(applyGreekSequenceOverrides(clean));
+  let output = opts ? transliterateWide(prepared, opts) : transliterateWide(prepared);
+  output = stripLatinMarks(output);
+  output = finalizeAscii(output, opts?.unknown ?? "");
+
+  return output.replace(/\s+/g, " ").trim();
 }
 
 function foldSegment(segment: string): string {
@@ -100,48 +189,47 @@ function foldSegment(segment: string): string {
 }
 
 /**
- * On-device “variant” spellings (no API): same pipeline with alternate `transliteration`
- * options so CJK and rare characters can differ slightly (e.g. spaced vs compact pinyin).
- * Deduped; always includes the canonical {@link transliterateToAscii} result first.
+ * On-device variant spellings: same pipeline with alternate `transliteration`
+ * options so rare-script output can be compared and deduped without
+ * translating word meaning.
  */
 export function localLatinNameVariants(raw: string): string[] {
-  const flat = raw.replace(/\r\n|\r|\n/g, ' ');
+  const flat = raw.replace(/\r\n|\r|\n/g, " ");
   const candidates = [
     foldSegmentWithOpts(flat),
     foldSegmentWithOpts(flat, { fixChineseSpacing: false }),
-    foldSegmentWithOpts(flat, { unknown: ' ', fixChineseSpacing: true }),
+    foldSegmentWithOpts(flat, { unknown: " ", fixChineseSpacing: true }),
   ];
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const v of candidates) {
-    const t = v.trim();
-    if (!t) continue;
-    const k = t.toLowerCase();
-    if (!seen.has(k)) {
-      seen.add(k);
-      out.push(t);
+  for (const candidate of candidates) {
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(trimmed);
     }
   }
   return out;
 }
 
 /**
- * Single-line text: NFKC cleanup, German umlaut expansion (ä→ae, …), then the
- * `transliteration` package’s full Unicode tables (major scripts worldwide:
- * Greek, Cyrillic, Arabic, Hebrew, CJK, Korean, Thai, Devanagari, etc.) to
- * Latin, then Latin mark stripping. Does not translate word meanings.
+ * Converts any Unicode text to printable ASCII by comparing each source
+ * character with its closest ASCII form. It does not translate word meaning;
+ * it only normalizes letters, marks, and script-specific glyphs.
  */
 export function transliterateToAscii(raw: string): string {
-  const flat = raw.replace(/\r\n|\r|\n/g, ' ');
+  const flat = raw.replace(/\r\n|\r|\n/g, " ");
   return foldSegment(flat);
 }
 
 /**
- * Preserves newline boundaries; each line is transliterated like {@link transliterateToAscii}.
+ * Preserves newline boundaries while converting each line to printable ASCII.
  */
 export function transliterateToAsciiMultiline(raw: string): string {
   return raw
     .split(/\r\n|\r|\n/g)
     .map((line) => foldSegment(line))
-    .join('\n');
+    .join("\n");
 }

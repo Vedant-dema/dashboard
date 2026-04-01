@@ -263,7 +263,6 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     () => (draftKunde ? listHistoryForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
-
   const [terminFormOpen, setTerminFormOpen] = useState(false);
   const [terminDatum, setTerminDatum] = useState("");
   const [terminZeit, setTerminZeit] = useState("");

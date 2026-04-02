@@ -17,6 +17,35 @@ export interface ViesCustomerSnapshot {
   saved_at: string;
 }
 
+/** Full address entry captured in the customer modal (multi-address capable). */
+export interface KundenAdresse {
+  id: string;
+  typ: string;
+  strasse: string;
+  plz: string;
+  ort: string;
+  land_code: string;
+  art_land_code: string;
+  ust_id_nr: string;
+  steuer_nr: string;
+  branchen_nr: string;
+}
+
+/** Full contact entry captured in the customer modal (multi-contact capable). */
+export interface KundenKontakt {
+  id: string;
+  name: string;
+  rolle: string;
+  telefonCode: string;
+  telefon: string;
+  handyCode: string;
+  handy: string;
+  email: string;
+  /** Contact-level website (DB `contacts.website`). */
+  website?: string;
+  bemerkung: string;
+}
+
 /**
  * Master customer – one row per company/person (`kunden` table).
  * Shared by Sales, Purchase, Werkstatt; Waschanlage uses the same row + `KundenWashStamm`.
@@ -24,6 +53,9 @@ export interface ViesCustomerSnapshot {
 export interface KundenStamm {
   id: number;
   kunden_nr: string;
+
+  customer_type?: "legal_entity" | "natural_person";
+  status?: "active" | "inactive" | "blocked";
 
   branche?: string;
   fzg_haendler?: boolean;
@@ -33,6 +65,25 @@ export interface KundenStamm {
   ansprache?: string;
   firmenvorsatz?: string;
   firmenname: string;
+  first_name?: string;
+  last_name?: string;
+  profile_notes?: string;
+  /** How the customer was acquired: referral | website | email | call (empty = unset). */
+  acquisition_source?: string;
+  /** Name of the specific referrer, site, campaign, etc. (optional; pairs with acquisition_source). */
+  acquisition_source_entity?: string;
+  acquisition_date?: string;
+  lifecycle_stage?: "lead" | "qualified" | "active" | "inactive" | "vip" | "lost";
+  preferred_channel?: "email" | "phone" | "sms" | "whatsapp" | "mixed" | "none";
+  segment?: string;
+  score?: number;
+  consent_email?: boolean;
+  consent_sms?: boolean;
+  consent_phone?: boolean;
+  marketing_notes?: string;
+  customer_role?: "supplier" | "buyer" | "workshop" | "wash";
+  role_valid_from?: string;
+  role_valid_to?: string;
   bemerkungen?: string;
   /** Pfad/UNC zu Kundenunterlagen (wie Legacy „Unterlagen“ + Ordner-Icon). */
   unterlagen_pfad?: string;
@@ -48,6 +99,19 @@ export interface KundenStamm {
   ust_id_nr?: string;
   steuer_nr?: string;
   branchen_nr?: string;
+  tax_country_type_code?: string;
+  account_number?: string;
+  credit_limit?: number;
+  billing_name?: string;
+  billing_street?: string;
+  billing_postal_code?: string;
+  billing_city?: string;
+  payment_blocked?: boolean;
+  bank_name?: string;
+  bic?: string;
+  iban?: string;
+  direct_debit_enabled?: boolean;
+  financial_notes?: string;
   ansprechpartner?: string;
   /** Role / job title of the primary contact person (e.g. Geschäftsführer, Disponent). */
   rolle_kontakt?: string;
@@ -81,6 +145,10 @@ export interface KundenStamm {
 
   /** Last VIES VAT check outcome and trader fields (persisted with save). */
   vies_snapshot?: ViesCustomerSnapshot | null;
+  /** Full modal addresses (multi-entry); top-level address fields remain primary summary. */
+  adressen?: KundenAdresse[];
+  /** Full modal contacts (multi-entry); top-level contact fields remain primary summary. */
+  kontakte?: KundenKontakt[];
 }
 
 /** Waschanlage-specific profile (`kunden_wash` table), 1:1 with `kunden.id`. */

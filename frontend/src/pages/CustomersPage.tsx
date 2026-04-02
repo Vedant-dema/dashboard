@@ -275,30 +275,27 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       zeit: terminZeit,
       zweck: terminZweck,
     });
-    saveKundenDb(next);
-    setDb(next);
+    persist(next);
     setTerminFormOpen(false);
     setTerminDatum("");
     setTerminZeit("");
     setTerminZweck("");
-  }, [db, draftKunde, terminDatum, terminZeit, terminZweck]);
+  }, [db, draftKunde, terminDatum, terminZeit, terminZweck, persist]);
 
   const handleToggleTermin = useCallback(
     (terminId: number) => {
       const next = toggleTerminErledigt(db, terminId);
-      saveKundenDb(next);
-      setDb(next);
+      persist(next);
     },
-    [db]
+    [db, persist]
   );
 
   const handleRemoveTermin = useCallback(
     (terminId: number) => {
       const next = removeKundenTermin(db, terminId);
-      saveKundenDb(next);
-      setDb(next);
+      persist(next);
     },
-    [db]
+    [db, persist]
   );
 
   const [beziehungFormOpen, setBeziehungFormOpen] = useState(false);
@@ -390,10 +387,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleRisikoSave = useCallback(() => {
     if (!draftKunde) return;
     const next = upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
-    saveKundenDb(next);
-    setDb(next);
+    persist(next);
     setRisikoEditOpen(false);
-  }, [db, draftKunde, risikoDraft]);
+  }, [db, draftKunde, risikoDraft, persist]);
 
   // Pre-compute customers that have risk alerts for the list badge
   const alertKundenIds = useMemo(() => {
@@ -412,20 +408,18 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       verknuepfter_kunden_id: linked.id,
       art: beziehungArt,
     });
-    saveKundenDb(next);
-    setDb(next);
+    persist(next);
     setBeziehungFormOpen(false);
     setBeziehungNr("");
     setBeziehungArt("");
-  }, [db, draftKunde, beziehungNr, beziehungArt]);
+  }, [db, draftKunde, beziehungNr, beziehungArt, persist]);
 
   const handleRemoveBeziehung = useCallback(
     (beziehungId: number) => {
       const next = removeKundenBeziehung(db, beziehungId);
-      saveKundenDb(next);
-      setDb(next);
+      persist(next);
     },
-    [db]
+    [db, persist]
   );
 
   const handleUnterlageFiles = useCallback(

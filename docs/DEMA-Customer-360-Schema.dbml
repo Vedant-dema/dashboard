@@ -4,14 +4,21 @@ Project DEMA_Customer_360 {
 }
 
 Enum customer_type {
-  company
-  person
+  legal_entity
+  natural_person
 }
 
 Enum customer_status {
   active
   inactive
   blocked
+}
+
+Enum customer_role_type {
+  supplier
+  buyer
+  workshop
+  wash
 }
 
 Enum address_type {
@@ -166,23 +173,25 @@ Table staff_users {
 
 Table customers {
   id bigint [pk, increment]
-  kunden_nr varchar(32) [not null, unique]
+  customer_number varchar(32) [not null, unique]
   customer_type customer_type [not null]
   name varchar(255) [not null]
   legal_form varchar(80)
   industry varchar(120)
   is_vehicle_dealer boolean [not null, default: false]
-  status customer_status [not null, default: 'active']
-  source varchar(120)
-  assigned_to bigint [ref: > staff_users.id]
-  notes text
+  status customer_status [not null, default: 'active', note: "Lifecycle/account state."]
+  acquisition_source varchar(120) [note: "Canonical non-campaign source (e.g. referral, inbound, event)."]
+  responsible_person_id bigint [ref: > staff_users.id, note: "Customer owner / responsible person."]
+  website varchar(255)
+  operational_notes text [note: "Operational account notes for day-to-day service and sales context."]
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
 
   Indexes {
-    kunden_nr
+    customer_number
     status
-    assigned_to
+    acquisition_source
+    responsible_person_id
     name
   }
 }
@@ -193,7 +202,18 @@ Table customer_details {
   company_prefix varchar(120)
   first_name varchar(120)
   last_name varchar(120)
-  notes text
+  profile_notes text [note: "Identity/legal profile notes, distinct from operational notes."]
+}
+
+Table customer_legal_profiles {
+  id bigint [pk, increment]
+  customer_id bigint [not null, unique, ref: > customers.id]
+  vat_id varchar(40)
+  tax_number varchar(40)
+  industry_registration_number varchar(40)
+  tax_country_type_code varchar(10)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
 }
 
 Table addresses {
@@ -241,7 +261,7 @@ Table customer_financials {
   billing_street varchar(255)
   billing_postal_code varchar(20)
   billing_city varchar(120)
-  is_blocked boolean [not null, default: false]
+  payment_blocked boolean [not null, default: false, note: "Finance/payment block only; not lifecycle state."]
   bank_name varchar(120)
   bic varchar(20)
   iban varchar(34)
@@ -251,10 +271,36 @@ Table customer_financials {
   updated_at timestamptz [not null, default: `now()`]
 }
 
+Table customer_wash_profiles {
+  id bigint [pk, increment]
+  customer_id bigint [not null, unique, ref: > customers.id]
+  wash_account_number varchar(40)
+  wash_limit_amount numeric(12,2) [not null, default: 0]
+  invoice_extra varchar(255)
+  invoice_street varchar(255)
+  invoice_postal_code varchar(20)
+  invoice_city varchar(120)
+  customer_blocked boolean [not null, default: false]
+  direct_debit_enabled boolean [not null, default: false]
+  bank_name varchar(120)
+  bic varchar(20)
+  iban varchar(34)
+  vehicle_plates text [note: "Comma-separated plate list for parity with current app state."]
+  vehicle_type varchar(80)
+  wash_program varchar(120)
+  net_price numeric(12,2)
+  gross_price numeric(12,2)
+  wash_interval varchar(80)
+  important_info text
+  remarks text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
 Table customer_roles {
   id bigint [pk, increment]
   customer_id bigint [not null, ref: > customers.id]
-  role varchar(80) [not null]
+  role customer_role_type [not null]
   valid_from date
   valid_to date
 
@@ -372,7 +418,7 @@ Table customer_marketing_profiles {
   id bigint [pk, increment]
   customer_id bigint [not null, unique, ref: > customers.id]
   lifecycle_stage lifecycle_stage [not null, default: 'lead']
-  campaign_source varchar(120)
+  acquisition_campaign_id bigint [ref: > campaigns.id, note: "Canonical campaign attribution source."]
   acquisition_date date
   preferred_channel channel_type [not null, default: 'none']
   segment varchar(120)
@@ -380,12 +426,13 @@ Table customer_marketing_profiles {
   consent_email boolean [not null, default: false]
   consent_sms boolean [not null, default: false]
   consent_phone boolean [not null, default: false]
-  notes text
+  marketing_notes text
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
 
   Indexes {
     customer_id
+    acquisition_campaign_id
     lifecycle_stage
     segment
   }

@@ -1,0 +1,47 @@
+---
+description: DEMA engineering rules
+alwaysApply: true
+---
+
+# Product
+DEMA modernizes a legacy customer/business workflow into a maintainable web platform.
+
+# Stack
+- Frontend: React + TypeScript + Vite
+- Backend: Python only
+- Backend target: FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, pytest, Ruff, Black
+- Database target: PostgreSQL
+- Current deployment: Vercel frontend + Render backend
+
+# Working style
+- Work milestone by milestone
+- One branch per phase
+- One primary agent per branch
+- Keep the app runnable after each milestone
+- Prefer small safe refactors over rewrites
+- Preserve business behavior unless the current phase explicitly includes redesign
+- Avoid unnecessary dependencies
+- Update docs as part of implementation
+- Add tests for risky logic
+
+# Frontend rules
+- No component should directly depend on localStorage or blob sync details once repository abstraction exists
+- Separate UI, repository, mappers, validators, and hooks
+- Separate record shape, form draft shape, and API DTO shape
+- Split giant files by responsibility
+- Avoid any
+
+# Backend rules
+- Keep route handlers thin
+- Put business logic in services
+- Put persistence logic in repositories
+- Use Pydantic request/response schemas
+- Use SQLAlchemy 2.0 style models
+- Use Alembic migrations
+- Add structured logging and central config
+
+# Docs and quality
+- Follow docs/operations/agent-playbook.md as the single source of truth
+- Update weekly progress after meaningful milestones
+- Run build/tests/smoke checks before considering a phase done
+- If a milestone breaks smoke checks badly, revert and redo in smaller slices

@@ -526,6 +526,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     (kuNr: string) => {
       const detail = getDetailByKundenNr(db, kuNr);
       if (!detail) return;
+      setShowAddCustomer(false);
       setSelectedRowId(kuNr);
       setDetailDrawerTab("kundendetail");
       setCustomerEditTab("kunde");
@@ -1069,7 +1070,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       )}
 
 
-      {selectedRowId && draftKunde && (
+      {/* Only one customer modal at a time: create flow takes precedence over edit to avoid stacked shells (Phase 1A). */}
+      {selectedRowId && draftKunde && !showAddCustomer && (
         <NewCustomerModal
           key={selectedRowId}
           open={Boolean(selectedRowId)}

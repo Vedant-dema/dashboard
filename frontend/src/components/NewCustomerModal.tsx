@@ -8,6 +8,9 @@ import {
   Car,
   FileText,
   ExternalLink,
+  CheckCircle2,
+  AlertCircle,
+  ClipboardList,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -1332,6 +1335,29 @@ function initialForm() {
 
 type FormState = ReturnType<typeof initialForm>;
 
+/** Stable string compare for unsaved-edit detection (edit mode). */
+function serializeFormStateForDirtyBaseline(state: FormState): string {
+  return JSON.stringify(state);
+}
+
+/** Heuristic profile completeness for Customer 360 summary (0–100). */
+function computeCustomerProfileCompletionPct(state: FormState): number {
+  const a0 = state.adressen[0];
+  const k0 = state.kontakte[0];
+  const checks = [
+    () => Boolean(state.firmenname.trim()),
+    () => Boolean(state.customer_type),
+    () => Boolean(a0?.strasse?.trim()),
+    () => Boolean(a0?.plz?.trim()),
+    () => Boolean(a0?.ort?.trim()),
+    () => Boolean(a0?.land_code?.trim()),
+    () => Boolean(a0?.ust_id_nr?.trim() || a0?.steuer_nr?.trim()),
+    () => Boolean(k0?.email?.trim() || k0?.telefon?.trim() || state.internet_adr?.trim()),
+  ];
+  const n = checks.filter((fn) => fn()).length;
+  return Math.round((n / checks.length) * 100);
+}
+
 function formFromExistingCustomer(
   kunde: KundenStamm,
   wash: KundenWashStamm | null | undefined,
@@ -1973,9 +1999,18 @@ export function NewCustomerModal({
   // Termin/Beziehung, etc.) creates a new `editInitial` object reference and
   // causes this effect to reset the form, losing any unsaved edits.
   const wasOpenRef = useRef(false);
+  const dirtyBaselineRef = useRef("");
+  const [footerMessage, setFooterMessage] = useState<{ type: "error"; text: string } | null>(null);
+
   useEffect(() => {
+    if (!open) {
+      dirtyBaselineRef.current = "";
+      wasOpenRef.current = false;
+      setFooterMessage(null);
+      return;
+    }
     const justOpened = open && !wasOpenRef.current;
-    wasOpenRef.current = open;
+    wasOpenRef.current = true;
     if (!justOpened) return;
 
     const nowAufnahme = new Date().toLocaleString(localeTag, { dateStyle: "short", timeStyle: "medium" });
@@ -1987,6 +2022,8 @@ export function NewCustomerModal({
             aufnahme: nowAufnahme,
             includeWashProfile: department === "waschanlage",
           };
+    dirtyBaselineRef.current = serializeFormStateForDirtyBaseline(prepared);
+    setFooterMessage(null);
     setForm(prepared);
     setTab(isEditMode ? "kunde" : "vat");
     setActiveKontaktIdx(0);
@@ -2341,8 +2378,12 @@ export function NewCustomerModal({
   };
 
   const handleSave = () => {
+    setFooterMessage(null);
     if (!form.firmenname.trim()) {
-      alert(t("newCustomerRequiredFirmenname", "Please enter a company name."));
+      setFooterMessage({
+        type: "error",
+        text: t("newCustomerRequiredFirmenname", "Please enter a company name."),
+      });
       setTab("kunde");
       return;
     }
@@ -2375,6 +2416,34 @@ export function NewCustomerModal({
     }
     submitCustomer(false);
   };
+
+  const isFormDirty =
+    isEditMode &&
+    dirtyBaselineRef.current.length > 0 &&
+    serializeFormStateForDirtyBaseline(form) !== dirtyBaselineRef.current;
+
+  const customer360EditSummary = useMemo(() => {
+    if (!isEditMode || !editInitial?.kunde) return null;
+    const k = editInitial.kunde;
+    const pct = computeCustomerProfileCompletionPct(form);
+    let vatKind: "valid" | "invalid" | "unknown" = "unknown";
+    if (vatCheckResult != null) {
+      vatKind = vatCheckResult.valid ? "valid" : "invalid";
+    }
+    let riskKind: "blocked" | "payment" | "billing" | "low" = "low";
+    if (form.customer_status === "blocked") riskKind = "blocked";
+    else if (form.payment_blocked) riskKind = "payment";
+    else if (!form.iban.trim() && !form.bic.trim()) riskKind = "billing";
+
+    const lastEditedLine =
+      k.updated_at != null && String(k.updated_at).trim() !== ""
+        ? `${k.last_edited_by_name ?? "—"} · ${new Date(k.updated_at).toLocaleString(localeTag, {
+            dateStyle: "short",
+            timeStyle: "short",
+          })}`
+        : null;
+    return { pct, vatKind, riskKind, lastEditedLine, kuNr: k.kunden_nr };
+  }, [isEditMode, editInitial, form, vatCheckResult, localeTag]);
 
   if (!open) return null;
 
@@ -2474,6 +2543,88 @@ export function NewCustomerModal({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {isEditMode && customer360EditSummary ? (
+          <div className="shrink-0 border-b border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 px-4 py-3 sm:px-5">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              {t("customer360SummaryStripTitle", "Customer 360 overview")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs shadow-sm">
+                <span className="text-slate-500">{t("customer360ChipKuNr", "Cust. no.")}</span>
+                <span className="font-mono font-semibold text-slate-800">{customer360EditSummary.kuNr}</span>
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${
+                  form.customer_status === "active"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : form.customer_status === "inactive"
+                      ? "border-slate-200 bg-slate-100 text-slate-700"
+                      : "border-red-200 bg-red-50 text-red-800"
+                }`}
+              >
+                {t("customer360ChipStatus", "Status")}:{" "}
+                {form.customer_status === "active"
+                  ? t("newCustomerStatusActive", "Active")
+                  : form.customer_status === "inactive"
+                    ? t("newCustomerStatusInactive", "Inactive")
+                    : t("newCustomerStatusBlocked", "Blocked")}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${
+                  customer360EditSummary.vatKind === "valid"
+                    ? "border-emerald-200 bg-white text-emerald-800"
+                    : customer360EditSummary.vatKind === "invalid"
+                      ? "border-amber-200 bg-white text-amber-800"
+                      : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                {customer360EditSummary.vatKind === "valid" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                ) : customer360EditSummary.vatKind === "invalid" ? (
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                ) : null}
+                {t("customer360ChipVat", "VAT")}:{" "}
+                {customer360EditSummary.vatKind === "valid"
+                  ? t("customer360VatValid", "Valid check")
+                  : customer360EditSummary.vatKind === "invalid"
+                    ? t("customer360VatInvalid", "Invalid / failed")
+                    : t("customer360VatUnknown", "Not verified")}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
+                {t("customer360ChipCompletion", "Profile")}
+                <span className="tabular-nums font-semibold text-slate-900">{customer360EditSummary.pct}%</span>
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${
+                  customer360EditSummary.riskKind === "blocked" || customer360EditSummary.riskKind === "payment"
+                    ? "border-red-200 bg-red-50 text-red-800"
+                    : customer360EditSummary.riskKind === "billing"
+                      ? "border-amber-200 bg-amber-50 text-amber-900"
+                      : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                {t("customer360ChipRisk", "Risk")}
+                {": "}
+                {customer360EditSummary.riskKind === "blocked"
+                  ? t("customer360RiskBlocked", "Blocked account")
+                  : customer360EditSummary.riskKind === "payment"
+                    ? t("customer360RiskPayment", "Payment blocked")
+                    : customer360EditSummary.riskKind === "billing"
+                      ? t("customer360RiskBilling", "Billing incomplete")
+                      : t("customer360RiskLow", "No flags")}
+              </span>
+              {customer360EditSummary.lastEditedLine ? (
+                <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 shadow-sm sm:max-w-[min(100%,28rem)]">
+                  <span className="shrink-0 font-semibold text-slate-500">
+                    {t("customer360ChipLastEdited", "Last saved")}
+                  </span>
+                  <span className="truncate tabular-nums">{customer360EditSummary.lastEditedLine}</span>
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         {/* Tabs */}
         <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
@@ -2732,7 +2883,14 @@ export function NewCustomerModal({
                     hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-4"
                   }`}
                 >
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionFirma", "Company data")}</p>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      {t("customer360SectionMaster", "Master data")}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {t("customer360SectionMasterHint", "Company identity, type, and profile")}
+                    </p>
+                  </div>
 
                   <div>
                     <label className={labelClass}>{t("newCustomerLabelKundenNr", "Customer no.")}</label>
@@ -3061,8 +3219,15 @@ export function NewCustomerModal({
                     >
 
                       {/* Header row */}
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionAdresse", "Address")}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                            {t("customer360SectionAddressTax", "Addresses & tax")}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {t("customer360SectionAddressTaxHint", "Locations, VAT ID, and identifiers")}
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -3385,8 +3550,15 @@ export function NewCustomerModal({
                     >
 
                       {/* ── Header ── */}
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionKontakte", "Contacts")}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                            {t("customer360SectionContacts", "Contacts")}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {t("customer360SectionContactsHint", "People and communication")}
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -3678,7 +3850,17 @@ export function NewCustomerModal({
                 })()}
 
                 {hasEditKundeSideContent ? (
-                  <div className="min-w-0 space-y-4 xl:col-span-3">{editKundeSideContent}</div>
+                  <div className="min-w-0 space-y-3 xl:col-span-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                        {t("customer360OperationalContext", "Related & operational")}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">
+                        {t("customer360OperationalContextHint", "Relationships, appointments, and risk (edit mode)")}
+                      </p>
+                    </div>
+                    <div className="space-y-4">{editKundeSideContent}</div>
+                  </div>
                 ) : null}
               </div>
 
@@ -4382,7 +4564,21 @@ export function NewCustomerModal({
             </div>
           )}
           {tab === "history" && isEditMode && (
-            <div className="p-4 sm:p-6">
+            <div className="space-y-4 p-4 sm:p-6">
+              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden />
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    {t("historyTimelineTitle", "Activity timeline")}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t(
+                      "historyTimelineHint",
+                      "Newest first. Each update lists what changed from the previous saved value to the new one."
+                    )}
+                  </p>
+                </div>
+              </div>
               {historyEntries.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 py-16 text-center">
                   <svg className="mb-3 h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -4450,41 +4646,63 @@ export function NewCustomerModal({
                           </div>
                           {/* Field changes */}
                           {entry.changes && entry.changes.length > 0 ? (
-                            <div className="divide-y divide-slate-100 px-4 py-1">
+                            <div className="px-2 py-2 sm:px-3">
+                              <div className="mb-1 hidden gap-2 border-b border-slate-100 pb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:grid sm:grid-cols-[minmax(0,11rem)_1fr_2rem_1fr]">
+                                <span>{t("historyColField", "Field")}</span>
+                                <span>{t("historyColBefore", "Before")}</span>
+                                <span className="text-center" aria-hidden>
+                                  →
+                                </span>
+                                <span>{t("historyColAfter", "After")}</span>
+                              </div>
+                              <div className="divide-y divide-slate-100">
                               {entry.changes.map((c, cIdx) => {
                                 const multiline =
                                   c.field === "vies_snapshot" ||
                                   c.from.includes("\n") ||
                                   c.to.includes("\n");
                                 const cellClass = multiline
-                                  ? "max-w-full min-w-0 whitespace-pre-wrap break-words rounded px-1.5 py-0.5 font-mono text-[11px] leading-snug"
-                                  : "rounded px-1.5 py-0.5 font-mono text-[11px]";
+                                  ? "max-w-full min-w-0 whitespace-pre-wrap break-words rounded px-1.5 py-1 font-mono text-[11px] leading-snug"
+                                  : "rounded px-1.5 py-1 font-mono text-[11px]";
                                 return (
                                   <div
                                     key={`${entry.id}-${cIdx}-${c.field}`}
-                                    className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-1.5 text-xs"
+                                    className="space-y-2 py-2 text-xs sm:grid sm:grid-cols-[minmax(0,11rem)_1fr_2rem_1fr] sm:items-start sm:gap-2 sm:space-y-0"
                                   >
-                                    <span className="w-36 shrink-0 font-semibold text-slate-500">
+                                    <span className="block font-semibold text-slate-600 sm:pt-0.5">
                                       {t(c.labelKey, c.field)}
                                     </span>
-                                    {c.from ? (
-                                      <span className={`${cellClass} bg-red-50 text-red-600 line-through`}>
-                                        {formatHistoryValueDisplay(c.field, c.from, t)}
+                                    <div className="min-w-0 sm:min-h-0">
+                                      <span className="text-[10px] font-semibold uppercase text-slate-400 sm:hidden">
+                                        {t("historyColBefore", "Before")}{" "}
                                       </span>
-                                    ) : (
-                                      <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
-                                    )}
-                                    <span className="text-slate-400">→</span>
-                                    {c.to ? (
-                                      <span className={`${cellClass} bg-emerald-50 text-emerald-700`}>
-                                        {formatHistoryValueDisplay(c.field, c.to, t)}
+                                      {c.from ? (
+                                        <span className={`${cellClass} inline-block bg-red-50 text-red-700 line-through`}>
+                                          {formatHistoryValueDisplay(c.field, c.from, t)}
+                                        </span>
+                                      ) : (
+                                        <span className="italic text-slate-400">{t("historyEmpty2", "empty")}</span>
+                                      )}
+                                    </div>
+                                    <span className="hidden text-center text-slate-400 sm:block sm:pt-1" aria-hidden>
+                                      →
+                                    </span>
+                                    <div className="min-w-0">
+                                      <span className="text-[10px] font-semibold uppercase text-slate-400 sm:hidden">
+                                        {t("historyColAfter", "After")}{" "}
                                       </span>
-                                    ) : (
-                                      <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
-                                    )}
+                                      {c.to ? (
+                                        <span className={`${cellClass} inline-block bg-emerald-50 text-emerald-800`}>
+                                          {formatHistoryValueDisplay(c.field, c.to, t)}
+                                        </span>
+                                      ) : (
+                                        <span className="italic text-slate-400">{t("historyEmpty2", "empty")}</span>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })}
+                              </div>
                             </div>
                           ) : (
                             entry.action === "updated" && (
@@ -4505,6 +4723,23 @@ export function NewCustomerModal({
 
         {/* Footer */}
         <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+          {isFormDirty ? (
+            <div
+              className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+              role="status"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+              {t("customer360UnsavedChanges", "You have unsaved changes.")}
+            </div>
+          ) : null}
+          {footerMessage?.type === "error" ? (
+            <div
+              className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+              role="alert"
+            >
+              {footerMessage.text}
+            </div>
+          ) : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
               <label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">

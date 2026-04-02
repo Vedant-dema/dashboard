@@ -162,6 +162,7 @@
 | FEATURE-136 | Customer acquisition source (dropdown + source detail) | Added | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-137 | New customer modal — layout + DB-aligned fields | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-138 | Remove duplicate VAT & tax from Type / account tab | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
+| FEATURE-139 | Phase 1B Customer 360 modal — summary, grouping, timeline, dirty UX | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

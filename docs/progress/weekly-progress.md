@@ -65,3 +65,39 @@ Use this file for milestone-level progress reporting and manager updates.
 
 - Full Phase 1A may still need scroll/sticky tweaks inside `NewCustomerModal` if reported on devices; no redesign in this slice.
 
+## 2026-04-01 — Phase 1B: Customer 360 modal redesign
+
+### Completed
+
+- **Customer 360 edit summary strip:** customer number, lifecycle status, VAT check snapshot, profile completion %, risk hints (blocked / payment / billing incomplete), last-saved line.
+- **Clearer hierarchy** on Customer & Address: section headings for master data, addresses & tax, contacts; edit column labeled “Related & operational” with short hints.
+- **History tab** framed as an activity timeline; change rows use a responsive before/after grid.
+- **Dirty / validation UX:** baseline-based dirty state in edit mode; inline footer messaging for validation instead of a blocking alert for missing company name; distinct styling for unsaved vs error rows.
+- **Docs:** `docs/product/customer-flow.md`, `docs/architecture/overview.md` (Customer UI subsection), this weekly entry.
+- **i18n:** `customer360*` and `historyTimeline*` / `historyCol*` keys in `LanguageContext.tsx` (de / en / fr).
+
+### Files
+
+- `frontend/src/components/NewCustomerModal.tsx` — layout, summary, dirty baseline, history grid, footer states.
+- `frontend/src/contexts/LanguageContext.tsx` — translation keys for new copy (if not already present on branch).
+
+### Verification
+
+- Frontend: `npm run build` (passed in agent session).
+- Backend: no `pytest` suite yet; `uvicorn` + `GET http://127.0.0.1:8765/api/health` returned `{"status":"ok",...}`.
+
+### Manual smoke (owner)
+
+- [ ] Edit customer: summary strip matches record; switching tabs does not duplicate chrome.
+- [ ] Change a field: footer shows unsaved state; save clears it; reload persists.
+- [ ] Clear company name and save: inline error visible; no duplicate modals.
+- [ ] VAT tab: check still works; summary VAT chip reflects outcome when applicable.
+- [ ] History: newest first; before/after readable on narrow and wide viewports.
+- [ ] Create flow: no summary strip regression; save still works.
+
+### Risks / follow-ups
+
+- Risk and completion % are **heuristic** (UI-only); tune with product if false positives.
+- `dirtyBaselineRef` reset on close/open — watch for edge cases if `open` toggles without unmount.
+- **Next milestone:** Phase 2 (frontend architecture / repository layer) per `docs/architecture/overview.md`.
+

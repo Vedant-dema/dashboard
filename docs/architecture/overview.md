@@ -11,6 +11,13 @@ This document describes the current architecture baseline and the target directi
 - Persistence (current): local storage + demo shared state path
 - Deployment (current): Vercel frontend + Render backend
 
+### Customer UI (Phase 1B)
+
+- **Single modal** (`NewCustomerModal`) for create and edit; tabs unchanged in purpose (Customer & Address, Type / account, Car wash, VAT, History, etc.).
+- **Edit-only summary strip** surfaces customer number, status, VAT check state, profile completion %, risk heuristics, and last-saved metadata without new backend endpoints.
+- **Layout** is component-local (JSX + Tailwind): master data vs addresses/tax vs contacts vs “related & operational” column; history tab uses a timeline-oriented grid for diffs.
+- **Dirty detection** compares serialized form state to a baseline set when the modal opens in edit mode (client-only).
+
 ## Target Runtime Shape
 
 - Frontend:

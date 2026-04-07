@@ -1,64 +1,31 @@
-# DEMA Architecture Overview
+# Architecture Overview
 
-Date: 2026-04-07
+## Milestone 5: Data Safety + Official History
 
-## Current Runtime (Phase 4)
+### Shared Customer Write Path
 
-- Frontend: React + TypeScript + Vite
-- Backend: Python FastAPI
-- Transitional persistence: shared `customers_db` state in SQLite (`demo_store`), blob/demo-compatible
-- Deployment target (current): Vercel (frontend) + Render (backend)
+- Frontend still writes transitional state through `/api/v1/demo/customers-db`.
+- Backend now enforces optimistic concurrency using `expected_updated_at`.
+- Stale updates are rejected with `409 customers_db_conflict`.
 
-## Backend Shape
+### Canonical Audit Mechanism
 
-Backend now exposes a modular app structure under `backend/app`:
+Customer history is now generated in one backend mechanism.
 
-```text
-backend/app/
-  main.py
-  core/
-    config.py
-    logging.py
-    database.py
-  api/
-    v1/
-      router.py
-      endpoints/
-        health.py
-        vat.py
-        customers.py
-  schemas/
-    common.py
-    vat.py
-    customer.py
-  services/
-    vat_service.py
-    customer_service.py
-    history_service.py
-  repositories/
-    customer_repository.py
-    history_repository.py
-  models/
-  tests/
-```
+For each customer write, backend computes field-level diffs and stores:
 
-## Transitional Strategy
+- entity type
+- entity id
+- field
+- old value
+- new value
+- changed by
+- changed at
+- source
 
-- Legacy backend behavior (VAT/geocode/demo APIs) remains active.
-- Modular `app.main` composes the legacy FastAPI app and adds new REST routers.
-- `/api/v1/demo/customers-db` remains the compatibility path.
-- New customer resource endpoints provide cleaner API contracts while still reading/writing the transitional store.
+### History Read Path
 
-## Phase 4 Customer REST Endpoints
-
-- `GET /api/v1/customers`
-- `GET /api/v1/customers/{id}`
-- `POST /api/v1/customers`
-- `PATCH /api/v1/customers/{id}`
-- `GET /api/v1/customers/{id}/history`
-- `GET /api/v1/customers/{id}/wash-profile`
-
-## Next Architectural Step
-
-Phase 5 adds optimistic concurrency and centralized audit/history behavior before Phase 6 PostgreSQL migration.
+- Frontend History tab uses official endpoint in API mode:
+  - `GET /api/v1/customers/{customer_id}/history`
+- Local fallback remains for non-API mode.
 

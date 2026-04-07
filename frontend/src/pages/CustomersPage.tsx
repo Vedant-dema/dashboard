@@ -24,7 +24,7 @@ import {
   CircleDashed,
   Pencil,
 } from "lucide-react";
-import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { KundenHistoryEntry, KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
   loadKundenDb,
@@ -50,6 +50,8 @@ import {
   addKundenBeziehung,
   removeKundenBeziehung,
   isCustomersApiMode,
+  isSharedCustomersConflictError,
+  loadCustomerHistoryFromApi,
   loadSharedKundenDb,
   saveSharedKundenDb,
   getRisikoanalyseForKunde,
@@ -171,6 +173,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     : language === "hi" ? "hi-IN"
     : "en-GB";
   const [db, setDb] = useState(() => loadKundenDb());
+  const [remoteHistoryEntries, setRemoteHistoryEntries] = useState<KundenHistoryEntry[] | null>(null);
   const fieldSuggestions = useMemo(() => getCustomerFieldSuggestions(db), [db]);
   const quickSearchSuggestions = useMemo(() => getQuickSearchSuggestions(db), [db]);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -238,7 +241,25 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         saveKundenDb(saved);
         setDb(saved);
       },
-      () => {
+      async (error: unknown) => {
+        if (isSharedCustomersConflictError(error)) {
+          try {
+            const remote = await loadSharedKundenDb();
+            if (remote) {
+              saveKundenDb(remote);
+              setDb(remote);
+            }
+          } catch {
+            // Keep local snapshot if refresh fails.
+          }
+          alert(
+            t(
+              "customersSyncConflict",
+              "Another user changed this customer data. We reloaded the latest version. Please review and save again."
+            )
+          );
+          return;
+        }
         alert(t("customersSyncFailed", "Could not sync with shared demo backend."));
       }
     );
@@ -259,10 +280,34 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     [db, draftKunde?.id]
   );
 
-  const historyForCustomer = useMemo(
-    () => (draftKunde ? listHistoryForKunde(db, draftKunde.id) : []),
-    [db, draftKunde?.id]
-  );
+  useEffect(() => {
+    if (!draftKunde || !isCustomersApiMode()) {
+      setRemoteHistoryEntries(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const remoteHistory = await loadCustomerHistoryFromApi(draftKunde.id);
+        if (cancelled) return;
+        setRemoteHistoryEntries(remoteHistory ?? []);
+      } catch {
+        if (cancelled) return;
+        setRemoteHistoryEntries(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draftKunde?.id, db.history.length, db.kunden.length]);
+
+  const historyForCustomer = useMemo(() => {
+    if (!draftKunde) return [];
+    if (isCustomersApiMode() && remoteHistoryEntries !== null) {
+      return remoteHistoryEntries;
+    }
+    return listHistoryForKunde(db, draftKunde.id);
+  }, [db, draftKunde?.id, remoteHistoryEntries]);
   const [terminFormOpen, setTerminFormOpen] = useState(false);
   const [terminDatum, setTerminDatum] = useState("");
   const [terminZeit, setTerminZeit] = useState("");

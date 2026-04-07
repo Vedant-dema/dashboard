@@ -1904,7 +1904,7 @@ export function NewCustomerModal({
     return "Prüfung fehlgeschlagen — keine Detail-Antwort vom Server (möglicherweise Proxy-Timeout oder CORS-Problem)."
   }
 
-  const runVatCheck = async () => {
+  const runVatCheckLegacy = async () => {
     const trimmed = viesVatInput.trim();
     if (!trimmed) {
       setVatCheckError("Bitte USt-IdNr. eingeben.");
@@ -1981,6 +1981,97 @@ export function NewCustomerModal({
         : "Lokal: Läuft das Python-Backend? (uvicorn main:app --reload --port 8000). Cloud: VITE_API_BASE_URL als Build-Variable setzen."
       setVatCheckError(
         `Netzwerkfehler — ${jsMsg}. Ziel: ${targetUrl}. ${hint}`
+      );
+    } finally {
+      setVatCheckLoading(false);
+    }
+  };
+
+  const runVatCheck = async () => {
+    const trimmed = viesVatInput.trim();
+    if (!trimmed) {
+      setVatCheckError("Bitte USt-IdNr. eingeben.");
+      setVatCheckResult(null);
+      return;
+    }
+    setVatCheckLoading(true);
+    setVatCheckError(null);
+    setVatCheckResult(null);
+    try {
+      const requestPayload = JSON.stringify({
+        country_code: viesCountry,
+        vat_number: trimmed,
+      });
+      const sendVatRequest = () =>
+        fetch(`${API_BASE}/api/v1/vat/check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestPayload,
+        });
+
+      let res = await sendVatRequest();
+      if (res.status === 0) {
+        setVatCheckError(
+          "CORS-Fehler: Der Browser blockiert die Antwort des Backends. Bitte CORS_ORIGINS in der Cloud-Konfiguration pruefen."
+        );
+        return;
+      }
+
+      const retryableEmptyStatuses = new Set([500, 502, 503, 504]);
+      let textBody = await res.text();
+      let retriedAfterEmpty5xx = false;
+      if (!res.ok && !textBody.trim() && retryableEmptyStatuses.has(res.status)) {
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        retriedAfterEmpty5xx = true;
+        res = await sendVatRequest();
+        textBody = await res.text();
+      }
+
+      let parsedBody: unknown = null;
+      let parseError: string | null = null;
+      try {
+        parsedBody = textBody.trim() ? JSON.parse(textBody) : null;
+      } catch {
+        parseError = "Antwort war kein gueltiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)";
+      }
+
+      if (!res.ok) {
+        const body = parsedBody as Record<string, unknown> | null;
+        if (parseError) {
+          setVatCheckError(
+            `HTTP ${res.status} - ${parseError}. Proxy-Timeout? Pruefen Sie VIES_MAX_TOTAL_SEC in der Backend-Konfiguration.`
+          );
+          return;
+        }
+        if (!body || Object.keys(body).length === 0) {
+          const hint =
+            res.status === 405
+              ? "HTTP 405 - der Server verbietet POST auf diesem Pfad. Im Cloud-Deployment fehlt wahrscheinlich VITE_API_BASE_URL (Build-Zeit). Setzen Sie VITE_API_BASE_URL=https://ihr-backend.example.com und bauen Sie das Frontend neu."
+              : `HTTP ${res.status} - leere Antwort vom Server${retriedAfterEmpty5xx ? " (auch nach erneutem Versuch)" : ""}. Moegliche Ursachen: Proxy-Timeout oder Cold-Start des Backends.`;
+          setVatCheckError(hint);
+          return;
+        }
+        setVatCheckError(formatVatCheckDetail(body));
+        return;
+      }
+
+      const body =
+        normalizeViesCheckResponseFromApi(parsedBody) ?? (parsedBody as ViesCheckResult);
+      setVatCheckResult(body);
+      const apiCc = String(body.country_code ?? "")
+        .trim()
+        .toUpperCase();
+      if (apiCc && VIES_MS_OPTIONS.some((o) => o.code === apiCc)) {
+        setViesCountry(apiCc);
+      }
+    } catch (err) {
+      const jsMsg = err instanceof Error ? err.message : String(err);
+      const targetUrl = `${API_BASE || "(Vite-Proxy)"}/api/v1/vat/check`;
+      const hint = API_BASE
+        ? `Pruefen Sie, ob das Backend unter ${API_BASE} laeuft und CORS_ORIGINS diese Domain enthaelt.`
+        : "Lokal: Laeuft das Python-Backend? (uvicorn main:app --reload --port 8000). Cloud: VITE_API_BASE_URL als Build-Variable setzen.";
+      setVatCheckError(
+        `Netzwerkfehler - ${jsMsg}. Ziel: ${targetUrl}. ${hint}`
       );
     } finally {
       setVatCheckLoading(false);

@@ -18,6 +18,7 @@
 | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071 … FEATURE-108 |
 | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-133 |
 | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134, FEATURE-135 |
+| 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
 
 ---
 
@@ -159,6 +160,7 @@
 | FEATURE-133 | VIES postal (PLZ) extraction from multiline + nested raw + backend hints | Modified | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) |
 | FEATURE-134 | Bulgarian VIES `Gr.` / `гр.` city suffix parsing | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-135 | Address transliteration (BG) + VIES display translate guard | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
+| FEATURE-136 | Backend — JSON on unhandled errors; VIES requester 503; CORS_ORIGIN_REGEX | Modified | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

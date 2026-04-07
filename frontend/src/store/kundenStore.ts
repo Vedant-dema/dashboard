@@ -377,6 +377,37 @@ type DemoCustomersDbResponse = {
   updated_at?: string | null;
 };
 
+type DemoCustomersDbConflictDetail = {
+  code?: string;
+  message?: string;
+  expected_updated_at?: string | null;
+  actual_updated_at?: string | null;
+};
+
+type CustomerHistoryApiResponse = {
+  items?: KundenHistoryEntry[];
+  total?: number;
+  updated_at?: string | null;
+};
+
+let sharedCustomersUpdatedAt: string | null = null;
+
+export class SharedCustomersConflictError extends Error {
+  readonly expectedUpdatedAt: string | null;
+  readonly actualUpdatedAt: string | null;
+
+  constructor(detail: DemoCustomersDbConflictDetail) {
+    super(detail.message || "Shared customers data has changed. Please reload and try again.");
+    this.name = "SharedCustomersConflictError";
+    this.expectedUpdatedAt = detail.expected_updated_at ?? null;
+    this.actualUpdatedAt = detail.actual_updated_at ?? null;
+  }
+}
+
+export function isSharedCustomersConflictError(error: unknown): error is SharedCustomersConflictError {
+  return error instanceof SharedCustomersConflictError;
+}
+
 function demoHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (DEMO_API_KEY.trim()) headers["x-demo-key"] = DEMO_API_KEY.trim();
@@ -397,6 +428,7 @@ export async function loadSharedKundenDb(): Promise<KundenDbState | null> {
     throw new Error(`Shared customers load failed (${res.status})`);
   }
   const payload = (await res.json()) as DemoCustomersDbResponse;
+  sharedCustomersUpdatedAt = payload.updated_at ?? null;
   if (!payload?.state) return null;
   if (!isKundenDbState(payload.state)) {
     throw new Error("Shared customers payload has invalid shape");
@@ -411,16 +443,45 @@ export async function saveSharedKundenDb(state: KundenDbState): Promise<KundenDb
   const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
     method: "PUT",
     headers: demoHeaders(),
-    body: JSON.stringify({ state: bodyState }),
+    body: JSON.stringify({
+      state: bodyState,
+      expected_updated_at: sharedCustomersUpdatedAt,
+      source: "frontend.customers-page",
+    }),
   });
+  if (res.status === 409) {
+    let detail: DemoCustomersDbConflictDetail = {};
+    try {
+      const parsed = (await res.json()) as { detail?: DemoCustomersDbConflictDetail };
+      detail = parsed.detail ?? {};
+    } catch {
+      // ignore parse failure, use generic conflict message
+    }
+    throw new SharedCustomersConflictError(detail);
+  }
   if (!res.ok) {
     throw new Error(`Shared customers save failed (${res.status})`);
   }
   const responseJson: DemoCustomersDbResponse = (await res.json()) as DemoCustomersDbResponse;
+  sharedCustomersUpdatedAt = responseJson.updated_at ?? null;
   if (!responseJson.state || !isKundenDbState(responseJson.state)) {
     throw new Error("Shared customers save response has invalid shape");
   }
   return ensureSeedCustomers(normalizeUnterlagen(responseJson.state));
+}
+
+export async function loadCustomerHistoryFromApi(kundenId: number): Promise<KundenHistoryEntry[] | null> {
+  if (!API_MODE) return null;
+  const res = await fetch(demoApiUrl(`/api/v1/customers/${kundenId}/history`), {
+    method: "GET",
+    headers: demoHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(`Customer history load failed (${res.status})`);
+  }
+  const payload = (await res.json()) as CustomerHistoryApiResponse;
+  if (!Array.isArray(payload.items)) return [];
+  return payload.items;
 }
 
 export function loadKundenDb(): KundenDbState {

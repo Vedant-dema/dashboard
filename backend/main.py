@@ -11,6 +11,8 @@ Environment:
   VIES_REQUESTER_CC        Optional default requester member state code (e.g. DE/EU).
   VIES_REQUESTER_VAT       Optional default requester VAT number (used with VIES_REQUESTER_CC).
   CORS_ORIGINS             Comma-separated origins (default: http://localhost:5173,http://127.0.0.1:5173).
+  CORS_ORIGIN_REGEX        Optional regex for allowed Origin (e.g. https://.*\\.vercel\\.app); use with
+                           credentials when preview URLs change. Matched in addition to CORS_ORIGINS.
   VIES_MAX_RETRIES         Retries for transient / concurrent-cap errors (default: 3).
   VIES_RETRY_BASE_SEC      Initial backoff before first retry, seconds (default: 0.4).
   VIES_RETRY_MAX_WAIT_SEC  Cap on single backoff sleep (default: 8).
@@ -66,6 +68,7 @@ import asyncio
 import datetime as dt
 import hashlib
 import json
+import logging
 import os
 import random
 import re
@@ -81,9 +84,9 @@ from xml.sax.saxutils import escape as _xml_escape
 import unicodedata
 
 import httpx
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 try:
@@ -283,6 +286,14 @@ def _cors_origins() -> list[str]:
     return ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
+def _cors_origin_regex() -> str | None:
+    raw = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
+    return raw or None
+
+
+_log = logging.getLogger("dema.api")
+
+
 def _default_requester_from_env() -> tuple[str, str] | None:
     """Return configured requester identity for VIES approximate checks, if complete."""
     req_cc = os.environ.get("VIES_REQUESTER_CC", "").strip().upper()
@@ -291,19 +302,22 @@ def _default_requester_from_env() -> tuple[str, str] | None:
         return None
     if not req_cc or not req_raw:
         raise HTTPException(
-            status_code=500,
-            detail="VIES_REQUESTER_CC and VIES_REQUESTER_VAT must either both be set or both be empty.",
+            status_code=503,
+            detail=(
+                "Backend misconfiguration: VIES_REQUESTER_CC and VIES_REQUESTER_VAT must either both "
+                "be set or both be empty. Remove the stray variable or set both."
+            ),
         )
     if req_cc not in REQUESTER_COUNTRY_CODES:
         raise HTTPException(
-            status_code=500,
-            detail=f"VIES_REQUESTER_CC not supported: {req_cc}",
+            status_code=503,
+            detail=f"Backend misconfiguration: VIES_REQUESTER_CC not supported: {req_cc}",
         )
     req_num = _normalize_vat(req_cc, req_raw) if req_cc != "EU" else req_raw.upper().replace(" ", "")
     if not req_num:
         raise HTTPException(
-            status_code=500,
-            detail="VIES_REQUESTER_VAT is empty after normalization.",
+            status_code=503,
+            detail="Backend misconfiguration: VIES_REQUESTER_VAT is empty after normalization.",
         )
     return req_cc, req_num
 
@@ -418,6 +432,11 @@ _vies_http: httpx.AsyncClient | None = None
 async def _lifespan(app: FastAPI):
     global _vies_http
     _init_demo_store()
+    _log.info(
+        "CORS allow_origins=%s allow_origin_regex=%s",
+        _cors_origins(),
+        _cors_origin_regex() or "(none)",
+    )
     timeout = httpx.Timeout(15.0, connect=8.0)
     limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
     _vies_http = httpx.AsyncClient(timeout=timeout, limits=limits)
@@ -432,10 +451,27 @@ app = FastAPI(title="Dema Dashboard API", version="0.1.0", lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return JSON for unexpected errors (HTTPException uses FastAPI's handler first)."""
+    _log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": (
+                "Internal server error. Check backend logs for the traceback. "
+                "If this is a VAT check, try lowering VIES_MAX_TOTAL_SEC / retries or disable enrich."
+            ),
+            "error_type": type(exc).__name__,
+        },
+    )
 
 
 class VatCheckRequest(BaseModel):
@@ -1341,12 +1377,345 @@ def _is_kunden_db_state_shape(state: dict[str, Any]) -> bool:
     return True
 
 
-def _demo_save_customers_state(state: dict[str, Any]) -> tuple[dict[str, Any], str]:
+_AUDIT_IGNORE_CUSTOMER_FIELDS: set[str] = {
+    "id",
+    "created_at",
+    "updated_at",
+}
+_AUDIT_IGNORE_WASH_FIELDS: set[str] = {
+    "id",
+    "kunden_id",
+    "created_at",
+    "updated_at",
+}
+
+
+def _safe_int(raw: Any, default: int = -1) -> int:
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _audit_value_to_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)
+
+
+def _normalize_kunden_state_for_audit(state: dict[str, Any] | None) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "version": 1,
+        "kunden": [],
+        "kundenWash": [],
+        "rollen": [],
+        "unterlagen": [],
+        "termine": [],
+        "beziehungen": [],
+        "risikoanalysen": [],
+        "history": [],
+        "nextKundeId": 1,
+        "nextWashId": 1,
+        "nextRolleId": 1,
+        "nextUnterlageId": 1,
+        "nextTerminId": 1,
+        "nextBeziehungId": 1,
+        "nextRisikoanalyseId": 1,
+        "nextHistoryId": 1,
+    }
+    if isinstance(state, dict):
+        base.update(state)
+    for key in ("kunden", "kundenWash", "rollen", "unterlagen", "termine", "beziehungen", "risikoanalysen", "history"):
+        if not isinstance(base.get(key), list):
+            base[key] = []
+    for key in (
+        "nextKundeId",
+        "nextWashId",
+        "nextRolleId",
+        "nextUnterlageId",
+        "nextTerminId",
+        "nextBeziehungId",
+        "nextRisikoanalyseId",
+        "nextHistoryId",
+    ):
+        if not isinstance(base.get(key), int):
+            base[key] = 1
+    base["version"] = 1
+    return base
+
+
+def _collect_entity_field_changes(
+    *,
+    entity_type: str,
+    entity_id: int,
+    old_row: dict[str, Any] | None,
+    new_row: dict[str, Any] | None,
+    changed_by: str | None,
+    changed_at: str,
+    source: str,
+    ignore_fields: set[str],
+) -> list[dict[str, Any]]:
+    before = old_row or {}
+    after = new_row or {}
+    keys = sorted((set(before.keys()) | set(after.keys())) - ignore_fields)
+    out: list[dict[str, Any]] = []
+    for key in keys:
+        old_value = before.get(key)
+        new_value = after.get(key)
+        if old_value == new_value:
+            continue
+        old_text = _audit_value_to_text(old_value)
+        new_text = _audit_value_to_text(new_value)
+        out.append(
+            {
+                "field": f"{entity_type}.{key}",
+                "labelKey": f"{entity_type}.{key}",
+                "from": old_text,
+                "to": new_text,
+                "entityType": entity_type,
+                "entityId": entity_id,
+                "oldValue": old_text,
+                "newValue": new_text,
+                "changedBy": changed_by,
+                "changedAt": changed_at,
+                "source": source,
+            }
+        )
+    return out
+
+
+def _append_audit_entry(
+    state: dict[str, Any],
+    *,
+    kunden_id: int,
+    action: Literal["created", "updated", "deleted", "restored"],
+    changes: list[dict[str, Any]],
+    changed_by: str | None,
+    changed_at: str,
+    source: str,
+) -> None:
+    history = state.setdefault("history", [])
+    next_history_id = _safe_int(state.get("nextHistoryId"), default=1)
+    existing_ids = {_safe_int(row.get("id")) for row in history if isinstance(row, dict)}
+    while next_history_id in existing_ids:
+        next_history_id += 1
+    history.append(
+        {
+            "id": next_history_id,
+            "kunden_id": kunden_id,
+            "timestamp": changed_at,
+            "action": action,
+            "editor_name": changed_by,
+            "editor_email": None,
+            "changes": changes,
+            "entityType": "customer",
+            "entityId": kunden_id,
+            "changedBy": changed_by,
+            "changedAt": changed_at,
+            "source": source,
+        }
+    )
+    state["nextHistoryId"] = max(_safe_int(state.get("nextHistoryId"), default=1), next_history_id + 1)
+
+
+def _sync_central_customer_history(
+    previous_state: dict[str, Any] | None,
+    incoming_state: dict[str, Any],
+    *,
+    source: str,
+) -> dict[str, Any]:
+    old_state = _normalize_kunden_state_for_audit(previous_state)
+    next_state = _normalize_kunden_state_for_audit(incoming_state)
+
+    # Canonical history is generated server-side.
+    next_state["history"] = [row for row in old_state.get("history", []) if isinstance(row, dict)]
+    next_state["nextHistoryId"] = max(_safe_int(old_state.get("nextHistoryId"), default=1), 1)
+
+    old_customers = {
+        _safe_int(row.get("id")): row
+        for row in old_state["kunden"]
+        if isinstance(row, dict) and isinstance(row.get("id"), int)
+    }
+    new_customers = {
+        _safe_int(row.get("id")): row
+        for row in next_state["kunden"]
+        if isinstance(row, dict) and isinstance(row.get("id"), int)
+    }
+    old_wash = {
+        _safe_int(row.get("kunden_id")): row
+        for row in old_state["kundenWash"]
+        if isinstance(row, dict) and _safe_int(row.get("kunden_id")) >= 0
+    }
+    new_wash = {
+        _safe_int(row.get("kunden_id")): row
+        for row in next_state["kundenWash"]
+        if isinstance(row, dict) and _safe_int(row.get("kunden_id")) >= 0
+    }
+
+    all_customer_ids = sorted({cid for cid in (set(old_customers.keys()) | set(new_customers.keys())) if cid >= 0})
+    for kunden_id in all_customer_ids:
+        old_customer = old_customers.get(kunden_id)
+        new_customer = new_customers.get(kunden_id)
+        old_wash_row = old_wash.get(kunden_id)
+        new_wash_row = new_wash.get(kunden_id)
+
+        changed_at = _demo_now_iso()
+        changed_by: str | None = None
+        if isinstance(new_customer, dict):
+            changed_by = (
+                str(
+                    new_customer.get("last_edited_by_name")
+                    or new_customer.get("last_edited_by_email")
+                    or new_customer.get("created_by_name")
+                    or new_customer.get("created_by_email")
+                    or ""
+                ).strip()
+                or None
+            )
+        if changed_by is None and isinstance(old_customer, dict):
+            changed_by = (
+                str(
+                    old_customer.get("last_edited_by_name")
+                    or old_customer.get("last_edited_by_email")
+                    or old_customer.get("created_by_name")
+                    or old_customer.get("created_by_email")
+                    or ""
+                ).strip()
+                or None
+            )
+
+        if old_customer is None and new_customer is not None:
+            changes = _collect_entity_field_changes(
+                entity_type="customer",
+                entity_id=kunden_id,
+                old_row=None,
+                new_row=new_customer,
+                changed_by=changed_by,
+                changed_at=changed_at,
+                source=source,
+                ignore_fields=_AUDIT_IGNORE_CUSTOMER_FIELDS,
+            )
+            changes.extend(
+                _collect_entity_field_changes(
+                    entity_type="wash_profile",
+                    entity_id=kunden_id,
+                    old_row=None,
+                    new_row=new_wash_row,
+                    changed_by=changed_by,
+                    changed_at=changed_at,
+                    source=source,
+                    ignore_fields=_AUDIT_IGNORE_WASH_FIELDS,
+                )
+            )
+            _append_audit_entry(
+                next_state,
+                kunden_id=kunden_id,
+                action="created",
+                changes=changes,
+                changed_by=changed_by,
+                changed_at=changed_at,
+                source=source,
+            )
+            continue
+
+        if old_customer is not None and new_customer is None:
+            changes = _collect_entity_field_changes(
+                entity_type="customer",
+                entity_id=kunden_id,
+                old_row=old_customer,
+                new_row=None,
+                changed_by=changed_by,
+                changed_at=changed_at,
+                source=source,
+                ignore_fields=_AUDIT_IGNORE_CUSTOMER_FIELDS,
+            )
+            _append_audit_entry(
+                next_state,
+                kunden_id=kunden_id,
+                action="deleted",
+                changes=changes,
+                changed_by=changed_by,
+                changed_at=changed_at,
+                source=source,
+            )
+            continue
+
+        if old_customer is None or new_customer is None:
+            continue
+
+        action: Literal["created", "updated", "deleted", "restored"] = "updated"
+        if not bool(old_customer.get("deleted")) and bool(new_customer.get("deleted")):
+            action = "deleted"
+        elif bool(old_customer.get("deleted")) and not bool(new_customer.get("deleted")):
+            action = "restored"
+
+        changes = _collect_entity_field_changes(
+            entity_type="customer",
+            entity_id=kunden_id,
+            old_row=old_customer,
+            new_row=new_customer,
+            changed_by=changed_by,
+            changed_at=changed_at,
+            source=source,
+            ignore_fields=_AUDIT_IGNORE_CUSTOMER_FIELDS,
+        )
+        changes.extend(
+            _collect_entity_field_changes(
+                entity_type="wash_profile",
+                entity_id=kunden_id,
+                old_row=old_wash_row,
+                new_row=new_wash_row,
+                changed_by=changed_by,
+                changed_at=changed_at,
+                source=source,
+                ignore_fields=_AUDIT_IGNORE_WASH_FIELDS,
+            )
+        )
+
+        if not changes and action == "updated":
+            continue
+
+        _append_audit_entry(
+            next_state,
+            kunden_id=kunden_id,
+            action=action,
+            changes=changes,
+            changed_by=changed_by,
+            changed_at=changed_at,
+            source=source,
+        )
+
+    return next_state
+
+
+def _demo_save_customers_state(
+    state: dict[str, Any],
+    *,
+    expected_updated_at: str | None = None,
+    source: str = "api.demo.customers-db",
+) -> tuple[dict[str, Any], str]:
     if not _is_kunden_db_state_shape(state):
         raise HTTPException(status_code=400, detail="Invalid customers state shape")
+    current_state, current_updated_at = _demo_get_customers_state()
+    expected_clean = (expected_updated_at or "").strip() or None
+    if expected_clean is not None and expected_clean != (current_updated_at or None):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "customers_db_conflict",
+                "message": "Shared customers data has changed since your last load.",
+                "expected_updated_at": expected_clean,
+                "actual_updated_at": current_updated_at,
+            },
+        )
+    audited_state = _sync_central_customer_history(current_state, state, source=source)
     updated_at = _demo_now_iso()
     db_path = _demo_customers_db_path()
-    payload = json.dumps(state, ensure_ascii=False)
+    payload = json.dumps(audited_state, ensure_ascii=False)
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
@@ -1359,11 +1728,13 @@ def _demo_save_customers_state(state: dict[str, Any]) -> tuple[dict[str, Any], s
             ("customers_db", payload, updated_at),
         )
         conn.commit()
-    return state, updated_at
+    return audited_state, updated_at
 
 
 class DemoCustomersDbPayload(BaseModel):
     state: dict[str, Any]
+    expected_updated_at: str | None = None
+    source: str | None = None
 
 
 def _nominatim_base() -> str:
@@ -2053,8 +2424,39 @@ async def demo_put_customers_db(
     x_demo_key: str | None = Header(default=None, alias="x-demo-key"),
 ) -> dict[str, Any]:
     _assert_demo_api_key(x_demo_key)
-    state, updated_at = _demo_save_customers_state(body.state)
+    state, updated_at = _demo_save_customers_state(
+        body.state,
+        expected_updated_at=body.expected_updated_at,
+        source=(body.source or "api.demo.customers-db"),
+    )
     return {"state": state, "updated_at": updated_at}
+
+
+@app.get("/api/v1/customers/{customer_id}/history")
+async def customer_history(
+    customer_id: int,
+    x_demo_key: str | None = Header(default=None, alias="x-demo-key"),
+) -> dict[str, Any]:
+    _assert_demo_api_key(x_demo_key)
+    state, updated_at = _demo_get_customers_state()
+    if not isinstance(state, dict):
+        return {"items": [], "total": 0, "updated_at": updated_at}
+    history = state.get("history")
+    if not isinstance(history, list):
+        return {"items": [], "total": 0, "updated_at": updated_at}
+    items = [
+        row
+        for row in history
+        if isinstance(row, dict) and _safe_int(row.get("kunden_id"), default=-1) == customer_id
+    ]
+    items.sort(
+        key=lambda row: (
+            str(row.get("timestamp") or ""),
+            _safe_int(row.get("id"), default=0),
+        ),
+        reverse=True,
+    )
+    return {"items": items, "total": len(items), "updated_at": updated_at}
 
 
 def _build_vies_check_payload(body: VatCheckRequest) -> dict[str, str]:
@@ -2497,6 +2899,9 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
     url = os.environ.get("VIES_CHECK_URL", _default_live_check_url()).strip() or _default_live_check_url()
     payload = _build_vies_check_payload(body)
     vat = payload["vatNumber"]
+    endpoint_started = asyncio.get_event_loop().time()
+    endpoint_budget_sec = float(os.environ.get("VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC", "9.0"))
+    endpoint_budget_sec = max(2.0, endpoint_budget_sec)
 
     data = await _vies_call_with_retries(
         "POST",
@@ -2504,7 +2909,25 @@ async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
         json_body=payload,
         require_valid_field=True,
     )
-    data = await _enrich_vies_data_with_fallbacks(payload, data)
+    # Fallback enrichment can be expensive (extra SOAP/member-state calls).
+    # Keep total endpoint time below common cloud proxy limits to avoid empty 5xx gateway bodies.
+    elapsed = asyncio.get_event_loop().time() - endpoint_started
+    remaining = endpoint_budget_sec - elapsed
+    enrich_enabled = os.environ.get("VIES_ENRICH_FALLBACK_ENABLED", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+    if enrich_enabled and remaining > 0.75:
+        try:
+            data = await asyncio.wait_for(
+                _enrich_vies_data_with_fallbacks(payload, data),
+                timeout=remaining,
+            )
+        except (asyncio.TimeoutError, HTTPException):
+            # Return core VIES check result rather than timing out behind gateway/proxy.
+            pass
     fallback_name, fallback_address = _request_fallback_name_address(body)
     return _map_vies_check_response(
         data,

@@ -11,6 +11,8 @@ Environment:
   VIES_REQUESTER_CC        Optional default requester member state code (e.g. DE/EU).
   VIES_REQUESTER_VAT       Optional default requester VAT number (used with VIES_REQUESTER_CC).
   CORS_ORIGINS             Comma-separated origins (default: http://localhost:5173,http://127.0.0.1:5173).
+  CORS_ORIGIN_REGEX        Optional regex for allowed Origin (e.g. https://.*\\.vercel\\.app); use with
+                           credentials when preview URLs change. Matched in addition to CORS_ORIGINS.
   VIES_MAX_RETRIES         Retries for transient / concurrent-cap errors (default: 3).
   VIES_RETRY_BASE_SEC      Initial backoff before first retry, seconds (default: 0.4).
   VIES_RETRY_MAX_WAIT_SEC  Cap on single backoff sleep (default: 8).
@@ -66,6 +68,7 @@ import asyncio
 import datetime as dt
 import hashlib
 import json
+import logging
 import os
 import random
 import re
@@ -81,9 +84,9 @@ from xml.sax.saxutils import escape as _xml_escape
 import unicodedata
 
 import httpx
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 try:
@@ -283,6 +286,14 @@ def _cors_origins() -> list[str]:
     return ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
+def _cors_origin_regex() -> str | None:
+    raw = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
+    return raw or None
+
+
+_log = logging.getLogger("dema.api")
+
+
 def _default_requester_from_env() -> tuple[str, str] | None:
     """Return configured requester identity for VIES approximate checks, if complete."""
     req_cc = os.environ.get("VIES_REQUESTER_CC", "").strip().upper()
@@ -291,19 +302,22 @@ def _default_requester_from_env() -> tuple[str, str] | None:
         return None
     if not req_cc or not req_raw:
         raise HTTPException(
-            status_code=500,
-            detail="VIES_REQUESTER_CC and VIES_REQUESTER_VAT must either both be set or both be empty.",
+            status_code=503,
+            detail=(
+                "Backend misconfiguration: VIES_REQUESTER_CC and VIES_REQUESTER_VAT must either both "
+                "be set or both be empty. Remove the stray variable or set both."
+            ),
         )
     if req_cc not in REQUESTER_COUNTRY_CODES:
         raise HTTPException(
-            status_code=500,
-            detail=f"VIES_REQUESTER_CC not supported: {req_cc}",
+            status_code=503,
+            detail=f"Backend misconfiguration: VIES_REQUESTER_CC not supported: {req_cc}",
         )
     req_num = _normalize_vat(req_cc, req_raw) if req_cc != "EU" else req_raw.upper().replace(" ", "")
     if not req_num:
         raise HTTPException(
-            status_code=500,
-            detail="VIES_REQUESTER_VAT is empty after normalization.",
+            status_code=503,
+            detail="Backend misconfiguration: VIES_REQUESTER_VAT is empty after normalization.",
         )
     return req_cc, req_num
 
@@ -418,6 +432,11 @@ _vies_http: httpx.AsyncClient | None = None
 async def _lifespan(app: FastAPI):
     global _vies_http
     _init_demo_store()
+    _log.info(
+        "CORS allow_origins=%s allow_origin_regex=%s",
+        _cors_origins(),
+        _cors_origin_regex() or "(none)",
+    )
     timeout = httpx.Timeout(15.0, connect=8.0)
     limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
     _vies_http = httpx.AsyncClient(timeout=timeout, limits=limits)
@@ -432,10 +451,27 @@ app = FastAPI(title="Dema Dashboard API", version="0.1.0", lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
+    allow_origin_regex=_cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return JSON for unexpected errors (HTTPException uses FastAPI's handler first)."""
+    _log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": (
+                "Internal server error. Check backend logs for the traceback. "
+                "If this is a VAT check, try lowering VIES_MAX_TOTAL_SEC / retries or disable enrich."
+            ),
+            "error_type": type(exc).__name__,
+        },
+    )
 
 
 class VatCheckRequest(BaseModel):

@@ -1957,7 +1957,9 @@ export function NewCustomerModal({
           const hint =
             res.status === 405
               ? `HTTP 405 — der Server verbietet POST auf diesem Pfad. Im Cloud-Deployment fehlt wahrscheinlich die Umgebungsvariable VITE_API_BASE_URL (Build-Zeit). Ohne sie landen Anfragen beim Frontend-Host statt beim Python-Backend. Setzen Sie VITE_API_BASE_URL=https://ihr-backend.example.com in den Build-Einstellungen und bauen Sie das Frontend neu.`
-              : `HTTP ${res.status} — leere Antwort vom Server. Mögliche Ursachen: Proxy-Timeout, Cold-Start des Backends oder fehlende CORS_ORIGINS-Konfiguration.`;
+              : res.status === 503
+                ? `HTTP 503 — leere Antwort. Oft Gateway/Proxy-Timeout oder Backend-Cold-Start. Prüfen Sie Backend-Logs; setzen Sie VIES_MAX_TOTAL_SEC niedriger; bei halb gesetzten VIES_REQUESTER_CC/VIES_REQUESTER_VAT beide leer setzen oder beide korrekt befüllen. CORS: CORS_ORIGINS bzw. CORS_ORIGIN_REGEX.`
+                : `HTTP ${res.status} — leere Antwort vom Server. Mögliche Ursachen: Proxy-Timeout, Cold-Start, falsches API-Ziel (VITE_API_BASE_URL), oder CORS (CORS_ORIGINS / CORS_ORIGIN_REGEX). Backend-Logs prüfen.`;
           setVatCheckError(hint);
           return;
         }

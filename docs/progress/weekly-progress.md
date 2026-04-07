@@ -101,3 +101,37 @@ Use this file for milestone-level progress reporting and manager updates.
 - `dirtyBaselineRef` reset on close/open — watch for edge cases if `open` toggles without unmount.
 - **Next milestone:** Phase 2 (frontend architecture / repository layer) per `docs/architecture/overview.md`.
 
+## 2026-04-01 — Phase 2 (slice): frontend customer repository & feature folder
+
+### Completed
+
+- **Customer feature module** under `frontend/src/features/customers/`: `customerRepository` facade over `kundenStore`, form/VAT mappers, `customerValidation`, `useCustomerForm`, persisted/API type aliases, `CustomerHistoryTimeline` (modal history tab composition).
+- **Customers page** uses `customerRepository` for load/save, CRUD, appointments, documents, relationships, risk, and expiry helpers instead of calling store functions directly.
+- **New customer modal** imports repository-exported DTO types; history tab delegates to `CustomerHistoryTimeline` (removes duplicated inline timeline JSX and duplicate `formatHistoryValueDisplay`).
+- **Docs:** `docs/architecture/overview.md` (Phase 2 subsection), this weekly entry; feature log **FEATURE-140**.
+
+### Files (representative)
+
+- `frontend/src/features/customers/**` — new/ongoing feature layer
+- `frontend/src/pages/CustomersPage.tsx` — repository-first data access
+- `frontend/src/components/NewCustomerModal.tsx` — repository types + history component
+
+### Verification
+
+- Frontend gate: `npm run build` (run after pull; required for phase close).
+- Backend gate: `uvicorn main:app --host 127.0.0.1 --port 8000` from `backend/`, then `GET /api/health` (or project’s configured port).
+
+### Manual smoke (owner)
+
+- [ ] Customers list loads; search/sort unchanged.
+- [ ] Open edit: save, delete/restore flows if used; documents/appointments/relationships still persist.
+- [ ] History tab: same timeline content and i18n as before Phase 2 refactor.
+- [ ] Create customer: save and handoff to edit still work.
+- [ ] VAT tab: check still runs; no import/runtime errors in console.
+
+### Risks / follow-ups
+
+- **Large modal file:** Phase 2 reduces duplication (history) and store coupling; further splits (tabs/sections into feature components) are a good **Phase 2b** or **Phase 3** frontend slice.
+- **Repository vs store:** Other widgets still importing `kundenStore` directly can be migrated incrementally to `customerRepository` for consistency.
+- **Next milestone:** Phase 3 (Python backend restructuring) per architecture map, or a small Phase 2b to wire `useCustomerForm` + mapper end-to-end in the modal.
+

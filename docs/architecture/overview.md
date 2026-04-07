@@ -18,12 +18,19 @@ This document describes the current architecture baseline and the target directi
 - **Layout** is component-local (JSX + Tailwind): master data vs addresses/tax vs contacts vs “related & operational” column; history tab uses a timeline-oriented grid for diffs.
 - **Dirty detection** compares serialized form state to a baseline set when the modal opens in edit mode (client-only).
 
+### Customer data layer (Phase 2)
+
+- **Feature root:** `frontend/src/features/customers/` — repository, mappers, validators, hooks, history timeline UI, and explicit type aliases (persisted record vs form draft vs VAT API DTO).
+- **`customerRepository`** (`repository/customerRepository.ts`) is the **only** entry point customer screens should use for list/detail CRUD, shared DB load/save, history listing, and wash/risk helpers. It delegates to `kundenStore` today (localStorage + optional demo API); storage keys and blob layout stay inside the store/repository, not in page/modal JSX.
+- **Mapping:** `mappers/customerFormMapper.ts` (and related VAT snapshot helpers) translate between modal form state, `NewKundeInput` / wash upserts, and persisted `KundenStamm` shapes where needed.
+- **History tab:** rendered by `components/CustomerHistoryTimeline.tsx` with value formatting in `utils/historyFieldDisplay.ts` (shared with the timeline component).
+
 ## Target Runtime Shape
 
 - Frontend:
-  - feature-based modules
-  - repository layer for customer data access
-  - clear separation between UI, mappers, validators, and form hooks
+  - feature-based modules (**customers feature scaffolded**)
+  - repository layer for customer data access (**facade in place**; still backed by `kundenStore`)
+  - clear separation between UI, mappers, validators, and form hooks (**partial** — modal still owns large form state; hook/mapper wired for incremental adoption)
 - Backend:
   - `app/main.py`, `api`, `schemas`, `services`, `repositories`, `models`, `core`
   - resource-style customer endpoints

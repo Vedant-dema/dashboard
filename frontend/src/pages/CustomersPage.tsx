@@ -27,46 +27,14 @@ import {
 import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
-  loadKundenDb,
-  saveKundenDb,
-  listRowsFromState,
-  listDeletedRowsFromState,
-  getDetailByKundenNr,
-  createKunde,
-  generateNextKundenNr,
-  updateKunde,
-  deleteKunde,
-  restoreKunde,
-  purgeKunde,
-  upsertKundenWash,
-  addKundenUnterlage,
-  removeKundenUnterlage,
-  listUnterlagenForKunde,
-  listTermineForKunde,
-  addKundenTermin,
-  toggleTerminErledigt,
-  removeKundenTermin,
-  listBeziehungenForKunde,
-  addKundenBeziehung,
-  removeKundenBeziehung,
-  isCustomersApiMode,
-  loadSharedKundenDb,
-  saveSharedKundenDb,
-  getRisikoanalyseForKunde,
-  upsertRisikoanalyse,
-  getExpiryStatus,
-  daysUntilExpiry,
-  hasRisikoAlert,
-  listHistoryForKunde,
-  mergeWashStateForDiff,
-  computeKundenWashFieldDiff,
+  customerRepository,
   type KundenListRow,
   type NewKundeInput,
   type NewKundenUnterlageInput,
   type KundenWashUpsertFields,
   type RisikoanalyseUpsertFields,
   type AuditEditor,
-} from "../store/kundenStore";
+} from "../features/customers/repository/customerRepository";
 import { NewCustomerModal } from "../components/NewCustomerModal";
 import { DatePickerInput } from "../components/DatePickerInput";
 import { SuggestTextInput } from "../components/SuggestTextInput";
@@ -170,7 +138,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     : language === "ja" ? "ja-JP"
     : language === "hi" ? "hi-IN"
     : "en-GB";
-  const [db, setDb] = useState(() => loadKundenDb());
+  const [db, setDb] = useState(() => customerRepository.loadLocalDb());
   const fieldSuggestions = useMemo(() => getCustomerFieldSuggestions(db), [db]);
   const quickSearchSuggestions = useMemo(() => getQuickSearchSuggestions(db), [db]);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -204,22 +172,22 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   }, []);
 
   useEffect(() => {
-    if (!isCustomersApiMode()) return;
+    if (!customerRepository.isApiMode()) return;
     let cancelled = false;
     void (async () => {
       try {
-        const remote = await loadSharedKundenDb();
+        const remote = await customerRepository.loadSharedDb();
         if (cancelled) return;
         if (remote) {
           setDb(remote);
-          saveKundenDb(remote);
+          customerRepository.saveLocalDb(remote);
           return;
         }
-        const seeded = loadKundenDb();
-        const saved = await saveSharedKundenDb(seeded);
+        const seeded = customerRepository.loadLocalDb();
+        const saved = await customerRepository.saveSharedDb(seeded);
         if (cancelled) return;
         setDb(saved);
-        saveKundenDb(saved);
+        customerRepository.saveLocalDb(saved);
       } catch {
         // Keep local mode behavior if shared demo backend is unavailable.
       }
@@ -230,12 +198,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   }, []);
 
   const persist = useCallback((next: typeof db) => {
-    saveKundenDb(next);
+    customerRepository.saveLocalDb(next);
     setDb(next);
-    if (!isCustomersApiMode()) return;
-    void saveSharedKundenDb(next).then(
+    if (!customerRepository.isApiMode()) return;
+    void customerRepository.saveSharedDb(next).then(
       (saved) => {
-        saveKundenDb(saved);
+        customerRepository.saveLocalDb(saved);
         setDb(saved);
       },
       () => {
@@ -245,22 +213,22 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   }, [t]);
 
   const unterlagenForCustomer = useMemo(
-    () => (draftKunde ? listUnterlagenForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listUnterlagenForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
   const termineForCustomer = useMemo(
-    () => (draftKunde ? listTermineForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listTermineForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
   const beziehungenForCustomer = useMemo(
-    () => (draftKunde ? listBeziehungenForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listBeziehungenForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
   const historyForCustomer = useMemo(
-    () => (draftKunde ? listHistoryForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listHistoryForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
   const [terminFormOpen, setTerminFormOpen] = useState(false);
@@ -270,7 +238,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleAddTermin = useCallback(() => {
     if (!draftKunde || !terminDatum || !terminZweck.trim()) return;
-    const next = addKundenTermin(db, draftKunde.id, {
+    const next = customerRepository.addKundenTermin(db, draftKunde.id, {
       datum: terminDatum,
       zeit: terminZeit,
       zweck: terminZweck,
@@ -284,7 +252,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleToggleTermin = useCallback(
     (terminId: number) => {
-      const next = toggleTerminErledigt(db, terminId);
+      const next = customerRepository.toggleTerminErledigt(db, terminId);
       persist(next);
     },
     [db, persist]
@@ -292,7 +260,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleRemoveTermin = useCallback(
     (terminId: number) => {
-      const next = removeKundenTermin(db, terminId);
+      const next = customerRepository.removeKundenTermin(db, terminId);
       persist(next);
     },
     [db, persist]
@@ -344,7 +312,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   // ── Risikoanalyse ──────────────────────────────────────────────────────────
   const risikoForCustomer = useMemo(
-    () => (draftKunde ? getRisikoanalyseForKunde(db, draftKunde.id) : null),
+    () => (draftKunde ? customerRepository.getRisikoanalyseForKunde(db, draftKunde.id) : null),
     [db, draftKunde?.id]
   );
   const [risikoEditOpen, setRisikoEditOpen] = useState(false);
@@ -386,7 +354,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleRisikoSave = useCallback(() => {
     if (!draftKunde) return;
-    const next = upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
+    const next = customerRepository.upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
     persist(next);
     setRisikoEditOpen(false);
   }, [db, draftKunde, risikoDraft, persist]);
@@ -395,7 +363,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const alertKundenIds = useMemo(() => {
     const ids = new Set<number>();
     for (const r of db.risikoanalysen ?? []) {
-      if (hasRisikoAlert(r)) ids.add(r.kunden_id);
+      if (customerRepository.hasRisikoAlert(r)) ids.add(r.kunden_id);
     }
     return ids;
   }, [db.risikoanalysen]);
@@ -404,7 +372,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     if (!draftKunde || !beziehungNr.trim() || !beziehungArt.trim()) return;
     const linked = db.kunden.find((k) => k.kunden_nr === beziehungNr.trim());
     if (!linked || linked.id === draftKunde.id) return;
-    const next = addKundenBeziehung(db, draftKunde.id, {
+    const next = customerRepository.addKundenBeziehung(db, draftKunde.id, {
       verknuepfter_kunden_id: linked.id,
       art: beziehungArt,
     });
@@ -416,7 +384,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleRemoveBeziehung = useCallback(
     (beziehungId: number) => {
-      const next = removeKundenBeziehung(db, beziehungId);
+      const next = customerRepository.removeKundenBeziehung(db, beziehungId);
       persist(next);
     },
     [db, persist]
@@ -432,7 +400,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       }
       try {
         const dataUrl = await readFileAsDataURL(file);
-        const next = addKundenUnterlage(db, draftKunde.id, {
+        const next = customerRepository.addKundenUnterlage(db, draftKunde.id, {
           name: file.name,
           size: file.size,
           mime_type: file.type || "application/octet-stream",
@@ -448,15 +416,15 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleRemoveUnterlage = useCallback(
     (unterlageId: number) => {
-      const next = removeKundenUnterlage(db, unterlageId);
+      const next = customerRepository.removeKundenUnterlage(db, unterlageId);
       persist(next);
     },
     [db, persist]
   );
 
   const [showDeleted, setShowDeleted] = useState(false);
-  const listSource = useMemo(() => listRowsFromState(db), [db]);
-  const deletedSource = useMemo(() => listDeletedRowsFromState(db), [db]);
+  const listSource = useMemo(() => customerRepository.listRows(db), [db]);
+  const deletedSource = useMemo(() => customerRepository.listDeletedRows(db), [db]);
 
   const filtered = useMemo(() => {
     let list: KundenListRow[] = [...listSource];
@@ -524,9 +492,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   /** Load drafts immediately on row click — avoids one paint with no drawer (blank flash). */
   const openCustomerRow = useCallback(
     (kuNr: string) => {
-      const detail = getDetailByKundenNr(db, kuNr);
+      const detail = customerRepository.getDetailByKundenNr(db, kuNr);
       if (!detail) return;
-      setShowAddCustomer(false);
       setSelectedRowId(kuNr);
       setDetailDrawerTab("kundendetail");
       setCustomerEditTab("kunde");
@@ -568,7 +535,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       setCustomerEditTab("kunde");
       return;
     }
-    const detail = getDetailByKundenNr(db, selectedRowId);
+    const detail = customerRepository.getDetailByKundenNr(db, selectedRowId);
     if (!detail) {
       setDraftKunde(null);
       setDraftWash(null);
@@ -589,7 +556,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleSaveDetail = () => {
     if (!draftKunde) return;
     if (!draftWash) {
-      persist(updateKunde(db, draftKunde, editor));
+      persist(customerRepository.updateKunde(db, draftKunde, editor));
       setSelectedRowId(null);
       return;
     }
@@ -615,11 +582,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       brutto_preis: draftWash.brutto_preis,
       wasch_intervall: draftWash.wasch_intervall,
     };
-    const washBaseline = oldWash ?? mergeWashStateForDiff(null, draftKunde.id, {});
-    const mergedWash = mergeWashStateForDiff(oldWash, draftKunde.id, washPayload);
-    const washChanges = computeKundenWashFieldDiff(washBaseline, mergedWash);
-    let next = updateKunde(db, draftKunde, editor, { extraChanges: washChanges });
-    next = upsertKundenWash(next, draftKunde.id, washPayload);
+    const washBaseline = oldWash ?? customerRepository.mergeWashStateForDiff(null, draftKunde.id, {});
+    const mergedWash = customerRepository.mergeWashStateForDiff(oldWash, draftKunde.id, washPayload);
+    const washChanges = customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash);
+    let next = customerRepository.updateKunde(db, draftKunde, editor, { extraChanges: washChanges });
+    next = customerRepository.upsertKundenWash(next, draftKunde.id, washPayload);
     persist(next);
     setSelectedRowId(null);
   };
@@ -628,10 +595,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     (data: NewKundeInput, wash: KundenWashUpsertFields | null) => {
       if (!draftKunde) return;
       const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
-      const washBaseline = oldWash ?? mergeWashStateForDiff(null, draftKunde.id, {});
-      const mergedWash = wash ? mergeWashStateForDiff(oldWash, draftKunde.id, wash) : null;
-      const washChanges = mergedWash ? computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
-      let next = updateKunde(
+      const washBaseline = oldWash ?? customerRepository.mergeWashStateForDiff(null, draftKunde.id, {});
+      const mergedWash = wash ? customerRepository.mergeWashStateForDiff(oldWash, draftKunde.id, wash) : null;
+      const washChanges = mergedWash ? customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
+      let next = customerRepository.updateKunde(
         db,
         {
           ...draftKunde,
@@ -643,7 +610,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         { extraChanges: washChanges }
       );
       if (wash) {
-        next = upsertKundenWash(next, draftKunde.id, wash);
+        next = customerRepository.upsertKundenWash(next, draftKunde.id, wash);
       }
       persist(next);
       setSelectedRowId(null);
@@ -658,16 +625,16 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       scannedAttachment?: NewKundenUnterlageInput | null
     ) => {
       try {
-        const washBaseline = mergeWashStateForDiff(null, 0, {});
-        const mergedWash = wash ? mergeWashStateForDiff(null, 0, wash) : null;
-        const washExtra = mergedWash ? computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
-        let next = createKunde(db, data, editor, { washExtraChanges: washExtra });
+        const washBaseline = customerRepository.mergeWashStateForDiff(null, 0, {});
+        const mergedWash = wash ? customerRepository.mergeWashStateForDiff(null, 0, wash) : null;
+        const washExtra = mergedWash ? customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
+        let next = customerRepository.createKunde(db, data, editor, { washExtraChanges: washExtra });
         const created = next.kunden[next.kunden.length - 1];
         if (wash) {
-          next = upsertKundenWash(next, created.id, wash);
+          next = customerRepository.upsertKundenWash(next, created.id, wash);
         }
         if (scannedAttachment) {
-          next = addKundenUnterlage(next, created.id, scannedAttachment);
+          next = customerRepository.addKundenUnterlage(next, created.id, scannedAttachment);
         }
         persist(next);
         setShowAddCustomer(false);
@@ -682,7 +649,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleDeleteKunde = useCallback(
     (kundenId: number) => {
       if (!window.confirm(t("customersDeleteConfirm", "Mark this customer for deletion? They will be moved to the recycle bin and can be restored."))) return;
-      const next = deleteKunde(db, kundenId, editor);
+      const next = customerRepository.deleteKunde(db, kundenId, editor);
       persist(next);
       setSelectedRowId(null);
     },
@@ -692,7 +659,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleRestoreKunde = useCallback(
     (kundenId: number) => {
       if (!window.confirm(t("customersRestoreConfirm", "Restore this customer?"))) return;
-      const next = restoreKunde(db, kundenId, editor);
+      const next = customerRepository.restoreKunde(db, kundenId, editor);
       persist(next);
     },
     [db, editor, persist, t]
@@ -701,7 +668,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handlePurgeKunde = useCallback(
     (kundenId: number) => {
       if (!window.confirm(t("customersPurgeConfirm", "Permanently delete this customer? This cannot be undone."))) return;
-      const next = purgeKunde(db, kundenId);
+      const next = customerRepository.purgeKunde(db, kundenId);
       persist(next);
     },
     [db, persist, t]
@@ -1070,8 +1037,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       )}
 
 
-      {/* Only one customer modal at a time: create flow takes precedence over edit to avoid stacked shells (Phase 1A). */}
-      {selectedRowId && draftKunde && !showAddCustomer && (
+      {selectedRowId && draftKunde && (
         <NewCustomerModal
           key={selectedRowId}
           open={Boolean(selectedRowId)}
@@ -1437,28 +1403,31 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               { key: "ausw_kop_abholer", labelKey: "riskDocAuswKopAbholer", fallback: "ID Copy Collector" },
             ];
 
-            const expiredCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "expired").length;
-            const criticalCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "critical").length;
-            const warningCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "warning").length;
+            const expiredCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "expired").length;
+            const criticalCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "critical").length;
+            const warningCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "warning").length;
 
-            const statusBadge = (status: ReturnType<typeof getExpiryStatus>, date?: string) => {
+            const statusBadge = (
+              status: ReturnType<typeof customerRepository.getExpiryStatus>,
+              date?: string
+            ) => {
               const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold";
               if (status === "expired") return (
                 <span className={`${base} bg-red-100 text-red-700`}>
                   <X className="h-2.5 w-2.5" /> {t("riskStatusExpired", "Expired")}
-                  {date && <span className="ml-0.5 opacity-70">({Math.abs(daysUntilExpiry(date))}d)</span>}
+                  {date && <span className="ml-0.5 opacity-70">({Math.abs(customerRepository.daysUntilExpiry(date))}d)</span>}
                 </span>
               );
               if (status === "critical") return (
                 <span className={`${base} bg-orange-100 text-orange-700`}>
                   <AlertTriangle className="h-2.5 w-2.5" /> {t("riskStatusCritical", "Critical")}
-                  {date && <span className="ml-0.5 opacity-70">({daysUntilExpiry(date)}d)</span>}
+                  {date && <span className="ml-0.5 opacity-70">({customerRepository.daysUntilExpiry(date)}d)</span>}
                 </span>
               );
               if (status === "warning") return (
                 <span className={`${base} bg-amber-100 text-amber-700`}>
                   <AlertTriangle className="h-2.5 w-2.5" /> {t("riskStatusWarning", "Expiring soon")}
-                  {date && <span className="ml-0.5 opacity-70">({daysUntilExpiry(date)}d)</span>}
+                  {date && <span className="ml-0.5 opacity-70">({customerRepository.daysUntilExpiry(date)}d)</span>}
                 </span>
               );
               if (status === "ok") return (
@@ -1608,7 +1577,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <tbody>
                         {DATE_FIELDS.map((f) => {
                           const dateVal = risk?.[f.key] as string | undefined;
-                          const status = getExpiryStatus(dateVal);
+                          const status = customerRepository.getExpiryStatus(dateVal);
                           return (
                             <tr
                               key={f.key}
@@ -1669,7 +1638,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         open={showAddCustomer}
         onClose={() => setShowAddCustomer(false)}
         department={department}
-        nextKundenNrPreview={generateNextKundenNr(db)}
+        nextKundenNrPreview={customerRepository.generateNextKundenNr(db)}
         onSubmit={handleNewCustomerSubmit}
         fieldSuggestions={fieldSuggestions}
         duplicateCheck={(name, street, plz, city) => {

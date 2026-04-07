@@ -14,10 +14,12 @@ This document captures the baseline customer workflow that must be preserved whi
 
 ## Phase 1B — Customer 360 (edit mode)
 
-The same modal shell is used for create and edit. **Edit mode** adds a **summary strip** under the title bar (above tabs) for at-a-glance context:
+The same modal shell is used for create and edit. **Edit mode** adds a **summary strip** under the title bar (above tabs) for at-a-glance context. Visually it reads as one **elevated card**: header band (360 title + customer number), **identity column** (company + primary address with clear hierarchy), and **metrics column** (status, VAT, profile %, risk, doc alerts, last saved) aligned for desktop and stacked on small screens.
 
 | Area | Source / meaning |
 |------|------------------|
+| Company name | From form (`firmenname`), updates as the user types |
+| Primary address | First address row: street, ZIP/city, country |
 | Customer number | From loaded record |
 | Status | Active / inactive / blocked |
 | VAT | Derived from last VIES check result in session (valid / invalid / not verified) |

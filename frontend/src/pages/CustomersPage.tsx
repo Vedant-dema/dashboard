@@ -11,7 +11,6 @@ import {
   Car,
   Info,
   CalendarPlus,
-  Receipt,
   FileText,
   Upload,
   Trash2,
@@ -25,6 +24,9 @@ import {
   Pencil,
 } from "lucide-react";
 import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { RechnungListRow } from "../types/rechnungen";
+import { loadRechnungenDb, formatRechnungsbetrag } from "../store/rechnungenStore";
+import { buildSimpleTextPdf } from "../common/utils/buildSimpleTextPdf";
 import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
   customerRepository,
@@ -74,6 +76,14 @@ function readFileAsDataURL(file: File): Promise<string> {
     r.onerror = () => reject(r.error);
     r.readAsDataURL(file);
   });
+}
+
+function formatInvoiceListDateForPdf(raw: string, localeTag: string): string {
+  if (!raw) return "—";
+  const iso = raw.includes("T") ? raw : `${raw}T12:00:00`;
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return raw;
+  return new Date(ms).toLocaleDateString(localeTag, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 const MOCK_ZUSTAENDIGE = [
@@ -155,6 +165,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [unterlagenOpen, setUnterlagenOpen] = useState(false);
+  const [customerInvoicesOpen, setCustomerInvoicesOpen] = useState(false);
   const unterlagenFileInputRef = useRef<HTMLInputElement>(null);
 
   const [draftKunde, setDraftKunde] = useState<KundenStamm | null>(null);
@@ -162,6 +173,13 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [detailDrawerTab, setDetailDrawerTab] = useState<DetailDrawerTab>("kundendetail");
   const [customerEditTab, setCustomerEditTab] = useState<CustomerEditTab>("kunde");
   const [newPlateInput, setNewPlateInput] = useState("");
+  const [rechnungenListTick, setRechnungenListTick] = useState(0);
+
+  useEffect(() => {
+    const onRechnungenDb = () => setRechnungenListTick((n) => n + 1);
+    window.addEventListener("dema-rechnungen-db-changed", onRechnungenDb);
+    return () => window.removeEventListener("dema-rechnungen-db-changed", onRechnungenDb);
+  }, []);
 
   useEffect(() => {
     const q = sessionStorage.getItem("dema-search-q");
@@ -231,6 +249,72 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     () => (draftKunde ? customerRepository.listHistoryForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
+
+  const rechnungenRowsForCustomer = useMemo(() => {
+    if (!draftKunde?.kunden_nr?.trim()) return [];
+    const rdb = loadRechnungenDb();
+    const ku = draftKunde.kunden_nr.trim();
+    return rdb.rows.filter((r) => r.kunden_nr.trim() === ku);
+  }, [draftKunde?.id, draftKunde?.kunden_nr, rechnungenListTick]);
+
+  const openRechnungenForCustomer = useCallback(() => {
+    if (!draftKunde?.kunden_nr?.trim()) return;
+    const ku = draftKunde.kunden_nr.trim();
+    sessionStorage.setItem("dema-rechnungen-filter-kunden-nr", ku);
+    const matches = loadRechnungenDb().rows.filter((r) => r.kunden_nr.trim() === ku);
+    if (matches.length > 0) {
+      matches.sort((a, b) => {
+        const byDate = b.r_datum.localeCompare(a.r_datum);
+        if (byDate !== 0) return byDate;
+        return b.id - a.id;
+      });
+      sessionStorage.setItem("dema-rechnungen-select-id", String(matches[0]!.id));
+    }
+    const dept = department ?? "sales";
+    window.location.hash = `#/${dept}/rechnungen`;
+    setSelectedRowId(null);
+  }, [draftKunde?.kunden_nr, department]);
+
+  const closeCustomerInvoicesModal = useCallback(() => {
+    setCustomerInvoicesOpen(false);
+  }, []);
+
+  const openInvoicePdfInBrowser = useCallback(
+    (r: RechnungListRow) => {
+      const d = formatInvoiceListDateForPdf(r.r_datum, localeTag);
+      const amt = formatRechnungsbetrag(r.betrag_cent);
+      const lines = [
+        t("customersInvoicesPdfDocHeading", "INVOICE (demo)"),
+        t("customersInvoicesPdfRule", "----------------------------------------"),
+        `${t("rechnungenLabelNr", "Invoice no.:")} ${r.rechn_nr}`,
+        `${t("rechnungenThRDatum", "Inv. date")}: ${d}`,
+        `${t("rechnungenThKundenNr", "Cust. no.")}: ${r.kunden_nr}`,
+        `${t("customersInvoicesPdfCompany", "Company")}: ${r.firmenname}`,
+        `${t("rechnungenThBetrag", "Amount")}: ${amt}`,
+      ];
+      if (r.vermerk.trim()) {
+        lines.push(`${t("rechnungenLabelVermerk", "Note")}: ${r.vermerk}`);
+      }
+      lines.push(
+        t("customersInvoicesPdfRule", "----------------------------------------"),
+        t(
+          "customersInvoicesPdfFooter",
+          "Invoices are created on the Invoices page. This PDF is a preview only."
+        )
+      );
+      const blob = buildSimpleTextPdf(lines);
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if (!win) {
+        URL.revokeObjectURL(url);
+        alert(t("customersInvoicesPdfPopupBlocked", "Allow pop-ups to open the PDF in your browser."));
+        return;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    [localeTag, t]
+  );
+
   const [terminFormOpen, setTerminFormOpen] = useState(false);
   const [terminDatum, setTerminDatum] = useState("");
   const [terminZeit, setTerminZeit] = useState("");
@@ -1045,6 +1129,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           department={department}
           mode="edit"
           editInitial={{ kunde: draftKunde, wash: draftWash }}
+          editRisikoProfile={risikoForCustomer}
           editKundeTopContent={
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1080,13 +1165,31 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t("customersInvoicesTitle", "Invoices")}
               </p>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                <Receipt className="h-4 w-4 text-slate-500" />
-                {t("customersShowInvoices", "Show invoices")}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={openRechnungenForCustomer}
+                  disabled={!draftKunde?.kunden_nr?.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-800 shadow-sm hover:bg-blue-100 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Pencil className="h-4 w-4 shrink-0" aria-hidden />
+                  {t("customersInvoicesEditBtn", "Edit invoices")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomerInvoicesOpen(true)}
+                  disabled={!draftKunde?.kunden_nr?.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                  {t("customersInvoicesFolderBtn", "Invoice files")}
+                  {rechnungenRowsForCustomer.length > 0 ? (
+                    <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {rechnungenRowsForCustomer.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
             </>
           }
           editKundeSideContent={
@@ -1785,6 +1888,91 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <Upload className="h-4 w-4" />
                 {t("customersUnterlageAdd", "Add file (simulate customer upload)")}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {customerInvoicesOpen && draftKunde ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+          onClick={closeCustomerInvoicesModal}
+          role="presentation"
+        >
+          <div
+            className="flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="customer-invoices-dialog-title"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div className="min-w-0">
+                <h2
+                  id="customer-invoices-dialog-title"
+                  className="flex items-center gap-2 text-lg font-bold text-slate-800"
+                >
+                  <FolderOpen className="h-5 w-5 shrink-0 text-blue-600" />
+                  <span className="truncate">{t("customersInvoicesFolderTitle", "Invoice files")}</span>
+                </h2>
+                <p className="mt-0.5 truncate text-sm text-slate-500">{draftKunde.firmenname}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {t("customersUnterlageKuNrLabel", "Cust. no.")}{" "}
+                  <span className="font-mono text-slate-600">{draftKunde.kunden_nr}</span>
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  {t(
+                    "customersInvoicesFolderHint",
+                    "Create and edit invoices on the Invoices page. Open PDF opens a new browser tab."
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCustomerInvoicesModal}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                aria-label={t("customersClose", "Close")}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              {rechnungenRowsForCustomer.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
+                  {t(
+                    "customersInvoicesFolderEmpty",
+                    "No invoices for this customer number. Add them on the Invoices page."
+                  )}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {rechnungenRowsForCustomer.map((r) => (
+                    <li
+                      key={r.id}
+                      className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
+                    >
+                      <FileText className="h-8 w-8 shrink-0 text-amber-600/90" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-800">
+                          {t("customersInvoicesFilePdf", "Invoice_{nr}.pdf").replace("{nr}", r.rechn_nr)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatInvoiceListDateForPdf(r.r_datum, localeTag)} ·{" "}
+                          {formatRechnungsbetrag(r.betrag_cent)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openInvoicePdfInBrowser(r)}
+                        className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("customersInvoicesViewPdf", "Open PDF")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>

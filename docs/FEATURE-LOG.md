@@ -17,7 +17,8 @@
 | 2026-03-27 | [2026-03-27.md](feature-logs/2026-03-27.md) | FEATURE-025, FEATURE-026, FEATURE-027, FEATURE-028, FEATURE-029, FEATURE-030, FEATURE-031, FEATURE-032, FEATURE-033, FEATURE-034, FEATURE-035, FEATURE-036, FEATURE-037, FEATURE-038, FEATURE-039, FEATURE-040, FEATURE-041, FEATURE-042, FEATURE-043, FEATURE-044, FEATURE-045, FEATURE-046, FEATURE-047, FEATURE-048, FEATURE-049, FEATURE-050, FEATURE-051, FEATURE-052, FEATURE-053, FEATURE-054, FEATURE-055, FEATURE-056, FEATURE-057, FEATURE-058, FEATURE-059, FEATURE-060, FEATURE-061, FEATURE-062, FEATURE-063, FEATURE-064, FEATURE-065, FEATURE-066, FEATURE-067, FEATURE-068, FEATURE-069, FEATURE-070 |
 | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071 … FEATURE-108 |
 | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-133 |
-| 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134, FEATURE-135, FEATURE-136, FEATURE-137, FEATURE-138 |
+| 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134 … FEATURE-138, FEATURE-141, FEATURE-142, FEATURE-143 |
+| 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-144 |
 
 ---
 
@@ -164,6 +165,10 @@
 | FEATURE-138 | Remove duplicate VAT & tax from Type / account tab | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-139 | Phase 1B Customer 360 modal — summary, grouping, timeline, dirty UX | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-140 | Phase 2 customer frontend repository & `features/customers` module | Added | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
+| FEATURE-141 | Edit customer — invoices mini-list + Rechnungen deep-link by KundenNr | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
+| FEATURE-142 | Customer invoices — Edit + Invoice files modal, demo PDF in new tab | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
+| FEATURE-143 | Edit invoices — open latest customer invoice in Rechnungen drawer | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
+| FEATURE-144 | Customer 360 summary strip — company name + primary address | Modified | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

@@ -10,6 +10,9 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertCircle,
+  ShieldAlert,
+  Building2,
+  MapPin,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -31,10 +34,12 @@ import type { DepartmentArea } from "../types/departmentArea";
 import type {
   KundenAdresse,
   KundenKontakt,
+  KundenRisikoanalyse,
   KundenStamm,
   KundenWashStamm,
   ViesCustomerSnapshot,
 } from "../types/kunden";
+import { customerRepository } from "../features/customers/repository/customerRepository";
 import { normalizeLatinAddressLine } from "../common/utils/addressLatinNormalize";
 import {
   transliterateAddressToAscii,
@@ -1796,6 +1801,15 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
 
 const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
 
+/** Same document date fields as Risk Analysis sidebar — keep in sync with `hasRisikoAlert` / CustomersPage. */
+const RISK_DOC_EXPIRY_FIELD_KEYS = [
+  "reg_ausz",
+  "wirt_ber_erm",
+  "ausw_kop_wirt_ber",
+  "ausw_gueltig_bis",
+  "ausw_kop_abholer",
+] as const satisfies readonly (keyof KundenRisikoanalyse)[];
+
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
 const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500";
@@ -1806,6 +1820,8 @@ type Props = {
   department?: DepartmentArea;
   mode?: "create" | "edit";
   editInitial?: { kunde: KundenStamm; wash?: KundenWashStamm | null };
+  /** Edit mode: risk profile for Customer 360 document-expiry chip (omit in create mode). */
+  editRisikoProfile?: KundenRisikoanalyse | null;
   editKundeTopContent?: ReactNode;
   editAdresseExtraContent?: ReactNode;
   editKundeSideContent?: ReactNode;
@@ -1840,6 +1856,7 @@ export function NewCustomerModal({
   department,
   mode = "create",
   editInitial,
+  editRisikoProfile,
   editKundeTopContent,
   editAdresseExtraContent,
   editKundeSideContent,
@@ -2365,7 +2382,9 @@ export function NewCustomerModal({
     const pct = computeCustomerProfileCompletionPct(form);
     let vatKind: "valid" | "invalid" | "unknown" = "unknown";
     if (vatCheckResult != null) {
-      vatKind = vatCheckResult.valid ? "valid" : "invalid";
+      vatKind = coerceViesCheckValid(vatCheckResult.valid) ? "valid" : "invalid";
+    } else if (k.vies_snapshot != null) {
+      vatKind = k.vies_snapshot.valid ? "valid" : "invalid";
     }
     let riskKind: "blocked" | "payment" | "billing" | "low" = "low";
     if (form.customer_status === "blocked") riskKind = "blocked";
@@ -2374,13 +2393,50 @@ export function NewCustomerModal({
 
     const lastEditedLine =
       k.updated_at != null && String(k.updated_at).trim() !== ""
-        ? `${k.last_edited_by_name ?? "—"} · ${new Date(k.updated_at).toLocaleString(localeTag, {
+        ? `${k.last_edited_by_name ?? t("auditUnknownEditor", "Unknown")} · ${new Date(k.updated_at).toLocaleString(localeTag, {
             dateStyle: "short",
             timeStyle: "short",
           })}`
         : null;
-    return { pct, vatKind, riskKind, lastEditedLine, kuNr: k.kunden_nr };
-  }, [isEditMode, editInitial, form, vatCheckResult, localeTag]);
+    const vatRequestRaw =
+      (vatCheckResult?.request_date && String(vatCheckResult.request_date).trim()) ||
+      (k.vies_snapshot?.request_date && String(k.vies_snapshot.request_date).trim()) ||
+      "";
+    const vatRequestDateDisplay = vatRequestRaw
+      ? normalizeViesRequestDate(vatRequestRaw, localeTag) ?? vatRequestRaw
+      : null;
+    const vatRequestMs = vatRequestRaw ? Date.parse(vatRequestRaw) : NaN;
+    const vatRequestDateIso =
+      vatRequestRaw && !Number.isNaN(vatRequestMs) ? new Date(vatRequestMs).toISOString() : null;
+    const a0 = form.adressen[0];
+    const addrParts = [
+      a0?.strasse?.trim(),
+      [a0?.plz?.trim(), a0?.ort?.trim()].filter(Boolean).join(" ").trim() || null,
+      a0?.land_code?.trim(),
+    ].filter(Boolean) as string[];
+    const addressLine = addrParts.length > 0 ? addrParts.join(", ") : "";
+    const companyLine = (form.firmenname ?? "").trim();
+    return {
+      pct,
+      vatKind,
+      riskKind,
+      lastEditedLine,
+      kuNr: k.kunden_nr,
+      vatRequestDateDisplay,
+      vatRequestDateIso,
+      companyLine,
+      addressLine,
+    };
+  }, [isEditMode, editInitial, form, vatCheckResult, localeTag, t]);
+
+  const customer360DocExpiryAlertCount = useMemo(() => {
+    if (!isEditMode || editRisikoProfile === undefined) return null;
+    if (!editRisikoProfile) return 0;
+    return RISK_DOC_EXPIRY_FIELD_KEYS.filter((key) => {
+      const s = customerRepository.getExpiryStatus(editRisikoProfile[key] as string | undefined);
+      return s === "expired" || s === "critical" || s === "warning";
+    }).length;
+  }, [isEditMode, editRisikoProfile]);
 
   if (!open) return null;
 
@@ -2417,7 +2473,7 @@ export function NewCustomerModal({
               const k = editInitial.kunde;
               const fmt = (iso?: string) =>
                 iso
-                  ? new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })
+                  ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
                   : "—";
               return (
                 <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
@@ -2462,7 +2518,9 @@ export function NewCustomerModal({
                 </div>
               );
             })() : (
-              <p className="mt-1 text-xs text-slate-400">DEMA Management</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {t("newCustomerModalBrandSubtitle", "DEMA Management")}
+              </p>
             )}
           </div>
           <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end sm:text-right">
@@ -2482,17 +2540,67 @@ export function NewCustomerModal({
         </div>
 
         {isEditMode && customer360EditSummary ? (
-          <div className="shrink-0 border-b border-slate-200 bg-gradient-to-r from-slate-100 to-slate-50 px-4 py-3 sm:px-5">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-              {t("customer360SummaryStripTitle", "Customer 360 overview")}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs shadow-sm">
-                <span className="text-slate-500">{t("customer360ChipKuNr", "Cust. no.")}</span>
-                <span className="font-mono font-semibold text-slate-800">{customer360EditSummary.kuNr}</span>
-              </span>
+          <div className="shrink-0 border-b border-slate-200/90 bg-gradient-to-br from-slate-100/90 via-white to-slate-50/95 px-3 py-2 sm:px-4 sm:py-2.5">
+            <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
+              <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50/95 to-white px-3 py-1.5 sm:px-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                  {t("customer360SummaryStripTitle", "Customer 360 overview")}
+                </p>
+              </div>
+              <div className="grid gap-3 p-3 sm:gap-3.5 sm:p-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+                <div className="min-w-0">
+                  <div className="flex gap-2 sm:gap-3">
+                    <div
+                      className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 shadow-inner shadow-blue-900/5 sm:flex"
+                      aria-hidden
+                    >
+                      <Building2 className="h-4 w-4" strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="min-w-0">
+                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          {t("customer360StripCompany", "Company")}
+                        </p>
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <p
+                            className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug tracking-tight text-slate-900 sm:text-base"
+                            title={customer360EditSummary.companyLine || undefined}
+                          >
+                            {customer360EditSummary.companyLine || "—"}
+                          </p>
+                          <span
+                            className="inline-flex shrink-0 items-center rounded-md bg-slate-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-slate-800 ring-1 ring-slate-200/80 sm:text-[11px]"
+                            title={t("customer360ChipKuNr", "Cust. no.")}
+                          >
+                            {t("customer360ChipKuNr", "Cust. no.")}{" "}
+                            <span className="text-slate-950">{customer360EditSummary.kuNr}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex min-w-0 gap-2 border-t border-slate-100 pt-2">
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            {t("customer360StripAddress", "Address")}
+                          </p>
+                          <p
+                            className="text-xs leading-snug text-slate-600 line-clamp-2 break-words sm:text-sm sm:leading-snug"
+                            title={customer360EditSummary.addressLine || undefined}
+                          >
+                            {customer360EditSummary.addressLine || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="min-w-0 border-t border-slate-100 pt-2.5 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 lg:sr-only">
+                    {t("customer360StripMetrics", "Status & profile")}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
               <span
-                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm sm:text-xs ${
                   form.customer_status === "active"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                     : form.customer_status === "inactive"
@@ -2508,7 +2616,7 @@ export function NewCustomerModal({
                     : t("newCustomerStatusBlocked", "Blocked")}
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm sm:text-xs ${
                   customer360EditSummary.vatKind === "valid"
                     ? "border-emerald-200 bg-white text-emerald-800"
                     : customer360EditSummary.vatKind === "invalid"
@@ -2517,23 +2625,50 @@ export function NewCustomerModal({
                 }`}
               >
                 {customer360EditSummary.vatKind === "valid" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <CheckCircle2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                 ) : customer360EditSummary.vatKind === "invalid" ? (
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                 ) : null}
-                {t("customer360ChipVat", "VAT")}:{" "}
-                {customer360EditSummary.vatKind === "valid"
-                  ? t("customer360VatValid", "Valid check")
-                  : customer360EditSummary.vatKind === "invalid"
-                    ? t("customer360VatInvalid", "Invalid / failed")
-                    : t("customer360VatUnknown", "Not verified")}
+                <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                  <span>
+                    {t("customer360ChipVat", "VAT")}:{" "}
+                    {customer360EditSummary.vatKind === "valid"
+                      ? t("customer360VatValid", "VAT valid")
+                      : customer360EditSummary.vatKind === "invalid"
+                        ? t("customer360VatInvalid", "VAT invalid")
+                        : t("customer360VatUnknown", "Not verified")}
+                  </span>
+                  {customer360EditSummary.vatRequestDateDisplay ? (
+                    <>
+                      <span className="opacity-70" aria-hidden>
+                        {" · "}
+                      </span>
+                      {customer360EditSummary.vatRequestDateIso ? (
+                        <time
+                          dateTime={customer360EditSummary.vatRequestDateIso}
+                          className="tabular-nums font-normal opacity-90"
+                          title={t("customer360VatRequestDateTitle", "VIES check date")}
+                        >
+                          {customer360EditSummary.vatRequestDateDisplay}
+                        </time>
+                      ) : (
+                        <span
+                          className="tabular-nums font-normal opacity-90"
+                          title={t("customer360VatRequestDateTitle", "VIES check date")}
+                        >
+                          {customer360EditSummary.vatRequestDateDisplay}
+                        </span>
+                      )}
+                    </>
+                  ) : null}
+                </span>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-sm sm:text-xs">
                 {t("customer360ChipCompletion", "Profile")}
                 <span className="tabular-nums font-semibold text-slate-900">{customer360EditSummary.pct}%</span>
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm sm:text-xs ${
                   customer360EditSummary.riskKind === "blocked" || customer360EditSummary.riskKind === "payment"
                     ? "border-red-200 bg-red-50 text-red-800"
                     : customer360EditSummary.riskKind === "billing"
@@ -2551,14 +2686,24 @@ export function NewCustomerModal({
                       ? t("customer360RiskBilling", "Billing incomplete")
                       : t("customer360RiskLow", "No flags")}
               </span>
+              {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-800 shadow-sm sm:text-xs">
+                  <ShieldAlert className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
+                  {customer360DocExpiryAlertCount}{" "}
+                  {t("riskAlertBannerTitle", "Document Expiry Warning")}
+                </span>
+              ) : null}
               {customer360EditSummary.lastEditedLine ? (
-                <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 shadow-sm sm:max-w-[min(100%,28rem)]">
+                <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 shadow-sm sm:max-w-[min(100%,26rem)] sm:text-xs">
                   <span className="shrink-0 font-semibold text-slate-500">
                     {t("customer360ChipLastEdited", "Last saved")}
                   </span>
                   <span className="truncate tabular-nums">{customer360EditSummary.lastEditedLine}</span>
                 </span>
               ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : null}

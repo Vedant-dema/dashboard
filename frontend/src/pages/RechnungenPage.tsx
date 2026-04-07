@@ -82,6 +82,25 @@ export function RechnungenPage({ department }: { department?: DepartmentArea }) 
       setGlobalHeaderSearch(q);
       sessionStorage.removeItem("dema-search-q-rechnungen");
     }
+    const ku = sessionStorage.getItem("dema-rechnungen-filter-kunden-nr");
+    if (ku != null && ku.trim() !== "") {
+      setKundenNr(ku.trim());
+      sessionStorage.removeItem("dema-rechnungen-filter-kunden-nr");
+    }
+    if (sessionStorage.getItem("dema-rechnungen-open-new-invoice") === "1") {
+      setShowNewDrawer(true);
+      sessionStorage.removeItem("dema-rechnungen-open-new-invoice");
+    } else {
+      const sel = sessionStorage.getItem("dema-rechnungen-select-id");
+      if (sel != null && sel.trim() !== "") {
+        const id = Number.parseInt(sel.trim(), 10);
+        if (Number.isFinite(id) && loadRechnungenDb().rows.some((r) => r.id === id)) {
+          setSelectedId(id);
+          setShowNewDrawer(false);
+        }
+        sessionStorage.removeItem("dema-rechnungen-select-id");
+      }
+    }
   }, []);
 
   const suggestions = useMemo(() => {

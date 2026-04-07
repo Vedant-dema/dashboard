@@ -13,6 +13,8 @@ import {
   ShieldAlert,
   Building2,
   MapPin,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -190,6 +192,21 @@ function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+
+const FOCUS_ID_FIRMENNAME = "new-kunde-field-firmenname";
+const FOCUS_ID_STRASSE = "new-kunde-field-strasse";
+const FOCUS_ID_UST = "new-kunde-field-ust-id";
+const FOCUS_ID_KONTAKT_EMAIL = "new-kunde-field-kontakt-email";
+
+function focusModalCustomerField(fieldId: string) {
+  window.setTimeout(() => {
+    const el = document.getElementById(fieldId);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (el instanceof HTMLElement && typeof el.focus === "function") {
+      el.focus({ preventScroll: true });
+    }
+  }, 60);
+}
 
 /** EU / Northern Ireland codes accepted by VIES (VoW). */
 const VIES_MS_OPTIONS: { code: string; label: string }[] = [
@@ -1822,6 +1839,8 @@ type Props = {
   editInitial?: { kunde: KundenStamm; wash?: KundenWashStamm | null };
   /** Edit mode: risk profile for Customer 360 document-expiry chip (omit in create mode). */
   editRisikoProfile?: KundenRisikoanalyse | null;
+  /** Edit mode: scroll the modal content to the document expiry / risk analysis block (e.g. sidebar). */
+  onScrollToDocumentExpiry?: () => void;
   editKundeTopContent?: ReactNode;
   editAdresseExtraContent?: ReactNode;
   editKundeSideContent?: ReactNode;
@@ -1857,6 +1876,7 @@ export function NewCustomerModal({
   mode = "create",
   editInitial,
   editRisikoProfile,
+  onScrollToDocumentExpiry,
   editKundeTopContent,
   editAdresseExtraContent,
   editKundeSideContent,
@@ -1954,13 +1974,27 @@ export function NewCustomerModal({
   // causes this effect to reset the form, losing any unsaved edits.
   const wasOpenRef = useRef(false);
   const dirtyBaselineRef = useRef("");
-  const [footerMessage, setFooterMessage] = useState<{ type: "error"; text: string } | null>(null);
+  const [footerMessage, setFooterMessage] = useState<{
+    type: "error";
+    text: string;
+    moreCount?: number;
+  } | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [copyFlash, setCopyFlash] = useState<"ok" | "err" | null>(null);
+  const copyFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyFlashTimerRef.current) clearTimeout(copyFlashTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) {
       dirtyBaselineRef.current = "";
       wasOpenRef.current = false;
       setFooterMessage(null);
+      setShowDiscardConfirm(false);
       return;
     }
     const justOpened = open && !wasOpenRef.current;
@@ -2013,6 +2047,7 @@ export function NewCustomerModal({
     { kuNr: string; firmenname: string; strasse?: string; plz?: string; ort?: string }[]
   >([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const handleSaveRef = useRef<() => void>(() => {});
 
   /** Fields this mock extractor can fill — maps form keys to realistic demo values */
   const MOCK_EXTRACTED_FIRMA: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
@@ -2333,12 +2368,37 @@ export function NewCustomerModal({
 
   const handleSave = () => {
     setFooterMessage(null);
+    type Issue = { message: string; tab: TabId; fieldId: string; preFocus?: () => void };
+    const issues: Issue[] = [];
     if (!form.firmenname.trim()) {
+      issues.push({
+        message: t("newCustomerRequiredFirmenname", "Please enter a company name."),
+        tab: "kunde",
+        fieldId: FOCUS_ID_FIRMENNAME,
+      });
+    }
+    const em = form.kontakte[0]?.email?.trim() ?? "";
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      issues.push({
+        message: t(
+          "newCustomerInvalidEmail",
+          "Please enter a valid email address for the primary contact."
+        ),
+        tab: "kunde",
+        fieldId: FOCUS_ID_KONTAKT_EMAIL,
+        preFocus: () => setActiveKontaktIdx(0),
+      });
+    }
+    if (issues.length > 0) {
+      const [first, ...rest] = issues;
       setFooterMessage({
         type: "error",
-        text: t("newCustomerRequiredFirmenname", "Please enter a company name."),
+        text: first.message,
+        moreCount: rest.length > 0 ? rest.length : undefined,
       });
-      setTab("kunde");
+      setTab(first.tab);
+      first.preFocus?.();
+      focusModalCustomerField(first.fieldId);
       return;
     }
     if (!isEditMode && duplicateCheck) {
@@ -2360,6 +2420,7 @@ export function NewCustomerModal({
     }
     submitCustomer(false);
   };
+  handleSaveRef.current = handleSave;
 
   const handleDuplicateSaveAnyway = () => {
     setShowDuplicateWarning(false);
@@ -2371,10 +2432,111 @@ export function NewCustomerModal({
     submitCustomer(false);
   };
 
-  const isFormDirty =
-    isEditMode &&
+  const draftDiffersFromOpen =
     dirtyBaselineRef.current.length > 0 &&
     serializeFormStateForDirtyBaseline(form) !== dirtyBaselineRef.current;
+  const isFormDirty = draftDiffersFromOpen;
+
+  const requestClose = useCallback(() => {
+    if (showDiscardConfirm) {
+      setShowDiscardConfirm(false);
+      return;
+    }
+    if (draftDiffersFromOpen) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    onClose();
+  }, [draftDiffersFromOpen, onClose, showDiscardConfirm]);
+
+  const performCloseDiscard = useCallback(() => {
+    setShowDiscardConfirm(false);
+    onClose();
+  }, [onClose]);
+
+  const flashCopyResult = useCallback((ok: boolean) => {
+    if (copyFlashTimerRef.current) clearTimeout(copyFlashTimerRef.current);
+    setCopyFlash(ok ? "ok" : "err");
+    copyFlashTimerRef.current = setTimeout(() => {
+      setCopyFlash(null);
+      copyFlashTimerRef.current = null;
+    }, 1600);
+  }, []);
+
+  const copyPlainText = useCallback(
+    async (text: string) => {
+      const v = text.trim();
+      if (!v) {
+        flashCopyResult(false);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(v);
+        flashCopyResult(true);
+      } catch {
+        flashCopyResult(false);
+      }
+    },
+    [flashCopyResult]
+  );
+
+  const goToCompanyFromSummary = useCallback(() => {
+    setTab("kunde");
+    setActiveAdresseIdx(0);
+    focusModalCustomerField(FOCUS_ID_FIRMENNAME);
+  }, []);
+
+  const goToAddressFromSummary = useCallback(() => {
+    setTab("kunde");
+    setActiveAdresseIdx(0);
+    focusModalCustomerField(FOCUS_ID_STRASSE);
+  }, []);
+
+  const goToVatFieldFromSummary = useCallback(() => {
+    setTab("kunde");
+    setActiveAdresseIdx(0);
+    focusModalCustomerField(FOCUS_ID_UST);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (showDiscardConfirm) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setShowDiscardConfirm(false);
+        }
+        return;
+      }
+      if (showDuplicateWarning || showAttachPrompt) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSaveRef.current();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        requestClose();
+        return;
+      }
+      if (e.altKey && !e.repeat) {
+        const d = Number(e.key);
+        if (d >= 1 && d <= tabOrder.length) {
+          e.preventDefault();
+          setTab(tabOrder[d - 1]!);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    open,
+    showDiscardConfirm,
+    showDuplicateWarning,
+    showAttachPrompt,
+    tabOrder,
+    requestClose,
+  ]);
 
   const customer360EditSummary = useMemo(() => {
     if (!isEditMode || !editInitial?.kunde) return null;
@@ -2443,7 +2605,7 @@ export function NewCustomerModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-[2px] sm:p-4 md:p-5"
-      onClick={onClose}
+      onClick={requestClose}
       role="presentation"
     >
       <div
@@ -2452,6 +2614,7 @@ export function NewCustomerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-kunde-title"
+        aria-describedby="new-kunde-shortcuts-hint"
       >
         {/* Title bar — inspired by legacy DEMA header */}
         <div className="relative flex shrink-0 flex-wrap items-start justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-4 pr-14 text-white sm:flex-nowrap sm:px-6 sm:pr-6">
@@ -2531,7 +2694,7 @@ export function NewCustomerModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="absolute right-2 top-2 rounded-xl p-2 text-slate-300 hover:bg-white/10 hover:text-white"
             aria-label={t("newCustomerModalClose", "Close")}
           >
@@ -2542,10 +2705,20 @@ export function NewCustomerModal({
         {isEditMode && customer360EditSummary ? (
           <div className="shrink-0 border-b border-slate-200/90 bg-gradient-to-br from-slate-100/90 via-white to-slate-50/95 px-3 py-2 sm:px-4 sm:py-2.5">
             <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
-              <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50/95 to-white px-3 py-1.5 sm:px-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-gradient-to-r from-slate-50/95 to-white px-3 py-1.5 sm:px-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
                   {t("customer360SummaryStripTitle", "Customer 360 overview")}
                 </p>
+                {copyFlash === "ok" ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600" role="status">
+                    <Check className="h-3.5 w-3.5" aria-hidden />
+                    {t("newCustomerCopiedToClipboard", "Copied")}
+                  </span>
+                ) : copyFlash === "err" ? (
+                  <span className="text-[10px] font-semibold text-red-600" role="status">
+                    {t("newCustomerCopyFailed", "Copy failed")}
+                  </span>
+                ) : null}
               </div>
               <div className="grid gap-3 p-3 sm:gap-3.5 sm:p-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
                 <div className="min-w-0">
@@ -2561,35 +2734,70 @@ export function NewCustomerModal({
                         <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                           {t("customer360StripCompany", "Company")}
                         </p>
-                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                          <p
-                            className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug tracking-tight text-slate-900 sm:text-base"
-                            title={customer360EditSummary.companyLine || undefined}
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+                          <button
+                            type="button"
+                            onClick={goToCompanyFromSummary}
+                            title={t("newCustomerGoToFieldCompany", "Open Customer & Address — company name")}
+                            className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-sm font-semibold leading-snug tracking-tight text-slate-900 transition hover:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-blue-400/50 sm:text-base"
                           >
                             {customer360EditSummary.companyLine || "—"}
-                          </p>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void copyPlainText(customer360EditSummary.companyLine)}
+                            disabled={!customer360EditSummary.companyLine.trim()}
+                            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30"
+                            aria-label={t("newCustomerCopyCompanyNameAria", "Copy company name")}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden />
+                          </button>
                           <span
-                            className="inline-flex shrink-0 items-center rounded-md bg-slate-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-slate-800 ring-1 ring-slate-200/80 sm:text-[11px]"
+                            className="inline-flex shrink-0 items-center rounded-lg bg-gradient-to-br from-slate-50 to-slate-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-slate-800 shadow-sm ring-1 ring-slate-200/70 sm:text-[11px]"
                             title={t("customer360ChipKuNr", "Cust. no.")}
                           >
                             {t("customer360ChipKuNr", "Cust. no.")}{" "}
                             <span className="text-slate-950">{customer360EditSummary.kuNr}</span>
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => void copyPlainText(customer360EditSummary.kuNr)}
+                            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            aria-label={t("newCustomerCopyKuNrAria", "Copy customer number")}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex min-w-0 gap-2 border-t border-slate-100 pt-2">
-                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                            {t("customer360StripAddress", "Address")}
-                          </p>
-                          <p
-                            className="text-xs leading-snug text-slate-600 line-clamp-2 break-words sm:text-sm sm:leading-snug"
-                            title={customer360EditSummary.addressLine || undefined}
-                          >
-                            {customer360EditSummary.addressLine || "—"}
-                          </p>
-                        </div>
+                      <div className="flex min-w-0 items-start gap-1 border-t border-slate-100 pt-2">
+                        <button
+                          type="button"
+                          onClick={goToAddressFromSummary}
+                          title={t("newCustomerGoToFieldAddress", "Open Customer & Address — street / ZIP / city")}
+                          className="flex min-w-0 flex-1 gap-2 rounded-md px-1 py-0.5 text-left transition hover:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+                        >
+                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                              {t("customer360StripAddress", "Address")}
+                            </p>
+                            <p
+                              className="text-xs leading-snug text-slate-600 line-clamp-2 break-words sm:text-sm sm:leading-snug"
+                              title={customer360EditSummary.addressLine || undefined}
+                            >
+                              {customer360EditSummary.addressLine || "—"}
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void copyPlainText(customer360EditSummary.addressLine)}
+                          disabled={!customer360EditSummary.addressLine.trim()}
+                          className="mt-0.5 shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30"
+                          aria-label={t("newCustomerCopyAddressAria", "Copy address")}
+                        >
+                          <Copy className="h-3.5 w-3.5" aria-hidden />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2598,14 +2806,14 @@ export function NewCustomerModal({
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 lg:sr-only">
                     {t("customer360StripMetrics", "Status & profile")}
                   </p>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="customer360-strip-chips flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm sm:text-xs ${
+                className={`inline-flex cursor-default items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs ${
                   form.customer_status === "active"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    ? "border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-emerald-50/30 text-emerald-900 shadow-emerald-900/[0.06]"
                     : form.customer_status === "inactive"
-                      ? "border-slate-200 bg-slate-100 text-slate-700"
-                      : "border-red-200 bg-red-50 text-red-800"
+                      ? "border-slate-200/90 bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700"
+                      : "border-red-200/90 bg-gradient-to-br from-red-50 via-rose-50/50 to-red-50/20 text-red-900 shadow-red-900/[0.06]"
                 }`}
               >
                 {t("customer360ChipStatus", "Status")}:{" "}
@@ -2615,13 +2823,16 @@ export function NewCustomerModal({
                     ? t("newCustomerStatusInactive", "Inactive")
                     : t("newCustomerStatusBlocked", "Blocked")}
               </span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm sm:text-xs ${
+              <button
+                type="button"
+                onClick={goToVatFieldFromSummary}
+                title={t("newCustomerGoToFieldVat", "Open Customer & Address — VAT ID")}
+                className={`inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-lg border px-2.5 py-1 text-left text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-[0.99] sm:max-w-none sm:text-xs ${
                   customer360EditSummary.vatKind === "valid"
-                    ? "border-emerald-200 bg-white text-emerald-800"
+                    ? "border-emerald-300/80 bg-gradient-to-br from-emerald-50 to-teal-50/60 text-emerald-900 shadow-emerald-900/[0.07] focus:ring-emerald-400/50"
                     : customer360EditSummary.vatKind === "invalid"
-                      ? "border-amber-200 bg-white text-amber-800"
-                      : "border-slate-200 bg-white text-slate-600"
+                      ? "border-amber-300/80 bg-gradient-to-br from-amber-50 to-orange-50/50 text-amber-950 shadow-amber-900/[0.06] focus:ring-amber-400/45"
+                      : "border-slate-200/90 bg-gradient-to-br from-slate-50 to-indigo-50/35 text-slate-700 focus:ring-indigo-400/40"
                 }`}
               >
                 {customer360EditSummary.vatKind === "valid" ? (
@@ -2662,18 +2873,18 @@ export function NewCustomerModal({
                     </>
                   ) : null}
                 </span>
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-sm sm:text-xs">
+              </button>
+              <span className="inline-flex cursor-default items-center gap-1 rounded-lg border border-indigo-200/80 bg-gradient-to-br from-indigo-50 via-blue-50/70 to-violet-50/40 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 shadow-sm shadow-indigo-900/[0.05] ring-1 ring-indigo-200/50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs">
                 {t("customer360ChipCompletion", "Profile")}
-                <span className="tabular-nums font-semibold text-slate-900">{customer360EditSummary.pct}%</span>
+                <span className="tabular-nums font-bold text-indigo-900">{customer360EditSummary.pct}%</span>
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm sm:text-xs ${
+                className={`inline-flex cursor-default items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs ${
                   customer360EditSummary.riskKind === "blocked" || customer360EditSummary.riskKind === "payment"
-                    ? "border-red-200 bg-red-50 text-red-800"
+                    ? "border-red-300/80 bg-gradient-to-br from-red-50 via-rose-50/60 to-red-50/25 text-red-900 shadow-red-900/[0.07]"
                     : customer360EditSummary.riskKind === "billing"
-                      ? "border-amber-200 bg-amber-50 text-amber-900"
-                      : "border-slate-200 bg-white text-slate-600"
+                      ? "border-amber-300/80 bg-gradient-to-br from-amber-50 to-yellow-50/40 text-amber-950 shadow-amber-900/[0.05]"
+                      : "border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 via-slate-50/50 to-slate-50/30 text-slate-700"
                 }`}
               >
                 {t("customer360ChipRisk", "Risk")}
@@ -2686,15 +2897,30 @@ export function NewCustomerModal({
                       ? t("customer360RiskBilling", "Billing incomplete")
                       : t("customer360RiskLow", "No flags")}
               </span>
-              {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-800 shadow-sm sm:text-xs">
-                  <ShieldAlert className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-                  {customer360DocExpiryAlertCount}{" "}
-                  {t("riskAlertBannerTitle", "Document Expiry Warning")}
-                </span>
+              {onScrollToDocumentExpiry ? (
+                <button
+                  type="button"
+                  onClick={onScrollToDocumentExpiry}
+                  className={
+                    customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
+                      ? "inline-flex max-w-full items-center gap-1 rounded-lg border border-red-300/85 bg-gradient-to-br from-red-50 via-rose-50/70 to-red-50/30 px-2.5 py-1 text-left text-[11px] font-semibold text-red-900 shadow-md shadow-red-900/[0.08] ring-1 ring-red-200/60 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-400/45 focus:ring-offset-1 active:scale-[0.99] sm:text-xs"
+                      : "inline-flex max-w-full items-center gap-1 rounded-lg border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-sky-50/50 to-slate-50/40 px-2.5 py-1 text-left text-[11px] font-semibold text-slate-700 shadow-sm shadow-sky-900/[0.04] ring-1 ring-cyan-100/80 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:ring-offset-1 active:scale-[0.99] sm:text-xs"
+                  }
+                  title={t("customer360DocExpiryLinkTitle", "Jump to document dates in Risk analysis")}
+                >
+                  <ShieldAlert className="h-3 w-3 shrink-0 text-current sm:h-3.5 sm:w-3.5" aria-hidden />
+                  {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
+                    <>
+                      {customer360DocExpiryAlertCount}{" "}
+                      {t("riskAlertBannerTitle", "Document Expiry Warning")}
+                    </>
+                  ) : (
+                    t("customer360DocExpiryLink", "Document dates")
+                  )}
+                </button>
               ) : null}
               {customer360EditSummary.lastEditedLine ? (
-                <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 shadow-sm sm:max-w-[min(100%,26rem)] sm:text-xs">
+                <span className="inline-flex min-w-0 max-w-full cursor-default items-center gap-1 rounded-lg border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 px-2.5 py-1 text-[11px] text-slate-600 shadow-sm ring-1 ring-slate-200/50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:max-w-[min(100%,26rem)] sm:text-xs">
                   <span className="shrink-0 font-semibold text-slate-500">
                     {t("customer360ChipLastEdited", "Last saved")}
                   </span>
@@ -3125,6 +3351,7 @@ export function NewCustomerModal({
                     </label>
                     <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
                       <SuggestTextInput
+                        id={FOCUS_ID_FIRMENNAME}
                         type="text"
                         value={form.firmenname}
                         onChange={(e) => set("firmenname", e.target.value)}
@@ -3415,6 +3642,7 @@ export function NewCustomerModal({
                             <label className={labelClass}>{t("newCustomerLabelStrasse", "Street")}{isExtracted("strasse") && <KiBadge />}</label>
                             <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
                               <SuggestTextInput
+                                id={FOCUS_ID_STRASSE}
                                 type="text"
                                 value={a.strasse}
                                 onChange={(e) => patchAdresse({ strasse: e.target.value })}
@@ -3538,6 +3766,7 @@ export function NewCustomerModal({
                               <label className={labelClass}>{t("newCustomerLabelUstIdNr", "VAT ID no.")}{isExtracted("ust_id_nr") && <KiBadge />}</label>
                               <ExtractedFieldWrapper extracted={isExtracted("ust_id_nr")}>
                                 <SuggestTextInput
+                                  id={FOCUS_ID_UST}
                                   type="text"
                                   value={a.ust_id_nr}
                                   onChange={(e) => patchAdresse({ ust_id_nr: e.target.value })}
@@ -3854,6 +4083,7 @@ export function NewCustomerModal({
                           <div>
                             <label className={labelClass}>{t("newCustomerLabelEmail", "E-mail")}</label>
                             <input
+                              id={safeIdx === 0 ? FOCUS_ID_KONTAKT_EMAIL : undefined}
                               type="email"
                               value={k.email}
                               onChange={(e) =>
@@ -4671,9 +4901,26 @@ export function NewCustomerModal({
               className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
               role="alert"
             >
-              {footerMessage.text}
+              <span>{footerMessage.text}</span>
+              {footerMessage.moreCount != null && footerMessage.moreCount > 0 ? (
+                <span className="ml-1 text-xs font-medium opacity-90">
+                  {t("newCustomerValidationMore", "+ {n} more").replace(
+                    "{n}",
+                    String(footerMessage.moreCount)
+                  )}
+                </span>
+              ) : null}
             </div>
           ) : null}
+          <p
+            id="new-kunde-shortcuts-hint"
+            className="mb-2 text-center text-[10px] leading-snug text-slate-400 sm:text-left"
+          >
+            {t(
+              "newCustomerKeyboardShortcutsHint",
+              "Alt+1–9: switch tab · Ctrl+S: save · Esc: close (confirm if unsaved)"
+            )}
+          </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
               <label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -4692,7 +4939,7 @@ export function NewCustomerModal({
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
                 className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
               >
                 {t("commonCancel", "Cancel")}
@@ -4707,6 +4954,54 @@ export function NewCustomerModal({
             </div>
           </div>
         </div>
+
+        {showDiscardConfirm && (
+          <div
+            className="absolute inset-0 z-[30] flex items-center justify-center bg-slate-900/50 p-4"
+            onClick={() => setShowDiscardConfirm(false)}
+            role="presentation"
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="discard-confirm-title"
+              aria-describedby="discard-confirm-desc"
+            >
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h3
+                  id="discard-confirm-title"
+                  className="text-base font-semibold text-slate-900"
+                >
+                  {t("newCustomerDiscardTitle", "Discard changes?")}
+                </h3>
+              </div>
+              <p id="discard-confirm-desc" className="px-5 py-4 text-sm text-slate-600">
+                {t(
+                  "newCustomerDiscardMsg",
+                  "You have unsaved changes. Close without saving? Your edits will be lost."
+                )}
+              </p>
+              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardConfirm(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  {t("newCustomerDiscardStay", "Keep editing")}
+                </button>
+                <button
+                  type="button"
+                  onClick={performCloseDiscard}
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
+                >
+                  {t("newCustomerDiscardConfirm", "Discard")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showDuplicateWarning && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">

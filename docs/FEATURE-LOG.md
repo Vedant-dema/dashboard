@@ -18,7 +18,7 @@
 | 2026-03-30 | [2026-03-30.md](feature-logs/2026-03-30.md) | FEATURE-071 … FEATURE-108 |
 | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-133 |
 | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134 … FEATURE-138, FEATURE-141, FEATURE-142, FEATURE-143 |
-| 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-144 |
+| 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-144 … FEATURE-148 |
 
 ---
 
@@ -169,6 +169,10 @@
 | FEATURE-142 | Customer invoices — Edit + Invoice files modal, demo PDF in new tab | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-143 | Edit invoices — open latest customer invoice in Rechnungen drawer | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-144 | Customer 360 summary strip — company name + primary address | Modified | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
+| FEATURE-145 | Customer modal close guard when form differs from open baseline | Added | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
+| FEATURE-146 | Customer modal productivity — keyboard, deep link, copy, validation jump, dirty banner | Added | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
+| FEATURE-147 | Customer 360 — remove VAT copy; document expiry jump link | Modified | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
+| FEATURE-148 | Customer 360 — company name copy; tag polish + stagger animation | Modified | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

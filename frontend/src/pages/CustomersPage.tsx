@@ -63,6 +63,25 @@ const SORT_LABEL_KEY: Record<CustomerSortKey, string> = {
 
 const MAX_UNTERLAGE_BYTES = 2 * 1024 * 1024;
 
+/** `?customer=KUNDENNR` on the hash (e.g. `#/sales/kunden?customer=KU12`). */
+function readCustomerParamFromHash(): string | null {
+  const h = window.location.hash;
+  if (!h.includes("?")) return null;
+  const qs = h.split("?")[1] ?? "";
+  const v = new URLSearchParams(qs).get("customer")?.trim();
+  return v && v.length > 0 ? v : null;
+}
+
+function writeCustomerHashPreservePath(kuNr: string | null) {
+  const raw = window.location.hash.slice(1);
+  const pathPart = (raw.split("?")[0] || "/").trim() || "/";
+  const path = pathPart.startsWith("/") ? pathPart : `/${pathPart}`;
+  const next = kuNr ? `#${path}?customer=${encodeURIComponent(kuNr)}` : `#${path}`;
+  if (window.location.hash !== next) {
+    window.location.hash = next;
+  }
+}
+
 function formatFileSize(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
@@ -163,6 +182,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [vatId, setVatId] = useState("");
   const [sortierung, setSortierung] = useState<CustomerSortKey>("kundenNr");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const selectedRowIdRef = useRef<string | null>(null);
+  selectedRowIdRef.current = selectedRowId;
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [unterlagenOpen, setUnterlagenOpen] = useState(false);
   const [customerInvoicesOpen, setCustomerInvoicesOpen] = useState(false);
@@ -594,6 +615,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       setBeziehungArt("");
       setRisikoEditOpen(false);
       setTerminFormOpen(false);
+      writeCustomerHashPreservePath(kuNr);
     },
     [db]
   );
@@ -609,6 +631,26 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   );
 
   useApplyGlobalSearchFocus("kunden", focusCustomerFromSearch);
+
+  useEffect(() => {
+    const run = () => {
+      const ku = readCustomerParamFromHash();
+      if (!ku) {
+        if (selectedRowIdRef.current) setSelectedRowId(null);
+        return;
+      }
+      const detail = customerRepository.getDetailByKundenNr(db, ku);
+      if (!detail) {
+        writeCustomerHashPreservePath(null);
+        return;
+      }
+      if (selectedRowIdRef.current === ku) return;
+      openCustomerRow(ku);
+    };
+    run();
+    window.addEventListener("hashchange", run);
+    return () => window.removeEventListener("hashchange", run);
+  }, [db, openCustomerRow]);
 
   useEffect(() => {
     if (!selectedRowId) {
@@ -642,6 +684,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     if (!draftWash) {
       persist(customerRepository.updateKunde(db, draftKunde, editor));
       setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
       return;
     }
     const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
@@ -673,6 +716,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     next = customerRepository.upsertKundenWash(next, draftKunde.id, washPayload);
     persist(next);
     setSelectedRowId(null);
+    writeCustomerHashPreservePath(null);
   };
 
   const handleEditCustomerSubmit = useCallback(
@@ -698,6 +742,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       }
       persist(next);
       setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
     },
     [db, draftKunde, persist, editor]
   );
@@ -723,6 +768,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         persist(next);
         setShowAddCustomer(false);
         setSelectedRowId(created.kunden_nr);
+        writeCustomerHashPreservePath(created.kunden_nr);
       } catch (e) {
         alert(e instanceof Error ? e.message : t("customersSaveFailed", "Save failed"));
       }
@@ -736,6 +782,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       const next = customerRepository.deleteKunde(db, kundenId, editor);
       persist(next);
       setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
     },
     [db, editor, persist, t]
   );
@@ -1125,11 +1172,17 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         <NewCustomerModal
           key={selectedRowId}
           open={Boolean(selectedRowId)}
-          onClose={() => setSelectedRowId(null)}
+          onClose={() => {
+            setSelectedRowId(null);
+            writeCustomerHashPreservePath(null);
+          }}
           department={department}
           mode="edit"
           editInitial={{ kunde: draftKunde, wash: draftWash }}
           editRisikoProfile={risikoForCustomer}
+          onScrollToDocumentExpiry={() => {
+            risikoSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+          }}
           editKundeTopContent={
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1547,8 +1600,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
             return (
               <section
+                id="customer-edit-risiko-doc-expiry"
                 ref={risikoSectionRef}
-                className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                className="min-w-0 scroll-mt-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
               >
                 {/* Header row — matches Contacts / Firmendaten section title scale */}
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

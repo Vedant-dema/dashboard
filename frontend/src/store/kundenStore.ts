@@ -377,6 +377,116 @@ type DemoCustomersDbResponse = {
   updated_at?: string | null;
 };
 
+type DemoCustomersDbConflictDetail = {
+  code: "customers_db_conflict";
+  message?: string;
+  expected_updated_at?: string | null;
+  actual_updated_at?: string | null;
+};
+
+type DemoCustomersDbErrorResponse = {
+  detail?: unknown;
+};
+
+type CustomerHistoryApiResponse = {
+  items?: unknown[];
+};
+
+let sharedCustomersUpdatedAt: string | null = null;
+
+function normalizeUpdatedAt(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function parseNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function normalizeHistoryAction(raw: unknown): KundenHistoryEntry["action"] {
+  if (raw === "created" || raw === "updated" || raw === "deleted" || raw === "restored") {
+    return raw;
+  }
+  return "updated";
+}
+
+function normalizeHistoryChanges(raw: unknown): KundenFieldChange[] {
+  if (!Array.isArray(raw)) return [];
+  const out: KundenFieldChange[] = [];
+  for (const row of raw) {
+    const obj = asRecord(row);
+    if (!obj) continue;
+    const field = typeof obj.field === "string" ? obj.field.trim() : "";
+    if (!field) continue;
+    const labelKeyRaw = typeof obj.labelKey === "string" ? obj.labelKey.trim() : "";
+    out.push({
+      field,
+      labelKey: labelKeyRaw || field,
+      from: typeof obj.from === "string" ? obj.from : String(obj.from ?? ""),
+      to: typeof obj.to === "string" ? obj.to : String(obj.to ?? ""),
+    });
+  }
+  return out;
+}
+
+function normalizeHistoryEntryApi(raw: unknown, customerId: number): KundenHistoryEntry | null {
+  const obj = asRecord(raw);
+  if (!obj) return null;
+  const id = parseNumber(obj.id);
+  const kundenIdRaw = parseNumber(obj.kunden_id ?? obj.customer_id);
+  const timestampRaw = typeof obj.timestamp === "string" ? obj.timestamp.trim() : "";
+  if (!id || !timestampRaw) return null;
+  return {
+    id,
+    kunden_id: kundenIdRaw ?? customerId,
+    timestamp: timestampRaw,
+    action: normalizeHistoryAction(obj.action),
+    editor_name: typeof obj.editor_name === "string" ? obj.editor_name : undefined,
+    editor_email: typeof obj.editor_email === "string" ? obj.editor_email : undefined,
+    changes: normalizeHistoryChanges(obj.changes),
+  };
+}
+
+function extractCustomersDbConflictDetail(raw: unknown): DemoCustomersDbConflictDetail | null {
+  const obj = asRecord(raw);
+  if (!obj) return null;
+  if (obj.code !== "customers_db_conflict") return null;
+  return {
+    code: "customers_db_conflict",
+    message: typeof obj.message === "string" ? obj.message : undefined,
+    expected_updated_at: normalizeUpdatedAt(obj.expected_updated_at),
+    actual_updated_at: normalizeUpdatedAt(obj.actual_updated_at),
+  };
+}
+
+export class CustomersDbConflictError extends Error {
+  readonly code = "customers_db_conflict";
+  readonly expectedUpdatedAt: string | null;
+  readonly actualUpdatedAt: string | null;
+
+  constructor(detail: DemoCustomersDbConflictDetail) {
+    super(detail.message || "Shared customers data has changed since your last load.");
+    this.name = "CustomersDbConflictError";
+    this.expectedUpdatedAt = normalizeUpdatedAt(detail.expected_updated_at);
+    this.actualUpdatedAt = normalizeUpdatedAt(detail.actual_updated_at);
+  }
+}
+
+export function isCustomersDbConflictError(error: unknown): error is CustomersDbConflictError {
+  return error instanceof CustomersDbConflictError;
+}
+
 function demoHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (DEMO_API_KEY.trim()) headers["x-demo-key"] = DEMO_API_KEY.trim();
@@ -397,6 +507,7 @@ export async function loadSharedKundenDb(): Promise<KundenDbState | null> {
     throw new Error(`Shared customers load failed (${res.status})`);
   }
   const payload = (await res.json()) as DemoCustomersDbResponse;
+  sharedCustomersUpdatedAt = normalizeUpdatedAt(payload?.updated_at);
   if (!payload?.state) return null;
   if (!isKundenDbState(payload.state)) {
     throw new Error("Shared customers payload has invalid shape");
@@ -408,19 +519,55 @@ export async function saveSharedKundenDb(state: KundenDbState): Promise<KundenDb
   if (!API_MODE) return state;
   // Backend `_is_kunden_db_state_shape` requires unterlagen + nextUnterlageId; normalize so PUT never omits them.
   const bodyState = normalizeUnterlagen(state);
+  const requestBody: {
+    state: KundenDbState;
+    expected_updated_at?: string;
+    source: string;
+  } = {
+    state: bodyState,
+    source: "ui.customers-page",
+  };
+  if (sharedCustomersUpdatedAt) {
+    requestBody.expected_updated_at = sharedCustomersUpdatedAt;
+  }
   const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
     method: "PUT",
     headers: demoHeaders(),
-    body: JSON.stringify({ state: bodyState }),
+    body: JSON.stringify(requestBody),
   });
   if (!res.ok) {
+    if (res.status === 409) {
+      const raw = (await res.json().catch(() => null)) as DemoCustomersDbErrorResponse | null;
+      const detail = extractCustomersDbConflictDetail(raw?.detail);
+      if (detail) {
+        throw new CustomersDbConflictError(detail);
+      }
+    }
     throw new Error(`Shared customers save failed (${res.status})`);
   }
   const responseJson: DemoCustomersDbResponse = (await res.json()) as DemoCustomersDbResponse;
   if (!responseJson.state || !isKundenDbState(responseJson.state)) {
     throw new Error("Shared customers save response has invalid shape");
   }
+  sharedCustomersUpdatedAt = normalizeUpdatedAt(responseJson.updated_at);
   return ensureSeedCustomers(normalizeUnterlagen(responseJson.state));
+}
+
+export async function loadOfficialCustomerHistory(customerId: number): Promise<KundenHistoryEntry[]> {
+  if (!API_MODE) return [];
+  const res = await fetch(demoApiUrl(`/api/v1/customers/${customerId}/history`), {
+    method: "GET",
+    headers: demoHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(`Customer history load failed (${res.status})`);
+  }
+  const payload = (await res.json()) as CustomerHistoryApiResponse;
+  const rows = Array.isArray(payload.items) ? payload.items : [];
+  const normalized = rows
+    .map((row) => normalizeHistoryEntryApi(row, customerId))
+    .filter((row): row is KundenHistoryEntry => row != null);
+  return normalized.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }
 
 export function loadKundenDb(): KundenDbState {
@@ -541,8 +688,6 @@ const TRACKED_FIELDS: { key: keyof KundenStamm; labelKey: string }[] = [
   { key: "buchungskonto_haupt", labelKey: "historyFieldBuchungskonto" },
   { key: "ust_id_nr", labelKey: "historyFieldUstId" },
   { key: "steuer_nr", labelKey: "historyFieldSteuerNr" },
-  { key: "branchen_nr", labelKey: "historyFieldBranchenNr" },
-  { key: "tax_country_type_code", labelKey: "historyFieldTaxCountryTypeCode" },
   { key: "account_number", labelKey: "historyFieldAccountNumber" },
   { key: "credit_limit", labelKey: "historyFieldCreditLimit" },
   { key: "billing_name", labelKey: "historyFieldBillingName" },
@@ -1186,6 +1331,15 @@ export function daysUntilExpiry(isoDate: string): number {
 
 export type ExpiryStatus = "expired" | "critical" | "warning" | "ok" | "missing";
 
+export type RiskDocDateFieldKey =
+  | "reg_ausz"
+  | "wirt_ber_erm"
+  | "ausw_kop_wirt_ber"
+  | "ausw_gueltig_bis"
+  | "ausw_kop_abholer";
+
+export type RiskDocRowDisplayStatus = ExpiryStatus | "recorded";
+
 export function getExpiryStatus(isoDate: string | undefined): ExpiryStatus {
   if (!isoDate) return "missing";
   const days = daysUntilExpiry(isoDate);
@@ -1195,20 +1349,26 @@ export function getExpiryStatus(isoDate: string | undefined): ExpiryStatus {
   return "ok";
 }
 
-/** Returns true if a customer has any expired or near-expiry (≤60 days) doc dates. */
+/**
+ * Status shown in the risk-analysis document table.
+ * Only `ausw_gueltig_bis` uses expiry buckets; other rows are "recorded" when any date is set.
+ */
+export function getRiskDocRowDisplayStatus(
+  fieldKey: RiskDocDateFieldKey,
+  isoDate: string | undefined
+): RiskDocRowDisplayStatus {
+  if (fieldKey === "ausw_gueltig_bis") {
+    return getExpiryStatus(isoDate);
+  }
+  const s = (isoDate ?? "").trim();
+  return s ? "recorded" : "missing";
+}
+
+/** Returns true only for Ausweis gültig bis expiry proximity (≤60 days) or expired. */
 export function hasRisikoAlert(risk: KundenRisikoanalyse | null): boolean {
   if (!risk) return false;
-  const dateFields: (keyof KundenRisikoanalyse)[] = [
-    "reg_ausz",
-    "wirt_ber_erm",
-    "ausw_kop_wirt_ber",
-    "ausw_gueltig_bis",
-    "ausw_kop_abholer",
-  ];
-  return dateFields.some((f) => {
-    const v = risk[f];
-    if (typeof v !== "string") return false;
-    const s = getExpiryStatus(v);
-    return s === "expired" || s === "critical" || s === "warning";
-  });
+  const v = risk.ausw_gueltig_bis;
+  if (typeof v !== "string" || !v.trim()) return false;
+  const s = getExpiryStatus(v);
+  return s === "expired" || s === "critical" || s === "warning";
 }

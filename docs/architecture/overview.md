@@ -43,3 +43,11 @@ This allows gradual migration while preserving the current demo endpoint compati
 
 - Optimistic concurrency on shared demo writes remains active on `/api/v1/demo/customers-db`.
 - History remains centralized and available through `GET /api/v1/customers/{customer_id}/history`.
+- Frontend API mode now shows explicit stale-write conflict notices, reloads latest shared state after conflict, and retries via user-driven resave flow.
+- Frontend local mode continues to use local storage and local history snapshots without backend conflict semantics.
+
+### Object Storage Foundation (Phase 6)
+
+- Storage abstraction is now defined in backend services (local + Azure Blob backends).
+- Customer document payloads are designed for object storage, while SQL stores metadata pointers only.
+- Detailed design and rollout plan: `docs/architecture/object-storage.md`.

@@ -32,11 +32,14 @@ import {
   getRisikoanalyseForKunde,
   upsertRisikoanalyse,
   getExpiryStatus,
+  getRiskDocRowDisplayStatus,
   daysUntilExpiry,
   hasRisikoAlert,
   listHistoryForKunde,
   mergeWashStateForDiff,
   computeKundenWashFieldDiff,
+  loadOfficialCustomerHistory,
+  isCustomersDbConflictError,
 } from "../../../store/kundenStore";
 
 export type {
@@ -51,6 +54,7 @@ export type {
 } from "../../../store/kundenStore";
 
 export { BOOLEAN_KUNDEN_HISTORY_FIELDS, BOOLEAN_WASH_HISTORY_FIELDS } from "../../../store/kundenStore";
+export { isCustomersDbConflictError, CustomersDbConflictError } from "../../../store/kundenStore";
 
 export const customerRepository = {
   loadLocalDb: (): KundenDbState => loadKundenDb(),
@@ -58,6 +62,7 @@ export const customerRepository = {
     saveKundenDb(state);
   },
   isApiMode: (): boolean => isCustomersApiMode(),
+  isCustomersDbConflictError,
   loadSharedDb: loadSharedKundenDb,
   saveSharedDb: saveSharedKundenDb,
 
@@ -88,10 +93,12 @@ export const customerRepository = {
   getRisikoanalyseForKunde,
   upsertRisikoanalyse,
   getExpiryStatus,
+  getRiskDocRowDisplayStatus,
   daysUntilExpiry,
   hasRisikoAlert,
 
   listHistoryForKunde,
+  loadOfficialCustomerHistory,
   mergeWashStateForDiff,
   computeKundenWashFieldDiff,
 } as const;

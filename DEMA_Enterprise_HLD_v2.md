@@ -37,6 +37,17 @@ DEMA will be built as an Azure-first modular monolith, not as early microservice
 4. Documentation is part of delivery, not a later activity.
 5. AI is additive, server-side, governed, and never a substitute for system design.
 
+### 1.5 Architecture decision matrix
+| Decision area | Selected option | Why this is needed for DEMA | Alternatives considered |
+|---|---|---|---|
+| Service style | Modular monolith | Faster delivery with clear domain boundaries and lower operational overhead in early phases | Early microservices |
+| Cloud strategy | Azure-first production target | Aligns with enterprise IAM, security controls, and long-term operating model | Multi-cloud from day one |
+| Frontend | React + TypeScript | Strong developer velocity with type safety and scalable component architecture | Server-rendered only UI |
+| Backend | FastAPI + Python | High productivity, strong API tooling, good fit for data-heavy orchestration and AI adapters | Node-only backend stack |
+| Primary database | PostgreSQL | Relational integrity, mature tooling, strong transactional consistency | NoSQL-first core store |
+| Identity | Microsoft Entra ID | Enterprise SSO, centralized access governance, conditional access support | Custom auth in production |
+| Delivery path | Incremental strangler migration | Reduces migration risk and allows reversible cutovers by domain | Big-bang rewrite |
+
 ## 2. Business scope and system intent
 ### 2.1 Primary business domains
 The initial DEMA scope includes:
@@ -72,6 +83,18 @@ Production target NFRs:
 - No silent lost updates in shared edit mode
 - All production secrets must live in managed secret stores
 
+### 3.2 NFR measurement matrix
+| NFR | Target | How measured | Primary owner |
+|---|---|---|---|
+| Availability | 99.9% monthly | Synthetic health probes + uptime dashboard | Platform/DevOps |
+| Recovery point objective (RPO) | 15 minutes | Backup/replication lag checks and restore drill logs | Platform/DBA |
+| Recovery time objective (RTO) | 4 hours | Incident simulation and recovery playbook timing | Platform + Operations |
+| API latency (p95 standard operations) | < 500 ms | APM trace percentiles on `/api/v1/*` | Backend |
+| API latency (p95 composed/heavy reads) | < 1200 ms | Endpoint-specific percentile dashboards | Backend |
+| Audit completeness | 100% of mutations | Reconciliation between writes and `customer_history` events | Backend + Compliance |
+| Concurrency protection | 0 silent overwrite defects | Conflict-rate telemetry + test suite assertions | Backend + Frontend |
+| Secret governance | 0 production secrets in code/repo | CI secret scan + runtime vault policy checks | Security + DevOps |
+
 ## 4. Architecture principles
 1. Modular monolith first
 2. API-first, UI-second coupling
@@ -97,6 +120,31 @@ The Python API owns validation, business rules, persistence, audit generation, i
 The operational PostgreSQL database stores authoritative transactional data.
 Object storage stores uploaded documents and derived file assets.
 Optional background workers handle slow tasks.
+
+### 5.3 System context diagram
+```mermaid
+flowchart LR
+  Users["Sales / Operations / Managers / Compliance"] --> FE["React Frontend"]
+  FE -->|HTTPS + OIDC token| API["FastAPI Backend"]
+  FE --> Entra["Microsoft Entra ID"]
+  API --> Entra
+  API --> PG["PostgreSQL"]
+  API --> Blob["Blob/Object Storage"]
+  API --> Redis["Redis (optional cache/queue)"]
+  API --> Ext["External APIs: VAT/VIES, Geocoding, Email, Doc AI"]
+  Legacy["Legacy Access + SQL Server"] --> Mig["Migration/Reconciliation Jobs"]
+  Mig --> PG
+```
+
+### 5.4 External integration matrix
+| Integration | Direction | Protocol/mechanism | Business purpose | Failure handling baseline |
+|---|---|---|---|---|
+| Microsoft Entra ID | Frontend/API <-> external | OIDC/OAuth2 | Enterprise authentication and identity claims | Token validation errors mapped to 401/403 with correlation ID |
+| VAT/VIES services | Backend -> external | HTTPS REST | VAT validation and enrichment | Retry with backoff, then mark validation status as deferred |
+| Email provider | Backend -> external | HTTPS API/SMTP bridge | Notifications and workflow messaging | Queue retry + dead-letter path |
+| Geocoding service | Backend -> external | HTTPS REST | Address normalization and enrichment | Timeout budget + soft-fail fallback |
+| Document AI provider (future) | Backend -> external | HTTPS REST | Document extraction/summarization | Feature flag gate + async retry workflow |
+| Legacy SQL/Access feeds | Migration jobs -> internal | ETL/import pipelines | Historical migration and reconciliation | Reconciliation report + rollback script per batch |
 
 ## 6. Target logical architecture
 ### 6.1 Layered model
@@ -146,6 +194,63 @@ Responsibilities:
 - data import pipelines
 - legacy reconciliation logic
 
+### 6.6 Logical architecture diagram
+```mermaid
+flowchart TB
+  subgraph L1["Experience layer"]
+    UI["React UI"]
+  end
+
+  subgraph L2["API and application layer"]
+    EP["FastAPI endpoints"]
+    ORCH["Request orchestration + auth checks"]
+  end
+
+  subgraph L3["Domain services layer"]
+    CUST["Customer service"]
+    HIST["History service"]
+    VAT["VAT service"]
+    DOC["Document service"]
+  end
+
+  subgraph L4["Persistence and integration layer"]
+    REPO["Repositories"]
+    EXTCLI["External API clients"]
+    JOBS["Workers/jobs"]
+  end
+
+  subgraph L5["Data and storage layer"]
+    PG["PostgreSQL"]
+    BLOB["Blob/object storage"]
+    REDIS["Redis (optional)"]
+  end
+
+  UI --> EP
+  EP --> ORCH
+  ORCH --> CUST
+  ORCH --> HIST
+  ORCH --> VAT
+  ORCH --> DOC
+  CUST --> REPO
+  HIST --> REPO
+  DOC --> REPO
+  VAT --> EXTCLI
+  JOBS --> EXTCLI
+  REPO --> PG
+  REPO --> BLOB
+  JOBS --> REDIS
+```
+
+### 6.7 Layer responsibility matrix
+| Layer | Owns | Must not own |
+|---|---|---|
+| Experience | User workflow presentation, form state, localization, conflict prompts | Direct database access or business rule authority |
+| API/application | Transport contracts, validation, transaction boundaries, auth enforcement | Rich domain policy persistence logic in endpoint handlers |
+| Domain services | Business invariants, rule orchestration, audit trigger decisions | HTTP transport or SQL-specific query composition |
+| Persistence/integration | Repository implementations, query tuning, outbound adapters, import connectors | UI concerns or cross-domain policy decisions |
+| Data/storage | Durable state, index/constraint integrity, backups | Application business behavior |
+| Observability/security | Telemetry standards, policy enforcement, key/secret posture | Business-domain branching logic |
+
 ## 7. Cloud and hosting strategy
 ### 7.1 Strategic decision
 Production target is Azure-first.
@@ -175,6 +280,30 @@ Required environments:
 - dev
 - test / staging
 - prod
+
+### 7.5 Production topology diagram (Azure target)
+```mermaid
+flowchart LR
+  U["Enterprise users"] --> FD["Azure Front Door + WAF"]
+  FD --> SWA["Azure Static Web Apps"]
+  FD --> API["Azure App Service / Container Apps (FastAPI)"]
+  SWA --> Entra["Microsoft Entra ID"]
+  API --> Entra
+  API --> PG["Azure Database for PostgreSQL"]
+  API --> Blob["Azure Blob Storage"]
+  API --> KV["Azure Key Vault"]
+  API --> Mon["Azure Monitor + App Insights (OTel)"]
+  GH["GitHub Actions"] --> SWA
+  GH --> API
+```
+
+### 7.6 Environment matrix
+| Environment | Purpose | Data policy | Auth mode | Deployment pattern |
+|---|---|---|---|---|
+| Local | Developer productivity | Synthetic/sample data only | Local/demo auth allowed | Manual run or local compose |
+| Dev | Integrated feature validation | Masked or generated data | Entra test tenant preferred | Auto deploy from feature/dev branches |
+| Test/Staging | Pre-prod verification and UAT | Production-like but controlled | Entra with role-mapped test users | Promotion from tested build artifacts |
+| Prod | Live business operations | Classified production data | Entra production tenant only | Approved release pipeline with rollback plan |
 
 ## 8. Landing zone and infrastructure requirements
 ### 8.1 Enterprise landing-zone requirements
@@ -215,6 +344,17 @@ At minimum classify data as:
 - all prod secrets in Key Vault / managed secret store
 - service identities preferred over long-lived shared credentials
 
+### 9.5 Security control matrix
+| Control area | Mandatory control | Implementation baseline | Evidence |
+|---|---|---|---|
+| Authentication | Centralized enterprise SSO | Microsoft Entra ID with OIDC/OAuth2 | Auth flow integration tests + tenant policy docs |
+| Authorization | Role-based access control | Backend-enforced RBAC checks per endpoint/service | Endpoint authorization tests + role matrix |
+| Secret management | No hardcoded production secrets | Azure Key Vault + managed identities | Secret scanning in CI + vault access logs |
+| Data protection | Encryption in transit and at rest | TLS 1.2+ and platform-managed encryption | TLS config checks + cloud policy reports |
+| Auditability | Mutation-level history trace | `customer_history` records with actor/time/source | Audit reconciliation reports |
+| Threat detection | Operational anomaly detection | Centralized logs/metrics/traces with alerts | Alert dashboards + incident tickets |
+| Change governance | Controlled releases | PR approvals + CI gates + release tagging | PR history + pipeline records |
+
 ## 10. Data architecture
 ### 10.1 Primary data stores
 - PostgreSQL: authoritative transactional domain store
@@ -237,6 +377,109 @@ Core tables:
 ### 10.3 Extensibility strategy
 Use structured columns for stable fields.
 Optional extensibility may use controlled JSONB fields for low-stability metadata, but not as a dumping ground for core business data.
+
+### 10.4 Customer domain entity matrix
+| Entity/table | Primary purpose | Key attributes (examples) | Integrity notes |
+|---|---|---|---|
+| `customers` | Master customer profile | `id`, `customer_number`, `legal_name`, `vat_number`, `status`, `version` | Source-of-truth root aggregate |
+| `customer_addresses` | Address lifecycle and localization | `customer_id`, `address_type`, `country_code`, `city`, `is_primary` | One customer to many addresses |
+| `customer_contacts` | Contact points and roles | `customer_id`, `contact_name`, `email`, `phone`, `role` | Role and uniqueness rules per customer |
+| `customer_wash_profiles` | Wash/business-specific operational settings | `customer_id`, `profile_code`, `settings_json` | One active profile per customer policy |
+| `customer_history` | Immutable audit trail | `customer_id`, `field_name`, `old_value`, `new_value`, `changed_by`, `changed_at` | Append-only, never in-place edited |
+| `customer_documents` | File metadata and governance | `customer_id`, `storage_path`, `document_type`, `uploaded_by` | File object in blob, metadata in DB |
+| `customer_relationships` | Parent/child and partner links | `source_customer_id`, `target_customer_id`, `relationship_type` | Referential integrity for both sides |
+| `customer_appointments` | Scheduling and operational tasks | `customer_id`, `appointment_at`, `owner_user_id`, `status` | Time-zone-safe timestamps |
+| `customer_risk_items` | Compliance and risk flags | `customer_id`, `risk_type`, `severity`, `state` | Traceable state transitions |
+
+### 10.5 Customer domain ER diagram
+```mermaid
+erDiagram
+  CUSTOMERS {
+    uuid id PK
+    string customer_number
+    string legal_name
+    string vat_number
+    string status
+    int version
+    datetime updated_at
+  }
+
+  CUSTOMER_ADDRESSES {
+    uuid id PK
+    uuid customer_id FK
+    string address_type
+    string country_code
+    string city
+    bool is_primary
+  }
+
+  CUSTOMER_CONTACTS {
+    uuid id PK
+    uuid customer_id FK
+    string contact_name
+    string email
+    string phone
+    string role
+  }
+
+  CUSTOMER_WASH_PROFILES {
+    uuid id PK
+    uuid customer_id FK
+    string profile_code
+    string settings_json
+  }
+
+  CUSTOMER_HISTORY {
+    uuid id PK
+    uuid customer_id FK
+    string field_name
+    string old_value
+    string new_value
+    string changed_by
+    datetime changed_at
+  }
+
+  CUSTOMER_DOCUMENTS {
+    uuid id PK
+    uuid customer_id FK
+    string storage_path
+    string document_type
+    datetime uploaded_at
+  }
+
+  CUSTOMER_RELATIONSHIPS {
+    uuid id PK
+    uuid source_customer_id FK
+    uuid target_customer_id FK
+    string relationship_type
+  }
+
+  CUSTOMER_APPOINTMENTS {
+    uuid id PK
+    uuid customer_id FK
+    datetime appointment_at
+    string owner_user_id
+    string status
+  }
+
+  CUSTOMER_RISK_ITEMS {
+    uuid id PK
+    uuid customer_id FK
+    string risk_type
+    string severity
+    string state
+  }
+
+  CUSTOMERS ||--o{ CUSTOMER_ADDRESSES : has
+  CUSTOMERS ||--o{ CUSTOMER_CONTACTS : has
+  CUSTOMERS ||--o| CUSTOMER_WASH_PROFILES : has
+  CUSTOMERS ||--o{ CUSTOMER_HISTORY : emits
+  CUSTOMERS ||--o{ CUSTOMER_DOCUMENTS : stores
+  CUSTOMERS ||--o{ CUSTOMER_APPOINTMENTS : schedules
+  CUSTOMERS ||--o{ CUSTOMER_RISK_ITEMS : flags
+  CUSTOMERS ||--o{ CUSTOMER_RELATIONSHIPS : source_of
+  CUSTOMERS ||--o{ CUSTOMER_RELATIONSHIPS : target_of
+```
 
 ## 11. API architecture
 ### 11.1 API style
@@ -271,11 +514,43 @@ Required initial routes:
 - POST /api/v1/vat/check
 - GET /api/v1/health
 
-### 11.4 Concurrency standard
+### 11.4 Customer API route catalog
+| Method | Route | Purpose | Auth policy baseline | Notes |
+|---|---|---|---|---|
+| GET | `/api/v1/customers` | List/search customers | Any authenticated customer-domain reader role | Paginated and filterable |
+| GET | `/api/v1/customers/{id}` | Fetch customer detail | Reader role with scope to customer | Includes related aggregates by contract |
+| POST | `/api/v1/customers` | Create customer | Editor/admin role | Emits initial audit event |
+| PATCH | `/api/v1/customers/{id}` | Update customer | Editor/admin role | Requires concurrency token |
+| GET | `/api/v1/customers/{id}/history` | Fetch audit timeline | Compliance/manager/authorized reader | Immutable history stream |
+| GET | `/api/v1/customers/{id}/wash-profile` | Fetch wash profile | Reader role | Domain-specific extension |
+| POST | `/api/v1/vat/check` | Validate and enrich VAT data | Authenticated internal roles | Integration with external VAT/VIES |
+| GET | `/api/v1/health` | Service health endpoint | Internal/public monitoring policy | No sensitive payload |
+
+### 11.5 Concurrency standard
 Mutating customer APIs must use optimistic concurrency:
 - row version or updated_at token
 - stale updates return conflict
 - client must handle reload/merge path
+
+### 11.6 Customer update and audit sequence
+```mermaid
+sequenceDiagram
+  autonumber
+  participant UI as React UI
+  participant API as FastAPI
+  participant DB as PostgreSQL
+  participant HIST as customer_history
+
+  UI->>API: PATCH /api/v1/customers/{id} (payload + version token)
+  API->>DB: Read current customer row
+  alt Version mismatch
+    API-->>UI: 409 Conflict + latest row version
+  else Version matches
+    API->>DB: Update customer and increment version
+    API->>HIST: Insert immutable history event
+    API-->>UI: 200 OK + updated payload + new version
+  end
+```
 
 ## 12. Frontend application architecture
 ### 12.1 Structure
@@ -522,6 +797,19 @@ Recommended timeboxes:
 - Phase 6: 4–7 days
 - Phase 7: 3–5 days
 - Phase 8: 2–3 days
+
+### 20.4 Phase exit criteria matrix
+| Phase | Exit criteria | Primary evidence artifact |
+|---|---|---|
+| Phase 1A-1B | Stable Customer 360 UX and approved redesign | Demo script + UX sign-off notes |
+| Phase 2 | Repository boundary and typed frontend data flow enforced | Frontend architecture review checklist |
+| Phase 3 | Backend modular structure in place with clean layering | Package structure diff + unit test pass |
+| Phase 4 | Customer REST APIs contract-stable | OpenAPI snapshot + API smoke tests |
+| Phase 5 | Concurrency and audit flow active | Conflict tests + history reconciliation report |
+| Phase 6 | PostgreSQL migration complete for customer domain | Migration runbook + data validation report |
+| Phase 7 | CI quality gates and docs hardening complete | Green CI runs + docs review checklist |
+| Phase 8 | Stable non-prod deployment on Vercel/Render | Deployment logs + environment validation |
+| Phase 9 | Azure production readiness complete | Security review + operational readiness checklist |
 
 ## 21. Mandatory standards to follow
 ### 21.1 Python

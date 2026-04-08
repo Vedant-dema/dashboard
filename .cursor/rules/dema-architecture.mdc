@@ -1,0 +1,43 @@
+---
+description: Core DEMA architecture and implementation discipline rules
+alwaysApply: true
+---
+
+# DEMA Architecture Rule
+
+## Frontend stack
+
+- Frontend must remain React + TypeScript + Vite.
+- Keep feature logic behind repository/store boundaries rather than direct endpoint calls from random components.
+- Preserve existing UI flow unless a phase explicitly authorizes redesign.
+
+## Backend stack
+
+- Backend runtime is Python-only.
+- FastAPI is the HTTP layer; business logic belongs in services/repositories.
+- No parallel non-Python backend runtime is allowed in this project.
+
+## Database target
+
+- PostgreSQL is the production target database.
+- SQLite may be used for local/dev smoke checks.
+- Database migrations must be managed with Alembic.
+
+## Repository and data-layer rule
+
+- API handlers call services, services call repositories, repositories own persistence details.
+- Keep storage provider details (local filesystem, Azure Blob) behind service abstractions.
+- Do not leak infrastructure keys or storage credentials to the frontend.
+
+## Docs, tests, and build discipline
+
+- Every phase updates architecture/API/operations docs when behavior changes.
+- Backend changes include at least smoke-level tests for affected endpoints.
+- Frontend changes must keep `npm run build` green.
+- Backend changes must keep migration checks (`alembic current/heads/upgrade`) valid.
+
+## No giant god files
+
+- Avoid adding new giant multi-thousand-line files.
+- Split new logic into focused modules by concern (api, services, repositories, schemas, models, docs).
+- When touching legacy large files, prefer minimal phase-scoped edits and extract new logic into dedicated modules.

@@ -10,3 +10,11 @@ def test_health_endpoint() -> None:
     payload = response.json()
     assert payload["status"] == "ok"
 
+
+def test_health_endpoint_v1() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+

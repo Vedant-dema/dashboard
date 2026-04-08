@@ -1,5 +1,19 @@
 # Weekly Progress
 
+## 2026-04-08 - Customer UI (phase-6-merge-fixes)
+
+### Delivered
+
+- Website field: safe clickable http(s) link in the same block as the input (`safeWebsiteHref` helper).
+- Removed Industry reg. no. and Tax country/type code from the customer UI; form load forces empty so the next save clears stored values; dropped these keys from customer history field tracking.
+- Customer documents: drag-and-drop on the existing upload control with a light drag-over state.
+- Risk analysis: only **Ausweis gültig bis** drives expiry alerts; other date rows use a simple Recorded / Not entered status; optional `ausw_gueltig_bis_owner_name` on the Ausweis row.
+
+### Verification
+
+- `npm run build` (frontend) — pass.
+- `GET /api/health` — pass (local smoke).
+
 ## 2026-04-07 - Milestone 6
 
 ### Delivered

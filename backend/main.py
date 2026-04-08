@@ -482,7 +482,8 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
         content={
             "detail": (
                 "Internal server error. Check backend logs for the traceback. "
-                "If this is a VAT check, try lowering VIES_MAX_TOTAL_SEC / retries or disable enrich."
+                "If this is a VAT check, try lowering VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC (below your proxy limit), "
+                "VIES_MAX_TOTAL_SEC / retries, or disable enrich (VIES_ENRICH_FALLBACK_ENABLED=0)."
             ),
             "error_type": type(exc).__name__,
         },
@@ -2295,7 +2296,24 @@ async def favicon() -> Response:
 
 @app.get("/api/health")
 async def health() -> dict[str, Any]:
-    return {"status": "ok", "cors_origins": _cors_origins()}
+    try:
+        from app.core.config import get_settings
+        from app.core.database import get_database_health_summary, get_persistence_mode
+
+        persistence = get_persistence_mode()
+        customers_mode = (get_settings().customers_store_mode or "").strip().lower()
+        database = get_database_health_summary()
+    except Exception:
+        persistence = "unknown"
+        customers_mode = "unknown"
+        database = {"driver": "unknown"}
+    return {
+        "status": "ok",
+        "cors_origins": _cors_origins(),
+        "customers_store_mode": customers_mode,
+        "persistence": persistence,
+        "database": database,
+    }
 
 
 @app.get("/api/v1/geocode/provider")

@@ -85,3 +85,11 @@ Milestone 5 compatibility endpoint remains available:
 - `PUT /api/v1/demo/customers-db`
 
 It still supports optimistic concurrency via `expected_updated_at` and returns `409 customers_db_conflict` on stale writes.
+
+### Embedded customer DB: risk analysis (transitional blob)
+
+When the UI persists the shared customers JSON blob, each `risikoanalysen[]` entry may include optional document-expiry dates. The frontend now also supports an optional string field:
+
+- `ausw_gueltig_bis_owner_name` — free-text name for the ID holder on the **Ausweis gültig bis** row only.
+
+HTTP customer CRUD schemas are unchanged; this field lives inside the embedded demo/DB-sync state shape when used.

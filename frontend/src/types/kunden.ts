@@ -232,6 +232,8 @@ export interface KundenRisikoanalyse {
   ausw_kop_wirt_ber?: string;
   /** Ausweis gültig bis — direct ID expiry date */
   ausw_gueltig_bis?: string;
+  /** Owner / holder name for the ID valid-until row (Ausweis gültig bis). */
+  ausw_gueltig_bis_owner_name?: string;
   /** Ausweis-Kopie Abholer — valid-until date */
   ausw_kop_abholer?: string;
   /** Verständigungs-Dokumentenbogen — submitted flag */

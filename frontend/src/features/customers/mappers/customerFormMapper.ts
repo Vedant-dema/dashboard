@@ -220,7 +220,7 @@ export function formFromExistingCustomer(
           art_land_code: a.art_land_code || landCodeToArtLand(a.land_code || "DE"),
           ust_id_nr: a.ust_id_nr ?? "",
           steuer_nr: a.steuer_nr ?? "",
-          branchen_nr: a.branchen_nr ?? "",
+          branchen_nr: "",
         }))
       : [
           {
@@ -232,7 +232,7 @@ export function formFromExistingCustomer(
             art_land_code: kunde.art_land_code ?? landCodeToArtLand(kunde.land_code ?? "DE"),
             ust_id_nr: kunde.ust_id_nr ?? "",
             steuer_nr: kunde.steuer_nr ?? "",
-            branchen_nr: kunde.branchen_nr ?? "",
+            branchen_nr: "",
           },
         ];
   const storedKontakte = Array.isArray(kunde.kontakte) ? kunde.kontakte : [];
@@ -350,7 +350,7 @@ export function formFromExistingCustomer(
     kontakte: mappedKontakte,
     art_kunde: kunde.art_kunde ?? "",
     buchungskonto_haupt: kunde.buchungskonto_haupt ?? "",
-    tax_country_type_code: kunde.tax_country_type_code ?? "",
+    tax_country_type_code: "",
     account_number: kunde.account_number ?? "",
     credit_limit: kunde.credit_limit != null ? String(kunde.credit_limit) : "",
     billing_name: kunde.billing_name ?? "",
@@ -472,8 +472,8 @@ export function formToPayload(form: CustomerFormDraft): NewKundeInput {
     art_land_code: emptyToUndef(primaryAdresse?.art_land_code ?? ""),
     ust_id_nr: emptyToUndef(primaryAdresse?.ust_id_nr ?? ""),
     steuer_nr: emptyToUndef(primaryAdresse?.steuer_nr ?? ""),
-    branchen_nr: emptyToUndef(primaryAdresse?.branchen_nr ?? ""),
-    tax_country_type_code: emptyToUndef(form.tax_country_type_code),
+    branchen_nr: undefined,
+    tax_country_type_code: undefined,
     account_number: emptyToUndef(form.account_number),
     credit_limit: moneyToUndef(form.credit_limit),
     billing_name: emptyToUndef(form.billing_name),

@@ -513,6 +513,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersLabelCity: "Ort",
     customersLabelCountry: "Land",
     customersLabelWebsite: "Website",
+    customersWebsiteOpenLink: "Website öffnen",
     newCustomerPhWebsite: "www.beispiel.de",
     newCustomerPhPhone: "030 1234567",
     newCustomerPhMobile: "0170 1234567",
@@ -676,6 +677,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     riskStatusWarning: "Bald fällig",
     riskStatusOk: "Gültig",
     riskStatusMissing: "Nicht hinterlegt",
+    riskStatusRecorded: "Erfasst",
+    riskAusweisOwnerName: "Name auf dem Ausweis",
+    riskAusweisOwnerNamePh: "Name des Ausweisinhabers",
     riskAlertExpired: "{n} Dokument(e) abgelaufen",
     riskAlertCritical: "{n} Dokument(e) kritisch (≤30 Tage)",
     riskAlertWarning: "{n} Dokument(e) laufen bald ab (≤60 Tage)",
@@ -717,6 +721,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersUnterlageOpenTitle: "Datei anzeigen / herunterladen",
     customersUnterlageRemoveTitle: "Entfernen",
     customersUnterlageAdd: "Datei hinzufügen (Kunden-Upload simulieren)",
+    customersUnterlageDropHint: "Oder Datei hier ablegen",
     customersInternalInfoTitle: "Interne Informationen",
     customersInternalInfoPh: "Kurzinfos, Historie, Besonderheiten …",
     customersQuickActionsTitle: "Schnellaktionen",
@@ -779,7 +784,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     vatCheckErrorHttp405:
       "HTTP 405 — POST auf dieser URL nicht erlaubt. In Cloud-Builds fehlt oft VITE_API_BASE_URL; Anfragen landen dann beim Static-Host statt beim Python-API. VITE_API_BASE_URL zur Build-Zeit setzen und neu deployen.",
     vatCheckErrorHttpEmptyBody:
-      "HTTP {status} — leerer Fehlertext. Typisch: Proxy-/Gateway-Timeout, Cold Start oder abgestoppter Worker. Wenn Sie diesen Status in der UI sehen, kam die Antwort meist im Browser an (CORS ist oft schon OK). API-Logs prüfen, VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC unter das Host-Proxy-Limit setzen, CORS_ORIGINS/CORS_ORIGIN_REGEX für die Frontend-Origin setzen.",
+      "HTTP {status} — keine Fehlerdetails in der Antwort. Häufig: Proxy-/Gateway-Timeout, Cold Start oder API nicht erreichbar. API-Logs prüfen; VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC unter das Proxy-Limit setzen; CORS_ORIGINS/CORS_ORIGIN_REGEX für diese App-URL. (Ein sichtbarer HTTP-Status bedeutet meist, dass CORS bereits passt.)",
     vatCheckErrorNetworkHintApiBase:
       "Prüfen Sie, ob die API unter {base} läuft und CORS_ORIGINS (oder CORS_ORIGIN_REGEX) Ihre Frontend-Origin enthält.",
     vatCheckErrorNetworkHintLocal:
@@ -1698,6 +1703,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersLabelCity: "City",
     customersLabelCountry: "Country",
     customersLabelWebsite: "Website",
+    customersWebsiteOpenLink: "Open website",
     newCustomerPhWebsite: "www.example.com",
     newCustomerPhPhone: "030 1234567",
     newCustomerPhMobile: "0170 1234567",
@@ -1860,6 +1866,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     riskStatusWarning: "Expiring soon",
     riskStatusOk: "Valid",
     riskStatusMissing: "Not entered",
+    riskStatusRecorded: "Recorded",
+    riskAusweisOwnerName: "ID holder name",
+    riskAusweisOwnerNamePh: "Name on ID",
     riskAlertExpired: "{n} document(s) expired",
     riskAlertCritical: "{n} document(s) critical (≤30 days)",
     riskAlertWarning: "{n} document(s) expiring soon (≤60 days)",
@@ -1901,6 +1910,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersUnterlageOpenTitle: "View / download file",
     customersUnterlageRemoveTitle: "Remove",
     customersUnterlageAdd: "Add file (simulate customer upload)",
+    customersUnterlageDropHint: "Or drop a file here",
     customersInternalInfoTitle: "Internal information",
     customersInternalInfoPh: "Notes, history, specifics…",
     customersQuickActionsTitle: "Quick actions",
@@ -1963,7 +1973,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     vatCheckErrorHttp405:
       "HTTP 405 — POST is not allowed on this URL. In cloud builds, VITE_API_BASE_URL is often missing, so requests hit the static host instead of the Python API. Set VITE_API_BASE_URL to your API origin at build time and redeploy.",
     vatCheckErrorHttpEmptyBody:
-      "HTTP {status} — empty error body. Typical causes: reverse-proxy or gateway timeout, cold start, or the API worker stopped. If you see this status in the UI, the response usually reached the browser (CORS is often already OK). Check API logs, set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit, and set CORS_ORIGINS / CORS_ORIGIN_REGEX for your frontend origin.",
+      "HTTP {status} — no error details in the response. Often a proxy/gateway timeout, cold start, or API not running. Check API logs; set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit; set CORS_ORIGINS/CORS_ORIGIN_REGEX for this app URL. (A visible HTTP status usually means CORS is already OK.)",
     vatCheckErrorNetworkHintApiBase:
       "Check that the API is running at {base} and CORS_ORIGINS (or CORS_ORIGIN_REGEX) includes your frontend origin.",
     vatCheckErrorNetworkHintLocal:
@@ -2783,6 +2793,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersLabelCity: "Ville",
     customersLabelCountry: "Pays",
     customersLabelWebsite: "Site web",
+    customersWebsiteOpenLink: "Ouvrir le site",
     newCustomerPhWebsite: "www.exemple.fr",
     newCustomerPhPhone: "01 23 45 67 89",
     newCustomerPhMobile: "06 12 34 56 78",
@@ -2946,6 +2957,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     riskStatusWarning: "Bientôt expiré",
     riskStatusOk: "Valide",
     riskStatusMissing: "Non renseigné",
+    riskStatusRecorded: "Enregistré",
+    riskAusweisOwnerName: "Nom sur la pièce d'identité",
+    riskAusweisOwnerNamePh: "Nom du titulaire",
     riskAlertExpired: "{n} document(s) expiré(s)",
     riskAlertCritical: "{n} document(s) critique(s) (≤30 jours)",
     riskAlertWarning: "{n} document(s) expirent bientôt (≤60 jours)",
@@ -2987,6 +3001,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersUnterlageOpenTitle: "Afficher / télécharger le fichier",
     customersUnterlageRemoveTitle: "Supprimer",
     customersUnterlageAdd: "Ajouter un fichier (simuler le téléchargement)",
+    customersUnterlageDropHint: "Ou déposez un fichier ici",
     customersInternalInfoTitle: "Informations internes",
     customersInternalInfoPh: "Notes, historique, particularités…",
     customersQuickActionsTitle: "Actions rapides",
@@ -3049,7 +3064,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     vatCheckErrorHttp405:
       "HTTP 405 — POST interdit sur cette URL. Souvent, VITE_API_BASE_URL manque au build : les requêtes vont vers l’hébergeur statique au lieu de l’API Python. Définissez VITE_API_BASE_URL au build et redéployez.",
     vatCheckErrorHttpEmptyBody:
-      "HTTP {status} — corps d’erreur vide. Causes fréquentes : timeout proxy/passerelle, cold start ou worker arrêté. Si vous voyez ce statut dans l’UI, la réponse a souvent atteint le navigateur (CORS souvent déjà OK). Vérifiez les logs API, réglez VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC sous la limite du proxy, et configurez CORS_ORIGINS / CORS_ORIGIN_REGEX pour l’origine du front.",
+      "HTTP {status} — pas de détail d’erreur dans la réponse. Souvent : timeout proxy/passerelle, cold start ou API arrêtée. Vérifiez les logs ; réglez VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC sous la limite du proxy ; configurez CORS_ORIGINS/CORS_ORIGIN_REGEX pour l’URL du front. (Un statut HTTP visible indique en général que CORS est déjà correct.)",
     vatCheckErrorNetworkHintApiBase:
       "Vérifiez que l’API tourne sur {base} et que CORS_ORIGINS (ou CORS_ORIGIN_REGEX) inclut l’origine du front.",
     vatCheckErrorNetworkHintLocal:

@@ -1,4 +1,12 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+  type DragEvent,
+} from "react";
 import {
   Plus,
   Search,
@@ -23,7 +31,7 @@ import {
   CircleDashed,
   Pencil,
 } from "lucide-react";
-import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { KundenHistoryEntry, KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import type { RechnungListRow } from "../types/rechnungen";
 import { loadRechnungenDb, formatRechnungsbetrag } from "../store/rechnungenStore";
 import { buildSimpleTextPdf } from "../common/utils/buildSimpleTextPdf";
@@ -97,12 +105,32 @@ function readFileAsDataURL(file: File): Promise<string> {
   });
 }
 
+function transferHasFiles(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false;
+  if (dataTransfer.files && dataTransfer.files.length > 0) return true;
+  const types = dataTransfer.types;
+  if (!types) return false;
+  if (typeof (types as unknown as { contains?: (value: string) => boolean }).contains === "function") {
+    return (types as unknown as { contains: (value: string) => boolean }).contains("Files");
+  }
+  return Array.from(types).includes("Files");
+}
+
 function formatInvoiceListDateForPdf(raw: string, localeTag: string): string {
   if (!raw) return "—";
   const iso = raw.includes("T") ? raw : `${raw}T12:00:00`;
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) return raw;
   return new Date(ms).toLocaleDateString(localeTag, { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatSyncTimestamp(raw: string | null | undefined, localeTag: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsedMs = Date.parse(trimmed);
+  if (Number.isNaN(parsedMs)) return trimmed;
+  return new Date(parsedMs).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" });
 }
 
 const MOCK_ZUSTAENDIGE = [
@@ -167,7 +195,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     : language === "ja" ? "ja-JP"
     : language === "hi" ? "hi-IN"
     : "en-GB";
+  const isApiMode = customerRepository.isApiMode();
   const [db, setDb] = useState(() => customerRepository.loadLocalDb());
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [historyNotice, setHistoryNotice] = useState<string | null>(null);
+  const [officialHistoryEntries, setOfficialHistoryEntries] = useState<KundenHistoryEntry[] | null>(null);
   const fieldSuggestions = useMemo(() => getCustomerFieldSuggestions(db), [db]);
   const quickSearchSuggestions = useMemo(() => getQuickSearchSuggestions(db), [db]);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -188,6 +220,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [unterlagenOpen, setUnterlagenOpen] = useState(false);
   const [customerInvoicesOpen, setCustomerInvoicesOpen] = useState(false);
   const unterlagenFileInputRef = useRef<HTMLInputElement>(null);
+  const [unterlagenDragActive, setUnterlagenDragActive] = useState(false);
+  const unterlagenDragDepthRef = useRef(0);
 
   const [draftKunde, setDraftKunde] = useState<KundenStamm | null>(null);
   const [draftWash, setDraftWash] = useState<KundenWashStamm | null>(null);
@@ -211,7 +245,26 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   }, []);
 
   useEffect(() => {
-    if (!customerRepository.isApiMode()) return;
+    if (!unterlagenOpen) {
+      unterlagenDragDepthRef.current = 0;
+      setUnterlagenDragActive(false);
+      return;
+    }
+    // Prevent browser navigation/file-open when files are dropped outside the dedicated dropzone.
+    const preventWindowFileDrop = (event: globalThis.DragEvent) => {
+      if (!transferHasFiles(event.dataTransfer)) return;
+      event.preventDefault();
+    };
+    window.addEventListener("dragover", preventWindowFileDrop);
+    window.addEventListener("drop", preventWindowFileDrop);
+    return () => {
+      window.removeEventListener("dragover", preventWindowFileDrop);
+      window.removeEventListener("drop", preventWindowFileDrop);
+    };
+  }, [unterlagenOpen]);
+
+  useEffect(() => {
+    if (!isApiMode) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -234,22 +287,54 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isApiMode]);
 
-  const persist = useCallback((next: typeof db) => {
+  const persist = useCallback(async (next: typeof db): Promise<boolean> => {
+    setSyncNotice(null);
     customerRepository.saveLocalDb(next);
     setDb(next);
-    if (!customerRepository.isApiMode()) return;
-    void customerRepository.saveSharedDb(next).then(
-      (saved) => {
-        customerRepository.saveLocalDb(saved);
-        setDb(saved);
-      },
-      () => {
-        alert(t("customersSyncFailed", "Could not sync with shared demo backend."));
+    if (!isApiMode) return true;
+    try {
+      const saved = await customerRepository.saveSharedDb(next);
+      customerRepository.saveLocalDb(saved);
+      setDb(saved);
+      return true;
+    } catch (error) {
+      if (customerRepository.isCustomersDbConflictError(error)) {
+        const expectedAt = formatSyncTimestamp(error.expectedUpdatedAt, localeTag);
+        const actualAt = formatSyncTimestamp(error.actualUpdatedAt, localeTag);
+        try {
+          const remote = await customerRepository.loadSharedDb();
+          if (remote) {
+            customerRepository.saveLocalDb(remote);
+            setDb(remote);
+          }
+        } catch {
+          // Keep current in-memory state if conflict refresh fails.
+        }
+        const baselineText = expectedAt
+          ? `${t("customersConflictExpected", "Your version started from")} ${expectedAt}. `
+          : "";
+        const latestText = actualAt
+          ? `${t("customersConflictReloadedAt", "Latest shared version reloaded")} (${actualAt}). `
+          : `${t("customersConflictReloaded", "Latest shared version reloaded")}. `;
+        setSyncNotice(
+          `${t(
+            "customersConflictHeadline",
+            "Save conflict detected: another user/session changed shared customer data."
+          )} ${baselineText}${latestText}${t(
+            "customersConflictResolution",
+            "Please reopen the customer, review the latest values, and save your changes again."
+          )}`
+        );
+        return false;
       }
-    );
-  }, [t]);
+      const generic = t("customersSyncFailed", "Could not sync with shared demo backend.");
+      setSyncNotice(generic);
+      alert(generic);
+      return false;
+    }
+  }, [isApiMode, localeTag, t]);
 
   const unterlagenForCustomer = useMemo(
     () => (draftKunde ? customerRepository.listUnterlagenForKunde(db, draftKunde.id) : []),
@@ -266,10 +351,40 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     [db, draftKunde?.id]
   );
 
-  const historyForCustomer = useMemo(
-    () => (draftKunde ? customerRepository.listHistoryForKunde(db, draftKunde.id) : []),
-    [db, draftKunde?.id]
-  );
+  useEffect(() => {
+    if (!isApiMode || !draftKunde?.id) {
+      setOfficialHistoryEntries(null);
+      setHistoryNotice(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const official = await customerRepository.loadOfficialCustomerHistory(draftKunde.id);
+        if (cancelled) return;
+        setOfficialHistoryEntries(official);
+        setHistoryNotice(null);
+      } catch {
+        if (cancelled) return;
+        setOfficialHistoryEntries(null);
+        setHistoryNotice(
+          t(
+            "customersHistoryFallback",
+            "Official history endpoint is unavailable right now. Showing local history snapshot."
+          )
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isApiMode, draftKunde?.id, t]);
+
+  const historyForCustomer = useMemo(() => {
+    if (!draftKunde) return [];
+    if (isApiMode && officialHistoryEntries) return officialHistoryEntries;
+    return customerRepository.listHistoryForKunde(db, draftKunde.id);
+  }, [db, draftKunde?.id, isApiMode, officialHistoryEntries]);
 
   const rechnungenRowsForCustomer = useMemo(() => {
     if (!draftKunde?.kunden_nr?.trim()) return [];
@@ -348,7 +463,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       zeit: terminZeit,
       zweck: terminZweck,
     });
-    persist(next);
+    void persist(next);
     setTerminFormOpen(false);
     setTerminDatum("");
     setTerminZeit("");
@@ -358,7 +473,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleToggleTermin = useCallback(
     (terminId: number) => {
       const next = customerRepository.toggleTerminErledigt(db, terminId);
-      persist(next);
+      void persist(next);
     },
     [db, persist]
   );
@@ -366,7 +481,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleRemoveTermin = useCallback(
     (terminId: number) => {
       const next = customerRepository.removeKundenTermin(db, terminId);
-      persist(next);
+      void persist(next);
     },
     [db, persist]
   );
@@ -445,6 +560,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       wirt_ber_erm: toDateInputValue(risikoForCustomer?.wirt_ber_erm),
       ausw_kop_wirt_ber: toDateInputValue(risikoForCustomer?.ausw_kop_wirt_ber),
       ausw_gueltig_bis: toDateInputValue(risikoForCustomer?.ausw_gueltig_bis),
+      ausw_gueltig_bis_owner_name: risikoForCustomer?.ausw_gueltig_bis_owner_name ?? "",
       ausw_kop_abholer: toDateInputValue(risikoForCustomer?.ausw_kop_abholer),
       verst_dok_bogen: risikoForCustomer?.verst_dok_bogen ?? false,
       bearbeiter: risikoForCustomer?.bearbeiter ?? "",
@@ -460,7 +576,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleRisikoSave = useCallback(() => {
     if (!draftKunde) return;
     const next = customerRepository.upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
-    persist(next);
+    void persist(next);
     setRisikoEditOpen(false);
   }, [db, draftKunde, risikoDraft, persist]);
 
@@ -481,7 +597,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       verknuepfter_kunden_id: linked.id,
       art: beziehungArt,
     });
-    persist(next);
+    void persist(next);
     setBeziehungFormOpen(false);
     setBeziehungNr("");
     setBeziehungArt("");
@@ -490,7 +606,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleRemoveBeziehung = useCallback(
     (beziehungId: number) => {
       const next = customerRepository.removeKundenBeziehung(db, beziehungId);
-      persist(next);
+      void persist(next);
     },
     [db, persist]
   );
@@ -498,31 +614,90 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleUnterlageFiles = useCallback(
     async (list: FileList | null) => {
       if (!list?.length || !draftKunde) return;
-      const file = list[0]!;
-      if (file.size > MAX_UNTERLAGE_BYTES) {
-        alert(t("customersFileTooBig", "File too large (max 2 MB in this demo)."));
-        return;
+      const files = Array.from(list);
+      let next = db;
+      let addedCount = 0;
+      let hasTooLargeFile = false;
+      let hasReadError = false;
+      for (const file of files) {
+        if (file.size > MAX_UNTERLAGE_BYTES) {
+          hasTooLargeFile = true;
+          continue;
+        }
+        try {
+          const dataUrl = await readFileAsDataURL(file);
+          next = customerRepository.addKundenUnterlage(next, draftKunde.id, {
+            name: file.name,
+            size: file.size,
+            mime_type: file.type || "application/octet-stream",
+            data_url: dataUrl,
+          });
+          addedCount += 1;
+        } catch {
+          hasReadError = true;
+        }
       }
-      try {
-        const dataUrl = await readFileAsDataURL(file);
-        const next = customerRepository.addKundenUnterlage(db, draftKunde.id, {
-          name: file.name,
-          size: file.size,
-          mime_type: file.type || "application/octet-stream",
-          data_url: dataUrl,
-        });
-        persist(next);
-      } catch {
-        alert(t("customersFileReadError", "Could not read the file."));
+      if (addedCount > 0) {
+        void persist(next);
+      }
+      if (hasTooLargeFile) {
+        alert(
+          t(
+            "customersFileTooBig",
+            "One or more files were too large (max 2 MB per file in this demo)."
+          )
+        );
+      }
+      if (hasReadError) {
+        alert(t("customersFileReadError", "One or more files could not be read."));
       }
     },
     [db, draftKunde, persist, t]
   );
 
+  const onUnterlagenDragOver = useCallback((e: DragEvent) => {
+    if (!transferHasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    setUnterlagenDragActive(true);
+  }, []);
+
+  const onUnterlagenDragEnter = useCallback((e: DragEvent) => {
+    if (!transferHasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    unterlagenDragDepthRef.current += 1;
+    setUnterlagenDragActive(true);
+  }, []);
+
+  const onUnterlagenDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    unterlagenDragDepthRef.current = Math.max(0, unterlagenDragDepthRef.current - 1);
+    if (unterlagenDragDepthRef.current === 0) {
+      setUnterlagenDragActive(false);
+    }
+  }, []);
+
+  const onUnterlagenDrop = useCallback(
+    (e: DragEvent) => {
+      if (!transferHasFiles(e.dataTransfer)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      unterlagenDragDepthRef.current = 0;
+      setUnterlagenDragActive(false);
+      const files = e.dataTransfer.files;
+      void handleUnterlageFiles(files?.length ? files : null);
+    },
+    [handleUnterlageFiles]
+  );
+
   const handleRemoveUnterlage = useCallback(
     (unterlageId: number) => {
       const next = customerRepository.removeKundenUnterlage(db, unterlageId);
-      persist(next);
+      void persist(next);
     },
     [db, persist]
   );
@@ -682,9 +857,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleSaveDetail = () => {
     if (!draftKunde) return;
     if (!draftWash) {
-      persist(customerRepository.updateKunde(db, draftKunde, editor));
-      setSelectedRowId(null);
-      writeCustomerHashPreservePath(null);
+      void (async () => {
+        const synced = await persist(customerRepository.updateKunde(db, draftKunde, editor));
+        if (!synced) return;
+        setSelectedRowId(null);
+        writeCustomerHashPreservePath(null);
+      })();
       return;
     }
     const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
@@ -714,9 +892,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     const washChanges = customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash);
     let next = customerRepository.updateKunde(db, draftKunde, editor, { extraChanges: washChanges });
     next = customerRepository.upsertKundenWash(next, draftKunde.id, washPayload);
-    persist(next);
-    setSelectedRowId(null);
-    writeCustomerHashPreservePath(null);
+    void (async () => {
+      const synced = await persist(next);
+      if (!synced) return;
+      setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
+    })();
   };
 
   const handleEditCustomerSubmit = useCallback(
@@ -740,9 +921,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       if (wash) {
         next = customerRepository.upsertKundenWash(next, draftKunde.id, wash);
       }
-      persist(next);
-      setSelectedRowId(null);
-      writeCustomerHashPreservePath(null);
+      void (async () => {
+        const synced = await persist(next);
+        if (!synced) return;
+        setSelectedRowId(null);
+        writeCustomerHashPreservePath(null);
+      })();
     },
     [db, draftKunde, persist, editor]
   );
@@ -765,10 +949,13 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         if (scannedAttachment) {
           next = customerRepository.addKundenUnterlage(next, created.id, scannedAttachment);
         }
-        persist(next);
-        setShowAddCustomer(false);
-        setSelectedRowId(created.kunden_nr);
-        writeCustomerHashPreservePath(created.kunden_nr);
+        void (async () => {
+          const synced = await persist(next);
+          if (!synced) return;
+          setShowAddCustomer(false);
+          setSelectedRowId(created.kunden_nr);
+          writeCustomerHashPreservePath(created.kunden_nr);
+        })();
       } catch (e) {
         alert(e instanceof Error ? e.message : t("customersSaveFailed", "Save failed"));
       }
@@ -780,7 +967,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     (kundenId: number) => {
       if (!window.confirm(t("customersDeleteConfirm", "Mark this customer for deletion? They will be moved to the recycle bin and can be restored."))) return;
       const next = customerRepository.deleteKunde(db, kundenId, editor);
-      persist(next);
+      void persist(next);
       setSelectedRowId(null);
       writeCustomerHashPreservePath(null);
     },
@@ -791,7 +978,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     (kundenId: number) => {
       if (!window.confirm(t("customersRestoreConfirm", "Restore this customer?"))) return;
       const next = customerRepository.restoreKunde(db, kundenId, editor);
-      persist(next);
+      void persist(next);
     },
     [db, editor, persist, t]
   );
@@ -800,7 +987,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     (kundenId: number) => {
       if (!window.confirm(t("customersPurgeConfirm", "Permanently delete this customer? This cannot be undone."))) return;
       const next = customerRepository.purgeKunde(db, kundenId);
-      persist(next);
+      void persist(next);
     },
     [db, persist, t]
   );
@@ -861,6 +1048,18 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           </button>
         </div>
       </div>
+
+      {syncNotice ? (
+        <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {syncNotice}
+        </div>
+      ) : null}
+
+      {historyNotice ? (
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+          {historyNotice}
+        </div>
+      ) : null}
 
       <div className="glass-card mb-4 space-y-4 p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -1559,15 +1758,23 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               { key: "ausw_kop_abholer", labelKey: "riskDocAuswKopAbholer", fallback: "ID Copy Collector" },
             ];
 
-            const expiredCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "expired").length;
-            const criticalCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "critical").length;
-            const warningCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "warning").length;
+            const auswExpiry = customerRepository.getExpiryStatus(risk?.ausw_gueltig_bis);
+            const expiredCount = auswExpiry === "expired" ? 1 : 0;
+            const criticalCount = auswExpiry === "critical" ? 1 : 0;
+            const warningCount = auswExpiry === "warning" ? 1 : 0;
 
             const statusBadge = (
-              status: ReturnType<typeof customerRepository.getExpiryStatus>,
+              status: ReturnType<typeof customerRepository.getRiskDocRowDisplayStatus>,
               date?: string
             ) => {
               const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold";
+              if (status === "recorded") {
+                return (
+                  <span className={`${base} bg-emerald-100 text-emerald-700`}>
+                    <CheckCircle2 className="h-2.5 w-2.5" /> {t("riskStatusRecorded", "Recorded")}
+                  </span>
+                );
+              }
               if (status === "expired") return (
                 <span className={`${base} bg-red-100 text-red-700`}>
                   <X className="h-2.5 w-2.5" /> {t("riskStatusExpired", "Expired")}
@@ -1675,6 +1882,26 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                             placeholder={t("datePickerPlaceholder", "Select date…")}
                             triggerClassName="min-h-11 justify-start py-2.5 text-xs shadow-none sm:min-h-10"
                           />
+                          {f.key === "ausw_gueltig_bis" ? (
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <label className="text-[11px] font-medium text-slate-500">
+                                {t("riskAusweisOwnerName", "ID holder name")}
+                              </label>
+                              <input
+                                type="text"
+                                value={risikoDraft.ausw_gueltig_bis_owner_name ?? ""}
+                                onChange={(e) =>
+                                  setRisikoDraft((d) => ({
+                                    ...d,
+                                    ausw_gueltig_bis_owner_name: e.target.value,
+                                  }))
+                                }
+                                maxLength={120}
+                                className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:border-blue-400 focus:outline-none"
+                                placeholder={t("riskAusweisOwnerNamePh", "Owner name on ID")}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -1734,18 +1961,30 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <tbody>
                         {DATE_FIELDS.map((f) => {
                           const dateVal = risk?.[f.key] as string | undefined;
-                          const status = customerRepository.getExpiryStatus(dateVal);
+                          const status = customerRepository.getRiskDocRowDisplayStatus(f.key, dateVal);
+                          const tint =
+                            f.key === "ausw_gueltig_bis" && status === "expired"
+                              ? "bg-red-50"
+                              : f.key === "ausw_gueltig_bis" && status === "critical"
+                                ? "bg-orange-50"
+                                : f.key === "ausw_gueltig_bis" && status === "warning"
+                                  ? "bg-amber-50"
+                                  : "bg-white";
+                          const ownerName =
+                            f.key === "ausw_gueltig_bis"
+                              ? (risk?.ausw_gueltig_bis_owner_name ?? "").trim()
+                              : "";
                           return (
-                            <tr
-                              key={f.key}
-                              className={`border-t border-slate-100 ${
-                                status === "expired" ? "bg-red-50" :
-                                status === "critical" ? "bg-orange-50" :
-                                status === "warning" ? "bg-amber-50" : "bg-white"
-                              }`}
-                            >
+                            <tr key={f.key} className={`border-t border-slate-100 ${tint}`}>
                               <td className="px-4 py-2 font-medium text-slate-600">{t(f.labelKey, f.fallback)}</td>
-                              <td className="px-4 py-2 font-mono text-slate-700">{dateVal || "—"}</td>
+                              <td className="px-4 py-2 text-slate-700">
+                                <div className="font-mono">{dateVal || "—"}</div>
+                                {ownerName ? (
+                                  <div className="mt-0.5 max-w-[12rem] break-words text-[11px] text-slate-500">
+                                    {ownerName}
+                                  </div>
+                                ) : null}
+                              </td>
                               <td className="px-4 py-2">{statusBadge(status, dateVal)}</td>
                             </tr>
                           );
@@ -1848,6 +2087,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           <div
             className="flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            onDragEnter={onUnterlagenDragEnter}
+            onDragOver={onUnterlagenDragOver}
+            onDragLeave={onUnterlagenDragLeave}
+            onDrop={onUnterlagenDrop}
             role="dialog"
             aria-modal="true"
             aria-labelledby="unterlagen-dialog-title"
@@ -1928,20 +2171,35 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               <input
                 ref={unterlagenFileInputRef}
                 type="file"
+                multiple
                 className="hidden"
                 onChange={(e) => {
                   void handleUnterlageFiles(e.target.files);
                   e.target.value = "";
                 }}
               />
-              <button
-                type="button"
-                onClick={() => unterlagenFileInputRef.current?.click()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700"
+              <div
+                className={`rounded-xl border border-dashed transition ${
+                  unterlagenDragActive
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-slate-300 bg-white hover:border-blue-300 hover:bg-blue-50/50"
+                }`}
               >
-                <Upload className="h-4 w-4" />
-                {t("customersUnterlageAdd", "Add file (simulate customer upload)")}
-              </button>
+                <button
+                  type="button"
+                  draggable={false}
+                  onClick={() => unterlagenFileInputRef.current?.click()}
+                  className="flex w-full min-h-11 flex-col items-center justify-center gap-1 px-3 py-3 text-sm font-medium text-slate-600 transition hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Upload className="h-4 w-4 shrink-0" />
+                    {t("customersUnterlageAdd", "Add file (simulate customer upload)")}
+                  </span>
+                  <span className="text-center text-xs font-normal text-slate-500">
+                    {t("customersUnterlageDropHint", "Or drop a file here")}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

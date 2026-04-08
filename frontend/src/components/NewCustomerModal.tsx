@@ -41,6 +41,7 @@ import type {
   KundenWashStamm,
   ViesCustomerSnapshot,
 } from "../types/kunden";
+import { safeWebsiteHref } from "../common/utils/websiteHref";
 import { customerRepository } from "../features/customers/repository/customerRepository";
 import {
   normalizeLatinAddressLine,
@@ -1421,7 +1422,7 @@ function formFromExistingCustomer(
           art_land_code: a.art_land_code || landCodeToArtLand(a.land_code || "DE"),
           ust_id_nr: a.ust_id_nr ?? "",
           steuer_nr: a.steuer_nr ?? "",
-          branchen_nr: a.branchen_nr ?? "",
+          branchen_nr: "",
         }))
       : [
           {
@@ -1433,7 +1434,7 @@ function formFromExistingCustomer(
             art_land_code: kunde.art_land_code ?? landCodeToArtLand(kunde.land_code ?? "DE"),
             ust_id_nr: kunde.ust_id_nr ?? "",
             steuer_nr: kunde.steuer_nr ?? "",
-            branchen_nr: kunde.branchen_nr ?? "",
+            branchen_nr: "",
           },
         ];
   const storedKontakte = Array.isArray(kunde.kontakte) ? kunde.kontakte : [];
@@ -1551,7 +1552,7 @@ function formFromExistingCustomer(
     kontakte: mappedKontakte,
     art_kunde: kunde.art_kunde ?? "",
     buchungskonto_haupt: kunde.buchungskonto_haupt ?? "",
-    tax_country_type_code: kunde.tax_country_type_code ?? "",
+    tax_country_type_code: "",
     account_number: kunde.account_number ?? "",
     credit_limit: kunde.credit_limit != null ? String(kunde.credit_limit) : "",
     billing_name: kunde.billing_name ?? "",
@@ -1625,8 +1626,6 @@ function formToPayload(form: FormState): NewKundeInput {
     form.customer_type ||
     (form.juristische_person ? "legal_entity" : form.natuerliche_person ? "natural_person" : undefined);
   const trimmedCompanyName = form.firmenname.trim();
-  const first_name = emptyToUndef(form.first_name);
-  const last_name = emptyToUndef(form.last_name);
   const profile_notes = emptyToUndef(form.profile_notes);
   const score = moneyToUndef(form.score);
   const z = form.zustaendige_person_name.trim();
@@ -1648,8 +1647,6 @@ function formToPayload(form: FormState): NewKundeInput {
     natuerliche_person: form.natuerliche_person,
     gesellschaftsform: emptyToUndef(form.gesellschaftsform),
     firmenvorsatz: emptyToUndef(form.firmenvorsatz),
-    first_name,
-    last_name,
     profile_notes,
     acquisition_source: form.acquisition_source ? form.acquisition_source : undefined,
     acquisition_source_entity: emptyToUndef(form.acquisition_source_entity),
@@ -1674,8 +1671,8 @@ function formToPayload(form: FormState): NewKundeInput {
     art_land_code: emptyToUndef(primaryAdresse?.art_land_code ?? ""),
     ust_id_nr: emptyToUndef(primaryAdresse?.ust_id_nr ?? ""),
     steuer_nr: emptyToUndef(primaryAdresse?.steuer_nr ?? ""),
-    branchen_nr: emptyToUndef(primaryAdresse?.branchen_nr ?? ""),
-    tax_country_type_code: emptyToUndef(form.tax_country_type_code),
+    branchen_nr: undefined,
+    tax_country_type_code: undefined,
     account_number: emptyToUndef(form.account_number),
     credit_limit: moneyToUndef(form.credit_limit),
     billing_name: emptyToUndef(form.billing_name),
@@ -1835,15 +1832,6 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
 }
 
 const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
-
-/** Same document date fields as Risk Analysis sidebar — keep in sync with `hasRisikoAlert` / CustomersPage. */
-const RISK_DOC_EXPIRY_FIELD_KEYS = [
-  "reg_ausz",
-  "wirt_ber_erm",
-  "ausw_kop_wirt_ber",
-  "ausw_gueltig_bis",
-  "ausw_kop_abholer",
-] as const satisfies readonly (keyof KundenRisikoanalyse)[];
 
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
@@ -2306,7 +2294,7 @@ export function NewCustomerModal({
           );
           const hintGeneric = t(
             "vatCheckErrorHttpEmptyBody",
-            "HTTP {status} — empty error body. Typical causes: reverse-proxy or gateway timeout, cold start, or the API worker stopped. If you see this status in the UI, the response usually reached the browser (CORS is often already OK). Check API logs, set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit, and set CORS_ORIGINS / CORS_ORIGIN_REGEX for your frontend origin."
+            "HTTP {status} — no error details in the response. Often a proxy/gateway timeout, cold start, or API not running. Check API logs; set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit; set CORS_ORIGINS/CORS_ORIGIN_REGEX for this app URL. (A visible HTTP status usually means CORS is already OK.)"
           ).replace("{status}", String(res.status));
           setVatCheckError(res.status === 405 ? hint405 : hintGeneric);
           return;
@@ -2646,10 +2634,8 @@ export function NewCustomerModal({
   const customer360DocExpiryAlertCount = useMemo(() => {
     if (!isEditMode || editRisikoProfile === undefined) return null;
     if (!editRisikoProfile) return 0;
-    return RISK_DOC_EXPIRY_FIELD_KEYS.filter((key) => {
-      const s = customerRepository.getExpiryStatus(editRisikoProfile[key] as string | undefined);
-      return s === "expired" || s === "critical" || s === "warning";
-    }).length;
+    const s = customerRepository.getExpiryStatus(editRisikoProfile.ausw_gueltig_bis);
+    return s === "expired" || s === "critical" || s === "warning" ? 1 : 0;
   }, [isEditMode, editRisikoProfile]);
 
   if (!open) return null;
@@ -3426,45 +3412,6 @@ export function NewCustomerModal({
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className={labelClass}>{t("newCustomerLabelFirstName", "First name")}</label>
-                      <input
-                        type="text"
-                        value={form.first_name}
-                        onChange={(e) => set("first_name", e.target.value)}
-                        onBlur={(e) =>
-                          commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("first_name", v))
-                        }
-                        onCompositionEnd={(e) =>
-                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                            set("first_name", v)
-                          )
-                        }
-                        className={`${inputClass} min-h-[44px]`}
-                        placeholder={t("newCustomerFirstNamePh", "For natural persons (optional)")}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>{t("newCustomerLabelLastName", "Last name")}</label>
-                      <input
-                        type="text"
-                        value={form.last_name}
-                        onChange={(e) => set("last_name", e.target.value)}
-                        onBlur={(e) =>
-                          commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("last_name", v))
-                        }
-                        onCompositionEnd={(e) =>
-                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                            set("last_name", v)
-                          )
-                        }
-                        className={`${inputClass} min-h-[44px]`}
-                        placeholder={t("newCustomerLastNamePh", "For natural persons (optional)")}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
                       <label className={labelClass}>
                         {t("newCustomerLabelAcquisitionSource", "Acquisition source")}
                       </label>
@@ -3864,31 +3811,23 @@ export function NewCustomerModal({
                               inputMode="url"
                               autoComplete="url"
                             />
-                          </div>
-
-                          <div>
-                            <label className={labelClass}>{t("newCustomerLabelBranchenNr", "Industry reg. no.")}{isExtracted("branchen_nr") && <KiBadge />}</label>
-                            <ExtractedFieldWrapper extracted={isExtracted("branchen_nr")}>
-                              <SuggestTextInput
-                                type="text"
-                                value={a.branchen_nr}
-                                onChange={(e) => patchAdresse({ branchen_nr: e.target.value })}
-                                className={inputClass}
-                                suggestions={fieldSuggestions.branchen_nr}
-                                title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
-                              />
-                            </ExtractedFieldWrapper>
-                          </div>
-
-                          <div>
-                            <label className={labelClass}>{t("newCustomerLabelTaxCountryTypeCode", "Tax country/type code")}</label>
-                            <input
-                              type="text"
-                              value={form.tax_country_type_code}
-                              onChange={(e) => set("tax_country_type_code", e.target.value)}
-                              className={inputClass}
-                              placeholder={t("newCustomerTaxCountryTypePh", "e.g. DE / IL")}
-                            />
+                            {(() => {
+                              const href = safeWebsiteHref(form.internet_adr);
+                              if (!href) return null;
+                              return (
+                                <p className="mt-1.5 min-w-0 text-xs">
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex max-w-full items-center gap-1 font-medium text-blue-600 underline decoration-blue-600/30 underline-offset-2 hover:text-blue-800"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                    <span className="truncate">{t("customersWebsiteOpenLink", "Open website")}</span>
+                                  </a>
+                                </p>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>

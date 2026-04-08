@@ -35,6 +35,25 @@ def get_database_url() -> str:
     return get_settings().database_url
 
 
+def get_database_health_summary() -> dict[str, str]:
+    """Safe connection summary for health checks (no credentials)."""
+    raw = get_settings().database_url
+    try:
+        from sqlalchemy.engine.url import make_url
+
+        u = make_url(raw)
+        out: dict[str, str] = {"driver": u.drivername}
+        if u.host:
+            out["host"] = u.host
+        if u.database:
+            out["database"] = u.database
+        if u.port:
+            out["port"] = str(u.port)
+        return out
+    except Exception:
+        return {"driver": "unknown"}
+
+
 def get_engine() -> Engine:
     if not SQLALCHEMY_AVAILABLE:
         raise RuntimeError("SQLAlchemy is not installed. Install backend requirements for DB mode.")

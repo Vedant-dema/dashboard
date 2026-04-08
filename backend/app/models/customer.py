@@ -73,4 +73,9 @@ class Customer(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-
+    documents = relationship(
+        "CustomerDocument",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

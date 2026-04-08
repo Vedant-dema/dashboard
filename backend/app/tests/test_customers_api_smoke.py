@@ -1,18 +1,28 @@
-import os
-
 from fastapi.testclient import TestClient
 
-from app.main import app
+
+def _create_customer(client: TestClient, headers: dict[str, str], *, name: str) -> int:
+    response = client.post(
+        "/api/v1/customers",
+        headers=headers,
+        json={
+            "customer": {
+                "firmenname": name,
+                "branche": "Test",
+                "last_edited_by_name": "QA Bot",
+                "last_edited_by_email": "qa@example.com",
+            }
+        },
+    )
+    assert response.status_code == 201
+    payload = response.json()
+    return int(payload["item"]["customer"]["id"])
 
 
-def _demo_headers() -> dict[str, str]:
-    key = (os.environ.get("DEMO_API_KEY") or "").strip()
-    return {"x-demo-key": key} if key else {}
-
-
-def test_customers_list_detail_history_smoke() -> None:
-    client = TestClient(app)
-    headers = _demo_headers()
+def test_customers_list_detail_history_smoke(
+    client: TestClient, demo_headers: dict[str, str]
+) -> None:
+    headers = demo_headers
 
     list_response = client.get("/api/v1/customers", headers=headers)
     assert list_response.status_code == 200
@@ -38,9 +48,45 @@ def test_customers_list_detail_history_smoke() -> None:
     assert isinstance(history_payload.get("total"), int)
 
 
-def test_customers_db_conflict_response_smoke() -> None:
-    client = TestClient(app)
-    headers = _demo_headers()
+def test_customer_create_update_creates_history(
+    client: TestClient, demo_headers: dict[str, str]
+) -> None:
+    headers = demo_headers
+    customer_id = _create_customer(client, headers, name="Milestone 7 Test GmbH")
+
+    patch_response = client.patch(
+        f"/api/v1/customers/{customer_id}",
+        headers=headers,
+        json={
+            "customer": {
+                "firmenname": "Milestone 7 Updated GmbH",
+                "last_edited_by_name": "QA Bot",
+                "last_edited_by_email": "qa@example.com",
+            }
+        },
+    )
+    assert patch_response.status_code == 200
+    updated_name = patch_response.json()["item"]["customer"]["firmenname"]
+    assert updated_name == "Milestone 7 Updated GmbH"
+
+    history_response = client.get(f"/api/v1/customers/{customer_id}/history", headers=headers)
+    assert history_response.status_code == 200
+    history_items = history_response.json().get("items", [])
+    actions = [str(item.get("action")) for item in history_items]
+    assert "created" in actions
+    assert "updated" in actions
+
+    updated_entries = [item for item in history_items if item.get("action") == "updated"]
+    assert updated_entries, "expected at least one updated history entry"
+    first_changes = updated_entries[0].get("changes", [])
+    assert any(change.get("field") == "customer.firmenname" for change in first_changes)
+
+
+def test_customers_db_conflict_response_smoke(
+    client: TestClient, demo_headers: dict[str, str]
+) -> None:
+    headers = demo_headers
+    _create_customer(client, headers, name="Conflict Seed GmbH")
 
     state_response = client.get("/api/v1/demo/customers-db", headers=headers)
     assert state_response.status_code == 200
@@ -59,3 +105,29 @@ def test_customers_db_conflict_response_smoke() -> None:
     assert stale_write_response.status_code == 409
     detail = stale_write_response.json().get("detail", {})
     assert detail.get("code") == "customers_db_conflict"
+    assert isinstance(detail.get("actual_updated_at"), str)
+
+
+def test_vat_info_basic_behavior(client: TestClient) -> None:
+    response = client.get("/api/v1/vat/info")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload.get("enabled") is True
+    assert str(payload.get("rest_api_base", "")).startswith("http")
+
+
+def test_vat_status_route_basic_behavior_with_stub(client: TestClient, monkeypatch) -> None:
+    import main as legacy_main
+
+    async def _fake_vies_call_with_retries(method: str, url: str, **_: object) -> dict[str, object]:
+        assert method == "GET"
+        assert "/check-status" in url
+        return {"status": "available", "memberStates": {"DE": "AVAILABLE"}}
+
+    monkeypatch.setattr(legacy_main, "_vies_call_with_retries", _fake_vies_call_with_retries)
+
+    response = client.get("/api/v1/vat/status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload.get("status") == "available"
+    assert isinstance(payload.get("memberStates"), dict)

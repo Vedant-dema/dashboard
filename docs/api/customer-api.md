@@ -1,15 +1,13 @@
 # Customer API
 
-## Milestone 6: PostgreSQL-Ready Customer API
+## Scope
 
-### Runtime Compatibility
+Milestone 6+ customer domain API contracts that remain stable across:
 
-Customer endpoints keep the same public contract in both persistence modes:
-
-- Transitional mode (`CUSTOMERS_STORE_MODE=demo_blob`)
+- transitional mode (`CUSTOMERS_STORE_MODE=demo_blob`)
 - SQL mode (`CUSTOMERS_STORE_MODE=db`)
 
-Supported endpoints:
+## Endpoints
 
 - `GET /api/v1/customers`
 - `GET /api/v1/customers/{customer_id}`
@@ -18,9 +16,12 @@ Supported endpoints:
 - `GET /api/v1/customers/{customer_id}/history`
 - `GET /api/v1/customers/{customer_id}/wash-profile`
 
-### List Customers Example
+Transitional shared-state compatibility endpoint:
 
-`GET /api/v1/customers`
+- `GET /api/v1/demo/customers-db`
+- `PUT /api/v1/demo/customers-db`
+
+## List response (example)
 
 ```json
 {
@@ -43,9 +44,7 @@ Supported endpoints:
 }
 ```
 
-### History Entry Shape
-
-`GET /api/v1/customers/{customer_id}/history`
+## History response (example)
 
 ```json
 {
@@ -78,18 +77,29 @@ Supported endpoints:
 }
 ```
 
-### Transitional Write Endpoint (Still Available)
+## Conflict behavior (transitional shared mode)
 
-Milestone 5 compatibility endpoint remains available:
+For `PUT /api/v1/demo/customers-db`:
 
-- `PUT /api/v1/demo/customers-db`
+- request may send `expected_updated_at`
+- if stale, server returns:
+  - status `409`
+  - `detail.code = "customers_db_conflict"`
 
-It still supports optimistic concurrency via `expected_updated_at` and returns `409 customers_db_conflict` on stale writes.
+This is required for optimistic concurrency and stale-write protection.
 
-### Embedded customer DB: risk analysis (transitional blob)
+## History source guarantee
 
-When the UI persists the shared customers JSON blob, each `risikoanalysen[]` entry may include optional document-expiry dates. The frontend now also supports an optional string field:
+In API mode, frontend history views should use:
 
-- `ausw_gueltig_bis_owner_name` — free-text name for the ID holder on the **Ausweis gültig bis** row only.
+- `GET /api/v1/customers/{customer_id}/history`
 
-HTTP customer CRUD schemas are unchanged; this field lives inside the embedded demo/DB-sync state shape when used.
+Local fallback is only acceptable when the official endpoint is temporarily unavailable.
+
+## Milestone 7 quality checks
+
+Backend tests cover:
+
+- customer create/update contract behavior
+- stale-write conflict response
+- history creation after mutations

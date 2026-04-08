@@ -1,5 +1,7 @@
 # Environment Variables
 
+This document covers the env matrix for **Milestone 7 (quality)** and **Milestone 8 (Vercel + Render deployment)**.
+
 ## Frontend (Vercel / Vite)
 
 | Variable | Required | Example | Notes |
@@ -8,7 +10,7 @@
 | `VITE_CUSTOMERS_SOURCE` | Recommended | `api` | `api` for shared backend mode, `local` for browser-only fallback. |
 | `VITE_DEMO_API_KEY` | Optional | `demo-secret` | Only needed when backend `DEMO_API_KEY` is enabled. |
 | `VITE_ENABLE_LIVE_UI_TRANSLATION` | Optional | `true` | Enables live translation API usage in UI. |
-| `VITE_DEV_PROXY_API` | Local only | `http://127.0.0.1:8000` | Dev server proxy target. Not used in production bundle. |
+| `VITE_DEV_PROXY_API` | Local only | `http://127.0.0.1:8010` | Dev server proxy target. Not used in production bundle. |
 
 References:
 
@@ -45,12 +47,20 @@ References:
 | `AZURE_BLOB_CONTAINER_DERIVED` | Optional | `customer-derived` | Azure derived container. |
 | `AZURE_BLOB_SAS_UPLOAD_ENABLED` | Optional | `0` | Future direct-upload path toggle. |
 
+## Backend — VAT/VIES
+
+- `VIES_REST_API_BASE`
+- `VIES_STATUS_URL`
+- `VIES_TEST_SERVICE_URL`
+- `VIES_CHECK_URL`
+- `VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC`
+- `VIES_ENRICH_FALLBACK_ENABLED`
+
 ## Optional Integrations
 
-- Geocoding: `GEOCODING_PROVIDER`, `MAPBOX_ACCESS_TOKEN`, `GOOGLE_MAPS_API_KEY`
+- Geocoding: `GEOCODING_PROVIDER`, `MAPBOX_ACCESS_TOKEN`, `GOOGLE_MAPS_API_KEY`, `GOOGLE_GEOCODING_API_KEY`
 - Name variants: `NAME_VARIANTS_API_KEY`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `NAME_VARIANTS_MODEL`
 - UI translation: `GOOGLE_TRANSLATE_API_KEY`, `LIBRETRANSLATE_URL`, `LIBRETRANSLATE_API_KEY`
-- VAT safety: `VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC`, `VIES_ENRICH_FALLBACK_ENABLED`
 
 Reference:
 

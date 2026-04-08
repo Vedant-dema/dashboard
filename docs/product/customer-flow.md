@@ -9,9 +9,17 @@
 ## Documents (customer files)
 
 - Files can be added via **Choose file** or **drag and drop** on the dashed upload area (same size limits and handler as before).
+- Drop behavior is protected against browser default file-open/navigation while the document modal is open.
+- Multi-file drop is supported; oversized files are skipped with user feedback.
 
 ## Risk analysis (document dates)
 
 - **Ausweis gültig bis** (`ausw_gueltig_bis`) uses **expiry proximity** (expired / critical / warning / valid / missing) and is the **only** row that drives **list and modal risk alerts**.
 - Other document date rows show **Recorded** when a date is present, **Not entered** when empty (no expiry-based colouring).
 - **ID holder name** (`ausw_gueltig_bis_owner_name`) is optional and only applies to the Ausweis row; it appears under the date in read mode.
+
+## Milestone 7 quality gates for customer flow
+
+- Frontend mapper/validation/repository tests cover core customer form behaviors.
+- Backend customer API tests cover create/update/history/conflict paths.
+- CI verifies customer flow changes with typecheck/tests/build and backend lint/tests before merge.

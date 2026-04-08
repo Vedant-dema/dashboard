@@ -52,6 +52,44 @@ This allows gradual migration while preserving the current demo endpoint compati
 - Customer document payloads are designed for object storage, while SQL stores metadata pointers only.
 - Detailed design and rollout plan: `docs/architecture/object-storage.md`.
 
+## Milestone 7: Quality Foundation
+
+### Quality goals
+
+- Add high-risk-path tests for customer and VAT behavior.
+- Add practical lint/format checks for a solo team.
+- Add CI checks that keep the main branch reviewable.
+
+### Testing baseline
+
+Backend (`pytest`):
+
+- customer create/update contract behavior
+- stale-write conflict response (`customers_db_conflict`)
+- history generation after create/update
+- VAT route basic behavior (`/api/v1/vat/info`, `/api/v1/vat/status` stubbed upstream path)
+
+Frontend (`vitest`):
+
+- customer form mapper behavior
+- customer save validation
+- customer repository delegation behavior
+
+### Lint/format baseline
+
+- Ruff static checks (`E/F`) for backend code quality.
+- Black format checks for backend test surface (phase-scoped, low-noise baseline).
+- Frontend `typecheck`, `test:run`, and `build` scripts standardized in `package.json`.
+
+### CI foundation
+
+Workflow: `.github/workflows/quality-foundation.yml`
+
+- frontend job: install, typecheck, tests, build
+- backend job: install, ruff, black check, pytest
+
+This keeps quality gates realistic for a single-engineer team without forcing a massive formatting refactor.
+
 ## Milestone 8: Deployment Foundation (Vercel + Render)
 
 ### Runtime topology

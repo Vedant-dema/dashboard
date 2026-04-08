@@ -1,5 +1,40 @@
 # Weekly Progress
 
+## 2026-04-08 - Milestone 7 (quality foundation)
+
+### Delivered
+
+- Added high-value backend tests for:
+  - customer create/update behavior
+  - stale-write conflict response
+  - history creation
+  - VAT route basic behavior
+- Added frontend unit tests for:
+  - customer mapper logic
+  - customer validation
+  - repository delegation behavior
+- Added frontend scripts:
+  - `typecheck`
+  - `test:run`
+  - updated `build` to include typecheck
+- Added backend quality foundation files:
+  - `requirements-dev.txt` (ruff + black)
+  - `pyproject.toml` (ruff/black config)
+  - `pytest.ini`
+- Added CI workflow: `.github/workflows/quality-foundation.yml`
+- Completed essential docs refresh (README, architecture, ADRs, API, deployment, env vars).
+
+### Verification
+
+- Frontend:
+  - `npm run typecheck` - pass
+  - `npm run test:run` - pass
+  - `npm run build` - pass
+- Backend (Python 3.12 isolated env):
+  - `ruff check app main.py` - pass
+  - `black --check app/tests` - pass
+  - `pytest -p no:cacheprovider --basetemp=.pytest-sandbox/tmp` - pass
+
 ## 2026-04-08 - Customer UI (phase-6-merge-fixes)
 
 ### Delivered

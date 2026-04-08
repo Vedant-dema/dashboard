@@ -21,6 +21,8 @@ class Settings(BaseModel):
     log_level: str = "INFO"
     customers_store_mode: str = "demo_blob"
     demo_api_key_enabled: bool = False
+    database_url: str = "sqlite:///./dema_phase6.db"
+    database_echo: bool = False
 
 
 @lru_cache(maxsize=1)
@@ -32,5 +34,7 @@ def get_settings() -> Settings:
         log_level=(os.environ.get("LOG_LEVEL") or "INFO").strip().upper(),
         customers_store_mode=(os.environ.get("CUSTOMERS_STORE_MODE") or "demo_blob").strip().lower(),
         demo_api_key_enabled=bool(demo_api_key),
+        database_url=(os.environ.get("DATABASE_URL") or "sqlite:///./dema_phase6.db").strip(),
+        database_echo=_as_bool(os.environ.get("DATABASE_ECHO"), default=False),
     )
 

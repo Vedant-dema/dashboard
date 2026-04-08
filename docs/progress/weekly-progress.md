@@ -1,6 +1,31 @@
 # Weekly Progress
 
-## 2026-04-07 — Milestone 5
+## 2026-04-07 - Milestone 6
+
+### Delivered
+
+- Added SQLAlchemy 2.0 persistence foundation for customer domain.
+- Added Alembic configuration and initial customer-domain migration.
+- Added customer-domain SQL models and modular DB session setup.
+- Rebuilt `CustomerRepository` to support dual mode:
+  - transitional demo/blob mode
+  - DB-backed mode (`CUSTOMERS_STORE_MODE=db`)
+- Updated history repository to read from official DB audit table in DB mode.
+- Added import path from transitional state into SQL tables:
+  - `backend/app/scripts/import_customers_from_transitional.py`
+- Removed legacy duplicate history route conflict so `/api/v1/customers/{id}/history` is served by the modular repository path.
+
+### Outcome
+
+- Customer REST endpoints can remain stable while persistence transitions to PostgreSQL.
+- Transitional compatibility remains available during migration.
+- Backend now has a safe path to switch customer APIs from blob-backed to DB-backed storage.
+
+### Recommended next branch
+
+- `phase-7-quality-docs-ci`
+
+## 2026-04-07 - Milestone 5
 
 ### Delivered
 
@@ -21,8 +46,3 @@
 - Silent overwrites are prevented.
 - History is generated from one authoritative backend mechanism.
 - History tab data is more trustworthy in API mode.
-
-### Recommended next branch
-
-- `phase-6-postgres`
-

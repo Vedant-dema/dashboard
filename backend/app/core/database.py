@@ -1,15 +1,80 @@
-"""Transitional database wiring.
-
-Phase 4 keeps customer persistence on the existing demo/blob-compatible SQLite-backed store.
-This module intentionally stays lightweight until PostgreSQL is introduced in Phase 6.
-"""
+"""Database wiring for Phase 6 (SQLAlchemy 2.0)."""
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from typing import Any, Generator
+
+try:
+    from sqlalchemy import Engine, create_engine
+    from sqlalchemy.orm import Session, sessionmaker
+
+    SQLALCHEMY_AVAILABLE = True
+except ModuleNotFoundError:
+    Engine = Any  # type: ignore[assignment]
+    Session = Any  # type: ignore[assignment]
+    sessionmaker = Any  # type: ignore[assignment]
+    create_engine = None  # type: ignore[assignment]
+    SQLALCHEMY_AVAILABLE = False
+
 from app.core.config import get_settings
+
+_ENGINE: Engine | None = None
+_SESSION_FACTORY: sessionmaker[Session] | None = None
 
 
 def get_persistence_mode() -> str:
     """Returns current persistence mode label for diagnostics."""
-    return get_settings().customers_store_mode
+    mode = get_settings().customers_store_mode
+    if mode in {"db", "database", "postgres", "postgresql", "sqlalchemy"} and not SQLALCHEMY_AVAILABLE:
+        return "demo_blob"
+    return mode
+
+
+def get_database_url() -> str:
+    return get_settings().database_url
+
+
+def get_engine() -> Engine:
+    if not SQLALCHEMY_AVAILABLE:
+        raise RuntimeError("SQLAlchemy is not installed. Install backend requirements for DB mode.")
+    global _ENGINE
+    if _ENGINE is None:
+        settings = get_settings()
+        connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+        _ENGINE = create_engine(
+            settings.database_url,
+            echo=settings.database_echo,
+            future=True,
+            pool_pre_ping=True,
+            connect_args=connect_args,
+        )
+    return _ENGINE
+
+
+def get_session_factory() -> sessionmaker[Session]:
+    if not SQLALCHEMY_AVAILABLE:
+        raise RuntimeError("SQLAlchemy is not installed. Install backend requirements for DB mode.")
+    global _SESSION_FACTORY
+    if _SESSION_FACTORY is None:
+        _SESSION_FACTORY = sessionmaker(
+            bind=get_engine(),
+            autoflush=False,
+            autocommit=False,
+            expire_on_commit=False,
+            future=True,
+        )
+    return _SESSION_FACTORY
+
+
+@contextmanager
+def get_session() -> Generator[Session, None, None]:
+    session = get_session_factory()()
+    try:
+        yield session
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 

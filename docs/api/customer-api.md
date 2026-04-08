@@ -1,50 +1,51 @@
 # Customer API
 
-## Milestone 5: Data Safety and Official History
+## Milestone 6: PostgreSQL-Ready Customer API
 
-### Optimistic Concurrency
+### Runtime Compatibility
 
-Shared customer writes now support an optimistic concurrency token.
+Customer endpoints keep the same public contract in both persistence modes:
 
-Endpoint:
-- `PUT /api/v1/demo/customers-db`
+- Transitional mode (`CUSTOMERS_STORE_MODE=demo_blob`)
+- SQL mode (`CUSTOMERS_STORE_MODE=db`)
 
-Request shape:
+Supported endpoints:
 
-```json
-{
-  "state": { "...": "KundenDbState" },
-  "expected_updated_at": "2026-04-07T12:00:00+00:00",
-  "source": "frontend.customers-page"
-}
-```
-
-If `expected_updated_at` does not match current backend `updated_at`, backend rejects the write.
-
-### Conflict Response
-
-Status:
-- `409 Conflict`
-
-Response shape:
-
-```json
-{
-  "detail": {
-    "code": "customers_db_conflict",
-    "message": "Shared customers data has changed since your last load.",
-    "expected_updated_at": "2026-04-07T12:00:00+00:00",
-    "actual_updated_at": "2026-04-07T12:03:00+00:00"
-  }
-}
-```
-
-### Official History Endpoint
-
-Endpoint:
+- `GET /api/v1/customers`
+- `GET /api/v1/customers/{customer_id}`
+- `POST /api/v1/customers`
+- `PATCH /api/v1/customers/{customer_id}`
 - `GET /api/v1/customers/{customer_id}/history`
+- `GET /api/v1/customers/{customer_id}/wash-profile`
 
-Response shape:
+### List Customers Example
+
+`GET /api/v1/customers`
+
+```json
+{
+  "items": [
+    {
+      "id": 10001,
+      "kunden_nr": "10001",
+      "firmenname": "Muster GmbH",
+      "branche": "KFZ",
+      "strasse": "Hafenstr. 1",
+      "plz": "20095",
+      "ort": "Hamburg",
+      "land_code": "DE",
+      "deleted": false,
+      "updated_at": "2026-04-07T12:03:00+00:00"
+    }
+  ],
+  "total": 1,
+  "updated_at": "2026-04-07T12:03:00+00:00"
+}
+```
+
+### History Entry Shape
+
+`GET /api/v1/customers/{customer_id}/history`
 
 ```json
 {
@@ -55,6 +56,7 @@ Response shape:
       "timestamp": "2026-04-07T12:03:00+00:00",
       "action": "updated",
       "editor_name": "Anna Schmidt",
+      "editor_email": "anna@example.com",
       "changes": [
         {
           "field": "customer.firmenname",
@@ -66,7 +68,7 @@ Response shape:
           "newValue": "New Name GmbH",
           "changedBy": "Anna Schmidt",
           "changedAt": "2026-04-07T12:03:00+00:00",
-          "source": "frontend.customers-page"
+          "source": "api.v1.customers.patch"
         }
       ]
     }
@@ -76,5 +78,10 @@ Response shape:
 }
 ```
 
-The backend now generates this audit trail centrally by diffing previous and incoming state.
+### Transitional Write Endpoint (Still Available)
 
+Milestone 5 compatibility endpoint remains available:
+
+- `PUT /api/v1/demo/customers-db`
+
+It still supports optimistic concurrency via `expected_updated_at` and returns `409 customers_db_conflict` on stale writes.

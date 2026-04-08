@@ -31,8 +31,9 @@ type NavItem = { label: string; icon?: ReactNode; path?: string };
 
 function getRouteFromHash(): string {
   const hash = window.location.hash.slice(1);
-  if (hash.startsWith("/")) return hash.slice(1);
-  return hash || "/";
+  const pathOnly = hash.split("?")[0] ?? "";
+  if (pathOnly.startsWith("/")) return pathOnly.slice(1);
+  return pathOnly || "/";
 }
 
 function NavGroup({

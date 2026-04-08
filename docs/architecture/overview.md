@@ -1,31 +1,45 @@
 # Architecture Overview
 
-## Milestone 5: Data Safety + Official History
+## Milestone 6: PostgreSQL Foundation for Customer Domain
 
-### Shared Customer Write Path
+### Persistence Modes
 
-- Frontend still writes transitional state through `/api/v1/demo/customers-db`.
-- Backend now enforces optimistic concurrency using `expected_updated_at`.
-- Stale updates are rejected with `409 customers_db_conflict`.
+Customer persistence now supports two runtime modes:
 
-### Canonical Audit Mechanism
+- `CUSTOMERS_STORE_MODE=demo_blob` (default transitional mode)
+- `CUSTOMERS_STORE_MODE=db` (SQLAlchemy-backed mode, ready for PostgreSQL)
 
-Customer history is now generated in one backend mechanism.
+In both modes, the API contracts remain stable for:
 
-For each customer write, backend computes field-level diffs and stores:
+- `GET /api/v1/customers`
+- `GET /api/v1/customers/{id}`
+- `POST /api/v1/customers`
+- `PATCH /api/v1/customers/{id}`
+- `GET /api/v1/customers/{id}/history`
+- `GET /api/v1/customers/{id}/wash-profile`
 
-- entity type
-- entity id
-- field
-- old value
-- new value
-- changed by
-- changed at
-- source
+### SQL Customer Domain
 
-### History Read Path
+The backend now includes SQLAlchemy models and Alembic baseline migration for:
 
-- Frontend History tab uses official endpoint in API mode:
-  - `GET /api/v1/customers/{customer_id}/history`
-- Local fallback remains for non-API mode.
+- `customers`
+- `customer_addresses`
+- `customer_contacts`
+- `customer_wash_profiles`
+- `customer_history`
 
+The customer repository selects blob or DB behavior based on runtime mode, so frontend behavior stays unchanged during migration.
+
+### Transitional Import Path
+
+A dedicated import path is available to move existing demo/blob state into SQL tables:
+
+- script: `backend/app/scripts/import_customers_from_transitional.py`
+- entry point: `CustomerRepository.import_transitional_state_to_db(...)`
+
+This allows gradual migration while preserving the current demo endpoint compatibility.
+
+### Milestone 5 Safety Guarantees (Still Active)
+
+- Optimistic concurrency on shared demo writes remains active on `/api/v1/demo/customers-db`.
+- History remains centralized and available through `GET /api/v1/customers/{customer_id}/history`.

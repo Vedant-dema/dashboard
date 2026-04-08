@@ -11,7 +11,6 @@ import {
   Car,
   Info,
   CalendarPlus,
-  Receipt,
   FileText,
   Upload,
   Trash2,
@@ -24,51 +23,20 @@ import {
   CircleDashed,
   Pencil,
 } from "lucide-react";
-import type { KundenHistoryEntry, KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
+import type { RechnungListRow } from "../types/rechnungen";
+import { loadRechnungenDb, formatRechnungsbetrag } from "../store/rechnungenStore";
+import { buildSimpleTextPdf } from "../common/utils/buildSimpleTextPdf";
 import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
 import {
-  loadKundenDb,
-  saveKundenDb,
-  listRowsFromState,
-  listDeletedRowsFromState,
-  getDetailByKundenNr,
-  createKunde,
-  generateNextKundenNr,
-  updateKunde,
-  deleteKunde,
-  restoreKunde,
-  purgeKunde,
-  upsertKundenWash,
-  addKundenUnterlage,
-  removeKundenUnterlage,
-  listUnterlagenForKunde,
-  listTermineForKunde,
-  addKundenTermin,
-  toggleTerminErledigt,
-  removeKundenTermin,
-  listBeziehungenForKunde,
-  addKundenBeziehung,
-  removeKundenBeziehung,
-  isCustomersApiMode,
-  isSharedCustomersConflictError,
-  loadCustomerHistoryFromApi,
-  loadSharedKundenDb,
-  saveSharedKundenDb,
-  getRisikoanalyseForKunde,
-  upsertRisikoanalyse,
-  getExpiryStatus,
-  daysUntilExpiry,
-  hasRisikoAlert,
-  listHistoryForKunde,
-  mergeWashStateForDiff,
-  computeKundenWashFieldDiff,
+  customerRepository,
   type KundenListRow,
   type NewKundeInput,
   type NewKundenUnterlageInput,
   type KundenWashUpsertFields,
   type RisikoanalyseUpsertFields,
   type AuditEditor,
-} from "../store/kundenStore";
+} from "../features/customers/repository/customerRepository";
 import { NewCustomerModal } from "../components/NewCustomerModal";
 import { DatePickerInput } from "../components/DatePickerInput";
 import { SuggestTextInput } from "../components/SuggestTextInput";
@@ -95,6 +63,25 @@ const SORT_LABEL_KEY: Record<CustomerSortKey, string> = {
 
 const MAX_UNTERLAGE_BYTES = 2 * 1024 * 1024;
 
+/** `?customer=KUNDENNR` on the hash (e.g. `#/sales/kunden?customer=KU12`). */
+function readCustomerParamFromHash(): string | null {
+  const h = window.location.hash;
+  if (!h.includes("?")) return null;
+  const qs = h.split("?")[1] ?? "";
+  const v = new URLSearchParams(qs).get("customer")?.trim();
+  return v && v.length > 0 ? v : null;
+}
+
+function writeCustomerHashPreservePath(kuNr: string | null) {
+  const raw = window.location.hash.slice(1);
+  const pathPart = (raw.split("?")[0] || "/").trim() || "/";
+  const path = pathPart.startsWith("/") ? pathPart : `/${pathPart}`;
+  const next = kuNr ? `#${path}?customer=${encodeURIComponent(kuNr)}` : `#${path}`;
+  if (window.location.hash !== next) {
+    window.location.hash = next;
+  }
+}
+
 function formatFileSize(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
@@ -108,6 +95,14 @@ function readFileAsDataURL(file: File): Promise<string> {
     r.onerror = () => reject(r.error);
     r.readAsDataURL(file);
   });
+}
+
+function formatInvoiceListDateForPdf(raw: string, localeTag: string): string {
+  if (!raw) return "—";
+  const iso = raw.includes("T") ? raw : `${raw}T12:00:00`;
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return raw;
+  return new Date(ms).toLocaleDateString(localeTag, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 const MOCK_ZUSTAENDIGE = [
@@ -172,8 +167,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     : language === "ja" ? "ja-JP"
     : language === "hi" ? "hi-IN"
     : "en-GB";
-  const [db, setDb] = useState(() => loadKundenDb());
-  const [remoteHistoryEntries, setRemoteHistoryEntries] = useState<KundenHistoryEntry[] | null>(null);
+  const [db, setDb] = useState(() => customerRepository.loadLocalDb());
   const fieldSuggestions = useMemo(() => getCustomerFieldSuggestions(db), [db]);
   const quickSearchSuggestions = useMemo(() => getQuickSearchSuggestions(db), [db]);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -188,8 +182,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [vatId, setVatId] = useState("");
   const [sortierung, setSortierung] = useState<CustomerSortKey>("kundenNr");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const selectedRowIdRef = useRef<string | null>(null);
+  selectedRowIdRef.current = selectedRowId;
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [unterlagenOpen, setUnterlagenOpen] = useState(false);
+  const [customerInvoicesOpen, setCustomerInvoicesOpen] = useState(false);
   const unterlagenFileInputRef = useRef<HTMLInputElement>(null);
 
   const [draftKunde, setDraftKunde] = useState<KundenStamm | null>(null);
@@ -197,6 +194,13 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const [detailDrawerTab, setDetailDrawerTab] = useState<DetailDrawerTab>("kundendetail");
   const [customerEditTab, setCustomerEditTab] = useState<CustomerEditTab>("kunde");
   const [newPlateInput, setNewPlateInput] = useState("");
+  const [rechnungenListTick, setRechnungenListTick] = useState(0);
+
+  useEffect(() => {
+    const onRechnungenDb = () => setRechnungenListTick((n) => n + 1);
+    window.addEventListener("dema-rechnungen-db-changed", onRechnungenDb);
+    return () => window.removeEventListener("dema-rechnungen-db-changed", onRechnungenDb);
+  }, []);
 
   useEffect(() => {
     const q = sessionStorage.getItem("dema-search-q");
@@ -207,22 +211,22 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   }, []);
 
   useEffect(() => {
-    if (!isCustomersApiMode()) return;
+    if (!customerRepository.isApiMode()) return;
     let cancelled = false;
     void (async () => {
       try {
-        const remote = await loadSharedKundenDb();
+        const remote = await customerRepository.loadSharedDb();
         if (cancelled) return;
         if (remote) {
           setDb(remote);
-          saveKundenDb(remote);
+          customerRepository.saveLocalDb(remote);
           return;
         }
-        const seeded = loadKundenDb();
-        const saved = await saveSharedKundenDb(seeded);
+        const seeded = customerRepository.loadLocalDb();
+        const saved = await customerRepository.saveSharedDb(seeded);
         if (cancelled) return;
         setDb(saved);
-        saveKundenDb(saved);
+        customerRepository.saveLocalDb(saved);
       } catch {
         // Keep local mode behavior if shared demo backend is unavailable.
       }
@@ -233,81 +237,105 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   }, []);
 
   const persist = useCallback((next: typeof db) => {
-    saveKundenDb(next);
+    customerRepository.saveLocalDb(next);
     setDb(next);
-    if (!isCustomersApiMode()) return;
-    void saveSharedKundenDb(next).then(
+    if (!customerRepository.isApiMode()) return;
+    void customerRepository.saveSharedDb(next).then(
       (saved) => {
-        saveKundenDb(saved);
+        customerRepository.saveLocalDb(saved);
         setDb(saved);
       },
-      async (error: unknown) => {
-        if (isSharedCustomersConflictError(error)) {
-          try {
-            const remote = await loadSharedKundenDb();
-            if (remote) {
-              saveKundenDb(remote);
-              setDb(remote);
-            }
-          } catch {
-            // Keep local snapshot if refresh fails.
-          }
-          alert(
-            t(
-              "customersSyncConflict",
-              "Another user changed this customer data. We reloaded the latest version. Please review and save again."
-            )
-          );
-          return;
-        }
+      () => {
         alert(t("customersSyncFailed", "Could not sync with shared demo backend."));
       }
     );
   }, [t]);
 
   const unterlagenForCustomer = useMemo(
-    () => (draftKunde ? listUnterlagenForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listUnterlagenForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
   const termineForCustomer = useMemo(
-    () => (draftKunde ? listTermineForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listTermineForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
   const beziehungenForCustomer = useMemo(
-    () => (draftKunde ? listBeziehungenForKunde(db, draftKunde.id) : []),
+    () => (draftKunde ? customerRepository.listBeziehungenForKunde(db, draftKunde.id) : []),
     [db, draftKunde?.id]
   );
 
-  useEffect(() => {
-    if (!draftKunde || !isCustomersApiMode()) {
-      setRemoteHistoryEntries(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const remoteHistory = await loadCustomerHistoryFromApi(draftKunde.id);
-        if (cancelled) return;
-        setRemoteHistoryEntries(remoteHistory ?? []);
-      } catch {
-        if (cancelled) return;
-        setRemoteHistoryEntries(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [draftKunde?.id, db.history.length, db.kunden.length]);
+  const historyForCustomer = useMemo(
+    () => (draftKunde ? customerRepository.listHistoryForKunde(db, draftKunde.id) : []),
+    [db, draftKunde?.id]
+  );
 
-  const historyForCustomer = useMemo(() => {
-    if (!draftKunde) return [];
-    if (isCustomersApiMode() && remoteHistoryEntries !== null) {
-      return remoteHistoryEntries;
+  const rechnungenRowsForCustomer = useMemo(() => {
+    if (!draftKunde?.kunden_nr?.trim()) return [];
+    const rdb = loadRechnungenDb();
+    const ku = draftKunde.kunden_nr.trim();
+    return rdb.rows.filter((r) => r.kunden_nr.trim() === ku);
+  }, [draftKunde?.id, draftKunde?.kunden_nr, rechnungenListTick]);
+
+  const openRechnungenForCustomer = useCallback(() => {
+    if (!draftKunde?.kunden_nr?.trim()) return;
+    const ku = draftKunde.kunden_nr.trim();
+    sessionStorage.setItem("dema-rechnungen-filter-kunden-nr", ku);
+    const matches = loadRechnungenDb().rows.filter((r) => r.kunden_nr.trim() === ku);
+    if (matches.length > 0) {
+      matches.sort((a, b) => {
+        const byDate = b.r_datum.localeCompare(a.r_datum);
+        if (byDate !== 0) return byDate;
+        return b.id - a.id;
+      });
+      sessionStorage.setItem("dema-rechnungen-select-id", String(matches[0]!.id));
     }
-    return listHistoryForKunde(db, draftKunde.id);
-  }, [db, draftKunde?.id, remoteHistoryEntries]);
+    const dept = department ?? "sales";
+    window.location.hash = `#/${dept}/rechnungen`;
+    setSelectedRowId(null);
+  }, [draftKunde?.kunden_nr, department]);
+
+  const closeCustomerInvoicesModal = useCallback(() => {
+    setCustomerInvoicesOpen(false);
+  }, []);
+
+  const openInvoicePdfInBrowser = useCallback(
+    (r: RechnungListRow) => {
+      const d = formatInvoiceListDateForPdf(r.r_datum, localeTag);
+      const amt = formatRechnungsbetrag(r.betrag_cent);
+      const lines = [
+        t("customersInvoicesPdfDocHeading", "INVOICE (demo)"),
+        t("customersInvoicesPdfRule", "----------------------------------------"),
+        `${t("rechnungenLabelNr", "Invoice no.:")} ${r.rechn_nr}`,
+        `${t("rechnungenThRDatum", "Inv. date")}: ${d}`,
+        `${t("rechnungenThKundenNr", "Cust. no.")}: ${r.kunden_nr}`,
+        `${t("customersInvoicesPdfCompany", "Company")}: ${r.firmenname}`,
+        `${t("rechnungenThBetrag", "Amount")}: ${amt}`,
+      ];
+      if (r.vermerk.trim()) {
+        lines.push(`${t("rechnungenLabelVermerk", "Note")}: ${r.vermerk}`);
+      }
+      lines.push(
+        t("customersInvoicesPdfRule", "----------------------------------------"),
+        t(
+          "customersInvoicesPdfFooter",
+          "Invoices are created on the Invoices page. This PDF is a preview only."
+        )
+      );
+      const blob = buildSimpleTextPdf(lines);
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if (!win) {
+        URL.revokeObjectURL(url);
+        alert(t("customersInvoicesPdfPopupBlocked", "Allow pop-ups to open the PDF in your browser."));
+        return;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    [localeTag, t]
+  );
+
   const [terminFormOpen, setTerminFormOpen] = useState(false);
   const [terminDatum, setTerminDatum] = useState("");
   const [terminZeit, setTerminZeit] = useState("");
@@ -315,35 +343,32 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleAddTermin = useCallback(() => {
     if (!draftKunde || !terminDatum || !terminZweck.trim()) return;
-    const next = addKundenTermin(db, draftKunde.id, {
+    const next = customerRepository.addKundenTermin(db, draftKunde.id, {
       datum: terminDatum,
       zeit: terminZeit,
       zweck: terminZweck,
     });
-    saveKundenDb(next);
-    setDb(next);
+    persist(next);
     setTerminFormOpen(false);
     setTerminDatum("");
     setTerminZeit("");
     setTerminZweck("");
-  }, [db, draftKunde, terminDatum, terminZeit, terminZweck]);
+  }, [db, draftKunde, terminDatum, terminZeit, terminZweck, persist]);
 
   const handleToggleTermin = useCallback(
     (terminId: number) => {
-      const next = toggleTerminErledigt(db, terminId);
-      saveKundenDb(next);
-      setDb(next);
+      const next = customerRepository.toggleTerminErledigt(db, terminId);
+      persist(next);
     },
-    [db]
+    [db, persist]
   );
 
   const handleRemoveTermin = useCallback(
     (terminId: number) => {
-      const next = removeKundenTermin(db, terminId);
-      saveKundenDb(next);
-      setDb(next);
+      const next = customerRepository.removeKundenTermin(db, terminId);
+      persist(next);
     },
-    [db]
+    [db, persist]
   );
 
   const [beziehungFormOpen, setBeziehungFormOpen] = useState(false);
@@ -392,7 +417,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   // ── Risikoanalyse ──────────────────────────────────────────────────────────
   const risikoForCustomer = useMemo(
-    () => (draftKunde ? getRisikoanalyseForKunde(db, draftKunde.id) : null),
+    () => (draftKunde ? customerRepository.getRisikoanalyseForKunde(db, draftKunde.id) : null),
     [db, draftKunde?.id]
   );
   const [risikoEditOpen, setRisikoEditOpen] = useState(false);
@@ -434,17 +459,16 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleRisikoSave = useCallback(() => {
     if (!draftKunde) return;
-    const next = upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
-    saveKundenDb(next);
-    setDb(next);
+    const next = customerRepository.upsertRisikoanalyse(db, draftKunde.id, risikoDraft);
+    persist(next);
     setRisikoEditOpen(false);
-  }, [db, draftKunde, risikoDraft]);
+  }, [db, draftKunde, risikoDraft, persist]);
 
   // Pre-compute customers that have risk alerts for the list badge
   const alertKundenIds = useMemo(() => {
     const ids = new Set<number>();
     for (const r of db.risikoanalysen ?? []) {
-      if (hasRisikoAlert(r)) ids.add(r.kunden_id);
+      if (customerRepository.hasRisikoAlert(r)) ids.add(r.kunden_id);
     }
     return ids;
   }, [db.risikoanalysen]);
@@ -453,24 +477,22 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
     if (!draftKunde || !beziehungNr.trim() || !beziehungArt.trim()) return;
     const linked = db.kunden.find((k) => k.kunden_nr === beziehungNr.trim());
     if (!linked || linked.id === draftKunde.id) return;
-    const next = addKundenBeziehung(db, draftKunde.id, {
+    const next = customerRepository.addKundenBeziehung(db, draftKunde.id, {
       verknuepfter_kunden_id: linked.id,
       art: beziehungArt,
     });
-    saveKundenDb(next);
-    setDb(next);
+    persist(next);
     setBeziehungFormOpen(false);
     setBeziehungNr("");
     setBeziehungArt("");
-  }, [db, draftKunde, beziehungNr, beziehungArt]);
+  }, [db, draftKunde, beziehungNr, beziehungArt, persist]);
 
   const handleRemoveBeziehung = useCallback(
     (beziehungId: number) => {
-      const next = removeKundenBeziehung(db, beziehungId);
-      saveKundenDb(next);
-      setDb(next);
+      const next = customerRepository.removeKundenBeziehung(db, beziehungId);
+      persist(next);
     },
-    [db]
+    [db, persist]
   );
 
   const handleUnterlageFiles = useCallback(
@@ -483,7 +505,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       }
       try {
         const dataUrl = await readFileAsDataURL(file);
-        const next = addKundenUnterlage(db, draftKunde.id, {
+        const next = customerRepository.addKundenUnterlage(db, draftKunde.id, {
           name: file.name,
           size: file.size,
           mime_type: file.type || "application/octet-stream",
@@ -499,15 +521,15 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleRemoveUnterlage = useCallback(
     (unterlageId: number) => {
-      const next = removeKundenUnterlage(db, unterlageId);
+      const next = customerRepository.removeKundenUnterlage(db, unterlageId);
       persist(next);
     },
     [db, persist]
   );
 
   const [showDeleted, setShowDeleted] = useState(false);
-  const listSource = useMemo(() => listRowsFromState(db), [db]);
-  const deletedSource = useMemo(() => listDeletedRowsFromState(db), [db]);
+  const listSource = useMemo(() => customerRepository.listRows(db), [db]);
+  const deletedSource = useMemo(() => customerRepository.listDeletedRows(db), [db]);
 
   const filtered = useMemo(() => {
     let list: KundenListRow[] = [...listSource];
@@ -575,7 +597,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   /** Load drafts immediately on row click — avoids one paint with no drawer (blank flash). */
   const openCustomerRow = useCallback(
     (kuNr: string) => {
-      const detail = getDetailByKundenNr(db, kuNr);
+      const detail = customerRepository.getDetailByKundenNr(db, kuNr);
       if (!detail) return;
       setSelectedRowId(kuNr);
       setDetailDrawerTab("kundendetail");
@@ -593,6 +615,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       setBeziehungArt("");
       setRisikoEditOpen(false);
       setTerminFormOpen(false);
+      writeCustomerHashPreservePath(kuNr);
     },
     [db]
   );
@@ -610,6 +633,26 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   useApplyGlobalSearchFocus("kunden", focusCustomerFromSearch);
 
   useEffect(() => {
+    const run = () => {
+      const ku = readCustomerParamFromHash();
+      if (!ku) {
+        if (selectedRowIdRef.current) setSelectedRowId(null);
+        return;
+      }
+      const detail = customerRepository.getDetailByKundenNr(db, ku);
+      if (!detail) {
+        writeCustomerHashPreservePath(null);
+        return;
+      }
+      if (selectedRowIdRef.current === ku) return;
+      openCustomerRow(ku);
+    };
+    run();
+    window.addEventListener("hashchange", run);
+    return () => window.removeEventListener("hashchange", run);
+  }, [db, openCustomerRow]);
+
+  useEffect(() => {
     if (!selectedRowId) {
       setUnterlagenOpen(false);
       setDraftKunde(null);
@@ -618,7 +661,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       setCustomerEditTab("kunde");
       return;
     }
-    const detail = getDetailByKundenNr(db, selectedRowId);
+    const detail = customerRepository.getDetailByKundenNr(db, selectedRowId);
     if (!detail) {
       setDraftKunde(null);
       setDraftWash(null);
@@ -639,8 +682,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleSaveDetail = () => {
     if (!draftKunde) return;
     if (!draftWash) {
-      persist(updateKunde(db, draftKunde, editor));
+      persist(customerRepository.updateKunde(db, draftKunde, editor));
       setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
       return;
     }
     const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
@@ -665,23 +709,24 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       brutto_preis: draftWash.brutto_preis,
       wasch_intervall: draftWash.wasch_intervall,
     };
-    const washBaseline = oldWash ?? mergeWashStateForDiff(null, draftKunde.id, {});
-    const mergedWash = mergeWashStateForDiff(oldWash, draftKunde.id, washPayload);
-    const washChanges = computeKundenWashFieldDiff(washBaseline, mergedWash);
-    let next = updateKunde(db, draftKunde, editor, { extraChanges: washChanges });
-    next = upsertKundenWash(next, draftKunde.id, washPayload);
+    const washBaseline = oldWash ?? customerRepository.mergeWashStateForDiff(null, draftKunde.id, {});
+    const mergedWash = customerRepository.mergeWashStateForDiff(oldWash, draftKunde.id, washPayload);
+    const washChanges = customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash);
+    let next = customerRepository.updateKunde(db, draftKunde, editor, { extraChanges: washChanges });
+    next = customerRepository.upsertKundenWash(next, draftKunde.id, washPayload);
     persist(next);
     setSelectedRowId(null);
+    writeCustomerHashPreservePath(null);
   };
 
   const handleEditCustomerSubmit = useCallback(
     (data: NewKundeInput, wash: KundenWashUpsertFields | null) => {
       if (!draftKunde) return;
       const oldWash = db.kundenWash.find((w) => w.kunden_id === draftKunde.id) ?? null;
-      const washBaseline = oldWash ?? mergeWashStateForDiff(null, draftKunde.id, {});
-      const mergedWash = wash ? mergeWashStateForDiff(oldWash, draftKunde.id, wash) : null;
-      const washChanges = mergedWash ? computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
-      let next = updateKunde(
+      const washBaseline = oldWash ?? customerRepository.mergeWashStateForDiff(null, draftKunde.id, {});
+      const mergedWash = wash ? customerRepository.mergeWashStateForDiff(oldWash, draftKunde.id, wash) : null;
+      const washChanges = mergedWash ? customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
+      let next = customerRepository.updateKunde(
         db,
         {
           ...draftKunde,
@@ -693,10 +738,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         { extraChanges: washChanges }
       );
       if (wash) {
-        next = upsertKundenWash(next, draftKunde.id, wash);
+        next = customerRepository.upsertKundenWash(next, draftKunde.id, wash);
       }
       persist(next);
       setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
     },
     [db, draftKunde, persist, editor]
   );
@@ -708,20 +754,21 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       scannedAttachment?: NewKundenUnterlageInput | null
     ) => {
       try {
-        const washBaseline = mergeWashStateForDiff(null, 0, {});
-        const mergedWash = wash ? mergeWashStateForDiff(null, 0, wash) : null;
-        const washExtra = mergedWash ? computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
-        let next = createKunde(db, data, editor, { washExtraChanges: washExtra });
+        const washBaseline = customerRepository.mergeWashStateForDiff(null, 0, {});
+        const mergedWash = wash ? customerRepository.mergeWashStateForDiff(null, 0, wash) : null;
+        const washExtra = mergedWash ? customerRepository.computeKundenWashFieldDiff(washBaseline, mergedWash) : [];
+        let next = customerRepository.createKunde(db, data, editor, { washExtraChanges: washExtra });
         const created = next.kunden[next.kunden.length - 1];
         if (wash) {
-          next = upsertKundenWash(next, created.id, wash);
+          next = customerRepository.upsertKundenWash(next, created.id, wash);
         }
         if (scannedAttachment) {
-          next = addKundenUnterlage(next, created.id, scannedAttachment);
+          next = customerRepository.addKundenUnterlage(next, created.id, scannedAttachment);
         }
         persist(next);
         setShowAddCustomer(false);
         setSelectedRowId(created.kunden_nr);
+        writeCustomerHashPreservePath(created.kunden_nr);
       } catch (e) {
         alert(e instanceof Error ? e.message : t("customersSaveFailed", "Save failed"));
       }
@@ -732,9 +779,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleDeleteKunde = useCallback(
     (kundenId: number) => {
       if (!window.confirm(t("customersDeleteConfirm", "Mark this customer for deletion? They will be moved to the recycle bin and can be restored."))) return;
-      const next = deleteKunde(db, kundenId, editor);
+      const next = customerRepository.deleteKunde(db, kundenId, editor);
       persist(next);
       setSelectedRowId(null);
+      writeCustomerHashPreservePath(null);
     },
     [db, editor, persist, t]
   );
@@ -742,7 +790,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handleRestoreKunde = useCallback(
     (kundenId: number) => {
       if (!window.confirm(t("customersRestoreConfirm", "Restore this customer?"))) return;
-      const next = restoreKunde(db, kundenId, editor);
+      const next = customerRepository.restoreKunde(db, kundenId, editor);
       persist(next);
     },
     [db, editor, persist, t]
@@ -751,7 +799,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const handlePurgeKunde = useCallback(
     (kundenId: number) => {
       if (!window.confirm(t("customersPurgeConfirm", "Permanently delete this customer? This cannot be undone."))) return;
-      const next = purgeKunde(db, kundenId);
+      const next = customerRepository.purgeKunde(db, kundenId);
       persist(next);
     },
     [db, persist, t]
@@ -1124,10 +1172,17 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         <NewCustomerModal
           key={selectedRowId}
           open={Boolean(selectedRowId)}
-          onClose={() => setSelectedRowId(null)}
+          onClose={() => {
+            setSelectedRowId(null);
+            writeCustomerHashPreservePath(null);
+          }}
           department={department}
           mode="edit"
           editInitial={{ kunde: draftKunde, wash: draftWash }}
+          editRisikoProfile={risikoForCustomer}
+          onScrollToDocumentExpiry={() => {
+            risikoSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+          }}
           editKundeTopContent={
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1163,13 +1218,31 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t("customersInvoicesTitle", "Invoices")}
               </p>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                <Receipt className="h-4 w-4 text-slate-500" />
-                {t("customersShowInvoices", "Show invoices")}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={openRechnungenForCustomer}
+                  disabled={!draftKunde?.kunden_nr?.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-800 shadow-sm hover:bg-blue-100 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Pencil className="h-4 w-4 shrink-0" aria-hidden />
+                  {t("customersInvoicesEditBtn", "Edit invoices")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomerInvoicesOpen(true)}
+                  disabled={!draftKunde?.kunden_nr?.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                  {t("customersInvoicesFolderBtn", "Invoice files")}
+                  {rechnungenRowsForCustomer.length > 0 ? (
+                    <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {rechnungenRowsForCustomer.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
             </>
           }
           editKundeSideContent={
@@ -1486,28 +1559,31 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               { key: "ausw_kop_abholer", labelKey: "riskDocAuswKopAbholer", fallback: "ID Copy Collector" },
             ];
 
-            const expiredCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "expired").length;
-            const criticalCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "critical").length;
-            const warningCount = DATE_FIELDS.filter((f) => getExpiryStatus(risk?.[f.key]) === "warning").length;
+            const expiredCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "expired").length;
+            const criticalCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "critical").length;
+            const warningCount = DATE_FIELDS.filter((f) => customerRepository.getExpiryStatus(risk?.[f.key]) === "warning").length;
 
-            const statusBadge = (status: ReturnType<typeof getExpiryStatus>, date?: string) => {
+            const statusBadge = (
+              status: ReturnType<typeof customerRepository.getExpiryStatus>,
+              date?: string
+            ) => {
               const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold";
               if (status === "expired") return (
                 <span className={`${base} bg-red-100 text-red-700`}>
                   <X className="h-2.5 w-2.5" /> {t("riskStatusExpired", "Expired")}
-                  {date && <span className="ml-0.5 opacity-70">({Math.abs(daysUntilExpiry(date))}d)</span>}
+                  {date && <span className="ml-0.5 opacity-70">({Math.abs(customerRepository.daysUntilExpiry(date))}d)</span>}
                 </span>
               );
               if (status === "critical") return (
                 <span className={`${base} bg-orange-100 text-orange-700`}>
                   <AlertTriangle className="h-2.5 w-2.5" /> {t("riskStatusCritical", "Critical")}
-                  {date && <span className="ml-0.5 opacity-70">({daysUntilExpiry(date)}d)</span>}
+                  {date && <span className="ml-0.5 opacity-70">({customerRepository.daysUntilExpiry(date)}d)</span>}
                 </span>
               );
               if (status === "warning") return (
                 <span className={`${base} bg-amber-100 text-amber-700`}>
                   <AlertTriangle className="h-2.5 w-2.5" /> {t("riskStatusWarning", "Expiring soon")}
-                  {date && <span className="ml-0.5 opacity-70">({daysUntilExpiry(date)}d)</span>}
+                  {date && <span className="ml-0.5 opacity-70">({customerRepository.daysUntilExpiry(date)}d)</span>}
                 </span>
               );
               if (status === "ok") return (
@@ -1524,8 +1600,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
             return (
               <section
+                id="customer-edit-risiko-doc-expiry"
                 ref={risikoSectionRef}
-                className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                className="min-w-0 scroll-mt-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
               >
                 {/* Header row — matches Contacts / Firmendaten section title scale */}
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -1657,7 +1734,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <tbody>
                         {DATE_FIELDS.map((f) => {
                           const dateVal = risk?.[f.key] as string | undefined;
-                          const status = getExpiryStatus(dateVal);
+                          const status = customerRepository.getExpiryStatus(dateVal);
                           return (
                             <tr
                               key={f.key}
@@ -1718,7 +1795,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         open={showAddCustomer}
         onClose={() => setShowAddCustomer(false)}
         department={department}
-        nextKundenNrPreview={generateNextKundenNr(db)}
+        nextKundenNrPreview={customerRepository.generateNextKundenNr(db)}
         onSubmit={handleNewCustomerSubmit}
         fieldSuggestions={fieldSuggestions}
         duplicateCheck={(name, street, plz, city) => {
@@ -1865,6 +1942,91 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 <Upload className="h-4 w-4" />
                 {t("customersUnterlageAdd", "Add file (simulate customer upload)")}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {customerInvoicesOpen && draftKunde ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+          onClick={closeCustomerInvoicesModal}
+          role="presentation"
+        >
+          <div
+            className="flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="customer-invoices-dialog-title"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div className="min-w-0">
+                <h2
+                  id="customer-invoices-dialog-title"
+                  className="flex items-center gap-2 text-lg font-bold text-slate-800"
+                >
+                  <FolderOpen className="h-5 w-5 shrink-0 text-blue-600" />
+                  <span className="truncate">{t("customersInvoicesFolderTitle", "Invoice files")}</span>
+                </h2>
+                <p className="mt-0.5 truncate text-sm text-slate-500">{draftKunde.firmenname}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {t("customersUnterlageKuNrLabel", "Cust. no.")}{" "}
+                  <span className="font-mono text-slate-600">{draftKunde.kunden_nr}</span>
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  {t(
+                    "customersInvoicesFolderHint",
+                    "Create and edit invoices on the Invoices page. Open PDF opens a new browser tab."
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCustomerInvoicesModal}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                aria-label={t("customersClose", "Close")}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              {rechnungenRowsForCustomer.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
+                  {t(
+                    "customersInvoicesFolderEmpty",
+                    "No invoices for this customer number. Add them on the Invoices page."
+                  )}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {rechnungenRowsForCustomer.map((r) => (
+                    <li
+                      key={r.id}
+                      className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
+                    >
+                      <FileText className="h-8 w-8 shrink-0 text-amber-600/90" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-800">
+                          {t("customersInvoicesFilePdf", "Invoice_{nr}.pdf").replace("{nr}", r.rechn_nr)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatInvoiceListDateForPdf(r.r_datum, localeTag)} ·{" "}
+                          {formatRechnungsbetrag(r.betrag_cent)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openInvoicePdfInBrowser(r)}
+                        className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("customersInvoicesViewPdf", "Open PDF")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@
 | 2026-03-31 | [2026-03-31.md](feature-logs/2026-03-31.md) | FEATURE-109 … FEATURE-133 |
 | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134, FEATURE-135 |
 | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
+| 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137, FEATURE-138 |
 
 ---
 
@@ -161,6 +162,8 @@
 | FEATURE-134 | Bulgarian VIES `Gr.` / `гр.` city suffix parsing | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-135 | Address transliteration (BG) + VIES display translate guard | Modified | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) |
 | FEATURE-136 | Backend — JSON on unhandled errors; VIES requester 503; CORS_ORIGIN_REGEX | Modified | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) |
+| FEATURE-137 | VAT check UI — accurate empty-body errors; CORS env docs in `.env.example` | Modified | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) |
+| FEATURE-138 | VIES VAT check — title case for postal address in API response | Modified | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

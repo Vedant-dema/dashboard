@@ -179,6 +179,21 @@ def _normalize_vies_display_text(text: str | None, country_code: str | None = No
     return text if text else None
 
 
+def _title_case_vies_address(text: str | None) -> str | None:
+    """Apply title case per line for VIES postal addresses (display only; company name is separate)."""
+    if not text or not str(text).strip():
+        return text
+    lines_out: list[str] = []
+    for line in str(text).split("\n"):
+        segment = line.strip()
+        if not segment:
+            lines_out.append("")
+            continue
+        lines_out.append(segment.title())
+    joined = "\n".join(lines_out).strip()
+    return joined if joined else None
+
+
 def _normalize_vies_search_text(text: str | None, country_code: str | None = None) -> str | None:
     """Aggressive, deterministic search key from VIES text (UI/search only; never legal output)."""
     display = _normalize_vies_display_text(text, country_code=country_code)
@@ -2804,6 +2819,10 @@ def _map_vies_check_response(
     if valid and not addr and fallback_address:
         addr = _normalize_vies_display_text(fallback_address.strip(), country_code=response_cc) or fallback_address.strip()
         addr_original = fallback_address.strip()
+    if addr:
+        addr_tc = _title_case_vies_address(addr)
+        if addr_tc is not None:
+            addr = addr_tc
     if valid and not trader_name:
         trader_name = "Not provided by VIES"
     if valid and not addr:
@@ -2835,7 +2854,7 @@ def _map_vies_check_response(
         address_normalized=addr,
         name_search=_normalize_vies_search_text(trader_name_original, country_code=response_cc),
         address_search=_normalize_vies_search_text(addr_original, country_code=response_cc),
-        normalization_version="vies_norm_v1_country_aware",
+        normalization_version="vies_norm_v2_address_title",
         request_date=data.get("requestDate"),
         request_identifier=req_id,
         vies_error=None,

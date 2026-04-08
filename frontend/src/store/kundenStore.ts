@@ -377,37 +377,6 @@ type DemoCustomersDbResponse = {
   updated_at?: string | null;
 };
 
-type DemoCustomersDbConflictDetail = {
-  code?: string;
-  message?: string;
-  expected_updated_at?: string | null;
-  actual_updated_at?: string | null;
-};
-
-type CustomerHistoryApiResponse = {
-  items?: KundenHistoryEntry[];
-  total?: number;
-  updated_at?: string | null;
-};
-
-let sharedCustomersUpdatedAt: string | null = null;
-
-export class SharedCustomersConflictError extends Error {
-  readonly expectedUpdatedAt: string | null;
-  readonly actualUpdatedAt: string | null;
-
-  constructor(detail: DemoCustomersDbConflictDetail) {
-    super(detail.message || "Shared customers data has changed. Please reload and try again.");
-    this.name = "SharedCustomersConflictError";
-    this.expectedUpdatedAt = detail.expected_updated_at ?? null;
-    this.actualUpdatedAt = detail.actual_updated_at ?? null;
-  }
-}
-
-export function isSharedCustomersConflictError(error: unknown): error is SharedCustomersConflictError {
-  return error instanceof SharedCustomersConflictError;
-}
-
 function demoHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (DEMO_API_KEY.trim()) headers["x-demo-key"] = DEMO_API_KEY.trim();
@@ -428,7 +397,6 @@ export async function loadSharedKundenDb(): Promise<KundenDbState | null> {
     throw new Error(`Shared customers load failed (${res.status})`);
   }
   const payload = (await res.json()) as DemoCustomersDbResponse;
-  sharedCustomersUpdatedAt = payload.updated_at ?? null;
   if (!payload?.state) return null;
   if (!isKundenDbState(payload.state)) {
     throw new Error("Shared customers payload has invalid shape");
@@ -443,45 +411,16 @@ export async function saveSharedKundenDb(state: KundenDbState): Promise<KundenDb
   const res = await fetch(demoApiUrl("/api/v1/demo/customers-db"), {
     method: "PUT",
     headers: demoHeaders(),
-    body: JSON.stringify({
-      state: bodyState,
-      expected_updated_at: sharedCustomersUpdatedAt,
-      source: "frontend.customers-page",
-    }),
+    body: JSON.stringify({ state: bodyState }),
   });
-  if (res.status === 409) {
-    let detail: DemoCustomersDbConflictDetail = {};
-    try {
-      const parsed = (await res.json()) as { detail?: DemoCustomersDbConflictDetail };
-      detail = parsed.detail ?? {};
-    } catch {
-      // ignore parse failure, use generic conflict message
-    }
-    throw new SharedCustomersConflictError(detail);
-  }
   if (!res.ok) {
     throw new Error(`Shared customers save failed (${res.status})`);
   }
   const responseJson: DemoCustomersDbResponse = (await res.json()) as DemoCustomersDbResponse;
-  sharedCustomersUpdatedAt = responseJson.updated_at ?? null;
   if (!responseJson.state || !isKundenDbState(responseJson.state)) {
     throw new Error("Shared customers save response has invalid shape");
   }
   return ensureSeedCustomers(normalizeUnterlagen(responseJson.state));
-}
-
-export async function loadCustomerHistoryFromApi(kundenId: number): Promise<KundenHistoryEntry[] | null> {
-  if (!API_MODE) return null;
-  const res = await fetch(demoApiUrl(`/api/v1/customers/${kundenId}/history`), {
-    method: "GET",
-    headers: demoHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error(`Customer history load failed (${res.status})`);
-  }
-  const payload = (await res.json()) as CustomerHistoryApiResponse;
-  if (!Array.isArray(payload.items)) return [];
-  return payload.items;
 }
 
 export function loadKundenDb(): KundenDbState {
@@ -556,11 +495,35 @@ export const BOOLEAN_KUNDEN_HISTORY_FIELDS = new Set<keyof KundenStamm>([
   "juristische_person",
   "natuerliche_person",
   "faxen_flag",
+  "consent_email",
+  "consent_sms",
+  "consent_phone",
+  "payment_blocked",
+  "direct_debit_enabled",
 ]);
 
 /** All KundenStamm fields we track for diffs, paired with their i18n label key. */
 const TRACKED_FIELDS: { key: keyof KundenStamm; labelKey: string }[] = [
+  { key: "customer_type", labelKey: "historyFieldCustomerType" },
+  { key: "status", labelKey: "historyFieldStatus" },
   { key: "firmenname", labelKey: "customersLabelCompany" },
+  { key: "first_name", labelKey: "historyFieldFirstName" },
+  { key: "last_name", labelKey: "historyFieldLastName" },
+  { key: "profile_notes", labelKey: "historyFieldProfileNotes" },
+  { key: "acquisition_source", labelKey: "historyFieldAcquisitionSource" },
+  { key: "acquisition_source_entity", labelKey: "historyFieldAcquisitionSourceEntity" },
+  { key: "acquisition_date", labelKey: "historyFieldAcquisitionDate" },
+  { key: "lifecycle_stage", labelKey: "historyFieldLifecycleStage" },
+  { key: "preferred_channel", labelKey: "historyFieldPreferredChannel" },
+  { key: "segment", labelKey: "historyFieldSegment" },
+  { key: "score", labelKey: "historyFieldScore" },
+  { key: "consent_email", labelKey: "historyFieldConsentEmail" },
+  { key: "consent_sms", labelKey: "historyFieldConsentSms" },
+  { key: "consent_phone", labelKey: "historyFieldConsentPhone" },
+  { key: "marketing_notes", labelKey: "historyFieldMarketingNotes" },
+  { key: "customer_role", labelKey: "historyFieldCustomerRole" },
+  { key: "role_valid_from", labelKey: "historyFieldRoleValidFrom" },
+  { key: "role_valid_to", labelKey: "historyFieldRoleValidTo" },
   { key: "branche", labelKey: "customersLabelIndustry" },
   { key: "strasse", labelKey: "customersThStreet" },
   { key: "plz", labelKey: "customersLabelZip" },
@@ -579,6 +542,19 @@ const TRACKED_FIELDS: { key: keyof KundenStamm; labelKey: string }[] = [
   { key: "ust_id_nr", labelKey: "historyFieldUstId" },
   { key: "steuer_nr", labelKey: "historyFieldSteuerNr" },
   { key: "branchen_nr", labelKey: "historyFieldBranchenNr" },
+  { key: "tax_country_type_code", labelKey: "historyFieldTaxCountryTypeCode" },
+  { key: "account_number", labelKey: "historyFieldAccountNumber" },
+  { key: "credit_limit", labelKey: "historyFieldCreditLimit" },
+  { key: "billing_name", labelKey: "historyFieldBillingName" },
+  { key: "billing_street", labelKey: "historyFieldBillingStreet" },
+  { key: "billing_postal_code", labelKey: "historyFieldBillingPostalCode" },
+  { key: "billing_city", labelKey: "historyFieldBillingCity" },
+  { key: "payment_blocked", labelKey: "historyFieldPaymentBlocked" },
+  { key: "bank_name", labelKey: "historyFieldBankname" },
+  { key: "bic", labelKey: "historyFieldBic" },
+  { key: "iban", labelKey: "historyFieldIban" },
+  { key: "direct_debit_enabled", labelKey: "historyFieldDirectDebitEnabled" },
+  { key: "financial_notes", labelKey: "historyFieldFinancialNotes" },
   { key: "gesellschaftsform", labelKey: "historyFieldGesellschaft" },
   { key: "firmenvorsatz", labelKey: "historyFieldFirmenvorsatz" },
   { key: "fzg_haendler", labelKey: "historyFieldFzgHaendler" },

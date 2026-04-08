@@ -8,6 +8,13 @@ import {
   Car,
   FileText,
   ExternalLink,
+  CheckCircle2,
+  AlertCircle,
+  ShieldAlert,
+  Building2,
+  MapPin,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -16,23 +23,29 @@ import {
   type ScanState,
 } from "./DocExtractBanner";
 import {
-  BOOLEAN_KUNDEN_HISTORY_FIELDS,
-  BOOLEAN_WASH_HISTORY_FIELDS,
   type NewKundeInput,
   type KundenWashUpsertFields,
   type NewKundenUnterlageInput,
   type KundenHistoryEntry,
-} from "../store/kundenStore";
+} from "../features/customers/repository/customerRepository";
+import { CustomerHistoryTimeline } from "../features/customers/components/CustomerHistoryTimeline";
 import type { CustomerFieldSuggestions } from "../store/customerFieldSuggestions";
 import { SuggestTextInput } from "./SuggestTextInput";
 import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
 import type { DepartmentArea } from "../types/departmentArea";
 import type {
+  KundenAdresse,
+  KundenKontakt,
+  KundenRisikoanalyse,
   KundenStamm,
   KundenWashStamm,
   ViesCustomerSnapshot,
 } from "../types/kunden";
-import { normalizeLatinAddressLine } from "../common/utils/addressLatinNormalize";
+import { customerRepository } from "../features/customers/repository/customerRepository";
+import {
+  normalizeLatinAddressLine,
+  titleCaseLatinAddressLine,
+} from "../common/utils/addressLatinNormalize";
 import {
   transliterateAddressToAscii,
   transliterateAddressToAsciiMultiline,
@@ -61,6 +74,7 @@ type KontaktEntry = {
   handyCode: string;
   handy: string;
   email: string;
+  website: string;
   bemerkung: string;
 };
 
@@ -104,6 +118,7 @@ function emptyKontakt(): KontaktEntry {
     handyCode: "+49",
     handy: "",
     email: "",
+    website: "",
     bemerkung: "",
   };
 }
@@ -180,6 +195,21 @@ function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+
+const FOCUS_ID_FIRMENNAME = "new-kunde-field-firmenname";
+const FOCUS_ID_STRASSE = "new-kunde-field-strasse";
+const FOCUS_ID_UST = "new-kunde-field-ust-id";
+const FOCUS_ID_KONTAKT_EMAIL = "new-kunde-field-kontakt-email";
+
+function focusModalCustomerField(fieldId: string) {
+  window.setTimeout(() => {
+    const el = document.getElementById(fieldId);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (el instanceof HTMLElement && typeof el.focus === "function") {
+      el.focus({ preventScroll: true });
+    }
+  }, 60);
+}
 
 /** EU / Northern Ireland codes accepted by VIES (VoW). */
 const VIES_MS_OPTIONS: { code: string; label: string }[] = [
@@ -671,6 +701,21 @@ function viesAddressSourceText(r: ViesCheckResult): string | null {
   return isMeaningfulViesText(r.address) ? r.address!.trim() : null;
 }
 
+/** Title-case street/city for VIES split (parsed single-line path may skip normalizeLatinAddressLine). */
+function finalizeViesFormAddressParts(parts: {
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+}): { strasse?: string; plz?: string; ort?: string } {
+  return {
+    strasse: parts.strasse?.trim()
+      ? titleCaseLatinAddressLine(parts.strasse.trim())
+      : parts.strasse,
+    plz: parts.plz?.trim() ? parts.plz.trim() : parts.plz,
+    ort: parts.ort?.trim() ? titleCaseLatinAddressLine(parts.ort.trim()) : parts.ort,
+  };
+}
+
 /** Prefer structured VoW fields from `vies_raw`, then parse the combined `address` string. */
 function extractViesAddressForForm(r: ViesCheckResult): {
   strasse?: string;
@@ -694,7 +739,7 @@ function extractViesAddressForForm(r: ViesCheckResult): {
   const structComplete =
     Boolean(strasse?.trim()) && Boolean(plz?.trim()) && Boolean(ort?.trim());
   if (structComplete) {
-    return { strasse, plz, ort };
+    return finalizeViesFormAddressParts({ strasse, plz, ort });
   }
   const parsedPlz = parsed.plz?.trim();
   const parsedStr = parsed.strasse?.trim();
@@ -714,7 +759,7 @@ function extractViesAddressForForm(r: ViesCheckResult): {
     parsedStr &&
     (rawPlzMissing || streetLooksLikeFullLine || cityContainsPostalPrefix || structuredLooksAdministrative)
   ) {
-    return {
+    return finalizeViesFormAddressParts({
       strasse: parsed.strasse,
       plz: plz?.trim() ? plz : parsed.plz,
       ort:
@@ -723,7 +768,7 @@ function extractViesAddressForForm(r: ViesCheckResult): {
           : ort?.trim()
             ? ort
             : parsed.ort,
-    };
+    });
   }
   const merged = {
     strasse: strasse ?? parsed.strasse,
@@ -737,9 +782,9 @@ function extractViesAddressForForm(r: ViesCheckResult): {
     const lines = sourceAddress.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const first = lines[0] ?? sourceAddress.trim();
     const s = normalizeLatinAddressLine(first, "street");
-    if (s) return { strasse: s };
+    if (s) return finalizeViesFormAddressParts({ strasse: s });
   }
-  return merged;
+  return finalizeViesFormAddressParts(merged);
 }
 
 function normalizeViesRequestDate(raw: string | null | undefined, locale = "en-GB"): string | undefined {
@@ -1246,23 +1291,62 @@ function formatFileSize(n: number): string {
   return `${(n / 1048576).toFixed(1)} MB`;
 }
 
+type AcquisitionSourceForm = "" | "referral" | "website" | "email" | "call";
+type CustomerTypeForm = "" | "legal_entity" | "natural_person";
+type CustomerStatusForm = "" | "active" | "inactive" | "blocked";
+type LifecycleStageForm = "" | "lead" | "qualified" | "active" | "inactive" | "vip" | "lost";
+type ChannelTypeForm = "" | "email" | "phone" | "sms" | "whatsapp" | "mixed" | "none";
+type CustomerRoleForm = "" | "supplier" | "buyer" | "workshop" | "wash";
+
 function initialForm() {
   return {
     aufnahme: "",
+    customer_type: "" as CustomerTypeForm,
+    customer_status: "active" as CustomerStatusForm,
     branche: "",
+    acquisition_source: "" as AcquisitionSourceForm,
+    acquisition_source_entity: "",
     fzgHandel: "" as "" | "ja" | "nein",
     juristische_person: false,
     natuerliche_person: false,
     gesellschaftsform: "",
     firmenvorsatz: "",
     firmenname: "",
+    first_name: "",
+    last_name: "",
+    profile_notes: "",
     bemerkungen: "",
+    acquisition_date: "",
+    lifecycle_stage: "" as LifecycleStageForm,
+    preferred_channel: "" as ChannelTypeForm,
+    segment: "",
+    score: "",
+    consent_email: false,
+    consent_sms: false,
+    consent_phone: false,
+    marketing_notes: "",
+    customer_role: "" as CustomerRoleForm,
+    role_valid_from: "",
+    role_valid_to: "",
     zustaendige_person_name: "nicht zugeordnet",
     adressen: [emptyAdresse()] as AdresseEntry[],
     internet_adr: "",
     kontakte: [emptyKontakt()] as KontaktEntry[],
     art_kunde: "",
     buchungskonto_haupt: "",
+    tax_country_type_code: "",
+    account_number: "",
+    credit_limit: "",
+    billing_name: "",
+    billing_street: "",
+    billing_postal_code: "",
+    billing_city: "",
+    payment_blocked: false,
+    bank_name: "",
+    bic: "",
+    iban: "",
+    direct_debit_enabled: false,
+    financial_notes: "",
     includeWashProfile: false,
     wash_bukto: "",
     wash_limit: "0",
@@ -1283,10 +1367,34 @@ function initialForm() {
     wash_wichtige_infos: "",
     wash_bemerkungen: "",
     wash_lastschrift: false,
+    wash_vehicle_type: "",
   };
 }
 
 type FormState = ReturnType<typeof initialForm>;
+
+/** Stable string compare for unsaved-edit detection (edit mode). */
+function serializeFormStateForDirtyBaseline(state: FormState): string {
+  return JSON.stringify(state);
+}
+
+/** Heuristic profile completeness for Customer 360 summary (0–100). */
+function computeCustomerProfileCompletionPct(state: FormState): number {
+  const a0 = state.adressen[0];
+  const k0 = state.kontakte[0];
+  const checks = [
+    () => Boolean(state.firmenname.trim()),
+    () => Boolean(state.customer_type),
+    () => Boolean(a0?.strasse?.trim()),
+    () => Boolean(a0?.plz?.trim()),
+    () => Boolean(a0?.ort?.trim()),
+    () => Boolean(a0?.land_code?.trim()),
+    () => Boolean(a0?.ust_id_nr?.trim() || a0?.steuer_nr?.trim()),
+    () => Boolean(k0?.email?.trim() || k0?.telefon?.trim() || state.internet_adr?.trim()),
+  ];
+  const n = checks.filter((fn) => fn()).length;
+  return Math.round((n / checks.length) * 100);
+}
 
 function formFromExistingCustomer(
   kunde: KundenStamm,
@@ -1300,54 +1408,162 @@ function formFromExistingCustomer(
       ?.split(",")
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
+  const storedAdressen = Array.isArray(kunde.adressen) ? kunde.adressen : [];
+  const mappedAdressen: AdresseEntry[] =
+    storedAdressen.length > 0
+      ? storedAdressen.map((a, idx) => ({
+          id: a.id || `${kunde.id}-addr-${idx}`,
+          typ: a.typ || ADRESSE_TYPEN[idx] || "Hauptadresse",
+          strasse: a.strasse ?? "",
+          plz: a.plz ?? "",
+          ort: a.ort ?? "",
+          land_code: a.land_code || "DE",
+          art_land_code: a.art_land_code || landCodeToArtLand(a.land_code || "DE"),
+          ust_id_nr: a.ust_id_nr ?? "",
+          steuer_nr: a.steuer_nr ?? "",
+          branchen_nr: a.branchen_nr ?? "",
+        }))
+      : [
+          {
+            ...firstAdresse,
+            strasse: kunde.strasse ?? "",
+            plz: kunde.plz ?? "",
+            ort: kunde.ort ?? "",
+            land_code: kunde.land_code ?? "DE",
+            art_land_code: kunde.art_land_code ?? landCodeToArtLand(kunde.land_code ?? "DE"),
+            ust_id_nr: kunde.ust_id_nr ?? "",
+            steuer_nr: kunde.steuer_nr ?? "",
+            branchen_nr: kunde.branchen_nr ?? "",
+          },
+        ];
+  const storedKontakte = Array.isArray(kunde.kontakte) ? kunde.kontakte : [];
+  const mappedKontakte: KontaktEntry[] =
+    storedKontakte.length > 0
+      ? storedKontakte.map((c, idx) => ({
+          id: c.id || `${kunde.id}-kontakt-${idx}`,
+          name: c.name ?? "",
+          rolle: c.rolle ?? "",
+          telefonCode: c.telefonCode || "+49",
+          telefon: c.telefon ?? "",
+          handyCode: c.handyCode || "+49",
+          handy: c.handy ?? "",
+          email: c.email ?? "",
+          website: c.website ?? "",
+          bemerkung: c.bemerkung ?? "",
+        }))
+      : [
+          {
+            ...kontakt,
+            name: kunde.ansprechpartner ?? "",
+            rolle: kunde.rolle_kontakt ?? "",
+            ...(() => {
+              const tel = splitStoredPhone(kunde.telefonnummer);
+              const fax = splitStoredPhone(kunde.faxnummer);
+              return {
+                telefonCode: tel.code,
+                telefon: tel.number,
+                handyCode: fax.code,
+                handy: fax.number,
+              };
+            })(),
+            email: kunde.email ?? "",
+            website: "",
+            bemerkung: kunde.bemerkungen_kontakt ?? "",
+          },
+        ];
+
+  const rawAcq = (kunde.acquisition_source ?? "").trim().toLowerCase();
+  const acquisition_source: AcquisitionSourceForm =
+    rawAcq === "referral" || rawAcq === "website" || rawAcq === "email" || rawAcq === "call"
+      ? rawAcq
+      : "";
+  const customer_type: CustomerTypeForm =
+    kunde.customer_type === "legal_entity" || kunde.customer_type === "natural_person"
+      ? kunde.customer_type
+      : kunde.juristische_person
+        ? "legal_entity"
+        : kunde.natuerliche_person
+          ? "natural_person"
+          : "";
+  const customer_status: CustomerStatusForm =
+    kunde.status === "active" || kunde.status === "inactive" || kunde.status === "blocked"
+      ? kunde.status
+      : "active";
+  const lifecycle_stage: LifecycleStageForm =
+    kunde.lifecycle_stage === "lead" ||
+    kunde.lifecycle_stage === "qualified" ||
+    kunde.lifecycle_stage === "active" ||
+    kunde.lifecycle_stage === "inactive" ||
+    kunde.lifecycle_stage === "vip" ||
+    kunde.lifecycle_stage === "lost"
+      ? kunde.lifecycle_stage
+      : "";
+  const preferred_channel: ChannelTypeForm =
+    kunde.preferred_channel === "email" ||
+    kunde.preferred_channel === "phone" ||
+    kunde.preferred_channel === "sms" ||
+    kunde.preferred_channel === "whatsapp" ||
+    kunde.preferred_channel === "mixed" ||
+    kunde.preferred_channel === "none"
+      ? kunde.preferred_channel
+      : "";
+  const customer_role: CustomerRoleForm =
+    kunde.customer_role === "supplier" ||
+    kunde.customer_role === "buyer" ||
+    kunde.customer_role === "workshop" ||
+    kunde.customer_role === "wash"
+      ? kunde.customer_role
+      : "";
 
   return {
     ...initialForm(),
     aufnahme: kunde.aufnahme ?? "",
+    customer_type,
+    customer_status,
     branche: kunde.branche ?? "",
+    acquisition_source,
+    acquisition_source_entity: kunde.acquisition_source_entity ?? "",
     fzgHandel: kunde.fzg_haendler == null ? "" : kunde.fzg_haendler ? "ja" : "nein",
     juristische_person: kunde.juristische_person ?? false,
     natuerliche_person: kunde.natuerliche_person ?? false,
     gesellschaftsform: kunde.gesellschaftsform ?? "",
     firmenvorsatz: kunde.firmenvorsatz ?? "",
     firmenname: kunde.firmenname ?? "",
+    first_name: kunde.first_name ?? "",
+    last_name: kunde.last_name ?? "",
+    profile_notes: kunde.profile_notes ?? "",
     bemerkungen: kunde.bemerkungen ?? "",
+    acquisition_date: kunde.acquisition_date ?? "",
+    lifecycle_stage,
+    preferred_channel,
+    segment: kunde.segment ?? "",
+    score: kunde.score != null ? String(kunde.score) : "",
+    consent_email: kunde.consent_email ?? false,
+    consent_sms: kunde.consent_sms ?? false,
+    consent_phone: kunde.consent_phone ?? false,
+    marketing_notes: kunde.marketing_notes ?? "",
+    customer_role,
+    role_valid_from: kunde.role_valid_from ?? "",
+    role_valid_to: kunde.role_valid_to ?? "",
     zustaendige_person_name: kunde.zustaendige_person_name ?? "nicht zugeordnet",
-    adressen: [
-      {
-        ...firstAdresse,
-        strasse: kunde.strasse ?? "",
-        plz: kunde.plz ?? "",
-        ort: kunde.ort ?? "",
-        land_code: kunde.land_code ?? "DE",
-        art_land_code: kunde.art_land_code ?? landCodeToArtLand(kunde.land_code ?? "DE"),
-        ust_id_nr: kunde.ust_id_nr ?? "",
-        steuer_nr: kunde.steuer_nr ?? "",
-        branchen_nr: kunde.branchen_nr ?? "",
-      },
-    ],
+    adressen: mappedAdressen,
     internet_adr: kunde.internet_adr ?? "",
-    kontakte: [
-      {
-        ...kontakt,
-        name: kunde.ansprechpartner ?? "",
-        rolle: kunde.rolle_kontakt ?? "",
-        ...(() => {
-          const tel = splitStoredPhone(kunde.telefonnummer);
-          const fax = splitStoredPhone(kunde.faxnummer);
-          return {
-            telefonCode: tel.code,
-            telefon: tel.number,
-            handyCode: fax.code,
-            handy: fax.number,
-          };
-        })(),
-        email: kunde.email ?? "",
-        bemerkung: kunde.bemerkungen_kontakt ?? "",
-      },
-    ],
+    kontakte: mappedKontakte,
     art_kunde: kunde.art_kunde ?? "",
     buchungskonto_haupt: kunde.buchungskonto_haupt ?? "",
+    tax_country_type_code: kunde.tax_country_type_code ?? "",
+    account_number: kunde.account_number ?? "",
+    credit_limit: kunde.credit_limit != null ? String(kunde.credit_limit) : "",
+    billing_name: kunde.billing_name ?? "",
+    billing_street: kunde.billing_street ?? "",
+    billing_postal_code: kunde.billing_postal_code ?? "",
+    billing_city: kunde.billing_city ?? "",
+    payment_blocked: kunde.payment_blocked ?? false,
+    bank_name: kunde.bank_name ?? "",
+    bic: kunde.bic ?? "",
+    iban: kunde.iban ?? "",
+    direct_debit_enabled: kunde.direct_debit_enabled ?? false,
+    financial_notes: kunde.financial_notes ?? "",
     includeWashProfile: Boolean(wash) || department === "waschanlage",
     wash_bukto: wash?.bukto ?? "",
     wash_limit: String(wash?.limit_betrag ?? 0),
@@ -1368,53 +1584,130 @@ function formFromExistingCustomer(
     wash_wichtige_infos: wash?.wichtige_infos ?? "",
     wash_bemerkungen: wash?.bemerkungen ?? "",
     wash_lastschrift: wash?.lastschrift ?? false,
+    wash_vehicle_type: wash?.wasch_fahrzeug_typ ?? "",
   };
+}
+
+function normalizeAdresseEntriesForPayload(entries: AdresseEntry[]): KundenAdresse[] {
+  return entries.map((a, idx) => ({
+    id: a.id || `addr-${idx}`,
+    typ: (a.typ || ADRESSE_TYPEN[idx] || "Hauptadresse").trim(),
+    strasse: a.strasse.trim(),
+    plz: a.plz.trim(),
+    ort: a.ort.trim(),
+    land_code: (a.land_code || "DE").trim().toUpperCase(),
+    art_land_code: (a.art_land_code || landCodeToArtLand(a.land_code || "DE")).trim(),
+    ust_id_nr: a.ust_id_nr.trim(),
+    steuer_nr: a.steuer_nr.trim(),
+    branchen_nr: a.branchen_nr.trim(),
+  }));
+}
+
+function normalizeKontaktEntriesForPayload(entries: KontaktEntry[]): KundenKontakt[] {
+  return entries.map((k, idx) => ({
+    id: k.id || `kontakt-${idx}`,
+    name: k.name.trim(),
+    rolle: k.rolle.trim(),
+    telefonCode: (k.telefonCode || "+49").trim(),
+    telefon: k.telefon.trim(),
+    handyCode: (k.handyCode || "+49").trim(),
+    handy: k.handy.trim(),
+    email: k.email.trim(),
+    website: emptyToUndef(k.website),
+    bemerkung: k.bemerkung.trim(),
+  }));
 }
 
 function formToPayload(form: FormState): NewKundeInput {
   const fzg_haendler =
     form.fzgHandel === "ja" ? true : form.fzgHandel === "nein" ? false : undefined;
+  const customer_type =
+    form.customer_type ||
+    (form.juristische_person ? "legal_entity" : form.natuerliche_person ? "natural_person" : undefined);
+  const trimmedCompanyName = form.firmenname.trim();
+  const first_name = emptyToUndef(form.first_name);
+  const last_name = emptyToUndef(form.last_name);
+  const profile_notes = emptyToUndef(form.profile_notes);
+  const score = moneyToUndef(form.score);
   const z = form.zustaendige_person_name.trim();
   const zustaendige_person_name =
     z && z !== "nicht zugeordnet" ? z : undefined;
+  const adressen = normalizeAdresseEntriesForPayload(form.adressen);
+  const kontakte = normalizeKontaktEntriesForPayload(form.kontakte);
+  const primaryAdresse = adressen[0];
+  const primaryKontakt = kontakte[0];
 
   return {
     aufnahme: emptyToUndef(form.aufnahme),
-    firmenname: form.firmenname.trim(),
+    customer_type,
+    status: form.customer_status || undefined,
+    firmenname: trimmedCompanyName,
     branche: emptyToUndef(form.branche),
     fzg_haendler,
     juristische_person: form.juristische_person,
     natuerliche_person: form.natuerliche_person,
     gesellschaftsform: emptyToUndef(form.gesellschaftsform),
     firmenvorsatz: emptyToUndef(form.firmenvorsatz),
+    first_name,
+    last_name,
+    profile_notes,
+    acquisition_source: form.acquisition_source ? form.acquisition_source : undefined,
+    acquisition_source_entity: emptyToUndef(form.acquisition_source_entity),
+    acquisition_date: emptyToUndef(form.acquisition_date),
+    lifecycle_stage: form.lifecycle_stage || undefined,
+    preferred_channel: form.preferred_channel || undefined,
+    segment: emptyToUndef(form.segment),
+    score,
+    consent_email: form.consent_email,
+    consent_sms: form.consent_sms,
+    consent_phone: form.consent_phone,
+    marketing_notes: emptyToUndef(form.marketing_notes),
+    customer_role: form.customer_role || undefined,
+    role_valid_from: emptyToUndef(form.role_valid_from),
+    role_valid_to: emptyToUndef(form.role_valid_to),
     bemerkungen: emptyToUndef(form.bemerkungen),
     zustaendige_person_name,
-    strasse: emptyToUndef(form.adressen[0]?.strasse ?? ""),
-    plz: emptyToUndef(form.adressen[0]?.plz ?? ""),
-    ort: emptyToUndef(form.adressen[0]?.ort ?? ""),
-    land_code: form.adressen[0]?.land_code ?? "DE",
-    art_land_code: emptyToUndef(form.adressen[0]?.art_land_code ?? ""),
-    ust_id_nr: emptyToUndef(form.adressen[0]?.ust_id_nr ?? ""),
-    steuer_nr: emptyToUndef(form.adressen[0]?.steuer_nr ?? ""),
-    branchen_nr: emptyToUndef(form.adressen[0]?.branchen_nr ?? ""),
-    ansprechpartner: emptyToUndef(form.kontakte[0]?.name ?? ""),
-    rolle_kontakt: emptyToUndef(form.kontakte[0]?.rolle ?? ""),
+    strasse: emptyToUndef(primaryAdresse?.strasse ?? ""),
+    plz: emptyToUndef(primaryAdresse?.plz ?? ""),
+    ort: emptyToUndef(primaryAdresse?.ort ?? ""),
+    land_code: primaryAdresse?.land_code ?? "DE",
+    art_land_code: emptyToUndef(primaryAdresse?.art_land_code ?? ""),
+    ust_id_nr: emptyToUndef(primaryAdresse?.ust_id_nr ?? ""),
+    steuer_nr: emptyToUndef(primaryAdresse?.steuer_nr ?? ""),
+    branchen_nr: emptyToUndef(primaryAdresse?.branchen_nr ?? ""),
+    tax_country_type_code: emptyToUndef(form.tax_country_type_code),
+    account_number: emptyToUndef(form.account_number),
+    credit_limit: moneyToUndef(form.credit_limit),
+    billing_name: emptyToUndef(form.billing_name),
+    billing_street: emptyToUndef(form.billing_street),
+    billing_postal_code: emptyToUndef(form.billing_postal_code),
+    billing_city: emptyToUndef(form.billing_city),
+    payment_blocked: form.payment_blocked,
+    ansprechpartner: emptyToUndef(primaryKontakt?.name ?? ""),
+    rolle_kontakt: emptyToUndef(primaryKontakt?.rolle ?? ""),
     telefonnummer: emptyToUndef(
-      form.kontakte[0]?.telefon
-        ? `${form.kontakte[0].telefonCode} ${form.kontakte[0].telefon}`
+      primaryKontakt?.telefon
+        ? `${primaryKontakt.telefonCode} ${primaryKontakt.telefon}`
         : ""
     ),
     faxnummer: emptyToUndef(
-      form.kontakte[0]?.handy
-        ? `${form.kontakte[0].handyCode} ${form.kontakte[0].handy}`
+      primaryKontakt?.handy
+        ? `${primaryKontakt.handyCode} ${primaryKontakt.handy}`
         : ""
     ),
-    email: emptyToUndef(form.kontakte[0]?.email ?? ""),
+    email: emptyToUndef(primaryKontakt?.email ?? ""),
     internet_adr: emptyToUndef(form.internet_adr),
-    bemerkungen_kontakt: emptyToUndef(form.kontakte[0]?.bemerkung ?? ""),
+    bemerkungen_kontakt: emptyToUndef(primaryKontakt?.bemerkung ?? ""),
     faxen_flag: false,
+    bank_name: emptyToUndef(form.bank_name),
+    bic: emptyToUndef(form.bic),
+    iban: emptyToUndef(form.iban),
+    direct_debit_enabled: form.direct_debit_enabled,
+    financial_notes: emptyToUndef(form.financial_notes),
     art_kunde: emptyToUndef(form.art_kunde),
     buchungskonto_haupt: emptyToUndef(form.buchungskonto_haupt),
+    adressen,
+    kontakte,
   };
 }
 
@@ -1537,28 +1830,20 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
     netto_preis: moneyToUndef(form.wash_netto_preis),
     brutto_preis: moneyToUndef(form.wash_brutto_preis),
     wasch_intervall: emptyToUndef(form.wasch_intervall),
+    wasch_fahrzeug_typ: emptyToUndef(form.wash_vehicle_type),
   };
 }
 
 const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
 
-function formatHistoryValueDisplay(
-  field: string,
-  raw: string,
-  t: (key: string, fallback: string) => string
-): string {
-  if (!raw) return raw;
-  if (raw === "true" || raw === "false") {
-    const washKey = field.startsWith("wash_") ? field.slice(5) : null;
-    if (washKey && BOOLEAN_WASH_HISTORY_FIELDS.has(washKey as keyof KundenWashStamm)) {
-      return raw === "true" ? t("historyBoolYes", "Yes") : t("historyBoolNo", "No");
-    }
-    if (!washKey && BOOLEAN_KUNDEN_HISTORY_FIELDS.has(field as keyof KundenStamm)) {
-      return raw === "true" ? t("historyBoolYes", "Yes") : t("historyBoolNo", "No");
-    }
-  }
-  return raw;
-}
+/** Same document date fields as Risk Analysis sidebar — keep in sync with `hasRisikoAlert` / CustomersPage. */
+const RISK_DOC_EXPIRY_FIELD_KEYS = [
+  "reg_ausz",
+  "wirt_ber_erm",
+  "ausw_kop_wirt_ber",
+  "ausw_gueltig_bis",
+  "ausw_kop_abholer",
+] as const satisfies readonly (keyof KundenRisikoanalyse)[];
 
 const inputClass =
   "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
@@ -1570,6 +1855,10 @@ type Props = {
   department?: DepartmentArea;
   mode?: "create" | "edit";
   editInitial?: { kunde: KundenStamm; wash?: KundenWashStamm | null };
+  /** Edit mode: risk profile for Customer 360 document-expiry chip (omit in create mode). */
+  editRisikoProfile?: KundenRisikoanalyse | null;
+  /** Edit mode: scroll the modal content to the document expiry / risk analysis block (e.g. sidebar). */
+  onScrollToDocumentExpiry?: () => void;
   editKundeTopContent?: ReactNode;
   editAdresseExtraContent?: ReactNode;
   editKundeSideContent?: ReactNode;
@@ -1604,6 +1893,8 @@ export function NewCustomerModal({
   department,
   mode = "create",
   editInitial,
+  editRisikoProfile,
+  onScrollToDocumentExpiry,
   editKundeTopContent,
   editAdresseExtraContent,
   editKundeSideContent,
@@ -1636,6 +1927,17 @@ export function NewCustomerModal({
     waschanlage: t("newCustomerTabWaschanlage", "Car wash"),
     history: t("historyTabLabel", "History"),
   }), [t]);
+  const acquisitionSourceOptions = useMemo(
+    () =>
+      [
+        { value: "" as const, label: t("newCustomerAcquisitionSourceNone", "Select source") },
+        { value: "referral" as const, label: t("newCustomerAcquisitionReferral", "Referral") },
+        { value: "website" as const, label: t("newCustomerAcquisitionWebsite", "Website") },
+        { value: "email" as const, label: t("newCustomerAcquisitionEmail", "Email") },
+        { value: "call" as const, label: t("newCustomerAcquisitionCall", "Call") },
+      ] as const,
+    [t]
+  );
   const continentLabels = useMemo(
     (): Record<ContinentId, string> => ({
       europe: t("newCustomerContinentEurope", "Europe"),
@@ -1689,9 +1991,32 @@ export function NewCustomerModal({
   // Termin/Beziehung, etc.) creates a new `editInitial` object reference and
   // causes this effect to reset the form, losing any unsaved edits.
   const wasOpenRef = useRef(false);
+  const dirtyBaselineRef = useRef("");
+  const [footerMessage, setFooterMessage] = useState<{
+    type: "error";
+    text: string;
+    moreCount?: number;
+  } | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [copyFlash, setCopyFlash] = useState<"ok" | "err" | null>(null);
+  const copyFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
+    return () => {
+      if (copyFlashTimerRef.current) clearTimeout(copyFlashTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      dirtyBaselineRef.current = "";
+      wasOpenRef.current = false;
+      setFooterMessage(null);
+      setShowDiscardConfirm(false);
+      return;
+    }
     const justOpened = open && !wasOpenRef.current;
-    wasOpenRef.current = open;
+    wasOpenRef.current = true;
     if (!justOpened) return;
 
     const nowAufnahme = new Date().toLocaleString(localeTag, { dateStyle: "short", timeStyle: "medium" });
@@ -1703,6 +2028,8 @@ export function NewCustomerModal({
             aufnahme: nowAufnahme,
             includeWashProfile: department === "waschanlage",
           };
+    dirtyBaselineRef.current = serializeFormStateForDirtyBaseline(prepared);
+    setFooterMessage(null);
     setForm(prepared);
     setTab(isEditMode ? "kunde" : "vat");
     setActiveKontaktIdx(0);
@@ -1738,6 +2065,7 @@ export function NewCustomerModal({
     { kuNr: string; firmenname: string; strasse?: string; plz?: string; ort?: string }[]
   >([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const handleSaveRef = useRef<() => void>(() => {});
 
   /** Fields this mock extractor can fill — maps form keys to realistic demo values */
   const MOCK_EXTRACTED_FIRMA: Partial<Record<keyof FormState, FormState[keyof FormState]>> = {
@@ -1901,13 +2229,25 @@ export function NewCustomerModal({
       if (text) return applyFriendly(text)
     }
 
-    return "Prüfung fehlgeschlagen — keine Detail-Antwort vom Server (möglicherweise Proxy-Timeout oder CORS-Problem)."
+    return t(
+      "vatCheckErrorNoServerDetail",
+      "Check failed — no detailed message from the server (proxy timeout or gateway error)."
+    )
   }
 
-  const runVatCheckLegacy = async () => {
+  const vatErrorBodyHasDetail = (b: Record<string, unknown> | null): boolean => {
+    if (!b || typeof b !== "object") return false;
+    const d = b.detail ?? b.message ?? b.error;
+    if (d === undefined || d === null) return false;
+    if (typeof d === "string") return Boolean(d.trim());
+    if (Array.isArray(d)) return d.length > 0;
+    return true;
+  };
+
+  const runVatCheck = async () => {
     const trimmed = viesVatInput.trim();
     if (!trimmed) {
-      setVatCheckError("Bitte USt-IdNr. eingeben.");
+      setVatCheckError(t("newCustomerVatEmptyInput", "Please enter a VAT ID."));
       setVatCheckResult(null);
       return;
     }
@@ -1926,12 +2266,11 @@ export function NewCustomerModal({
       });
       // status 0 means the browser blocked the request (CORS / network).
       if (res.status === 0) {
-        const corsHint = {
-          error: "CORS oder Netzwerkfehler (HTTP-Status 0)",
-          hint: "Das Backend hat geantwortet, aber der Browser blockiert die Antwort. Stellen Sie sicher, dass CORS_ORIGINS auf dem Server die Cloud-Domain enthält.",
-        };
         setVatCheckError(
-          "CORS-Fehler: Der Browser blockiert die Antwort des Backends. Bitte CORS_ORIGINS in der Cloud-Konfiguration prüfen."
+          t(
+            "vatCheckErrorCorsOrNetwork",
+            "CORS or network error (HTTP 0): the browser blocked or failed the request. Add your frontend origin to CORS_ORIGINS (or CORS_ORIGIN_REGEX for Vercel previews) on the API host."
+          )
         );
         return;
       }
@@ -1941,26 +2280,35 @@ export function NewCustomerModal({
       try {
         parsedBody = textBody.trim() ? JSON.parse(textBody) : null;
       } catch {
-        parseError = "Antwort war kein gültiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)";
+        parseError = t(
+          "vatCheckErrorNonJsonHint",
+          "Response was not valid JSON (often a proxy/gateway HTML page or timeout)."
+        );
       }
 
       if (!res.ok) {
         const body = parsedBody as Record<string, unknown> | null;
         if (parseError) {
           setVatCheckError(
-            `HTTP ${res.status} — ${parseError}. Proxy-Timeout? Prüfen Sie VIES_MAX_TOTAL_SEC in der Backend-Konfiguration.`
+            t(
+              "vatCheckErrorHttpNonJson",
+              "HTTP {status} — {hint} Lower VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC (or proxy limit) so the VAT check finishes before the gateway times out."
+            )
+              .replace("{status}", String(res.status))
+              .replace("{hint}", parseError)
           );
           return;
         }
-        // Empty body — show the HTTP status code clearly.
-        if (!body || Object.keys(body).length === 0) {
-          const hint =
-            res.status === 405
-              ? `HTTP 405 — der Server verbietet POST auf diesem Pfad. Im Cloud-Deployment fehlt wahrscheinlich die Umgebungsvariable VITE_API_BASE_URL (Build-Zeit). Ohne sie landen Anfragen beim Frontend-Host statt beim Python-Backend. Setzen Sie VITE_API_BASE_URL=https://ihr-backend.example.com in den Build-Einstellungen und bauen Sie das Frontend neu.`
-              : res.status === 503
-                ? `HTTP 503 — leere Antwort. Oft Gateway/Proxy-Timeout oder Backend-Cold-Start. Prüfen Sie Backend-Logs; setzen Sie VIES_MAX_TOTAL_SEC niedriger; bei halb gesetzten VIES_REQUESTER_CC/VIES_REQUESTER_VAT beide leer setzen oder beide korrekt befüllen. CORS: CORS_ORIGINS bzw. CORS_ORIGIN_REGEX.`
-                : `HTTP ${res.status} — leere Antwort vom Server. Mögliche Ursachen: Proxy-Timeout, Cold-Start, falsches API-Ziel (VITE_API_BASE_URL), oder CORS (CORS_ORIGINS / CORS_ORIGIN_REGEX). Backend-Logs prüfen.`;
-          setVatCheckError(hint);
+        if (!vatErrorBodyHasDetail(body)) {
+          const hint405 = t(
+            "vatCheckErrorHttp405",
+            "HTTP 405 — POST is not allowed on this URL. In cloud builds, VITE_API_BASE_URL is often missing, so requests hit the static host instead of the Python API. Set VITE_API_BASE_URL to your API origin at build time and redeploy."
+          );
+          const hintGeneric = t(
+            "vatCheckErrorHttpEmptyBody",
+            "HTTP {status} — empty error body. Typical causes: reverse-proxy or gateway timeout, cold start, or the API worker stopped. If you see this status in the UI, the response usually reached the browser (CORS is often already OK). Check API logs, set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit, and set CORS_ORIGINS / CORS_ORIGIN_REGEX for your frontend origin."
+          ).replace("{status}", String(res.status));
+          setVatCheckError(res.status === 405 ? hint405 : hintGeneric);
           return;
         }
         setVatCheckError(formatVatCheckDetail(body));
@@ -1979,101 +2327,22 @@ export function NewCustomerModal({
       const jsMsg = err instanceof Error ? err.message : String(err)
       const targetUrl = `${API_BASE || "(Vite-Proxy)"}/api/v1/vat/check`
       const hint = API_BASE
-        ? `Prüfen Sie, ob das Backend unter ${API_BASE} läuft und CORS_ORIGINS diese Domain enthält.`
-        : "Lokal: Läuft das Python-Backend? (uvicorn main:app --reload --port 8000). Cloud: VITE_API_BASE_URL als Build-Variable setzen."
+        ? t(
+            "vatCheckErrorNetworkHintApiBase",
+            "Check that the API is running at {base} and CORS_ORIGINS (or CORS_ORIGIN_REGEX) includes your frontend origin."
+          ).replace("{base}", API_BASE)
+        : t(
+            "vatCheckErrorNetworkHintLocal",
+            "Local: start the API (e.g. uvicorn main:app --reload --port 8000). Cloud: set VITE_API_BASE_URL at build time."
+          )
       setVatCheckError(
-        `Netzwerkfehler — ${jsMsg}. Ziel: ${targetUrl}. ${hint}`
-      );
-    } finally {
-      setVatCheckLoading(false);
-    }
-  };
-
-  const runVatCheck = async () => {
-    const trimmed = viesVatInput.trim();
-    if (!trimmed) {
-      setVatCheckError("Bitte USt-IdNr. eingeben.");
-      setVatCheckResult(null);
-      return;
-    }
-    setVatCheckLoading(true);
-    setVatCheckError(null);
-    setVatCheckResult(null);
-    try {
-      const requestPayload = JSON.stringify({
-        country_code: viesCountry,
-        vat_number: trimmed,
-      });
-      const sendVatRequest = () =>
-        fetch(`${API_BASE}/api/v1/vat/check`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: requestPayload,
-        });
-
-      let res = await sendVatRequest();
-      if (res.status === 0) {
-        setVatCheckError(
-          "CORS-Fehler: Der Browser blockiert die Antwort des Backends. Bitte CORS_ORIGINS in der Cloud-Konfiguration pruefen."
-        );
-        return;
-      }
-
-      const retryableEmptyStatuses = new Set([500, 502, 503, 504]);
-      let textBody = await res.text();
-      let retriedAfterEmpty5xx = false;
-      if (!res.ok && !textBody.trim() && retryableEmptyStatuses.has(res.status)) {
-        await new Promise((resolve) => setTimeout(resolve, 750));
-        retriedAfterEmpty5xx = true;
-        res = await sendVatRequest();
-        textBody = await res.text();
-      }
-
-      let parsedBody: unknown = null;
-      let parseError: string | null = null;
-      try {
-        parsedBody = textBody.trim() ? JSON.parse(textBody) : null;
-      } catch {
-        parseError = "Antwort war kein gueltiges JSON (vermutlich Proxy-Timeout oder Gateway-Fehler)";
-      }
-
-      if (!res.ok) {
-        const body = parsedBody as Record<string, unknown> | null;
-        if (parseError) {
-          setVatCheckError(
-            `HTTP ${res.status} - ${parseError}. Proxy-Timeout? Pruefen Sie VIES_MAX_TOTAL_SEC in der Backend-Konfiguration.`
-          );
-          return;
-        }
-        if (!body || Object.keys(body).length === 0) {
-          const hint =
-            res.status === 405
-              ? "HTTP 405 - der Server verbietet POST auf diesem Pfad. Im Cloud-Deployment fehlt wahrscheinlich VITE_API_BASE_URL (Build-Zeit). Setzen Sie VITE_API_BASE_URL=https://ihr-backend.example.com und bauen Sie das Frontend neu."
-              : `HTTP ${res.status} - leere Antwort vom Server${retriedAfterEmpty5xx ? " (auch nach erneutem Versuch)" : ""}. Moegliche Ursachen: Proxy-Timeout oder Cold-Start des Backends.`;
-          setVatCheckError(hint);
-          return;
-        }
-        setVatCheckError(formatVatCheckDetail(body));
-        return;
-      }
-
-      const body =
-        normalizeViesCheckResponseFromApi(parsedBody) ?? (parsedBody as ViesCheckResult);
-      setVatCheckResult(body);
-      const apiCc = String(body.country_code ?? "")
-        .trim()
-        .toUpperCase();
-      if (apiCc && VIES_MS_OPTIONS.some((o) => o.code === apiCc)) {
-        setViesCountry(apiCc);
-      }
-    } catch (err) {
-      const jsMsg = err instanceof Error ? err.message : String(err);
-      const targetUrl = `${API_BASE || "(Vite-Proxy)"}/api/v1/vat/check`;
-      const hint = API_BASE
-        ? `Pruefen Sie, ob das Backend unter ${API_BASE} laeuft und CORS_ORIGINS diese Domain enthaelt.`
-        : "Lokal: Laeuft das Python-Backend? (uvicorn main:app --reload --port 8000). Cloud: VITE_API_BASE_URL als Build-Variable setzen.";
-      setVatCheckError(
-        `Netzwerkfehler - ${jsMsg}. Ziel: ${targetUrl}. ${hint}`
+        t(
+          "vatCheckErrorNetwork",
+          "Network error — {msg}. Target: {url}. {hint}"
+        )
+          .replace("{msg}", jsMsg)
+          .replace("{url}", targetUrl)
+          .replace("{hint}", hint)
       );
     } finally {
       setVatCheckLoading(false);
@@ -2150,9 +2419,38 @@ export function NewCustomerModal({
   };
 
   const handleSave = () => {
+    setFooterMessage(null);
+    type Issue = { message: string; tab: TabId; fieldId: string; preFocus?: () => void };
+    const issues: Issue[] = [];
     if (!form.firmenname.trim()) {
-      alert(t("newCustomerRequiredFirmenname", "Please enter a company name."));
-      setTab("kunde");
+      issues.push({
+        message: t("newCustomerRequiredFirmenname", "Please enter a company name."),
+        tab: "kunde",
+        fieldId: FOCUS_ID_FIRMENNAME,
+      });
+    }
+    const em = form.kontakte[0]?.email?.trim() ?? "";
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      issues.push({
+        message: t(
+          "newCustomerInvalidEmail",
+          "Please enter a valid email address for the primary contact."
+        ),
+        tab: "kunde",
+        fieldId: FOCUS_ID_KONTAKT_EMAIL,
+        preFocus: () => setActiveKontaktIdx(0),
+      });
+    }
+    if (issues.length > 0) {
+      const [first, ...rest] = issues;
+      setFooterMessage({
+        type: "error",
+        text: first.message,
+        moreCount: rest.length > 0 ? rest.length : undefined,
+      });
+      setTab(first.tab);
+      first.preFocus?.();
+      focusModalCustomerField(first.fieldId);
       return;
     }
     if (!isEditMode && duplicateCheck) {
@@ -2174,6 +2472,7 @@ export function NewCustomerModal({
     }
     submitCustomer(false);
   };
+  handleSaveRef.current = handleSave;
 
   const handleDuplicateSaveAnyway = () => {
     setShowDuplicateWarning(false);
@@ -2185,12 +2484,180 @@ export function NewCustomerModal({
     submitCustomer(false);
   };
 
+  const draftDiffersFromOpen =
+    dirtyBaselineRef.current.length > 0 &&
+    serializeFormStateForDirtyBaseline(form) !== dirtyBaselineRef.current;
+  const isFormDirty = draftDiffersFromOpen;
+
+  const requestClose = useCallback(() => {
+    if (showDiscardConfirm) {
+      setShowDiscardConfirm(false);
+      return;
+    }
+    if (draftDiffersFromOpen) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    onClose();
+  }, [draftDiffersFromOpen, onClose, showDiscardConfirm]);
+
+  const performCloseDiscard = useCallback(() => {
+    setShowDiscardConfirm(false);
+    onClose();
+  }, [onClose]);
+
+  const flashCopyResult = useCallback((ok: boolean) => {
+    if (copyFlashTimerRef.current) clearTimeout(copyFlashTimerRef.current);
+    setCopyFlash(ok ? "ok" : "err");
+    copyFlashTimerRef.current = setTimeout(() => {
+      setCopyFlash(null);
+      copyFlashTimerRef.current = null;
+    }, 1600);
+  }, []);
+
+  const copyPlainText = useCallback(
+    async (text: string) => {
+      const v = text.trim();
+      if (!v) {
+        flashCopyResult(false);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(v);
+        flashCopyResult(true);
+      } catch {
+        flashCopyResult(false);
+      }
+    },
+    [flashCopyResult]
+  );
+
+  const goToCompanyFromSummary = useCallback(() => {
+    setTab("kunde");
+    setActiveAdresseIdx(0);
+    focusModalCustomerField(FOCUS_ID_FIRMENNAME);
+  }, []);
+
+  const goToAddressFromSummary = useCallback(() => {
+    setTab("kunde");
+    setActiveAdresseIdx(0);
+    focusModalCustomerField(FOCUS_ID_STRASSE);
+  }, []);
+
+  const goToVatFieldFromSummary = useCallback(() => {
+    setTab("kunde");
+    setActiveAdresseIdx(0);
+    focusModalCustomerField(FOCUS_ID_UST);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (showDiscardConfirm) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setShowDiscardConfirm(false);
+        }
+        return;
+      }
+      if (showDuplicateWarning || showAttachPrompt) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSaveRef.current();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        requestClose();
+        return;
+      }
+      if (e.altKey && !e.repeat) {
+        const d = Number(e.key);
+        if (d >= 1 && d <= tabOrder.length) {
+          e.preventDefault();
+          setTab(tabOrder[d - 1]!);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    open,
+    showDiscardConfirm,
+    showDuplicateWarning,
+    showAttachPrompt,
+    tabOrder,
+    requestClose,
+  ]);
+
+  const customer360EditSummary = useMemo(() => {
+    if (!isEditMode || !editInitial?.kunde) return null;
+    const k = editInitial.kunde;
+    const pct = computeCustomerProfileCompletionPct(form);
+    let vatKind: "valid" | "invalid" | "unknown" = "unknown";
+    if (vatCheckResult != null) {
+      vatKind = coerceViesCheckValid(vatCheckResult.valid) ? "valid" : "invalid";
+    } else if (k.vies_snapshot != null) {
+      vatKind = k.vies_snapshot.valid ? "valid" : "invalid";
+    }
+    let riskKind: "blocked" | "payment" | "billing" | "low" = "low";
+    if (form.customer_status === "blocked") riskKind = "blocked";
+    else if (form.payment_blocked) riskKind = "payment";
+    else if (!form.iban.trim() && !form.bic.trim()) riskKind = "billing";
+
+    const lastEditedLine =
+      k.updated_at != null && String(k.updated_at).trim() !== ""
+        ? `${k.last_edited_by_name ?? t("auditUnknownEditor", "Unknown")} · ${new Date(k.updated_at).toLocaleString(localeTag, {
+            dateStyle: "short",
+            timeStyle: "short",
+          })}`
+        : null;
+    const vatRequestRaw =
+      (vatCheckResult?.request_date && String(vatCheckResult.request_date).trim()) ||
+      (k.vies_snapshot?.request_date && String(k.vies_snapshot.request_date).trim()) ||
+      "";
+    const vatRequestDateDisplay = vatRequestRaw
+      ? normalizeViesRequestDate(vatRequestRaw, localeTag) ?? vatRequestRaw
+      : null;
+    const vatRequestMs = vatRequestRaw ? Date.parse(vatRequestRaw) : NaN;
+    const vatRequestDateIso =
+      vatRequestRaw && !Number.isNaN(vatRequestMs) ? new Date(vatRequestMs).toISOString() : null;
+    const a0 = form.adressen[0];
+    const addrParts = [
+      a0?.strasse?.trim(),
+      [a0?.plz?.trim(), a0?.ort?.trim()].filter(Boolean).join(" ").trim() || null,
+      a0?.land_code?.trim(),
+    ].filter(Boolean) as string[];
+    const addressLine = addrParts.length > 0 ? addrParts.join(", ") : "";
+    const companyLine = (form.firmenname ?? "").trim();
+    return {
+      pct,
+      vatKind,
+      riskKind,
+      lastEditedLine,
+      kuNr: k.kunden_nr,
+      vatRequestDateDisplay,
+      vatRequestDateIso,
+      companyLine,
+      addressLine,
+    };
+  }, [isEditMode, editInitial, form, vatCheckResult, localeTag, t]);
+
+  const customer360DocExpiryAlertCount = useMemo(() => {
+    if (!isEditMode || editRisikoProfile === undefined) return null;
+    if (!editRisikoProfile) return 0;
+    return RISK_DOC_EXPIRY_FIELD_KEYS.filter((key) => {
+      const s = customerRepository.getExpiryStatus(editRisikoProfile[key] as string | undefined);
+      return s === "expired" || s === "critical" || s === "warning";
+    }).length;
+  }, [isEditMode, editRisikoProfile]);
+
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-[2px] sm:p-4 md:p-5"
-      onClick={onClose}
+      onClick={requestClose}
       role="presentation"
     >
       <div
@@ -2199,6 +2666,7 @@ export function NewCustomerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-kunde-title"
+        aria-describedby="new-kunde-shortcuts-hint"
       >
         {/* Title bar — inspired by legacy DEMA header */}
         <div className="relative flex shrink-0 flex-wrap items-start justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-4 pr-14 text-white sm:flex-nowrap sm:px-6 sm:pr-6">
@@ -2220,7 +2688,7 @@ export function NewCustomerModal({
               const k = editInitial.kunde;
               const fmt = (iso?: string) =>
                 iso
-                  ? new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })
+                  ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
                   : "—";
               return (
                 <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
@@ -2265,7 +2733,9 @@ export function NewCustomerModal({
                 </div>
               );
             })() : (
-              <p className="mt-1 text-xs text-slate-400">DEMA Management</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {t("newCustomerModalBrandSubtitle", "DEMA Management")}
+              </p>
             )}
           </div>
           <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end sm:text-right">
@@ -2276,13 +2746,245 @@ export function NewCustomerModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="absolute right-2 top-2 rounded-xl p-2 text-slate-300 hover:bg-white/10 hover:text-white"
             aria-label={t("newCustomerModalClose", "Close")}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {isEditMode && customer360EditSummary ? (
+          <div className="shrink-0 border-b border-slate-200/90 bg-gradient-to-br from-slate-100/90 via-white to-slate-50/95 px-3 py-2 sm:px-4 sm:py-2.5">
+            <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-gradient-to-r from-slate-50/95 to-white px-3 py-1.5 sm:px-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                  {t("customer360SummaryStripTitle", "Customer 360 overview")}
+                </p>
+                {copyFlash === "ok" ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600" role="status">
+                    <Check className="h-3.5 w-3.5" aria-hidden />
+                    {t("newCustomerCopiedToClipboard", "Copied")}
+                  </span>
+                ) : copyFlash === "err" ? (
+                  <span className="text-[10px] font-semibold text-red-600" role="status">
+                    {t("newCustomerCopyFailed", "Copy failed")}
+                  </span>
+                ) : null}
+              </div>
+              <div className="grid gap-3 p-3 sm:gap-3.5 sm:p-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+                <div className="min-w-0">
+                  <div className="flex gap-2 sm:gap-3">
+                    <div
+                      className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 shadow-inner shadow-blue-900/5 sm:flex"
+                      aria-hidden
+                    >
+                      <Building2 className="h-4 w-4" strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="min-w-0">
+                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          {t("customer360StripCompany", "Company")}
+                        </p>
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+                          <button
+                            type="button"
+                            onClick={goToCompanyFromSummary}
+                            title={t("newCustomerGoToFieldCompany", "Open Customer & Address — company name")}
+                            className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-sm font-semibold leading-snug tracking-tight text-slate-900 transition hover:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-blue-400/50 sm:text-base"
+                          >
+                            {customer360EditSummary.companyLine || "—"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void copyPlainText(customer360EditSummary.companyLine)}
+                            disabled={!customer360EditSummary.companyLine.trim()}
+                            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30"
+                            aria-label={t("newCustomerCopyCompanyNameAria", "Copy company name")}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                          <span
+                            className="inline-flex shrink-0 items-center rounded-lg bg-gradient-to-br from-slate-50 to-slate-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-slate-800 shadow-sm ring-1 ring-slate-200/70 sm:text-[11px]"
+                            title={t("customer360ChipKuNr", "Cust. no.")}
+                          >
+                            {t("customer360ChipKuNr", "Cust. no.")}{" "}
+                            <span className="text-slate-950">{customer360EditSummary.kuNr}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => void copyPlainText(customer360EditSummary.kuNr)}
+                            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            aria-label={t("newCustomerCopyKuNrAria", "Copy customer number")}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex min-w-0 items-start gap-1 border-t border-slate-100 pt-2">
+                        <button
+                          type="button"
+                          onClick={goToAddressFromSummary}
+                          title={t("newCustomerGoToFieldAddress", "Open Customer & Address — street / ZIP / city")}
+                          className="flex min-w-0 flex-1 gap-2 rounded-md px-1 py-0.5 text-left transition hover:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+                        >
+                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                              {t("customer360StripAddress", "Address")}
+                            </p>
+                            <p
+                              className="text-xs leading-snug text-slate-600 line-clamp-2 break-words sm:text-sm sm:leading-snug"
+                              title={customer360EditSummary.addressLine || undefined}
+                            >
+                              {customer360EditSummary.addressLine || "—"}
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void copyPlainText(customer360EditSummary.addressLine)}
+                          disabled={!customer360EditSummary.addressLine.trim()}
+                          className="mt-0.5 shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30"
+                          aria-label={t("newCustomerCopyAddressAria", "Copy address")}
+                        >
+                          <Copy className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="min-w-0 border-t border-slate-100 pt-2.5 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 lg:sr-only">
+                    {t("customer360StripMetrics", "Status & profile")}
+                  </p>
+                  <div className="customer360-strip-chips flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex cursor-default items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs ${
+                  form.customer_status === "active"
+                    ? "border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-emerald-50/30 text-emerald-900 shadow-emerald-900/[0.06]"
+                    : form.customer_status === "inactive"
+                      ? "border-slate-200/90 bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700"
+                      : "border-red-200/90 bg-gradient-to-br from-red-50 via-rose-50/50 to-red-50/20 text-red-900 shadow-red-900/[0.06]"
+                }`}
+              >
+                {t("customer360ChipStatus", "Status")}:{" "}
+                {form.customer_status === "active"
+                  ? t("newCustomerStatusActive", "Active")
+                  : form.customer_status === "inactive"
+                    ? t("newCustomerStatusInactive", "Inactive")
+                    : t("newCustomerStatusBlocked", "Blocked")}
+              </span>
+              <button
+                type="button"
+                onClick={goToVatFieldFromSummary}
+                title={t("newCustomerGoToFieldVat", "Open Customer & Address — VAT ID")}
+                className={`inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-lg border px-2.5 py-1 text-left text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-[0.99] sm:max-w-none sm:text-xs ${
+                  customer360EditSummary.vatKind === "valid"
+                    ? "border-emerald-300/80 bg-gradient-to-br from-emerald-50 to-teal-50/60 text-emerald-900 shadow-emerald-900/[0.07] focus:ring-emerald-400/50"
+                    : customer360EditSummary.vatKind === "invalid"
+                      ? "border-amber-300/80 bg-gradient-to-br from-amber-50 to-orange-50/50 text-amber-950 shadow-amber-900/[0.06] focus:ring-amber-400/45"
+                      : "border-slate-200/90 bg-gradient-to-br from-slate-50 to-indigo-50/35 text-slate-700 focus:ring-indigo-400/40"
+                }`}
+              >
+                {customer360EditSummary.vatKind === "valid" ? (
+                  <CheckCircle2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
+                ) : customer360EditSummary.vatKind === "invalid" ? (
+                  <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
+                ) : null}
+                <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                  <span>
+                    {t("customer360ChipVat", "VAT")}:{" "}
+                    {customer360EditSummary.vatKind === "valid"
+                      ? t("customer360VatValid", "VAT valid")
+                      : customer360EditSummary.vatKind === "invalid"
+                        ? t("customer360VatInvalid", "VAT invalid")
+                        : t("customer360VatUnknown", "Not verified")}
+                  </span>
+                  {customer360EditSummary.vatRequestDateDisplay ? (
+                    <>
+                      <span className="opacity-70" aria-hidden>
+                        {" · "}
+                      </span>
+                      {customer360EditSummary.vatRequestDateIso ? (
+                        <time
+                          dateTime={customer360EditSummary.vatRequestDateIso}
+                          className="tabular-nums font-normal opacity-90"
+                          title={t("customer360VatRequestDateTitle", "VIES check date")}
+                        >
+                          {customer360EditSummary.vatRequestDateDisplay}
+                        </time>
+                      ) : (
+                        <span
+                          className="tabular-nums font-normal opacity-90"
+                          title={t("customer360VatRequestDateTitle", "VIES check date")}
+                        >
+                          {customer360EditSummary.vatRequestDateDisplay}
+                        </span>
+                      )}
+                    </>
+                  ) : null}
+                </span>
+              </button>
+              <span className="inline-flex cursor-default items-center gap-1 rounded-lg border border-indigo-200/80 bg-gradient-to-br from-indigo-50 via-blue-50/70 to-violet-50/40 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 shadow-sm shadow-indigo-900/[0.05] ring-1 ring-indigo-200/50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs">
+                {t("customer360ChipCompletion", "Profile")}
+                <span className="tabular-nums font-bold text-indigo-900">{customer360EditSummary.pct}%</span>
+              </span>
+              <span
+                className={`inline-flex cursor-default items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs ${
+                  customer360EditSummary.riskKind === "blocked" || customer360EditSummary.riskKind === "payment"
+                    ? "border-red-300/80 bg-gradient-to-br from-red-50 via-rose-50/60 to-red-50/25 text-red-900 shadow-red-900/[0.07]"
+                    : customer360EditSummary.riskKind === "billing"
+                      ? "border-amber-300/80 bg-gradient-to-br from-amber-50 to-yellow-50/40 text-amber-950 shadow-amber-900/[0.05]"
+                      : "border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 via-slate-50/50 to-slate-50/30 text-slate-700"
+                }`}
+              >
+                {t("customer360ChipRisk", "Risk")}
+                {": "}
+                {customer360EditSummary.riskKind === "blocked"
+                  ? t("customer360RiskBlocked", "Blocked account")
+                  : customer360EditSummary.riskKind === "payment"
+                    ? t("customer360RiskPayment", "Payment blocked")
+                    : customer360EditSummary.riskKind === "billing"
+                      ? t("customer360RiskBilling", "Billing incomplete")
+                      : t("customer360RiskLow", "No flags")}
+              </span>
+              {onScrollToDocumentExpiry ? (
+                <button
+                  type="button"
+                  onClick={onScrollToDocumentExpiry}
+                  className={
+                    customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
+                      ? "inline-flex max-w-full items-center gap-1 rounded-lg border border-red-300/85 bg-gradient-to-br from-red-50 via-rose-50/70 to-red-50/30 px-2.5 py-1 text-left text-[11px] font-semibold text-red-900 shadow-md shadow-red-900/[0.08] ring-1 ring-red-200/60 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-400/45 focus:ring-offset-1 active:scale-[0.99] sm:text-xs"
+                      : "inline-flex max-w-full items-center gap-1 rounded-lg border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-sky-50/50 to-slate-50/40 px-2.5 py-1 text-left text-[11px] font-semibold text-slate-700 shadow-sm shadow-sky-900/[0.04] ring-1 ring-cyan-100/80 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:ring-offset-1 active:scale-[0.99] sm:text-xs"
+                  }
+                  title={t("customer360DocExpiryLinkTitle", "Jump to document dates in Risk analysis")}
+                >
+                  <ShieldAlert className="h-3 w-3 shrink-0 text-current sm:h-3.5 sm:w-3.5" aria-hidden />
+                  {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
+                    <>
+                      {customer360DocExpiryAlertCount}{" "}
+                      {t("riskAlertBannerTitle", "Document Expiry Warning")}
+                    </>
+                  ) : (
+                    t("customer360DocExpiryLink", "Document dates")
+                  )}
+                </button>
+              ) : null}
+              {customer360EditSummary.lastEditedLine ? (
+                <span className="inline-flex min-w-0 max-w-full cursor-default items-center gap-1 rounded-lg border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 px-2.5 py-1 text-[11px] text-slate-600 shadow-sm ring-1 ring-slate-200/50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:max-w-[min(100%,26rem)] sm:text-xs">
+                  <span className="shrink-0 font-semibold text-slate-500">
+                    {t("customer360ChipLastEdited", "Last saved")}
+                  </span>
+                  <span className="truncate tabular-nums">{customer360EditSummary.lastEditedLine}</span>
+                </span>
+              ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Tabs */}
         <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
@@ -2537,55 +3239,96 @@ export function NewCustomerModal({
 
                 {/* ── Col 1: Firmendaten ── */}
                 <div
-                  className={`min-w-0 space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
+                  className={`min-w-0 space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
                     hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-4"
                   }`}
                 >
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionFirma", "Company data")}</p>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      {t("customer360SectionMaster", "Master data")}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {t("customer360SectionMasterHint", "Company identity, type, and profile")}
+                    </p>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>{t("newCustomerLabelKundenNr", "Customer no.")}</label>
-                      <div
-                        className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-semibold text-slate-800"
-                        title={isEditMode ? t("newCustomerKundenNrTooltipEdit", "Existing customer number") : t("newCustomerKundenNrTooltipNew", "Assigned when saving")}
-                      >
-                        {kundenNrDisplay}
-                      </div>
-                    </div>
-                    <div>
-                      <label className={labelClass}>{t("newCustomerLabelBranche", "Industry")}{isExtracted("branche") && <KiBadge />}</label>
-                      <ExtractedFieldWrapper extracted={isExtracted("branche")}>
-                        <SuggestTextInput
-                          type="text"
-                          value={form.branche}
-                          onChange={(e) => set("branche", e.target.value)}
-                          onBlur={(e) =>
-                            commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
-                              set("branche", v)
-                            )
-                          }
-                          onCompositionEnd={(e) =>
-                            commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                              set("branche", v)
-                            )
-                          }
-                          className={inputClass}
-                          suggestions={fieldSuggestions.branche}
-                          title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
-                        />
-                      </ExtractedFieldWrapper>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelKundenNr", "Customer no.")}</label>
+                    <div
+                      className="flex h-9 min-h-[44px] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm font-semibold text-slate-800 sm:h-9"
+                      title={isEditMode ? t("newCustomerKundenNrTooltipEdit", "Existing customer number") : t("newCustomerKundenNrTooltipNew", "Assigned when saving")}
+                    >
+                      {kundenNrDisplay}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelCustomerType", "Customer type")}</label>
+                      <select
+                        value={form.customer_type}
+                        onChange={(e) => {
+                          const next = e.target.value as FormState["customer_type"];
+                          setForm((f) => ({
+                            ...f,
+                            customer_type: next,
+                            juristische_person: next === "legal_entity",
+                            natuerliche_person: next === "natural_person",
+                          }));
+                        }}
+                        className={`${inputClass} min-h-[44px]`}
+                      >
+                        <option value="">{t("newCustomerCustomerTypeNone", "Select type")}</option>
+                        <option value="legal_entity">{t("newCustomerCustomerTypeLegal", "Legal entity")}</option>
+                        <option value="natural_person">{t("newCustomerCustomerTypeNatural", "Natural person")}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelStatus", "Status")}</label>
+                      <select
+                        value={form.customer_status}
+                        onChange={(e) => set("customer_status", e.target.value as FormState["customer_status"])}
+                        className={`${inputClass} min-h-[44px]`}
+                      >
+                        <option value="active">{t("newCustomerStatusActive", "Active")}</option>
+                        <option value="inactive">{t("newCustomerStatusInactive", "Inactive")}</option>
+                        <option value="blocked">{t("newCustomerStatusBlocked", "Blocked")}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelBranche", "Industry")}{isExtracted("branche") && <KiBadge />}</label>
+                    <ExtractedFieldWrapper extracted={isExtracted("branche")}>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.branche}
+                        onChange={(e) => set("branche", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("branche", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("branche", v)
+                          )
+                        }
+                        className={`${inputClass} min-h-[44px]`}
+                        suggestions={fieldSuggestions.branche}
+                        title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                      />
+                    </ExtractedFieldWrapper>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <span className={labelClass}>{t("newCustomerLabelFzgHandel", "Vehicle trader")}</span>
-                      <div className="mt-1 flex gap-2">
+                      <div className="mt-1 flex flex-wrap gap-2">
                         {(["ja", "nein"] as const).map((v) => (
                           <label
                             key={v}
-                            className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            className={`flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition ${
                               form.fzgHandel === v
                                 ? "border-blue-500 bg-blue-50 text-blue-800"
                                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -2621,33 +3364,12 @@ export function NewCustomerModal({
                             )
                           }
                           placeholder={t("newCustomerGesellschaftsformPh", "e.g. GmbH, AG")}
-                          className={inputClass}
+                          className={`${inputClass} min-h-[44px]`}
                           suggestions={fieldSuggestions.gesellschaftsform}
                           title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                         />
                       </ExtractedFieldWrapper>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-4">
-                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.juristische_person}
-                        onChange={(e) => set("juristische_person", e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600"
-                      />
-                      {t("newCustomerLabelJuristischePerson", "Legal entity")}
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.natuerliche_person}
-                        onChange={(e) => set("natuerliche_person", e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600"
-                      />
-                      {t("newCustomerLabelNatuerlichePerson", "Natural person")}
-                    </label>
                   </div>
 
                   <div>
@@ -2667,7 +3389,7 @@ export function NewCustomerModal({
                             set("firmenvorsatz", v)
                           )
                         }
-                        className={inputClass}
+                        className={`${inputClass} min-h-[44px]`}
                         suggestions={fieldSuggestions.firmenvorsatz}
                         title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                       />
@@ -2681,6 +3403,7 @@ export function NewCustomerModal({
                     </label>
                     <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
                       <SuggestTextInput
+                        id={FOCUS_ID_FIRMENNAME}
                         type="text"
                         value={form.firmenname}
                         onChange={(e) => set("firmenname", e.target.value)}
@@ -2694,16 +3417,127 @@ export function NewCustomerModal({
                             set("firmenname", v)
                           )
                         }
-                        className={inputClass}
+                        className={`${inputClass} min-h-[44px]`}
                         suggestions={fieldSuggestions.firmenname}
                         title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                       />
                     </ExtractedFieldWrapper>
                   </div>
 
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelFirstName", "First name")}</label>
+                      <input
+                        type="text"
+                        value={form.first_name}
+                        onChange={(e) => set("first_name", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("first_name", v))
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("first_name", v)
+                          )
+                        }
+                        className={`${inputClass} min-h-[44px]`}
+                        placeholder={t("newCustomerFirstNamePh", "For natural persons (optional)")}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelLastName", "Last name")}</label>
+                      <input
+                        type="text"
+                        value={form.last_name}
+                        onChange={(e) => set("last_name", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("last_name", v))
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("last_name", v)
+                          )
+                        }
+                        className={`${inputClass} min-h-[44px]`}
+                        placeholder={t("newCustomerLastNamePh", "For natural persons (optional)")}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>
+                        {t("newCustomerLabelAcquisitionSource", "Acquisition source")}
+                      </label>
+                      <select
+                        value={form.acquisition_source}
+                        onChange={(e) =>
+                          set(
+                            "acquisition_source",
+                            e.target.value as FormState["acquisition_source"]
+                          )
+                        }
+                        className={`${inputClass} min-h-[44px]`}
+                      >
+                        {acquisitionSourceOptions.map((opt) => (
+                          <option key={opt.value || "none"} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>
+                        {t("newCustomerLabelAcquisitionSourceEntity", "Source detail")}
+                      </label>
+                      <input
+                        type="text"
+                        value={form.acquisition_source_entity}
+                        onChange={(e) => set("acquisition_source_entity", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("acquisition_source_entity", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("acquisition_source_entity", v)
+                          )
+                        }
+                        className={`${inputClass} min-h-[44px]`}
+                        placeholder={t(
+                          "newCustomerAcquisitionSourceEntityPh",
+                          "Optional. Later: specific name for the selected source (e.g. referrer or site)."
+                        )}
+                      />
+                    </div>
+                  </div>
 
                   <div>
-                    <label className={labelClass}>{t("newCustomerLabelBemerkungen", "Remarks")}</label>
+                    <label className={labelClass}>{t("newCustomerLabelProfileNotes", "Profile notes")}</label>
+                    <textarea
+                      value={form.profile_notes}
+                      onChange={(e) => set("profile_notes", e.target.value)}
+                      onBlur={(e) =>
+                        commitAsciiNormalized(e.target, transliterateToAsciiMultiline, (v) =>
+                          set("profile_notes", v)
+                        )
+                      }
+                      onCompositionEnd={(e) =>
+                        commitAsciiNormalized(e.currentTarget, transliterateToAsciiMultiline, (v) =>
+                          set("profile_notes", v)
+                        )
+                      }
+                      rows={3}
+                      className={`${inputClass} min-h-[88px] resize-y py-2`}
+                      placeholder={t(
+                        "newCustomerProfileNotesPh",
+                        "Identity or legal context (separate from day-to-day operational notes)."
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelOperationalNotes", "Operational notes")}</label>
                     <textarea
                       value={form.bemerkungen}
                       onChange={(e) => set("bemerkungen", e.target.value)}
@@ -2717,8 +3551,8 @@ export function NewCustomerModal({
                           set("bemerkungen", v)
                         )
                       }
-                      rows={8}
-                      className={`${inputClass} resize-y py-2 min-h-[120px]`}
+                      rows={5}
+                      className={`${inputClass} min-h-[120px] resize-y py-2`}
                     />
                   </div>
                 </div>
@@ -2746,8 +3580,15 @@ export function NewCustomerModal({
                     >
 
                       {/* Header row */}
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionAdresse", "Address & Tax")}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                            {t("customer360SectionAddressTax", "Addresses & tax")}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {t("customer360SectionAddressTaxHint", "Locations, VAT ID, and identifiers")}
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -2853,6 +3694,7 @@ export function NewCustomerModal({
                             <label className={labelClass}>{t("newCustomerLabelStrasse", "Street")}{isExtracted("strasse") && <KiBadge />}</label>
                             <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
                               <SuggestTextInput
+                                id={FOCUS_ID_STRASSE}
                                 type="text"
                                 value={a.strasse}
                                 onChange={(e) => patchAdresse({ strasse: e.target.value })}
@@ -2878,7 +3720,7 @@ export function NewCustomerModal({
                             </ExtractedFieldWrapper>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <div>
                               <label className={labelClass}>{t("newCustomerLabelPLZ", "ZIP")}{isExtracted("plz") && <KiBadge />}</label>
                               <ExtractedFieldWrapper extracted={isExtracted("plz")}>
@@ -2935,7 +3777,7 @@ export function NewCustomerModal({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <div>
                               <label className={labelClass}>{t("newCustomerLabelLand", "Country")}{isExtracted("land_code") && <KiBadge />}</label>
                               <select
@@ -2971,40 +3813,82 @@ export function NewCustomerModal({
                             </div>
                           </div>
 
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <div>
+                              <label className={labelClass}>{t("newCustomerLabelUstIdNr", "VAT ID no.")}{isExtracted("ust_id_nr") && <KiBadge />}</label>
+                              <ExtractedFieldWrapper extracted={isExtracted("ust_id_nr")}>
+                                <SuggestTextInput
+                                  id={FOCUS_ID_UST}
+                                  type="text"
+                                  value={a.ust_id_nr}
+                                  onChange={(e) => patchAdresse({ ust_id_nr: e.target.value })}
+                                  className={inputClass}
+                                  suggestions={fieldSuggestions.ust_id_nr}
+                                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                                />
+                              </ExtractedFieldWrapper>
+                            </div>
+                            <div>
+                              <label className={labelClass}>{t("newCustomerLabelSteuerNr", "Tax no.")}{isExtracted("steuer_nr") && <KiBadge />}</label>
+                              <ExtractedFieldWrapper extracted={isExtracted("steuer_nr")}>
+                                <SuggestTextInput
+                                  type="text"
+                                  value={a.steuer_nr}
+                                  onChange={(e) => patchAdresse({ steuer_nr: e.target.value })}
+                                  className={inputClass}
+                                  suggestions={fieldSuggestions.steuer_nr}
+                                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                                />
+                              </ExtractedFieldWrapper>
+                            </div>
+                          </div>
+
                           <div>
-                            <label className={labelClass}>{t("newCustomerLabelUstIdNr", "VAT ID no.")}</label>
-                            <SuggestTextInput
+                            <label className={labelClass}>{t("customersLabelWebsite", "Website")}</label>
+                            <input
                               type="text"
-                              value={a.ust_id_nr}
-                              onChange={(e) => patchAdresse({ ust_id_nr: e.target.value })}
+                              value={form.internet_adr}
+                              onChange={(e) => setForm((f) => ({ ...f, internet_adr: e.target.value }))}
+                              onBlur={(e) =>
+                                commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                                  setForm((f) => ({ ...f, internet_adr: v }))
+                                )
+                              }
+                              onCompositionEnd={(e) =>
+                                commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                                  setForm((f) => ({ ...f, internet_adr: v }))
+                                )
+                              }
                               className={inputClass}
-                              suggestions={fieldSuggestions.ust_id_nr}
-                              title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                              placeholder={t("newCustomerPhWebsite", "www.example.com")}
+                              inputMode="url"
+                              autoComplete="url"
                             />
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className={labelClass}>{t("newCustomerLabelSteuerNr", "Tax no.")}</label>
+                          <div>
+                            <label className={labelClass}>{t("newCustomerLabelBranchenNr", "Industry reg. no.")}{isExtracted("branchen_nr") && <KiBadge />}</label>
+                            <ExtractedFieldWrapper extracted={isExtracted("branchen_nr")}>
                               <SuggestTextInput
                                 type="text"
-                                value={a.steuer_nr}
-                                onChange={(e) => patchAdresse({ steuer_nr: e.target.value })}
+                                value={a.branchen_nr}
+                                onChange={(e) => patchAdresse({ branchen_nr: e.target.value })}
                                 className={inputClass}
-                                suggestions={fieldSuggestions.steuer_nr}
+                                suggestions={fieldSuggestions.branchen_nr}
                                 title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
                               />
-                            </div>
-                            <div>
-                              <label className={labelClass}>{t("customersLabelWebsite", "Website")}</label>
-                              <input
-                                type="text"
-                                value={form.internet_adr}
-                                onChange={(e) => setForm((f) => ({ ...f, internet_adr: e.target.value }))}
-                                className={inputClass}
-                                placeholder={t("newCustomerPhWebsite", "www.example.com")}
-                              />
-                            </div>
+                            </ExtractedFieldWrapper>
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>{t("newCustomerLabelTaxCountryTypeCode", "Tax country/type code")}</label>
+                            <input
+                              type="text"
+                              value={form.tax_country_type_code}
+                              onChange={(e) => set("tax_country_type_code", e.target.value)}
+                              className={inputClass}
+                              placeholder={t("newCustomerTaxCountryTypePh", "e.g. DE / IL")}
+                            />
                           </div>
                         </div>
                       </div>
@@ -3029,8 +3913,15 @@ export function NewCustomerModal({
                     >
 
                       {/* ── Header ── */}
-                      <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{t("newCustomerSectionKontakte", "Contacts")}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                            {t("customer360SectionContacts", "Contacts")}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            {t("customer360SectionContactsHint", "People and communication")}
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -3244,6 +4135,7 @@ export function NewCustomerModal({
                           <div>
                             <label className={labelClass}>{t("newCustomerLabelEmail", "E-mail")}</label>
                             <input
+                              id={safeIdx === 0 ? FOCUS_ID_KONTAKT_EMAIL : undefined}
                               type="email"
                               value={k.email}
                               onChange={(e) =>
@@ -3256,6 +4148,25 @@ export function NewCustomerModal({
                               }
                               className={inputClass}
                               placeholder={t("newCustomerPhEmail", "name@company.com")}
+                            />
+                          </div>
+
+                          <div>
+                            <label className={labelClass}>{t("newCustomerLabelContactWebsite", "Contact website")}</label>
+                            <input
+                              type="text"
+                              value={k.website}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  kontakte: f.kontakte.map((c, i) =>
+                                    i === safeIdx ? { ...c, website: e.target.value } : c
+                                  ),
+                                }))
+                              }
+                              className={inputClass}
+                              placeholder={t("newCustomerContactWebsitePh", "Optional URL for this contact")}
+                              inputMode="url"
                             />
                           </div>
 
@@ -3291,8 +4202,8 @@ export function NewCustomerModal({
                                   }))
                                 )
                               }
-                              rows={8}
-                              className={`${inputClass} resize-y py-2 min-h-[120px]`}
+                              rows={4}
+                              className={`${inputClass} min-h-[96px] resize-y py-2`}
                             />
                           </div>
                         </div>
@@ -3303,7 +4214,17 @@ export function NewCustomerModal({
                 })()}
 
                 {hasEditKundeSideContent ? (
-                  <div className="min-w-0 space-y-4 xl:col-span-3">{editKundeSideContent}</div>
+                  <div className="min-w-0 space-y-3 xl:col-span-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                        {t("customer360OperationalContext", "Related & operational")}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">
+                        {t("customer360OperationalContextHint", "Relationships, appointments, and risk (edit mode)")}
+                      </p>
+                    </div>
+                    <div className="space-y-4">{editKundeSideContent}</div>
+                  </div>
                 ) : null}
               </div>
 
@@ -3314,48 +4235,319 @@ export function NewCustomerModal({
           )}
 
           {tab === "art" && (
-            <div className="space-y-4">
-              <div>
-                <label className={labelClass}>{t("newCustomerLabelArtKunde", "Type (customer)")}</label>
-                <SuggestTextInput
-                  type="text"
-                  value={form.art_kunde}
-                  onChange={(e) => set("art_kunde", e.target.value)}
-                  onBlur={(e) =>
-                    commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("art_kunde", v))
-                  }
-                  onCompositionEnd={(e) =>
-                    commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                      set("art_kunde", v)
-                    )
-                  }
-                  className={inputClass}
-                  suggestions={fieldSuggestions.art_kunde}
-                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
-                />
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                    {t("newCustomerArtTitle", "Type / account")}
+                  </p>
+                  <p className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
+                    {t(
+                      "newCustomerArtTypeStatusHint",
+                      "Customer type and lifecycle status are edited under Customer & Address."
+                    )}
+                  </p>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelArtKunde", "Type (customer)")}</label>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.art_kunde}
+                      onChange={(e) => set("art_kunde", e.target.value)}
+                      onBlur={(e) =>
+                        commitAsciiNormalized(e.target, transliterateToAscii, (v) => set("art_kunde", v))
+                      }
+                      onCompositionEnd={(e) =>
+                        commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                          set("art_kunde", v)
+                        )
+                      }
+                      className={inputClass}
+                      suggestions={fieldSuggestions.art_kunde}
+                      title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelBuchungskonto", "Main booking account")}</label>
+                    <SuggestTextInput
+                      type="text"
+                      value={form.buchungskonto_haupt}
+                      onChange={(e) => set("buchungskonto_haupt", e.target.value)}
+                      onBlur={(e) =>
+                        commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                          set("buchungskonto_haupt", v)
+                        )
+                      }
+                      onCompositionEnd={(e) =>
+                        commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                          set("buchungskonto_haupt", v)
+                        )
+                      }
+                      className={inputClass}
+                      suggestions={fieldSuggestions.buchungskonto_haupt}
+                      title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelRole", "Role")}</label>
+                    <select
+                      value={form.customer_role}
+                      onChange={(e) => set("customer_role", e.target.value as FormState["customer_role"])}
+                      className={inputClass}
+                    >
+                      <option value="">{t("newCustomerRoleNone", "Select role")}</option>
+                      <option value="supplier">{t("newCustomerRoleSupplier", "Supplier")}</option>
+                      <option value="buyer">{t("newCustomerRoleBuyer", "Buyer")}</option>
+                      <option value="workshop">{t("newCustomerRoleWorkshop", "Workshop")}</option>
+                      <option value="wash">{t("newCustomerRoleWash", "Wash")}</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelRoleValidFrom", "Valid from")}</label>
+                      <input
+                        type="date"
+                        value={form.role_valid_from}
+                        onChange={(e) => set("role_valid_from", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelRoleValidTo", "Valid to")}</label>
+                      <input
+                        type="date"
+                        value={form.role_valid_to}
+                        onChange={(e) => set("role_valid_to", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm">
+                  <p className="pt-0 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                    {t("newCustomerFinanceBillingTitle", "Billing profile")}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelAccountNumber", "Account number")}</label>
+                      <input
+                        type="text"
+                        value={form.account_number}
+                        onChange={(e) => set("account_number", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelCreditLimit", "Credit limit")}</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={form.credit_limit}
+                        onChange={(e) => set("credit_limit", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelBillingName", "Billing name")}</label>
+                      <input
+                        type="text"
+                        value={form.billing_name}
+                        onChange={(e) => set("billing_name", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelBillingStreet", "Billing street")}</label>
+                      <input
+                        type="text"
+                        value={form.billing_street}
+                        onChange={(e) => set("billing_street", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelBillingPostalCode", "Billing ZIP")}</label>
+                      <input
+                        type="text"
+                        value={form.billing_postal_code}
+                        onChange={(e) => set("billing_postal_code", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelBillingCity", "Billing city")}</label>
+                      <input
+                        type="text"
+                        value={form.billing_city}
+                        onChange={(e) => set("billing_city", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelBankname", "Bank name")}</label>
+                      <input type="text" value={form.bank_name} onChange={(e) => set("bank_name", e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelBic", "BIC")}</label>
+                      <input type="text" value={form.bic} onChange={(e) => set("bic", e.target.value)} className={inputClass} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelIban", "IBAN")}</label>
+                      <input type="text" value={form.iban} onChange={(e) => set("iban", e.target.value)} className={inputClass} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className={labelClass}>{t("newCustomerLabelDirectDebit", "Direct debit")}</label>
+                      <label className="flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={form.direct_debit_enabled}
+                          onChange={(e) => set("direct_debit_enabled", e.target.checked)}
+                          className="rounded border-slate-300 text-blue-600"
+                        />
+                        {t("newCustomerLabelEnabled", "Enabled")}
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelPaymentBlocked", "Payment blocked")}</label>
+                    <label className="flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.payment_blocked}
+                        onChange={(e) => set("payment_blocked", e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600"
+                      />
+                      {t("commonYes", "Yes")}
+                    </label>
+                  </div>
+
+                  <p className="pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                    {t("newCustomerMarketingTitle", "Marketing profile")}
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelLifecycleStage", "Lifecycle stage")}</label>
+                      <select
+                        value={form.lifecycle_stage}
+                        onChange={(e) => set("lifecycle_stage", e.target.value as FormState["lifecycle_stage"])}
+                        className={inputClass}
+                      >
+                        <option value="">{t("newCustomerLifecycleNone", "Select stage")}</option>
+                        <option value="lead">Lead</option>
+                        <option value="qualified">Qualified</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="vip">VIP</option>
+                        <option value="lost">Lost</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelAcquisitionDate", "Acquisition date")}</label>
+                      <input
+                        type="date"
+                        value={form.acquisition_date}
+                        onChange={(e) => set("acquisition_date", e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelPreferredChannel", "Preferred channel")}</label>
+                      <select
+                        value={form.preferred_channel}
+                        onChange={(e) => set("preferred_channel", e.target.value as FormState["preferred_channel"])}
+                        className={inputClass}
+                      >
+                        <option value="">{t("newCustomerChannelNone", "Select channel")}</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Phone</option>
+                        <option value="sms">SMS</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="mixed">Mixed</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("newCustomerLabelSegment", "Segment")}</label>
+                      <input
+                        type="text"
+                        value={form.segment}
+                        onChange={(e) => set("segment", e.target.value)}
+                        className={inputClass}
+                        placeholder={t("newCustomerSegmentPh", "e.g. Fleet Gold")}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelScore", "Score")}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={form.score}
+                      onChange={(e) => set("score", e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.consent_email}
+                        onChange={(e) => set("consent_email", e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600"
+                      />
+                      Email
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.consent_sms}
+                        onChange={(e) => set("consent_sms", e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600"
+                      />
+                      SMS
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.consent_phone}
+                        onChange={(e) => set("consent_phone", e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600"
+                      />
+                      Phone
+                    </label>
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelFinancialNotes", "Financial notes")}</label>
+                    <textarea
+                      value={form.financial_notes}
+                      onChange={(e) => set("financial_notes", e.target.value)}
+                      rows={4}
+                      className={`${inputClass} min-h-[96px] resize-y py-2`}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t("newCustomerLabelMarketingNotes", "Notes")}</label>
+                    <textarea
+                      value={form.marketing_notes}
+                      onChange={(e) => set("marketing_notes", e.target.value)}
+                      rows={5}
+                      className={`${inputClass} min-h-[120px] resize-y py-2`}
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className={labelClass}>{t("newCustomerLabelBuchungskonto", "Main booking account")}</label>
-                <SuggestTextInput
-                  type="text"
-                  value={form.buchungskonto_haupt}
-                  onChange={(e) => set("buchungskonto_haupt", e.target.value)}
-                  onBlur={(e) =>
-                    commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
-                      set("buchungskonto_haupt", v)
-                    )
-                  }
-                  onCompositionEnd={(e) =>
-                    commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                      set("buchungskonto_haupt", v)
-                    )
-                  }
-                  className={inputClass}
-                  suggestions={fieldSuggestions.buchungskonto_haupt}
-                  title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
-                />
-              </div>
-            </div>
           )}
 
           {tab === "waschanlage" && (
@@ -3408,12 +4600,12 @@ export function NewCustomerModal({
                           title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className={labelClass}>BIC</label>
-                          <SuggestTextInput
-                            type="text"
-                            value={form.wash_bic}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className={labelClass}>{t("newCustomerLabelBic", "BIC")}</label>
+                        <SuggestTextInput
+                          type="text"
+                          value={form.wash_bic}
                             onChange={(e) => set("wash_bic", e.target.value)}
                             className={inputClass}
                             suggestions={fieldSuggestions.wash_bic}
@@ -3421,7 +4613,7 @@ export function NewCustomerModal({
                           />
                         </div>
                         <div>
-                          <label className={labelClass}>IBAN</label>
+                          <label className={labelClass}>{t("newCustomerLabelIban", "IBAN")}</label>
                           <SuggestTextInput
                             type="text"
                             value={form.wash_iban}
@@ -3598,6 +4790,28 @@ export function NewCustomerModal({
                       {t("newCustomerWashInfosTitle", "Wash info")}
                     </p>
                     <div>
+                      <label className={labelClass}>{t("newCustomerLabelVehicleType", "Vehicle type")}</label>
+                      <SuggestTextInput
+                        type="text"
+                        value={form.wash_vehicle_type}
+                        onChange={(e) => set("wash_vehicle_type", e.target.value)}
+                        onBlur={(e) =>
+                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                            set("wash_vehicle_type", v)
+                          )
+                        }
+                        onCompositionEnd={(e) =>
+                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                            set("wash_vehicle_type", v)
+                          )
+                        }
+                        className={inputClass}
+                        suggestions={fieldSuggestions.wasch_fahrzeug_typ}
+                        placeholder={t("newCustomerVehicleTypePh", "e.g. car, van, truck")}
+                        title={t("newCustomerWashSuggestionsHint", "Suggestions from wash profiles")}
+                      />
+                    </div>
+                    <div>
                       <label className={labelClass}>{t("newCustomerLabelWaschprogramm", "Wash program")}</label>
                       <select
                         value={form.wasch_programm}
@@ -3714,148 +4928,70 @@ export function NewCustomerModal({
             </div>
           )}
           {tab === "history" && isEditMode && (
-            <div className="p-4 sm:p-6">
-              {historyEntries.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 py-16 text-center">
-                  <svg className="mb-3 h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                  <p className="text-sm text-slate-400">{t("historyEmpty", "No entries yet.")}</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {historyEntries.map((entry) => {
-                    const actionLabel =
-                      entry.action === "created" ? t("historyActionCreated", "Created")
-                      : entry.action === "updated" ? t("historyActionUpdated", "Updated")
-                      : entry.action === "deleted" ? t("historyActionDeleted", "Deleted")
-                      : t("historyActionRestored", "Restored");
-                    const actionColor =
-                      entry.action === "created" ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                      : entry.action === "updated" ? "bg-blue-100 text-blue-700 border-blue-200"
-                      : entry.action === "deleted" ? "bg-red-100 text-red-700 border-red-200"
-                      : "bg-violet-100 text-violet-700 border-violet-200";
-                    const dotColor =
-                      entry.action === "created" ? "bg-emerald-500"
-                      : entry.action === "updated" ? "bg-blue-500"
-                      : entry.action === "deleted" ? "bg-red-500"
-                      : "bg-violet-500";
-                    const dateStr = new Date(entry.timestamp).toLocaleString(localeTag, {
-                      dateStyle: "short",
-                      timeStyle: "medium",
-                    });
-                    const initials = entry.editor_name
-                      ? entry.editor_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
-                      : "?";
-                    return (
-                      <div key={entry.id} className="flex gap-3">
-                        {/* Timeline spine */}
-                        <div className="flex flex-col items-center">
-                          <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-white ${dotColor}`} />
-                          <div className="mt-1 w-px flex-1 bg-slate-200" />
-                        </div>
-                        {/* Card */}
-                        <div className="mb-1 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          {/* Header row */}
-                          <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
-                            {/* Avatar */}
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-white">
-                              {initials}
-                            </div>
-                            {/* Name + email */}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-slate-800">
-                                {entry.editor_name ?? t("historyUnknownUser", "Unknown")}
-                              </p>
-                              {entry.editor_email && (
-                                <p className="truncate text-xs text-slate-400">{entry.editor_email}</p>
-                              )}
-                            </div>
-                            {/* Action badge */}
-                            <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${actionColor}`}>
-                              {actionLabel}
-                            </span>
-                            {/* Timestamp */}
-                            <span className="shrink-0 font-mono text-xs text-slate-400 tabular-nums">
-                              {dateStr}
-                            </span>
-                          </div>
-                          {/* Field changes */}
-                          {entry.changes && entry.changes.length > 0 ? (
-                            <div className="divide-y divide-slate-100 px-4 py-1">
-                              {entry.changes.map((c, cIdx) => {
-                                const multiline =
-                                  c.field === "vies_snapshot" ||
-                                  c.from.includes("\n") ||
-                                  c.to.includes("\n");
-                                const cellClass = multiline
-                                  ? "max-w-full min-w-0 whitespace-pre-wrap break-words rounded px-1.5 py-0.5 font-mono text-[11px] leading-snug"
-                                  : "rounded px-1.5 py-0.5 font-mono text-[11px]";
-                                return (
-                                  <div
-                                    key={`${entry.id}-${cIdx}-${c.field}`}
-                                    className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-1.5 text-xs"
-                                  >
-                                    <span className="w-36 shrink-0 font-semibold text-slate-500">
-                                      {t(c.labelKey, c.field)}
-                                    </span>
-                                    {c.from ? (
-                                      <span className={`${cellClass} bg-red-50 text-red-600 line-through`}>
-                                        {formatHistoryValueDisplay(c.field, c.from, t)}
-                                      </span>
-                                    ) : (
-                                      <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
-                                    )}
-                                    <span className="text-slate-400">→</span>
-                                    {c.to ? (
-                                      <span className={`${cellClass} bg-emerald-50 text-emerald-700`}>
-                                        {formatHistoryValueDisplay(c.field, c.to, t)}
-                                      </span>
-                                    ) : (
-                                      <span className="italic text-slate-300">{t("historyEmpty2", "empty")}</span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            entry.action === "updated" && (
-                              <p className="px-4 py-2 text-xs italic text-slate-400">
-                                {t("historyNoFieldChanges", "No tracked fields changed.")}
-                              </p>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <CustomerHistoryTimeline
+              historyEntries={historyEntries}
+              localeTag={localeTag}
+              t={t}
+            />
           )}
+
         </div>
 
         {/* Footer */}
         <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+          {isFormDirty ? (
+            <div
+              className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+              role="status"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+              {t("customer360UnsavedChanges", "You have unsaved changes.")}
+            </div>
+          ) : null}
+          {footerMessage?.type === "error" ? (
+            <div
+              className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+              role="alert"
+            >
+              <span>{footerMessage.text}</span>
+              {footerMessage.moreCount != null && footerMessage.moreCount > 0 ? (
+                <span className="ml-1 text-xs font-medium opacity-90">
+                  {t("newCustomerValidationMore", "+ {n} more").replace(
+                    "{n}",
+                    String(footerMessage.moreCount)
+                  )}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          <p
+            id="new-kunde-shortcuts-hint"
+            className="mb-2 text-center text-[10px] leading-snug text-slate-400 sm:text-left"
+          >
+            {t(
+              "newCustomerKeyboardShortcutsHint",
+              "Alt+1–9: switch tab · Ctrl+S: save · Esc: close (confirm if unsaved)"
+            )}
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+              <label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t("newCustomerZustaendige", "Responsible person")}
               </label>
               <select
                 value={form.zustaendige_person_name}
                 onChange={(e) => set("zustaendige_person_name", e.target.value)}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="h-11 min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:h-9 sm:min-h-0 sm:max-w-xs"
               >
                 {ZUSTAENDIGE_OPTIONS.map((z) => (
                   <option key={z} value={z}>{z}</option>
                 ))}
               </select>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
                 className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
               >
                 {t("commonCancel", "Cancel")}
@@ -3870,6 +5006,54 @@ export function NewCustomerModal({
             </div>
           </div>
         </div>
+
+        {showDiscardConfirm && (
+          <div
+            className="absolute inset-0 z-[30] flex items-center justify-center bg-slate-900/50 p-4"
+            onClick={() => setShowDiscardConfirm(false)}
+            role="presentation"
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="discard-confirm-title"
+              aria-describedby="discard-confirm-desc"
+            >
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h3
+                  id="discard-confirm-title"
+                  className="text-base font-semibold text-slate-900"
+                >
+                  {t("newCustomerDiscardTitle", "Discard changes?")}
+                </h3>
+              </div>
+              <p id="discard-confirm-desc" className="px-5 py-4 text-sm text-slate-600">
+                {t(
+                  "newCustomerDiscardMsg",
+                  "You have unsaved changes. Close without saving? Your edits will be lost."
+                )}
+              </p>
+              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardConfirm(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  {t("newCustomerDiscardStay", "Keep editing")}
+                </button>
+                <button
+                  type="button"
+                  onClick={performCloseDiscard}
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
+                >
+                  {t("newCustomerDiscardConfirm", "Discard")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showDuplicateWarning && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">

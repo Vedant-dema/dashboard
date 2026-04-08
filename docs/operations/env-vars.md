@@ -1,0 +1,56 @@
+# Environment Variables
+
+This is the baseline env matrix for Milestone 7.
+
+## Frontend
+
+- `VITE_API_BASE_URL` - backend URL
+- `VITE_CUSTOMERS_SOURCE` - `api` for shared mode, otherwise local mode
+- `VITE_DEMO_API_KEY` - optional demo key header
+- `VITE_DEV_PROXY_API` - local dev proxy target for Vite server
+
+## Backend - core
+
+- `APP_ENV`
+- `APP_DEBUG`
+- `LOG_LEVEL`
+- `DEMO_API_KEY`
+- `CUSTOMERS_STORE_MODE` (`demo_blob` or `db`)
+- `DATABASE_URL`
+- `DATABASE_ECHO`
+
+## Backend - storage
+
+- `STORAGE_PROVIDER` (`local` or `azure_blob`)
+- `STORAGE_LOCAL_ROOT`
+- `STORAGE_DEFAULT_DOWNLOAD_TTL_SECONDS`
+- `STORAGE_CONTAINER_RAW`
+- `STORAGE_CONTAINER_DERIVED`
+- `AZURE_BLOB_ACCOUNT_URL`
+- `AZURE_BLOB_CONNECTION_STRING`
+- `AZURE_BLOB_CONTAINER_RAW`
+- `AZURE_BLOB_CONTAINER_DERIVED`
+- `AZURE_BLOB_SAS_UPLOAD_ENABLED`
+
+## Backend - VAT/VIES
+
+- `VIES_REST_API_BASE`
+- `VIES_STATUS_URL`
+- `VIES_TEST_SERVICE_URL`
+- `VIES_CHECK_URL`
+- `VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC`
+- `VIES_ENRICH_FALLBACK_ENABLED`
+
+## Backend - optional integrations
+
+- `GEOCODING_PROVIDER`
+- `MAPBOX_ACCESS_TOKEN`
+- `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_GEOCODING_API_KEY`
+- `GOOGLE_TRANSLATE_API_KEY`
+- `LIBRETRANSLATE_URL`
+- `LIBRETRANSLATE_API_KEY`
+- `NAME_VARIANTS_API_KEY`
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `NAME_VARIANTS_MODEL`

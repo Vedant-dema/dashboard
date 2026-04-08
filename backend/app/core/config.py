@@ -43,11 +43,48 @@ def _as_int(raw: str | None, default: int) -> int:
         return default
 
 
+def _as_csv_list(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _normalize_app_env(raw: str | None) -> str:
+    value = (raw or "development").strip().lower()
+    if value in {"prod", "production"}:
+        return "production"
+    if value in {"stage", "staging"}:
+        return "staging"
+    if value in {"test", "testing"}:
+        return "test"
+    return "development"
+
+
+def is_production_env(raw: str | None) -> bool:
+    return _normalize_app_env(raw) == "production"
+
+
+def _normalize_database_url(raw: str | None) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return "sqlite:///./dema_phase6.db"
+    # Render and other hosts often expose postgres://...; SQLAlchemy + psycopg expects
+    # postgresql+psycopg://... in this repo.
+    if value.startswith("postgres://"):
+        return "postgresql+psycopg://" + value[len("postgres://") :]
+    if value.startswith("postgresql://"):
+        return "postgresql+psycopg://" + value[len("postgresql://") :]
+    return value
+
+
 class Settings(BaseModel):
     app_name: str = "DEMA Dashboard API"
     app_env: str = "development"
     app_debug: bool = False
     log_level: str = "INFO"
+    startup_checks_strict: bool = False
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    cors_origin_regex: str | None = None
     customers_store_mode: str = "demo_blob"
     demo_api_key_enabled: bool = False
     database_url: str = "sqlite:///./dema_phase6.db"
@@ -68,12 +105,16 @@ class Settings(BaseModel):
 def get_settings() -> Settings:
     demo_api_key = (os.environ.get("DEMO_API_KEY") or "").strip()
     return Settings(
-        app_env=(os.environ.get("APP_ENV") or "development").strip(),
+        app_env=_normalize_app_env(os.environ.get("APP_ENV")),
         app_debug=_as_bool(os.environ.get("APP_DEBUG"), default=False),
         log_level=(os.environ.get("LOG_LEVEL") or "INFO").strip().upper(),
+        startup_checks_strict=_as_bool(os.environ.get("STARTUP_CHECKS_STRICT"), default=False),
+        cors_origins=_as_csv_list(os.environ.get("CORS_ORIGINS"))
+        or ["http://localhost:5173", "http://127.0.0.1:5173"],
+        cors_origin_regex=(os.environ.get("CORS_ORIGIN_REGEX") or "").strip() or None,
         customers_store_mode=(os.environ.get("CUSTOMERS_STORE_MODE") or "demo_blob").strip().lower(),
         demo_api_key_enabled=bool(demo_api_key),
-        database_url=(os.environ.get("DATABASE_URL") or "sqlite:///./dema_phase6.db").strip(),
+        database_url=_normalize_database_url(os.environ.get("DATABASE_URL")),
         database_echo=_as_bool(os.environ.get("DATABASE_ECHO"), default=False),
         storage_provider=(os.environ.get("STORAGE_PROVIDER") or "local").strip().lower(),
         storage_local_root=(os.environ.get("STORAGE_LOCAL_ROOT") or "./storage").strip(),

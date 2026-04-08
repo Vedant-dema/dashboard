@@ -15,6 +15,7 @@ import {
   MapPin,
   Copy,
   Check,
+  ChevronDown,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -109,6 +110,173 @@ const COUNTRY_CODES: { code: string; label: string }[] = [
   { code: "+91",  label: "🇮🇳 +91"  },
 ];
 
+const COUNTRY_CODE_SEARCH_ALIASES: Record<string, string[]> = {
+  "+49": ["germany", "deutschland", "de"],
+  "+43": ["austria", "osterreich", "at"],
+  "+41": ["switzerland", "schweiz", "ch"],
+  "+31": ["netherlands", "holland", "nl"],
+  "+48": ["poland", "polen", "pl"],
+  "+33": ["france", "frankreich", "fr"],
+  "+39": ["italy", "italien", "it"],
+  "+34": ["spain", "spanien", "es"],
+  "+44": ["united kingdom", "uk", "great britain", "gb"],
+  "+1": ["united states", "usa", "canada", "us", "ca"],
+  "+90": ["turkey", "turkiye", "tr"],
+  "+7": ["russia", "ru", "kazakhstan", "kz"],
+  "+32": ["belgium", "belgien", "be"],
+  "+45": ["denmark", "danemark", "dk"],
+  "+46": ["sweden", "schweden", "se"],
+  "+47": ["norway", "norwegen", "no"],
+  "+358": ["finland", "finnland", "fi"],
+  "+420": ["czech", "czechia", "tschechien", "cz"],
+  "+36": ["hungary", "ungarn", "hu"],
+  "+40": ["romania", "rumanien", "ro"],
+  "+30": ["greece", "griechenland", "gr", "el"],
+  "+351": ["portugal", "pt"],
+  "+380": ["ukraine", "ua"],
+  "+971": ["uae", "emirates", "vereinigte arabische emirate", "ae"],
+  "+86": ["china", "cn"],
+  "+81": ["japan", "jp"],
+  "+91": ["india", "indien", "in"],
+};
+
+function filterCountryCodes(query: string): { code: string; label: string }[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return COUNTRY_CODES;
+  return COUNTRY_CODES.filter((cc) => {
+    const aliases = COUNTRY_CODE_SEARCH_ALIASES[cc.code] ?? [];
+    const searchable = `${cc.code} ${cc.label} ${aliases.join(" ")}`.toLowerCase();
+    return searchable.includes(normalized);
+  });
+}
+
+function countryCodeLabel(code: string): string {
+  return COUNTRY_CODES.find((cc) => cc.code === code)?.label ?? code;
+}
+
+type CountryCodePickerProps = {
+  value: string;
+  onChange: (nextCode: string) => void;
+  searchPlaceholder: string;
+  searchAriaLabel: string;
+  emptyLabel: string;
+  buttonAriaLabel: string;
+};
+
+function CountryCodePicker({
+  value,
+  onChange,
+  searchPlaceholder,
+  searchAriaLabel,
+  emptyLabel,
+  buttonAriaLabel,
+}: CountryCodePickerProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const filtered = useMemo(() => filterCountryCodes(query), [query]);
+  const selectedLabel = countryCodeLabel(value);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      return;
+    }
+    const focusTimer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    }, 0);
+    const onDocumentMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!rootRef.current?.contains(target)) setOpen(false);
+    };
+    const onDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("mousedown", onDocumentMouseDown);
+    window.addEventListener("keydown", onDocumentKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("mousedown", onDocumentMouseDown);
+      window.removeEventListener("keydown", onDocumentKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative w-40 shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 text-left text-xs text-slate-700 shadow-sm transition hover:border-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={buttonAriaLabel}
+      >
+        <span className="truncate font-medium">{selectedLabel}</span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+0.35rem)] z-40 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="border-b border-slate-100 p-2">
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                if (filtered.length === 0) return;
+                onChange(filtered[0]!.code);
+                setOpen(false);
+              }}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              placeholder={searchPlaceholder}
+              aria-label={searchAriaLabel}
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-slate-500">{emptyLabel}</p>
+            ) : (
+              filtered.map((cc) => {
+                const selected = cc.code === value;
+                return (
+                  <button
+                    key={`country-code-${cc.code}`}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      onChange(cc.code);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                      selected
+                        ? "bg-blue-50 text-blue-800"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="truncate">{cc.label}</span>
+                    {selected ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function emptyKontakt(): KontaktEntry {
   return {
     id: Math.random().toString(36).slice(2),
@@ -144,6 +312,47 @@ function splitStoredPhone(
     }
   }
   return { code: "+49", number: s };
+}
+
+function normalizePhoneValue(raw: string | undefined): string {
+  return (raw ?? "").replace(/\s+/g, " ").trim();
+}
+
+function ensurePhoneIncludesCode(rawValue: string | undefined, code: string | undefined): string {
+  const normalized = normalizePhoneValue(rawValue);
+  if (!normalized) return "";
+  if (normalized.startsWith("+")) return normalized;
+  const cleanCode = normalizePhoneValue(code);
+  if (!cleanCode) return normalized;
+  if (normalized.startsWith(cleanCode)) return normalized;
+  return `${cleanCode} ${normalized}`.trim();
+}
+
+function composePhoneForPayload(rawValue: string | undefined, code: string | undefined): string {
+  const normalized = normalizePhoneValue(rawValue);
+  if (!normalized) return "";
+  if (normalized.startsWith("+")) return normalized;
+  const cleanCode = normalizePhoneValue(code) || "+49";
+  if (normalized.startsWith(cleanCode)) return normalized;
+  return `${cleanCode} ${normalized}`.trim();
+}
+
+function applyCountryCodeToPhoneInput(
+  rawValue: string | undefined,
+  nextCode: string,
+  prevCode?: string
+): string {
+  const normalized = normalizePhoneValue(rawValue);
+  if (!normalized) return "";
+  const cleanNextCode = normalizePhoneValue(nextCode) || "+49";
+  const cleanPrevCode = normalizePhoneValue(prevCode);
+  let localPart = normalized;
+  if (cleanPrevCode && localPart.startsWith(cleanPrevCode)) {
+    localPart = localPart.slice(cleanPrevCode.length).trim();
+  } else if (localPart.startsWith("+")) {
+    localPart = localPart.replace(/^\+\d{1,4}\s*/, "").trim();
+  }
+  return localPart ? `${cleanNextCode} ${localPart}`.trim() : cleanNextCode;
 }
 
 // ── Adresse ────────────────────────────────────────────────────────────────
@@ -195,7 +404,7 @@ function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
   };
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
 
 const FOCUS_ID_FIRMENNAME = "new-kunde-field-firmenname";
 const FOCUS_ID_STRASSE = "new-kunde-field-strasse";
@@ -1440,18 +1649,24 @@ function formFromExistingCustomer(
   const storedKontakte = Array.isArray(kunde.kontakte) ? kunde.kontakte : [];
   const mappedKontakte: KontaktEntry[] =
     storedKontakte.length > 0
-      ? storedKontakte.map((c, idx) => ({
-          id: c.id || `${kunde.id}-kontakt-${idx}`,
-          name: c.name ?? "",
-          rolle: c.rolle ?? "",
-          telefonCode: c.telefonCode || "+49",
-          telefon: c.telefon ?? "",
-          handyCode: c.handyCode || "+49",
-          handy: c.handy ?? "",
-          email: c.email ?? "",
-          website: c.website ?? "",
-          bemerkung: c.bemerkung ?? "",
-        }))
+      ? storedKontakte.map((c, idx) => {
+          const parsedTelefon = splitStoredPhone(c.telefon);
+          const parsedHandy = splitStoredPhone(c.handy);
+          const telefonCode = (c.telefonCode || parsedTelefon.code || "+49").trim();
+          const handyCode = (c.handyCode || parsedHandy.code || "+49").trim();
+          return {
+            id: c.id || `${kunde.id}-kontakt-${idx}`,
+            name: c.name ?? "",
+            rolle: c.rolle ?? "",
+            telefonCode,
+            telefon: ensurePhoneIncludesCode(c.telefon, telefonCode),
+            handyCode,
+            handy: ensurePhoneIncludesCode(c.handy, handyCode),
+            email: c.email ?? "",
+            website: c.website ?? "",
+            bemerkung: c.bemerkung ?? "",
+          };
+        })
       : [
           {
             ...kontakt,
@@ -1462,9 +1677,9 @@ function formFromExistingCustomer(
               const fax = splitStoredPhone(kunde.faxnummer);
               return {
                 telefonCode: tel.code,
-                telefon: tel.number,
+                telefon: ensurePhoneIncludesCode(kunde.telefonnummer, tel.code),
                 handyCode: fax.code,
-                handy: fax.number,
+                handy: ensurePhoneIncludesCode(kunde.faxnummer, fax.code),
               };
             })(),
             email: kunde.email ?? "",
@@ -1683,14 +1898,10 @@ function formToPayload(form: FormState): NewKundeInput {
     ansprechpartner: emptyToUndef(primaryKontakt?.name ?? ""),
     rolle_kontakt: emptyToUndef(primaryKontakt?.rolle ?? ""),
     telefonnummer: emptyToUndef(
-      primaryKontakt?.telefon
-        ? `${primaryKontakt.telefonCode} ${primaryKontakt.telefon}`
-        : ""
+      composePhoneForPayload(primaryKontakt?.telefon, primaryKontakt?.telefonCode)
     ),
     faxnummer: emptyToUndef(
-      primaryKontakt?.handy
-        ? `${primaryKontakt.handyCode} ${primaryKontakt.handy}`
-        : ""
+      composePhoneForPayload(primaryKontakt?.handy, primaryKontakt?.handyCode)
     ),
     email: emptyToUndef(primaryKontakt?.email ?? ""),
     internet_adr: emptyToUndef(form.internet_adr),
@@ -2209,10 +2420,30 @@ export function NewCustomerModal({
         .join("; ")
     }
 
-    // Handle proxy / gateway error shapes that don't use FastAPI's {"detail": ...} format.
+    // FastAPI often returns detail as a string, array (validation), or { code, message } object.
     if (raw && typeof raw === "object") {
       const obj = raw as Record<string, unknown>
-      const candidate = obj["detail"] ?? obj["error"] ?? obj["message"] ?? obj["error_description"]
+      let candidate = obj["detail"] ?? obj["error"] ?? obj["message"] ?? obj["error_description"]
+      if (Array.isArray(candidate)) {
+        const nestedText = formatVatCheckDetail(candidate)
+        if (nestedText) return applyFriendly(nestedText)
+      }
+      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+        const nested = candidate as Record<string, unknown>
+        const msg = nested["message"] ?? nested["msg"]
+        const code = nested["code"]
+        const parts: string[] = []
+        if (typeof msg === "string" && msg.trim()) parts.push(msg.trim())
+        else if (typeof msg === "number") parts.push(String(msg))
+        if (typeof code === "string" && code.trim()) {
+          const c = code.trim()
+          if (!parts.length || !parts.some((p) => p.includes(c))) {
+            parts.unshift(`[${c}]`)
+          }
+        }
+        if (parts.length) return applyFriendly(parts.join(" "))
+        candidate = JSON.stringify(candidate)
+      }
       const text = extractText(candidate)
       if (text) return applyFriendly(text)
     }
@@ -2229,7 +2460,28 @@ export function NewCustomerModal({
     if (d === undefined || d === null) return false;
     if (typeof d === "string") return Boolean(d.trim());
     if (Array.isArray(d)) return d.length > 0;
-    return true;
+    if (typeof d === "object") {
+      const o = d as Record<string, unknown>;
+      const msg = o.message ?? o.msg;
+      if (typeof msg === "string" && msg.trim()) return true;
+      if (typeof o.code === "string" && o.code.trim()) return true;
+      return false;
+    }
+    return false;
+  };
+
+  const isLikelyMissingApiBaseInCloud = (res: Response): boolean => {
+    if (API_BASE) return false;
+    try {
+      const targetOrigin = new URL(res.url).origin;
+      const pageOrigin = window.location.origin;
+      const isLocal =
+        pageOrigin.includes("localhost") ||
+        pageOrigin.includes("127.0.0.1");
+      return !isLocal && targetOrigin === pageOrigin;
+    } catch {
+      return false;
+    }
   };
 
   const runVatCheck = async () => {
@@ -2292,11 +2544,21 @@ export function NewCustomerModal({
             "vatCheckErrorHttp405",
             "HTTP 405 — POST is not allowed on this URL. In cloud builds, VITE_API_BASE_URL is often missing, so requests hit the static host instead of the Python API. Set VITE_API_BASE_URL to your API origin at build time and redeploy."
           );
+          const hintLikelyApiBase = t(
+            "vatCheckErrorLikelyMissingApiBase",
+            "HTTP {status} — request appears to be hitting the frontend host instead of the backend API. Set VITE_API_BASE_URL to your Render API origin at build time and redeploy."
+          ).replace("{status}", String(res.status));
           const hintGeneric = t(
             "vatCheckErrorHttpEmptyBody",
-            "HTTP {status} — no error details in the response. Often a proxy/gateway timeout, cold start, or API not running. Check API logs; set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit; set CORS_ORIGINS/CORS_ORIGIN_REGEX for this app URL. (A visible HTTP status usually means CORS is already OK.)"
+            "HTTP {status} — no error details. Often a gateway timeout, cold start, or API error. Check API logs and keep VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your proxy limit."
           ).replace("{status}", String(res.status));
-          setVatCheckError(res.status === 405 ? hint405 : hintGeneric);
+          if (res.status === 405) {
+            setVatCheckError(hint405);
+          } else if (isLikelyMissingApiBaseInCloud(res)) {
+            setVatCheckError(hintLikelyApiBase);
+          } else {
+            setVatCheckError(hintGeneric);
+          }
           return;
         }
         setVatCheckError(formatVatCheckDetail(body));
@@ -4000,23 +4262,32 @@ export function NewCustomerModal({
                           {/* Telefon with country code */}
                           <div>
                             <label className={labelClass}>{t("newCustomerLabelTelefon", "Phone")}</label>
-                            <div className="flex gap-1.5">
-                              <select
+                            <div className="flex items-start gap-1.5">
+                              <CountryCodePicker
                                 value={k.telefonCode}
-                                onChange={(e) =>
+                                onChange={(nextCode) =>
                                   setForm((f) => ({
                                     ...f,
                                     kontakte: f.kontakte.map((c, i) =>
-                                      i === safeIdx ? { ...c, telefonCode: e.target.value } : c
+                                      i === safeIdx
+                                        ? {
+                                            ...c,
+                                            telefonCode: nextCode,
+                                            telefon: applyCountryCodeToPhoneInput(
+                                              c.telefon,
+                                              nextCode,
+                                              c.telefonCode
+                                            ),
+                                          }
+                                        : c
                                     ),
                                   }))
                                 }
-                                className="h-9 w-24 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-xs text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                              >
-                                {COUNTRY_CODES.map((cc) => (
-                                  <option key={cc.code} value={cc.code}>{cc.label}</option>
-                                ))}
-                              </select>
+                                searchPlaceholder={t("newCustomerPhoneCodeSearchPh", "Search country or +code")}
+                                searchAriaLabel={t("newCustomerPhoneCodeSearchLabel", "Search country code")}
+                                emptyLabel={t("newCustomerPhoneCodeSearchEmpty", "No country code found")}
+                                buttonAriaLabel={t("newCustomerPhoneCodeButtonLabel", "Choose phone country code")}
+                              />
                               <input
                                 type="tel"
                                 value={k.telefon}
@@ -4025,6 +4296,19 @@ export function NewCustomerModal({
                                     ...f,
                                     kontakte: f.kontakte.map((c, i) =>
                                       i === safeIdx ? { ...c, telefon: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                onBlur={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx
+                                        ? {
+                                            ...c,
+                                            telefon: ensurePhoneIncludesCode(e.target.value, c.telefonCode),
+                                          }
+                                        : c
                                     ),
                                   }))
                                 }
@@ -4037,23 +4321,32 @@ export function NewCustomerModal({
                           {/* Handy with country code */}
                           <div>
                             <label className={labelClass}>{t("newCustomerLabelHandy", "Mobile")}</label>
-                            <div className="flex gap-1.5">
-                              <select
+                            <div className="flex items-start gap-1.5">
+                              <CountryCodePicker
                                 value={k.handyCode}
-                                onChange={(e) =>
+                                onChange={(nextCode) =>
                                   setForm((f) => ({
                                     ...f,
                                     kontakte: f.kontakte.map((c, i) =>
-                                      i === safeIdx ? { ...c, handyCode: e.target.value } : c
+                                      i === safeIdx
+                                        ? {
+                                            ...c,
+                                            handyCode: nextCode,
+                                            handy: applyCountryCodeToPhoneInput(
+                                              c.handy,
+                                              nextCode,
+                                              c.handyCode
+                                            ),
+                                          }
+                                        : c
                                     ),
                                   }))
                                 }
-                                className="h-9 w-24 shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-xs text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                              >
-                                {COUNTRY_CODES.map((cc) => (
-                                  <option key={cc.code} value={cc.code}>{cc.label}</option>
-                                ))}
-                              </select>
+                                searchPlaceholder={t("newCustomerPhoneCodeSearchPh", "Search country or +code")}
+                                searchAriaLabel={t("newCustomerMobileCodeSearchLabel", "Search mobile country code")}
+                                emptyLabel={t("newCustomerPhoneCodeSearchEmpty", "No country code found")}
+                                buttonAriaLabel={t("newCustomerMobileCodeButtonLabel", "Choose mobile country code")}
+                              />
                               <input
                                 type="tel"
                                 value={k.handy}
@@ -4062,6 +4355,19 @@ export function NewCustomerModal({
                                     ...f,
                                     kontakte: f.kontakte.map((c, i) =>
                                       i === safeIdx ? { ...c, handy: e.target.value } : c
+                                    ),
+                                  }))
+                                }
+                                onBlur={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    kontakte: f.kontakte.map((c, i) =>
+                                      i === safeIdx
+                                        ? {
+                                            ...c,
+                                            handy: ensurePhoneIncludesCode(e.target.value, c.handyCode),
+                                          }
+                                        : c
                                     ),
                                   }))
                                 }

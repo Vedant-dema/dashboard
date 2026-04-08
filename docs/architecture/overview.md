@@ -51,3 +51,24 @@ This allows gradual migration while preserving the current demo endpoint compati
 - Storage abstraction is now defined in backend services (local + Azure Blob backends).
 - Customer document payloads are designed for object storage, while SQL stores metadata pointers only.
 - Detailed design and rollout plan: `docs/architecture/object-storage.md`.
+
+## Milestone 8: Deployment Foundation (Vercel + Render)
+
+### Runtime topology
+
+- Frontend SPA deploys to Vercel.
+- FastAPI backend deploys to Render.
+- PostgreSQL runs on Render managed Postgres (or compatible managed Postgres).
+
+### Production guardrails
+
+- Backend startup checks validate runtime configuration and expose readiness details.
+- `APP_ENV=production` enables strict startup checks (CORS, storage/provider, DB mode/connectivity).
+- Render-style `postgres://` URLs are normalized to SQLAlchemy `postgresql+psycopg://` at runtime.
+
+### Operations references
+
+- Deployment runbook: `docs/operations/deployment-vercel-render.md`
+- Environment variables: `docs/operations/env-vars.md`
+- Demo release checklist: `docs/operations/release-checklist-manager-demo.md`
+- Deployed smoke checklist: `docs/operations/smoke-checklist-deployed.md`

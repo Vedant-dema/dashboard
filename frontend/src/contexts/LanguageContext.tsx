@@ -784,7 +784,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     vatCheckErrorHttp405:
       "HTTP 405 — POST auf dieser URL nicht erlaubt. In Cloud-Builds fehlt oft VITE_API_BASE_URL; Anfragen landen dann beim Static-Host statt beim Python-API. VITE_API_BASE_URL zur Build-Zeit setzen und neu deployen.",
     vatCheckErrorHttpEmptyBody:
-      "HTTP {status} — keine Fehlerdetails in der Antwort. Häufig: Proxy-/Gateway-Timeout, Cold Start oder API nicht erreichbar. API-Logs prüfen; VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC unter das Proxy-Limit setzen; CORS_ORIGINS/CORS_ORIGIN_REGEX für diese App-URL. (Ein sichtbarer HTTP-Status bedeutet meist, dass CORS bereits passt.)",
+      "HTTP {status} — keine Fehlerdetails. Häufig Gateway-Timeout, Cold Start oder API-Fehler. API-Logs prüfen; VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC unter dem Proxy-Limit halten.",
     vatCheckErrorNetworkHintApiBase:
       "Prüfen Sie, ob die API unter {base} läuft und CORS_ORIGINS (oder CORS_ORIGIN_REGEX) Ihre Frontend-Origin enthält.",
     vatCheckErrorNetworkHintLocal:
@@ -1973,7 +1973,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     vatCheckErrorHttp405:
       "HTTP 405 — POST is not allowed on this URL. In cloud builds, VITE_API_BASE_URL is often missing, so requests hit the static host instead of the Python API. Set VITE_API_BASE_URL to your API origin at build time and redeploy.",
     vatCheckErrorHttpEmptyBody:
-      "HTTP {status} — no error details in the response. Often a proxy/gateway timeout, cold start, or API not running. Check API logs; set VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your host proxy limit; set CORS_ORIGINS/CORS_ORIGIN_REGEX for this app URL. (A visible HTTP status usually means CORS is already OK.)",
+      "HTTP {status} — no error details. Often a gateway timeout, cold start, or API error. Check API logs and keep VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC below your proxy limit.",
     vatCheckErrorNetworkHintApiBase:
       "Check that the API is running at {base} and CORS_ORIGINS (or CORS_ORIGIN_REGEX) includes your frontend origin.",
     vatCheckErrorNetworkHintLocal:
@@ -3064,7 +3064,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     vatCheckErrorHttp405:
       "HTTP 405 — POST interdit sur cette URL. Souvent, VITE_API_BASE_URL manque au build : les requêtes vont vers l’hébergeur statique au lieu de l’API Python. Définissez VITE_API_BASE_URL au build et redéployez.",
     vatCheckErrorHttpEmptyBody:
-      "HTTP {status} — pas de détail d’erreur dans la réponse. Souvent : timeout proxy/passerelle, cold start ou API arrêtée. Vérifiez les logs ; réglez VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC sous la limite du proxy ; configurez CORS_ORIGINS/CORS_ORIGIN_REGEX pour l’URL du front. (Un statut HTTP visible indique en général que CORS est déjà correct.)",
+      "HTTP {status} — pas de détail d’erreur. Souvent timeout passerelle, cold start ou erreur API. Vérifiez les logs et gardez VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC sous la limite du proxy.",
     vatCheckErrorNetworkHintApiBase:
       "Vérifiez que l’API tourne sur {base} et que CORS_ORIGINS (ou CORS_ORIGIN_REGEX) inclut l’origine du front.",
     vatCheckErrorNetworkHintLocal:

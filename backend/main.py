@@ -22,6 +22,10 @@ Environment:
   VIES_MAX_TOTAL_SEC       Hard wall-clock budget for one check (retries + sleeps, default: 12 s).
                            Must be below the cloud reverse-proxy timeout (typically 30 s on Render/Railway/
                            Heroku). Increase only if your platform allows long-running requests.
+  VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC  Target budget for POST /api/v1/vat/check (default: 9 s, min 2 s).
+                           The server enforces asyncio.wait_for(..., timeout=budget+1.5s) and returns 504 JSON
+                           (vat_check_deadline_exceeded) if exceeded—set budget below your proxy limit so that
+                           JSON reaches the browser before the gateway drops the connection.
   VIES_SOAP_APPROX_FALLBACK If 0/false: skip SOAP checkVatApprox when REST omits fields (default: on).
   VIES_SOAP_CHECK_FALLBACK  If 0/false: skip SOAP checkVat before checkVatApprox (default: on).
                            checkVat is the classic operation and sometimes returns name/address when
@@ -295,15 +299,25 @@ VIES_COUNTRY_CODES: frozenset[str] = frozenset(
 
 
 def _cors_origins() -> list[str]:
-    raw = os.environ.get("CORS_ORIGINS", "").strip()
-    if raw:
-        return [o.strip() for o in raw.split(",") if o.strip()]
-    return ["http://localhost:5173", "http://127.0.0.1:5173"]
+    try:
+        from app.core.config import get_settings
+
+        return list(get_settings().cors_origins)
+    except Exception:
+        raw = os.environ.get("CORS_ORIGINS", "").strip()
+        if raw:
+            return [o.strip() for o in raw.split(",") if o.strip()]
+        return ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
 def _cors_origin_regex() -> str | None:
-    raw = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
-    return raw or None
+    try:
+        from app.core.config import get_settings
+
+        return (get_settings().cors_origin_regex or "").strip() or None
+    except Exception:
+        raw = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
+        return raw or None
 
 
 _log = logging.getLogger("dema.api")
@@ -443,14 +457,44 @@ def _vies_failure_retryable(data: dict[str, Any], http_status: int) -> bool:
 _vies_http: httpx.AsyncClient | None = None
 
 
+def _vies_env_max_total_sec() -> float:
+    """Global retry-loop budget for one VIES call."""
+    try:
+        return max(1.0, float(os.environ.get("VIES_MAX_TOTAL_SEC", "12.0")))
+    except (TypeError, ValueError):
+        return 12.0
+
+
+def _vies_effective_max_total_sec(*, endpoint_budget_sec: float | None = None) -> float:
+    """Return the effective max time budget for the core VIES retry loop.
+
+    When an endpoint-level budget is provided (for example /api/v1/vat/check), the core
+    call must stay within that tighter budget to avoid proxy/gateway timeout behavior.
+    """
+    env_budget = _vies_env_max_total_sec()
+    if endpoint_budget_sec is None:
+        return env_budget
+    return max(1.0, min(env_budget, endpoint_budget_sec))
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     global _vies_http
+    from app.core.startup_checks import run_startup_checks
+
+    startup_report = run_startup_checks()
     _init_demo_store()
     _log.info(
         "CORS allow_origins=%s allow_origin_regex=%s",
         _cors_origins(),
         _cors_origin_regex() or "(none)",
+    )
+    _log.info(
+        "Startup checks ok=%s strict=%s issues=%s warnings=%s",
+        startup_report.get("ok"),
+        startup_report.get("strict_mode"),
+        startup_report.get("issues"),
+        startup_report.get("warnings"),
     )
     timeout = httpx.Timeout(15.0, connect=8.0)
     limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
@@ -2299,20 +2343,25 @@ async def health() -> dict[str, Any]:
     try:
         from app.core.config import get_settings
         from app.core.database import get_database_health_summary, get_persistence_mode
+        from app.core.startup_checks import get_startup_report
 
         persistence = get_persistence_mode()
         customers_mode = (get_settings().customers_store_mode or "").strip().lower()
         database = get_database_health_summary()
+        startup_checks = get_startup_report()
     except Exception:
         persistence = "unknown"
         customers_mode = "unknown"
         database = {"driver": "unknown"}
+        startup_checks = {"ok": False, "issues": [{"code": "health_dependency_error", "message": "health dependencies unavailable"}]}
     return {
         "status": "ok",
         "cors_origins": _cors_origins(),
+        "cors_origin_regex": _cors_origin_regex(),
         "customers_store_mode": customers_mode,
         "persistence": persistence,
         "database": database,
+        "startup_checks": startup_checks,
     }
 
 
@@ -2543,6 +2592,7 @@ async def _vies_call_with_retries(
     *,
     json_body: dict[str, Any] | None = None,
     require_valid_field: bool = False,
+    endpoint_budget_sec: float | None = None,
 ) -> dict[str, Any]:
     """Call VoW REST (GET or POST). Same queue + retry behaviour as the Commission documents.
 
@@ -2556,7 +2606,7 @@ async def _vies_call_with_retries(
     cap_wait = float(os.environ.get("VIES_RETRY_MAX_WAIT_SEC", "8"))
     # Hard wall-clock budget for the whole retry loop (including sleeps + VIES call time).
     # Keeps us well inside the 30 s window most cloud reverse proxies enforce.
-    max_total_sec = float(os.environ.get("VIES_MAX_TOTAL_SEC", "12.0"))
+    max_total_sec = _vies_effective_max_total_sec(endpoint_budget_sec=endpoint_budget_sec)
 
     if _vies_http is None:
         raise HTTPException(status_code=503, detail="HTTP client not initialised")
@@ -2898,78 +2948,131 @@ async def vies_member_state_status() -> dict[str, Any]:
 @app.post("/api/v1/vat/check-test", response_model=VatCheckResponse)
 async def vies_check_test_service(body: VatCheckRequest) -> VatCheckResponse:
     """Proxy VoW `check-vat-test-service` (synthetic valid/invalid numbers, e.g. 100 / 200)."""
-    cc = body.country_code.upper().strip()
-    if cc not in VIES_COUNTRY_CODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Country code not supported by VIES: {cc}",
+    try:
+        cc = body.country_code.upper().strip()
+        if cc not in VIES_COUNTRY_CODES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Country code not supported by VIES: {cc}",
+            )
+        url = os.environ.get("VIES_TEST_SERVICE_URL", _vies_rest_url("check-vat-test-service")).strip()
+        if not url:
+            url = _vies_rest_url("check-vat-test-service")
+        payload = _build_vies_check_payload(body)
+        vat = payload["vatNumber"]
+        data = await _vies_call_with_retries(
+            "POST",
+            url,
+            json_body=payload,
+            require_valid_field=True,
         )
-    url = os.environ.get("VIES_TEST_SERVICE_URL", _vies_rest_url("check-vat-test-service")).strip()
-    if not url:
-        url = _vies_rest_url("check-vat-test-service")
-    payload = _build_vies_check_payload(body)
-    vat = payload["vatNumber"]
-    data = await _vies_call_with_retries(
-        "POST",
-        url,
-        json_body=payload,
-        require_valid_field=True,
-    )
-    fallback_name, fallback_address = _request_fallback_name_address(body)
-    return _map_vies_check_response(
-        data,
-        cc,
-        vat,
-        fallback_name=fallback_name,
-        fallback_address=fallback_address,
-    )
+        fallback_name, fallback_address = _request_fallback_name_address(body)
+        return _map_vies_check_response(
+            data,
+            cc,
+            vat,
+            fallback_name=fallback_name,
+            fallback_address=fallback_address,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - safety net for unexpected upstream/library failures
+        _log.exception("Unexpected VAT check-test error: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "vat_check_test_internal_error",
+                "message": "VAT test check failed due to an internal upstream error. Please retry shortly.",
+            },
+        ) from exc
+
+
+async def _check_vat_impl(body: VatCheckRequest) -> VatCheckResponse:
+    """Core VAT check (VIES + optional enrich + map). Used inside a hard asyncio deadline."""
+    try:
+        cc = body.country_code.upper().strip()
+        if cc not in VIES_COUNTRY_CODES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Country code not supported by VIES: {cc}",
+            )
+        url = os.environ.get("VIES_CHECK_URL", _default_live_check_url()).strip() or _default_live_check_url()
+        payload = _build_vies_check_payload(body)
+        vat = payload["vatNumber"]
+        endpoint_started = asyncio.get_event_loop().time()
+        endpoint_budget_sec = float(os.environ.get("VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC", "9.0"))
+        endpoint_budget_sec = max(2.0, endpoint_budget_sec)
+        # Keep a small safety margin for mapping/response handling.
+        core_vies_budget_sec = max(1.0, endpoint_budget_sec - 0.5)
+
+        data = await _vies_call_with_retries(
+            "POST",
+            url,
+            json_body=payload,
+            require_valid_field=True,
+            endpoint_budget_sec=core_vies_budget_sec,
+        )
+        # Fallback enrichment can be expensive (extra SOAP/member-state calls).
+        # Keep total endpoint time below common cloud proxy limits to avoid empty 5xx gateway bodies.
+        elapsed = asyncio.get_event_loop().time() - endpoint_started
+        remaining = endpoint_budget_sec - elapsed
+        enrich_enabled = os.environ.get("VIES_ENRICH_FALLBACK_ENABLED", "1").strip().lower() not in (
+            "0",
+            "false",
+            "no",
+            "off",
+        )
+        if enrich_enabled and remaining > 0.75:
+            try:
+                data = await asyncio.wait_for(
+                    _enrich_vies_data_with_fallbacks(payload, data),
+                    timeout=remaining,
+                )
+            except (asyncio.TimeoutError, HTTPException):
+                # Return core VIES check result rather than timing out behind gateway/proxy.
+                pass
+        fallback_name, fallback_address = _request_fallback_name_address(body)
+        return _map_vies_check_response(
+            data,
+            cc,
+            vat,
+            fallback_name=fallback_name,
+            fallback_address=fallback_address,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - safety net for unexpected upstream/library failures
+        _log.exception("Unexpected VAT check error: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "vat_check_internal_error",
+                "message": "VAT check failed due to an internal upstream error. Please retry shortly.",
+            },
+        ) from exc
 
 
 @app.post("/api/v1/vat/check", response_model=VatCheckResponse)
 async def check_vat(body: VatCheckRequest) -> VatCheckResponse:
-    cc = body.country_code.upper().strip()
-    if cc not in VIES_COUNTRY_CODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Country code not supported by VIES: {cc}",
+    # Hard wall-clock cap so we return JSON (504) before many reverse proxies drop the body on timeout.
+    endpoint_budget_sec = max(2.0, float(os.environ.get("VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC", "9.0")))
+    hard_cap_sec = endpoint_budget_sec + 1.5
+    try:
+        return await asyncio.wait_for(_check_vat_impl(body), timeout=hard_cap_sec)
+    except asyncio.TimeoutError:
+        _log.warning(
+            "VAT check exceeded hard deadline (%.1fs); returning 504 JSON to avoid empty gateway responses",
+            hard_cap_sec,
         )
-    url = os.environ.get("VIES_CHECK_URL", _default_live_check_url()).strip() or _default_live_check_url()
-    payload = _build_vies_check_payload(body)
-    vat = payload["vatNumber"]
-    endpoint_started = asyncio.get_event_loop().time()
-    endpoint_budget_sec = float(os.environ.get("VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC", "9.0"))
-    endpoint_budget_sec = max(2.0, endpoint_budget_sec)
-
-    data = await _vies_call_with_retries(
-        "POST",
-        url,
-        json_body=payload,
-        require_valid_field=True,
-    )
-    # Fallback enrichment can be expensive (extra SOAP/member-state calls).
-    # Keep total endpoint time below common cloud proxy limits to avoid empty 5xx gateway bodies.
-    elapsed = asyncio.get_event_loop().time() - endpoint_started
-    remaining = endpoint_budget_sec - elapsed
-    enrich_enabled = os.environ.get("VIES_ENRICH_FALLBACK_ENABLED", "1").strip().lower() not in (
-        "0",
-        "false",
-        "no",
-        "off",
-    )
-    if enrich_enabled and remaining > 0.75:
-        try:
-            data = await asyncio.wait_for(
-                _enrich_vies_data_with_fallbacks(payload, data),
-                timeout=remaining,
-            )
-        except (asyncio.TimeoutError, HTTPException):
-            # Return core VIES check result rather than timing out behind gateway/proxy.
-            pass
-    fallback_name, fallback_address = _request_fallback_name_address(body)
-    return _map_vies_check_response(
-        data,
-        cc,
-        vat,
-        fallback_name=fallback_name,
-        fallback_address=fallback_address,
-    )
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "code": "vat_check_deadline_exceeded",
+                "message": (
+                    "VAT check exceeded the configured time limit and was stopped so the client receives "
+                    "this JSON instead of an empty gateway error. Lower VIES_CHECK_ENDPOINT_MAX_TOTAL_SEC "
+                    "(and VIES_MAX_TOTAL_SEC / retries if needed) so the full request fits under your "
+                    "reverse-proxy timeout."
+                ),
+            },
+        ) from None

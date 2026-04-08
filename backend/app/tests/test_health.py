@@ -9,6 +9,8 @@ def test_health_endpoint() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
+    assert isinstance(payload.get("startup_checks"), dict)
+    assert "ok" in payload["startup_checks"]
 
 
 def test_health_endpoint_v1() -> None:
@@ -17,4 +19,14 @@ def test_health_endpoint_v1() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
+    assert payload["version"] == "v1"
+
+
+def test_ready_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/ready")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert isinstance(payload.get("startup_checks"), dict)
 

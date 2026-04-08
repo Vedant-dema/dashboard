@@ -26,6 +26,14 @@ All service reports are under `Detailed report/`:
 - [`roadmap/Settings-Roadmap.md`](roadmap/Settings-Roadmap.md)
 - [`roadmap/DashboardHome-Roadmap.md`](roadmap/DashboardHome-Roadmap.md)
 
+## Operations
+
+- [`operations/agent-playbook.md`](operations/agent-playbook.md)
+- [`operations/deployment-vercel-render.md`](operations/deployment-vercel-render.md)
+- [`operations/env-vars.md`](operations/env-vars.md)
+- [`operations/release-checklist-manager-demo.md`](operations/release-checklist-manager-demo.md)
+- [`operations/smoke-checklist-deployed.md`](operations/smoke-checklist-deployed.md)
+
 ## Retired documents
 
 The following were removed to reduce duplication:

@@ -42,7 +42,10 @@ export function TimetableMiniCalendar({
   nextLabel,
 }: TimetableMiniCalendarProps) {
   const monthLabel = useMemo(
-    () => new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }).format(new Date(viewYear, viewMonth, 1)),
+    () =>
+      new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }).format(
+        new Date(viewYear, viewMonth, 1)
+      ),
     [localeTag, viewYear, viewMonth]
   );
 
@@ -59,59 +62,63 @@ export function TimetableMiniCalendar({
   const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="rounded-2xl border border-rose-200/50 bg-white/80 p-3 shadow-sm backdrop-blur-sm">
-      <div className="mb-2 flex items-center justify-between gap-1">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-b from-white to-slate-50/80 shadow-inner shadow-slate-900/5 ring-1 ring-white/80">
+      <div className="flex items-center justify-between gap-1 border-b border-slate-100/90 bg-slate-900/[0.03] px-2 py-2">
         <button
           type="button"
           onClick={onPrevMonth}
           title={prevLabel}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-rose-800 transition hover:bg-rose-100"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-5 w-5" strokeWidth={2} />
         </button>
-        <span className="min-w-0 flex-1 text-center text-xs font-semibold capitalize text-rose-950">{monthLabel}</span>
+        <span className="min-w-0 flex-1 text-center text-xs font-bold capitalize tracking-tight text-slate-800">
+          {monthLabel}
+        </span>
         <button
           type="button"
           onClick={onNextMonth}
           title={nextLabel}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-rose-800 transition hover:bg-rose-100"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-5 w-5" strokeWidth={2} />
         </button>
       </div>
-      <p className="mb-1.5 text-center text-[10px] font-medium uppercase tracking-wider text-rose-600/80">{titleLabel}</p>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium text-rose-900/60">
-        {weekdayLabels.map((w) => (
-          <span key={w} className="py-1">
-            {w}
-          </span>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-0.5">
-        {grid.map((d, i) => {
-          if (d == null) {
-            return <span key={`e-${i}`} className="h-9" />;
-          }
-          const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          const sel = iso === selectedDate;
-          const isToday = iso === todayIso;
-          return (
-            <button
-              key={iso}
-              type="button"
-              onClick={() => onSelectDay(iso)}
-              className={`flex h-9 items-center justify-center rounded-lg text-xs font-semibold transition ${
-                sel
-                  ? 'bg-gradient-to-br from-rose-700 to-amber-800 text-white shadow-md shadow-rose-900/25'
-                  : isToday
-                    ? 'bg-amber-100 text-amber-950 ring-1 ring-amber-300/80 hover:bg-amber-200'
-                    : 'text-slate-700 hover:bg-rose-50'
-              }`}
-            >
-              {d}
-            </button>
-          );
-        })}
+      <div className="p-2.5">
+        <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{titleLabel}</p>
+        <div className="mb-1 grid grid-cols-7 gap-0.5 rounded-lg bg-slate-100/80 py-1.5 text-center text-[10px] font-bold text-slate-500">
+          {weekdayLabels.map((w, idx) => (
+            <span key={`${idx}-${w}`} className="py-0.5">
+              {w}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {grid.map((d, i) => {
+            if (d == null) {
+              return <span key={`e-${i}`} className="h-10" />;
+            }
+            const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const sel = iso === selectedDate;
+            const isToday = iso === todayIso;
+            return (
+              <button
+                key={iso}
+                type="button"
+                onClick={() => onSelectDay(iso)}
+                className={`flex h-10 items-center justify-center rounded-xl text-xs font-bold transition active:scale-95 ${
+                  sel
+                    ? 'bg-gradient-to-br from-slate-900 to-rose-900 text-white shadow-md shadow-rose-900/30 ring-2 ring-amber-400/80 ring-offset-1 ring-offset-white'
+                    : isToday
+                      ? 'bg-amber-100 text-amber-950 ring-1 ring-amber-300/90 hover:bg-amber-200'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                {d}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

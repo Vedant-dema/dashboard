@@ -18,6 +18,7 @@ import { HrmPage } from "./pages/HrmPage";
 import { OnGroundTeamPage } from "./pages/OnGroundTeamPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ChatPage } from "./pages/ChatPage";
+import { TimetablePage } from "./pages/timetable";
 import { PresenceReporter } from "./components/PresenceReporter";
 import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
 import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
@@ -87,6 +88,8 @@ const HRM_PAGE_ROUTES = new Set([
   "hrm/gehalt",
   "hrm/rollen-rechte",
 ]);
+const TIMETABLE_ROUTES = new Set(["purchase/kalender", "purchase/timetable"]);
+
 const ON_GROUND_TEAM_ROUTES = new Set([
   "on-ground-team/team",
   "on-ground-team/fahrer",
@@ -206,6 +209,7 @@ export default function App() {
   const isRechnungen = RECHNUNGEN_ROUTES.has(pageRoute) || RECHNUNGEN_ROUTES.has(route);
   const isHrm = HRM_PAGE_ROUTES.has(pageRoute) || HRM_PAGE_ROUTES.has(route);
   const isOnGroundTeam = ON_GROUND_TEAM_ROUTES.has(route);
+  const isTimetable = TIMETABLE_ROUTES.has(route);
 
   return (
     <div className="min-h-screen font-sans">
@@ -232,6 +236,8 @@ export default function App() {
             <DoppelteKundenPage department={customerDepartmentFromRoute(route)} />
           ) : isRechnungen ? (
             <RechnungenPage department={customerDepartmentFromRoute(route)} />
+          ) : isTimetable ? (
+            <TimetablePage department={customerDepartmentFromRoute(route)} />
           ) : isHrm ? (
             <HrmPage section={hrmSectionFromRoute(route)} />
           ) : isOnGroundTeam ? (

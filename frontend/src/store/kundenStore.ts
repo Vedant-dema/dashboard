@@ -16,8 +16,11 @@ import type {
 export type { KundenHistoryEntry, KundenFieldChange };
 
 const STORAGE_KEY = "dema-kunden-db";
-const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
-const API_MODE = ((import.meta.env.VITE_CUSTOMERS_SOURCE as string | undefined) ?? "").toLowerCase() === "api";
+const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "")
+  .trim()
+  .replace(/\/+$/, "");
+const API_MODE =
+  ((import.meta.env.VITE_CUSTOMERS_SOURCE as string | undefined) ?? "").trim().toLowerCase() === "api";
 const DEMO_API_KEY = (import.meta.env.VITE_DEMO_API_KEY as string | undefined) ?? "";
 
 function demoApiUrl(path: string): string {

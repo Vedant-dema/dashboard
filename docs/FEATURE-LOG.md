@@ -20,6 +20,7 @@
 | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134, FEATURE-135 |
 | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
 | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137 … FEATURE-142 |
+| 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143, FEATURE-144 |
 
 ---
 
@@ -168,6 +169,8 @@
 | FEATURE-140 | GitHub Actions — Node 24–compatible checkout & setup-python | Added | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) |
 | FEATURE-141 | VAT check — shorter empty HTTP body error copy | Modified | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) |
 | FEATURE-142 | VAT check — hard asyncio deadline + structured detail parsing in UI | Added | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) |
+| FEATURE-143 | Customer domain context pack for LLM/agent onboarding | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-144 | Shared customers load — visible errors and Vite env trim | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

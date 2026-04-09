@@ -110,3 +110,25 @@ This keeps quality gates realistic for a single-engineer team without forcing a 
 - Environment variables: `docs/operations/env-vars.md`
 - Demo release checklist: `docs/operations/release-checklist-manager-demo.md`
 - Deployed smoke checklist: `docs/operations/smoke-checklist-deployed.md`
+
+## Post-Deployment Hardening: Azure Production Path
+
+### Objective
+
+- Keep current Vercel + Render deployment stable.
+- Add a credible, enterprise-grade Azure production path without forced immediate migration.
+
+### Architectural direction
+
+- Frontend: Azure Static Web Apps (or equivalent Azure frontend hosting)
+- Backend: Azure App Service or Azure Container Apps
+- Database: Azure Database for PostgreSQL
+- Storage: Azure Blob Storage (private containers)
+- Secrets: Azure Key Vault
+- Observability: Application Insights + OpenTelemetry-compatible hooks
+
+### References
+
+- Azure production architecture: `docs/architecture/azure-production-path.md`
+- Current vs future deployment mapping: `docs/operations/deployment-current-vs-azure.md`
+- Infra starter skeleton: `infra/azure/`

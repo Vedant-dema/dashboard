@@ -5,6 +5,9 @@ DEMA Dashboard is a React + TypeScript + Vite frontend with a Python FastAPI bac
 This repository includes **Milestone 7** quality foundation work (tests, lint/format, CI) and **Milestone 8**
 deployment readiness (Vercel + Render + Postgres).
 
+Post-deployment hardening now adds a documentation-first Azure production path, while keeping current
+Vercel + Render deployment active.
+
 ## Milestone status
 
 - **Milestone 7 (quality foundation)** — Branch reference: `phase-7-quality-docs-ci`
@@ -28,6 +31,7 @@ deployment readiness (Vercel + Render + Postgres).
 - `frontend/` - React + TypeScript + Vite client
 - `backend/` - FastAPI backend, SQLAlchemy models, Alembic migrations
 - `docs/` - architecture, API, operations runbooks, product, progress
+- `infra/azure/` - starter Azure infrastructure layout (Bicep skeleton + environment parameter examples)
 - `.github/workflows/` - CI workflows (quality foundation, etc.)
 - `render.yaml` - Render blueprint for backend + managed Postgres (when present)
 
@@ -152,7 +156,9 @@ Use [`render.yaml`](render.yaml) for reproducible setup when available.
 - Product flow: [`docs/product/customer-flow.md`](docs/product/customer-flow.md)
 - Deployment (generic): [`docs/operations/deployment.md`](docs/operations/deployment.md)
 - Deployment (Vercel + Render): [`docs/operations/deployment-vercel-render.md`](docs/operations/deployment-vercel-render.md)
+- Deployment strategy (current vs Azure): [`docs/operations/deployment-current-vs-azure.md`](docs/operations/deployment-current-vs-azure.md)
 - Environment variables: [`docs/operations/env-vars.md`](docs/operations/env-vars.md)
+- Azure production architecture path: [`docs/architecture/azure-production-path.md`](docs/architecture/azure-production-path.md)
 - Manager demo release checklist: [`docs/operations/release-checklist-manager-demo.md`](docs/operations/release-checklist-manager-demo.md)
 - Deployed smoke checklist: [`docs/operations/smoke-checklist-deployed.md`](docs/operations/smoke-checklist-deployed.md)
 - Weekly progress: [`docs/progress/weekly-progress.md`](docs/progress/weekly-progress.md)

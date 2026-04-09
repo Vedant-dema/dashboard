@@ -55,3 +55,22 @@ Manual or indirect verification checklist:
 - Phase 8: async document pipeline (OCR/previews/derived artifacts), retention lifecycle automation, operational hardening.
 
 Each phase must end with an updated readiness report and explicit go/no-go verdict.
+
+## 7. Customer domain context documentation (DoD)
+
+When a change touches **customer** API contracts, persistence (`demo_blob` / `db` / shared PUT), **NewCustomerModal** / **CustomersPage** behavior, VAT onboarding flow, or customer history/conflict handling:
+
+1. Update at least one of: `docs/context/customer/contracts.md`, `docs/context/customer/capabilities.md`, or `docs/context/customer/changelog-bridge.md` (e.g. “last reviewed” date) so agents read accurate facts.
+2. Add or extend a **FEATURE-NNN** entry per `.cursor/rules/feature-docs-always.mdc` when the change is user-visible or cross-cuts APIs.
+
+PR authors should answer in the PR description: **“Customer context docs updated: Yes / N/A”** with a link when Yes.
+
+### Optional OpenAPI snapshot
+
+To capture a machine-readable contract while the API is running:
+
+```bash
+curl -s http://127.0.0.1:8010/openapi.json > openapi.snapshot.json
+```
+
+Do not commit secrets; scrub host-specific values if sharing externally. See `docs/context/customer/README.md`.

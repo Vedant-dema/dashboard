@@ -32,6 +32,16 @@ References:
 | `CORS_ORIGIN_REGEX` | Optional | `https://.*\\.vercel\\.app` | Useful for preview deployments. |
 | `DEMO_API_KEY` | Optional | `demo-secret` | Protects demo endpoints when enabled. |
 
+## Cloud-portable runtime metadata
+
+| Variable | Required | Example | Notes |
+| --- | --- | --- | --- |
+| `DEPLOYMENT_PLATFORM` | Optional | `render` / `azure` / `local` | Deployment target label for diagnostics/log metadata. |
+| `CLOUD_PROVIDER` | Optional | `generic` / `azure` | Provider label independent from hosting vendor names. |
+| `SERVICE_NAME` | Optional | `dema-backend` | Stable service identity for logs/traces. |
+| `SERVICE_VERSION` | Optional | `2026.04.09+sha` | Version/revision label for release correlation. |
+| `REQUEST_ID_HEADER_NAME` | Optional | `x-request-id` | Request correlation header returned in API responses. |
+
 ## Object Storage Variables
 
 | Variable | Required | Example | Notes |
@@ -46,6 +56,20 @@ References:
 | `AZURE_BLOB_CONTAINER_RAW` | Optional | `customer-raw` | Azure raw container. |
 | `AZURE_BLOB_CONTAINER_DERIVED` | Optional | `customer-derived` | Azure derived container. |
 | `AZURE_BLOB_SAS_UPLOAD_ENABLED` | Optional | `0` | Future direct-upload path toggle. |
+
+## Observability and telemetry hooks
+
+| Variable | Required | Example | Notes |
+| --- | --- | --- | --- |
+| `LOG_FORMAT` | Optional | `text` or `json` | Structured JSON logs for centralized collectors. |
+| `OBSERVABILITY_ENABLED` | Optional | `1` | Master toggle for observability middleware/hooks. |
+| `OTEL_ENABLED` | Optional | `0` | Enables OpenTelemetry bootstrap when packages are installed. |
+| `OTEL_SERVICE_NAME` | Optional | `dema-backend` | Service name emitted to traces. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Optional | `https://.../v1/traces` | Generic OTLP endpoint for future cloud exporters. |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Optional | `InstrumentationKey=...` | Azure Application Insights direct integration path. |
+| `APPINSIGHTS_CONNECTIONSTRING` | Optional | `InstrumentationKey=...` | Legacy alias used by some Azure setups. |
+| `KEY_VAULT_URI` | Optional | `https://<vault>.vault.azure.net/` | Future Key Vault URI reference. |
+| `AZURE_KEY_VAULT_URI` | Optional | `https://<vault>.vault.azure.net/` | Alias for Key Vault URI. |
 
 ## Backend — VAT/VIES
 

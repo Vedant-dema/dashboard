@@ -8,6 +8,11 @@ This guide deploys the current serious DEMA version with:
 - Backend: Render Web Service (FastAPI)
 - Database: Render PostgreSQL (or compatible managed Postgres)
 
+This remains the active deployment path. Future Azure production direction is documented separately:
+
+- `docs/operations/deployment-current-vs-azure.md`
+- `docs/architecture/azure-production-path.md`
+
 ## Target Topology
 
 - Browser -> Vercel-hosted SPA (`frontend`)

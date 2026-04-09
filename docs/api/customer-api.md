@@ -1,5 +1,7 @@
 # Customer API
 
+For **agent onboarding**, file map, and capability boundaries (without pasting source), start at [`docs/context/customer/README.md`](../context/customer/README.md).
+
 ## Scope
 
 Milestone 6+ customer domain API contracts that remain stable across:

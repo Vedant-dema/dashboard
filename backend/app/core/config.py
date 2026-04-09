@@ -49,6 +49,16 @@ def _as_csv_list(raw: str | None) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _first_nonempty(*values: str | None) -> str | None:
+    for value in values:
+        if value is None:
+            continue
+        cleaned = value.strip()
+        if cleaned:
+            return cleaned
+    return None
+
+
 def _normalize_app_env(raw: str | None) -> str:
     value = (raw or "development").strip().lower()
     if value in {"prod", "production"}:
@@ -77,11 +87,30 @@ def _normalize_database_url(raw: str | None) -> str:
     return value
 
 
+def _normalize_log_format(raw: str | None) -> str:
+    value = (raw or "text").strip().lower()
+    if value in {"json", "structured"}:
+        return "json"
+    return "text"
+
+
 class Settings(BaseModel):
     app_name: str = "DEMA Dashboard API"
     app_env: str = "development"
     app_debug: bool = False
     log_level: str = "INFO"
+    log_format: str = "text"
+    deployment_platform: str = "local"
+    cloud_provider: str = "generic"
+    service_name: str = "dema-backend"
+    service_version: str = "dev"
+    request_id_header_name: str = "x-request-id"
+    observability_enabled: bool = True
+    otel_enabled: bool = False
+    otel_service_name: str = "dema-backend"
+    otel_exporter_otlp_endpoint: str | None = None
+    applicationinsights_connection_string: str | None = None
+    key_vault_uri: str | None = None
     startup_checks_strict: bool = False
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     cors_origin_regex: str | None = None
@@ -104,10 +133,61 @@ class Settings(BaseModel):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     demo_api_key = (os.environ.get("DEMO_API_KEY") or "").strip()
+    service_name = _first_nonempty(
+        os.environ.get("SERVICE_NAME"),
+        os.environ.get("WEBSITE_SITE_NAME"),
+        os.environ.get("RENDER_SERVICE_NAME"),
+        "dema-backend",
+    )
+    service_version = _first_nonempty(
+        os.environ.get("SERVICE_VERSION"),
+        os.environ.get("RENDER_GIT_COMMIT"),
+        os.environ.get("SOURCE_VERSION"),
+        "dev",
+    )
+    deployment_platform = _first_nonempty(
+        os.environ.get("DEPLOYMENT_PLATFORM"),
+        "render" if _first_nonempty(os.environ.get("RENDER"), os.environ.get("RENDER_SERVICE_ID")) else None,
+        "azure" if _first_nonempty(os.environ.get("WEBSITE_SITE_NAME"), os.environ.get("CONTAINER_APP_NAME")) else None,
+        "local",
+    )
+    cloud_provider = _first_nonempty(
+        os.environ.get("CLOUD_PROVIDER"),
+        "azure" if _first_nonempty(os.environ.get("AZURE_SUBSCRIPTION_ID"), os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")) else None,
+        "generic",
+    )
+    ai_connection_string = _first_nonempty(
+        os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"),
+        os.environ.get("APPINSIGHTS_CONNECTIONSTRING"),
+    )
+    otel_endpoint = _first_nonempty(
+        os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"),
+        os.environ.get("APPLICATIONINSIGHTS_OTEL_ENDPOINT"),
+    )
+    key_vault_uri = _first_nonempty(
+        os.environ.get("KEY_VAULT_URI"),
+        os.environ.get("AZURE_KEY_VAULT_URI"),
+    )
     return Settings(
         app_env=_normalize_app_env(os.environ.get("APP_ENV")),
         app_debug=_as_bool(os.environ.get("APP_DEBUG"), default=False),
         log_level=(os.environ.get("LOG_LEVEL") or "INFO").strip().upper(),
+        log_format=_normalize_log_format(os.environ.get("LOG_FORMAT")),
+        deployment_platform=(deployment_platform or "local").strip().lower(),
+        cloud_provider=(cloud_provider or "generic").strip().lower(),
+        service_name=(service_name or "dema-backend").strip(),
+        service_version=(service_version or "dev").strip(),
+        request_id_header_name=(
+            _first_nonempty(os.environ.get("REQUEST_ID_HEADER_NAME"), "x-request-id") or "x-request-id"
+        ).strip().lower(),
+        observability_enabled=_as_bool(os.environ.get("OBSERVABILITY_ENABLED"), default=True),
+        otel_enabled=_as_bool(os.environ.get("OTEL_ENABLED"), default=False),
+        otel_service_name=(
+            _first_nonempty(os.environ.get("OTEL_SERVICE_NAME"), service_name, "dema-backend") or "dema-backend"
+        ).strip(),
+        otel_exporter_otlp_endpoint=otel_endpoint,
+        applicationinsights_connection_string=ai_connection_string,
+        key_vault_uri=key_vault_uri,
         startup_checks_strict=_as_bool(os.environ.get("STARTUP_CHECKS_STRICT"), default=False),
         cors_origins=_as_csv_list(os.environ.get("CORS_ORIGINS"))
         or ["http://localhost:5173", "http://127.0.0.1:5173"],

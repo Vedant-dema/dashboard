@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from app.api.v1.router import api_v1_router
 from app.core.logging import configure_logging
+from app.core.observability import configure_observability
 
 configure_logging()
 
@@ -40,4 +41,6 @@ if not _router_already_attached(legacy_app):
     legacy_app.include_router(api_v1_router)
 
 app = legacy_app
+
+configure_observability(app)
 

@@ -28,16 +28,17 @@ html[data-dema-font-preset="mono"] {
     monospace;
 }
 
-/* DEMA mock: #F4F7FE page, soft glass cards */
+/* DEMA mock: cool glacier canvas, soft glass cards */
 body {
   @apply min-h-screen text-slate-800 antialiased;
   font-family: var(--dema-font-stack);
   /* Scales inherited copy (many nodes omit text-*); rem layout/icons stay on root html */
   font-size: calc(1rem * var(--dema-font-scale, 1));
-  background-color: #f4f7fe;
+  background-color: #f3f7fd;
   background-image:
-    radial-gradient(ellipse 90% 60% at 100% 0%, rgb(219 234 254 / 0.5), transparent 50%),
-    radial-gradient(ellipse 70% 50% at 0% 100%, rgb(224 242 254 / 0.4), transparent 45%);
+    radial-gradient(ellipse 88% 58% at 100% 0%, rgb(191 219 254 / 0.42), transparent 52%),
+    radial-gradient(ellipse 72% 48% at 0% 100%, rgb(224 242 254 / 0.38), transparent 46%),
+    radial-gradient(ellipse 50% 40% at 50% 100%, rgb(239 246 255 / 0.55), transparent 55%);
   background-attachment: fixed;
 }
 
@@ -168,6 +169,16 @@ html[data-dema-theme="dark"] header {
   border-color: rgb(71 85 105 / 0.58) !important;
 }
 
+html[data-dema-theme="dark"] header.customers-header-genz {
+  background: linear-gradient(
+    135deg,
+    rgb(10 20 38 / 0.94) 0%,
+    rgb(30 41 69 / 0.55) 42%,
+    rgb(10 20 38 / 0.92) 100%
+  ) !important;
+  border-bottom-color: transparent !important;
+}
+
 /* Interactive states */
 html[data-dema-theme="dark"] .bg-blue-50,
 html[data-dema-theme="dark"] .bg-blue-100,
@@ -285,6 +296,10 @@ html[data-dema-theme="dark"] .bg-amber-50 {
   background-color: rgb(120 53 15 / 0.32) !important;
 }
 
+html[data-dema-theme="dark"] .bg-orange-50 {
+  background-color: rgb(154 52 18 / 0.3) !important;
+}
+
 html[data-dema-theme="dark"] .bg-blue-50\/50 {
   background-color: rgb(30 58 138 / 0.2) !important;
 }
@@ -390,6 +405,379 @@ html[data-dema-theme="dark"] .glass-card {
   box-shadow:
     0 18px 40px -24px rgb(2 6 23 / 0.95),
     inset 0 1px 0 0 rgb(148 163 184 / 0.1);
+}
+
+html[data-dema-theme="dark"] .customers-genz-glass {
+  border-color: rgb(71 85 105 / 0.55);
+  background: linear-gradient(
+    142deg,
+    rgb(15 23 42 / 0.97) 0%,
+    rgb(30 41 69 / 0.5) 48%,
+    rgb(15 23 42 / 0.96) 100%
+  );
+  box-shadow:
+    0 18px 52px -24px rgb(2 6 23 / 0.95),
+    0 0 0 1px rgb(59 130 246 / 0.16),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+}
+html[data-dema-theme="dark"] .customers-genz-glass::before {
+  background: linear-gradient(
+    118deg,
+    rgb(59 130 246 / 0.32),
+    rgb(56 189 248 / 0.22),
+    rgb(30 64 175 / 0.22),
+    rgb(71 85 105 / 0.25)
+  );
+}
+/* Use background-image (not `background` shorthand) so background-clip: text from
+   .customers-genz-title is not reset to border-box — otherwise the title reads as a solid bar. */
+html[data-dema-theme="dark"] .customers-genz-title {
+  background-image: linear-gradient(
+    92deg,
+    rgb(147 197 253),
+    rgb(191 219 254),
+    rgb(125 211 252),
+    rgb(96 165 250),
+    rgb(147 197 253)
+  );
+  background-size: 240% auto;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+
+html[data-dema-theme="dark"] .customers-genz-pill-area {
+  border-color: rgb(59 130 246 / 0.38);
+  background: linear-gradient(90deg, rgb(15 40 82 / 0.9), rgb(30 58 138 / 0.68));
+  color: rgb(224 242 254);
+  box-shadow: 0 4px 24px -10px rgb(37 99 235 / 0.22);
+}
+html[data-dema-theme="dark"] .customers-genz-pill-dept {
+  border-color: rgb(56 189 248 / 0.32);
+  background: linear-gradient(
+    95deg,
+    rgb(15 23 42 / 0.92),
+    rgb(30 41 69 / 0.75),
+    rgb(15 40 82 / 0.88)
+  );
+  color: rgb(241 245 249);
+  box-shadow:
+    0 4px 28px -12px rgb(14 165 233 / 0.16),
+    0 0 0 1px rgb(59 130 246 / 0.2);
+}
+html[data-dema-theme="dark"] .customers-genz-btn-archive {
+  border-color: rgb(59 130 246 / 0.38) !important;
+  background: rgb(15 23 42 / 0.78) !important;
+  color: rgb(226 232 240) !important;
+}
+html[data-dema-theme="dark"] .customers-genz-btn-archive:hover {
+  border-color: rgb(125 211 252 / 0.38) !important;
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 69 / 0.55),
+    rgb(30 58 138 / 0.45)
+  ) !important;
+}
+html[data-dema-theme="dark"] .customers-genz-deleted-banner {
+  border-color: rgb(127 29 29 / 0.55);
+  background: linear-gradient(90deg, rgb(69 10 10 / 0.75), rgb(88 28 28 / 0.55));
+}
+html[data-dema-theme="dark"] .customers-genz-thead {
+  background: linear-gradient(
+    90deg,
+    rgb(15 23 42 / 0.98),
+    rgb(30 41 69 / 0.55),
+    rgb(15 23 42 / 0.98)
+  ) !important;
+  color: rgb(226 232 240) !important;
+}
+html[data-dema-theme="dark"] .customers-genz-row-default:hover {
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 69 / 0.42),
+    rgb(30 58 138 / 0.28),
+    rgb(14 165 233 / 0.12)
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .customers-modal-genz-backdrop.dema-modal-backdrop-vibe {
+  background-color: rgb(2 6 23 / 0.72);
+  background-image:
+    radial-gradient(ellipse 70% 55% at 50% 0%, rgb(30 58 138 / 0.35), transparent 55%),
+    linear-gradient(168deg, rgb(15 23 42 / 0.9) 0%, rgb(2 6 23 / 0.88) 100%);
+  backdrop-filter: blur(8px) saturate(1.05);
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-panel {
+  background: rgb(15 23 42 / 0.72) !important;
+  border-color: rgb(148 163 184 / 0.22) !important;
+  backdrop-filter: blur(24px) saturate(1.15);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  box-shadow:
+    0 12px 48px -12px rgb(0 0 0 / 0.55),
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-tabs,
+html[data-dema-theme="dark"] .customers-modal-genz-tabs.has-edit-side {
+  background: rgb(15 23 42 / 0.45) !important;
+  border-bottom-color: rgb(71 85 105 / 0.55) !important;
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-body,
+html[data-dema-theme="dark"] .customers-modal-genz-body.has-edit-side {
+  background: rgb(15 23 42 / 0.25) !important;
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-footer,
+html[data-dema-theme="dark"] .customers-modal-genz-footer.is-edit-footer {
+  background: rgb(15 23 42 / 0.55) !important;
+  border-top-color: rgb(71 85 105 / 0.5) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-subcard {
+  background: rgb(30 41 59 / 0.82) !important;
+  border-color: rgb(100 116 139 / 0.35) !important;
+  backdrop-filter: blur(22px) saturate(1.12);
+  -webkit-backdrop-filter: blur(22px) saturate(1.12);
+  box-shadow:
+    0 12px 40px -10px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05) !important;
+}
+
+html[data-dema-theme="dark"] .customers-modal-genz-header {
+  background: linear-gradient(
+      105deg,
+      rgb(3 7 18 / 0.98) 0%,
+      rgb(15 23 42 / 0.95) 45%,
+      rgb(15 23 42 / 0.9) 100%
+    ),
+    rgb(3 7 18) !important;
+  border-bottom-color: rgb(255 255 255 / 0.1) !important;
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+    inset 0 -1px 0 0 rgb(0 0 0 / 0.35);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header::after {
+  opacity: 0.92;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header-summary h2,
+html[data-dema-theme="dark"] .customers-modal-genz-header-summary .text-slate-900,
+html[data-dema-theme="dark"] .customers-modal-genz-header-meta .text-slate-900,
+html[data-dema-theme="dark"] .customers-modal-genz-header-meta-value {
+  color: rgb(248 250 252) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header-summary .text-slate-600,
+html[data-dema-theme="dark"] .customers-modal-genz-header-meta .text-slate-600 {
+  color: rgb(203 213 225) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header-summary .text-slate-500,
+html[data-dema-theme="dark"] .customers-modal-genz-header-meta .text-slate-500 {
+  color: rgb(148 163 184) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header-summary .text-slate-400,
+html[data-dema-theme="dark"] .customers-modal-genz-header-meta .text-slate-400 {
+  color: rgb(148 163 184) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header-meta-label {
+  color: rgb(125 211 252) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header .customers-modal-genz-icon-btn {
+  color: rgb(148 163 184);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header .customers-modal-genz-icon-btn:hover {
+  color: rgb(248 250 252);
+  background-color: rgb(255 255 255 / 0.1);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header .customers-modal-genz-mode-badge {
+  border-color: rgb(59 130 246 / 0.5) !important;
+  background: rgb(30 58 138 / 0.8) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgb(191 219 254) !important;
+}
+
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--1,
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--2,
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--3,
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--4 {
+  background: rgb(30 41 59 / 0.55) !important;
+  background-image: none !important;
+  border-color: rgb(100 116 139 / 0.3) !important;
+  box-shadow:
+    0 6px 28px -8px rgb(0 0 0 / 0.35),
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05) !important;
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-frost-card {
+  background: rgb(30 41 59 / 0.55) !important;
+  border-color: rgb(100 116 139 / 0.3) !important;
+  box-shadow:
+    0 6px 28px -8px rgb(0 0 0 / 0.35),
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05) !important;
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col-title--1,
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col-title--2,
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col-title--3,
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col-title--4 {
+  border-left-color: rgb(200 200 200) !important;
+  color: rgb(243 243 243) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--3 .customers-modal-genz-kontakt-nested-card {
+  border-color: rgb(100 116 139 / 0.35) !important;
+  background: rgb(30 41 59 / 0.72) !important;
+  box-shadow:
+    0 4px 18px -6px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06) !important;
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+}
+
+html[data-dema-theme="dark"]
+  .customers-modal-genz-panel
+  :is(
+    select,
+    textarea,
+    input[type="text"],
+    input[type="search"],
+    input[type="url"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="date"],
+    input[type="datetime-local"],
+    input[type="month"],
+    input[type="time"]
+  ):not(:disabled) {
+  background-color: rgb(45 45 45) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: rgb(80 80 80) !important;
+  color: rgb(230 230 230);
+  box-shadow: none !important;
+}
+html[data-dema-theme="dark"]
+  .customers-modal-genz-panel
+  :is(select, textarea, input[type="text"], input[type="search"], input[type="url"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="month"], input[type="time"]):disabled {
+  background-color: rgb(30 30 30) !important;
+  opacity: 0.65;
+}
+html[data-dema-theme="dark"]
+  .customers-modal-genz-panel
+  :is(select, textarea, input[type="text"], input[type="search"], input[type="url"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="month"], input[type="time"]):focus {
+  background-color: rgb(45 45 45) !important;
+  border-color: rgb(200 200 200) !important;
+  box-shadow: 0 0 0 1px rgb(200 200 200) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-icon-btn:hover {
+  background-color: rgb(55 55 55);
+  color: rgb(243 243 243);
+  box-shadow: none;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-mode-badge {
+  border-color: rgb(80 80 80);
+  background: rgb(45 45 45);
+  color: rgb(230 230 230);
+}
+
+html[data-dema-theme="dark"] .customers-modal-genz-btn-cancel {
+  border-color: rgb(80 80 80);
+  color: rgb(230 230 230);
+  background: rgb(45 45 45);
+  box-shadow: none;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-btn-cancel:hover {
+  border-color: rgb(200 200 200);
+  color: rgb(255 255 255);
+  background: rgb(55 55 55);
+  box-shadow: none;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-save {
+  background-color: rgb(230 230 230) !important;
+  color: rgb(30 30 30) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-save:hover {
+  background-color: rgb(255 255 255) !important;
+}
+
+html[data-dema-theme="dark"] .customers-genz-btn-primary {
+  box-shadow:
+    0 4px 28px -4px rgb(37 99 235 / 0.42),
+    0 12px 48px -14px rgb(56 189 248 / 0.14),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.1);
+}
+
+html[data-dema-theme="dark"] .customers-genz-btn-secondary {
+  border-color: rgb(71 85 105 / 0.5);
+  color: rgb(241 245 249);
+  background: linear-gradient(
+    180deg,
+    rgb(15 23 42 / 0.92),
+    rgb(30 41 69 / 0.35)
+  );
+  box-shadow:
+    0 0 0 1px rgb(59 130 246 / 0.16),
+    0 8px 32px -12px rgb(2 6 23 / 0.65),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+}
+html[data-dema-theme="dark"] .customers-genz-btn-secondary:hover {
+  border-color: rgb(125 211 252 / 0.32);
+  box-shadow:
+    0 0 0 1px rgb(147 197 253 / 0.22),
+    0 12px 40px -14px rgb(37 99 235 / 0.22),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.08);
+}
+
+/* Customers list — dark: centered readable column, clearer selection, invoice dialog glass */
+html[data-dema-theme="dark"] .customers-page-genz .customers-page-content {
+  max-width: min(100%, 1720px);
+  margin-inline: auto;
+  width: 100%;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html[data-dema-theme="dark"] .customers-page-genz .customers-genz-row-selected {
+  background: linear-gradient(
+    92deg,
+    rgb(30 58 138 / 0.78) 0%,
+    rgb(15 23 42 / 0.98) 45%,
+    rgb(30 41 69 / 0.94) 100%
+  ) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+    0 0 0 1px rgb(56 189 248 / 0.38),
+    0 10px 36px -14px rgb(37 99 235 / 0.28) !important;
+  color: rgb(248 250 252) !important;
+}
+
+html[data-dema-theme="dark"] .customers-page-genz .customers-genz-row-selected .text-slate-300 {
+  color: rgb(203 213 225) !important;
+}
+
+html[data-dema-theme="dark"] .customers-genz-invoices-dialog {
+  background: rgb(15 23 42 / 0.78) !important;
+  border-color: rgb(148 163 184 / 0.28) !important;
+  backdrop-filter: blur(24px) saturate(1.15);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  box-shadow:
+    0 12px 48px -12px rgb(0 0 0 / 0.55),
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06) !important;
 }
 
 /* has-[:checked] form highlights */
@@ -638,6 +1026,1059 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .auth-input-glow:focus {
     box-shadow: 0 0 0 4px rgb(59 130 246 / 0.12);
   }
+
+  /* DEMA canvas — rich ambient for home dashboard + customers (widgets/cards stay readable on glass) */
+  .dema-canvas-root {
+    position: relative;
+    isolation: isolate;
+  }
+  .dema-canvas-ambient {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .dema-canvas-base {
+    position: absolute;
+    inset: -22%;
+    background:
+      radial-gradient(ellipse 72% 58% at 50% -12%, rgb(129 140 248 / 0.26), transparent 58%),
+      radial-gradient(ellipse 58% 46% at 102% 8%, rgb(56 189 248 / 0.2), transparent 52%),
+      radial-gradient(ellipse 52% 50% at -5% 88%, rgb(45 212 191 / 0.18), transparent 50%),
+      radial-gradient(ellipse 48% 40% at 88% 88%, rgb(244 114 182 / 0.12), transparent 48%),
+      linear-gradient(
+        168deg,
+        rgb(248 250 252) 0%,
+        rgb(238 242 255 / 0.98) 38%,
+        rgb(224 242 254 / 0.92) 68%,
+        rgb(250 245 255 / 0.9) 100%
+      );
+    background-size: 112% 112%, 135% 135%, 118% 118%, 125% 125%, 100% 100%;
+    animation: dema-canvas-base-shift 24s ease-in-out infinite alternate;
+  }
+  html[data-dema-theme="dark"] .dema-canvas-base {
+    background:
+      radial-gradient(ellipse 72% 58% at 50% -12%, rgb(99 102 241 / 0.4), transparent 55%),
+      radial-gradient(ellipse 58% 46% at 102% 8%, rgb(6 182 212 / 0.28), transparent 50%),
+      radial-gradient(ellipse 52% 50% at -5% 88%, rgb(52 211 153 / 0.18), transparent 48%),
+      radial-gradient(ellipse 48% 40% at 88% 88%, rgb(192 132 252 / 0.22), transparent 45%),
+      linear-gradient(168deg, rgb(15 23 42) 0%, rgb(30 27 75 / 0.65) 48%, rgb(15 23 42) 100%);
+  }
+  .dema-canvas-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(84px) saturate(1.12);
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    opacity: 0.58;
+  }
+  html[data-dema-theme="dark"] .dema-canvas-orb {
+    mix-blend-mode: screen;
+    opacity: 0.42;
+  }
+  .dema-canvas-orb-a {
+    width: min(54vmin, 600px);
+    height: min(54vmin, 600px);
+    left: -16%;
+    top: -4%;
+    background: linear-gradient(140deg, rgb(165 180 252), rgb(125 211 252), rgb(96 165 250));
+    animation: dema-canvas-orb-a 30s ease-in-out infinite;
+  }
+  .dema-canvas-orb-b {
+    width: min(48vmin, 520px);
+    height: min(48vmin, 520px);
+    right: -14%;
+    top: 18%;
+    background: linear-gradient(195deg, rgb(45 212 191), rgb(56 189 248), rgb(14 165 233));
+    animation: dema-canvas-orb-b 34s ease-in-out infinite;
+  }
+  .dema-canvas-orb-c {
+    width: min(42vmin, 460px);
+    height: min(42vmin, 460px);
+    left: 18%;
+    bottom: -14%;
+    background: linear-gradient(125deg, rgb(196 181 253), rgb(34 211 238), rgb(125 211 252));
+    animation: dema-canvas-orb-c 26s ease-in-out infinite;
+  }
+  .dema-canvas-orb-d {
+    width: min(36vmin, 400px);
+    height: min(36vmin, 400px);
+    right: 12%;
+    bottom: 8%;
+    opacity: 0.45;
+    mix-blend-mode: soft-light;
+    filter: blur(72px) saturate(1.2);
+    background: linear-gradient(50deg, rgb(251 191 36 / 0.55), rgb(244 114 182 / 0.45));
+    animation: dema-canvas-orb-d 40s ease-in-out infinite;
+  }
+  html[data-dema-theme="dark"] .dema-canvas-orb-d {
+    mix-blend-mode: screen;
+    opacity: 0.32;
+  }
+  .dema-canvas-shine {
+    position: absolute;
+    inset: -60% -40%;
+    background: linear-gradient(
+      118deg,
+      transparent 42%,
+      rgb(255 255 255 / 0.12) 49%,
+      rgb(255 255 255 / 0.2) 50%,
+      rgb(255 255 255 / 0.1) 51%,
+      transparent 58%
+    );
+    animation: dema-canvas-shine-sweep 18s ease-in-out infinite;
+    pointer-events: none;
+  }
+  html[data-dema-theme="dark"] .dema-canvas-shine {
+    background: linear-gradient(
+      118deg,
+      transparent 42%,
+      rgb(56 189 248 / 0.08) 49%,
+      rgb(165 180 252 / 0.14) 50%,
+      rgb(56 189 248 / 0.06) 51%,
+      transparent 58%
+    );
+  }
+  .dema-canvas-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.32;
+    background-image:
+      linear-gradient(rgb(99 102 241 / 0.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(59 130 246 / 0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: dema-canvas-grid-drift 110s linear infinite;
+    mask-image: radial-gradient(ellipse 92% 78% at 50% 32%, black 12%, transparent 74%);
+  }
+  html[data-dema-theme="dark"] .dema-canvas-grid {
+    opacity: 0.24;
+    background-image:
+      linear-gradient(rgb(129 140 248 / 0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(6 182 212 / 0.1) 1px, transparent 1px);
+  }
+  .dema-canvas-noise {
+    position: absolute;
+    inset: 0;
+    opacity: 0.045;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+  html[data-dema-theme="dark"] .dema-canvas-noise {
+    opacity: 0.07;
+  }
+  .dema-canvas-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 88% 72% at 50% 42%, transparent 38%, rgb(15 23 42 / 0.05) 100%);
+    pointer-events: none;
+  }
+  html[data-dema-theme="dark"] .dema-canvas-vignette {
+    background: radial-gradient(ellipse 92% 80% at 50% 38%, transparent 32%, rgb(2 6 23 / 0.5) 100%);
+  }
+  .dema-canvas-content {
+    position: relative;
+    z-index: 10;
+  }
+  /* Modal overlay — neutral (customer modal; no animated sapphire wash) */
+  .dema-modal-backdrop-vibe {
+    background-color: rgb(0 0 0 / 0.45);
+    background-image: none;
+    animation: none;
+  }
+  .customers-header-ai {
+    position: relative;
+  }
+  .customers-header-ai::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(59 130 246 / 0.45),
+      rgb(125 211 252 / 0.5),
+      rgb(37 99 235 / 0.42),
+      transparent
+    );
+    background-size: 220% 100%;
+    animation: customers-header-ai-line 14s ease-in-out infinite;
+    opacity: 0.95;
+  }
+  .customers-header-ai-search {
+    transition:
+      box-shadow 0.35s ease,
+      border-color 0.25s ease;
+  }
+  .customers-header-ai-search:focus {
+    box-shadow:
+      0 0 0 2px rgb(255 255 255 / 0.9),
+      0 0 0 4px rgb(59 130 246 / 0.12),
+      0 0 36px -6px rgb(56 189 248 / 0.2);
+  }
+
+  /* Customers route — sapphire / ice / cyan ambient (home dashboard unchanged) */
+  .customers-page-genz .dema-canvas-base {
+    background:
+      radial-gradient(ellipse 72% 58% at 46% -8%, rgb(96 165 250 / 0.2), transparent 58%),
+      radial-gradient(ellipse 54% 48% at 100% 2%, rgb(56 189 248 / 0.16), transparent 54%),
+      radial-gradient(ellipse 50% 54% at -4% 92%, rgb(30 64 175 / 0.12), transparent 54%),
+      radial-gradient(ellipse 42% 38% at 88% 90%, rgb(125 211 252 / 0.14), transparent 52%),
+      linear-gradient(
+        152deg,
+        rgb(248 250 252) 0%,
+        rgb(239 246 255 / 0.92) 36%,
+        rgb(240 249 255 / 0.95) 66%,
+        rgb(241 245 249 / 0.98) 100%
+      );
+    background-size: 118% 118%, 132% 132%, 122% 122%, 128% 128%, 100% 100%;
+  }
+  html[data-dema-theme="dark"] .customers-page-genz .dema-canvas-base {
+    background:
+      radial-gradient(ellipse 68% 54% at 50% -8%, rgb(37 99 235 / 0.26), transparent 56%),
+      radial-gradient(ellipse 50% 44% at 100% 6%, rgb(14 165 233 / 0.2), transparent 52%),
+      radial-gradient(ellipse 48% 50% at -2% 88%, rgb(30 58 138 / 0.28), transparent 52%),
+      radial-gradient(ellipse 42% 36% at 88% 86%, rgb(56 189 248 / 0.1), transparent 50%),
+      linear-gradient(158deg, rgb(15 23 42) 0%, rgb(15 40 82 / 0.78) 48%, rgb(15 23 42) 100%);
+  }
+  .customers-page-genz .dema-canvas-orb-a {
+    background: linear-gradient(135deg, rgb(147 197 253), rgb(59 130 246), rgb(37 99 235));
+    filter: blur(84px) saturate(1.06);
+  }
+  .customers-page-genz .dema-canvas-orb-b {
+    background: linear-gradient(200deg, rgb(125 211 252 / 0.9), rgb(14 165 233), rgb(30 64 175));
+    filter: blur(84px) saturate(1.05);
+  }
+  .customers-page-genz .dema-canvas-orb-c {
+    background: linear-gradient(118deg, rgb(191 219 254), rgb(56 189 248), rgb(96 165 250 / 0.92));
+    filter: blur(84px) saturate(1.04);
+  }
+  .customers-page-genz .dema-canvas-orb-d {
+    background: linear-gradient(48deg, rgb(30 58 138 / 0.18), rgb(148 163 184 / 0.28));
+    filter: blur(72px) saturate(1.02);
+  }
+  .customers-page-genz .dema-canvas-grid {
+    opacity: 0.28;
+    background-image:
+      linear-gradient(rgb(59 130 246 / 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(14 165 233 / 0.06) 1px, transparent 1px);
+  }
+  html[data-dema-theme="dark"] .customers-page-genz .dema-canvas-grid {
+    opacity: 0.22;
+  }
+  .customers-page-genz .dema-canvas-shine {
+    opacity: 0.72;
+  }
+  .customers-page-genz .customers-genz-table-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  .customers-genz-glass {
+    position: relative;
+    isolation: isolate;
+    border-color: rgb(255 255 255 / 0.92);
+    background: linear-gradient(
+      138deg,
+      rgb(255 255 255 / 0.97) 0%,
+      rgb(248 250 252 / 0.93) 45%,
+      rgb(239 246 255 / 0.9) 72%,
+      rgb(240 249 255 / 0.65) 100%
+    );
+    box-shadow:
+      0 2px 10px -2px rgb(15 23 42 / 0.04),
+      0 22px 56px -22px rgb(30 58 138 / 0.12),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.96);
+  }
+  .customers-genz-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      118deg,
+      rgb(59 130 246 / 0.28),
+      rgb(125 211 252 / 0.32),
+      rgb(37 99 235 / 0.22),
+      rgb(148 163 184 / 0.18)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .customers-genz-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+  .customers-genz-title {
+    background: linear-gradient(
+      92deg,
+      rgb(15 40 82),
+      rgb(30 64 175),
+      rgb(37 99 235),
+      rgb(14 165 233),
+      rgb(30 58 138),
+      rgb(15 40 82)
+    );
+    background-size: 240% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: rgb(30 41 59);
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .customers-genz-title {
+      color: transparent;
+      animation: customers-genz-title-flow 10s ease-in-out infinite;
+    }
+  }
+  .customers-header-genz.customers-header-ai::after {
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(37 99 235 / 0.5),
+      rgb(56 189 248 / 0.48),
+      rgb(30 64 175 / 0.42),
+      rgb(125 211 252 / 0.4),
+      transparent
+    );
+    background-size: 240% 100%;
+    opacity: 1;
+  }
+  .customers-header-genz .customers-header-ai-search:focus {
+    box-shadow:
+      0 0 0 2px rgb(255 255 255 / 0.95),
+      0 0 0 4px rgb(59 130 246 / 0.14),
+      0 0 40px -4px rgb(37 99 235 / 0.12),
+      0 0 48px -8px rgb(125 211 252 / 0.14);
+  }
+
+  /* New/edit customer modal — flat neutral shell (Fluent-like; behavior unchanged) */
+  /* Customer modal backdrop — soft blue-grey wash so frosted layers have depth */
+  .customers-modal-genz-backdrop.dema-modal-backdrop-vibe {
+    box-shadow: none;
+    background-color: rgb(148 163 184 / 0.4);
+    background-image:
+      radial-gradient(ellipse 85% 65% at 50% -5%, rgb(191 219 254 / 0.55), transparent 58%),
+      radial-gradient(ellipse 55% 45% at 100% 100%, rgb(147 197 253 / 0.35), transparent 52%),
+      radial-gradient(ellipse 50% 40% at 0% 80%, rgb(224 242 254 / 0.45), transparent 50%),
+      linear-gradient(
+        168deg,
+        rgb(241 245 249 / 0.92) 0%,
+        rgb(248 250 252 / 0.88) 40%,
+        rgb(226 232 240 / 0.75) 100%
+      );
+    backdrop-filter: blur(6px) saturate(1.1);
+    -webkit-backdrop-filter: blur(6px) saturate(1.1);
+  }
+  .customers-modal-genz-panel {
+    isolation: isolate;
+    border-color: rgb(255 255 255 / 0.72) !important;
+    background: rgb(255 255 255 / 0.62) !important;
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    box-shadow:
+      0 8px 40px -12px rgb(15 23 42 / 0.18),
+      0 0 0 1px rgb(255 255 255 / 0.55),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.92) !important;
+  }
+  .customers-modal-genz-panel::before {
+    display: none;
+  }
+  .customers-modal-genz-panel > *:not(.customers-modal-genz-inner-overlay) {
+    position: relative;
+    z-index: 1;
+  }
+  .customers-modal-genz-inner-overlay {
+    z-index: 40 !important;
+  }
+  .customers-modal-genz-topline {
+    display: none;
+  }
+  /* Summary header — dark glass “AI” strip (readable on midnight + cyan glow) */
+  .customers-modal-genz-header {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-bottom: 1px solid rgb(255 255 255 / 0.1) !important;
+    background: linear-gradient(
+        105deg,
+        rgb(5 10 20 / 0.97) 0%,
+        rgb(15 23 42 / 0.94) 42%,
+        rgb(15 23 42 / 0.88) 100%
+      ),
+      rgb(5 10 20) !important;
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  }
+  .customers-modal-genz-header::before {
+    display: none;
+  }
+  .customers-modal-genz-header::after {
+    display: block;
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 72% 120% at 100% 28%, rgb(37 99 235 / 0.26), transparent 58%),
+      radial-gradient(ellipse 48% 90% at 92% 0%, rgb(56 189 248 / 0.14), transparent 50%),
+      radial-gradient(ellipse 40% 70% at 0% 100%, rgb(30 64 175 / 0.08), transparent 55%);
+  }
+  .customers-modal-genz-header > div {
+    position: relative;
+    z-index: 1;
+  }
+  .customers-modal-genz-header > button.customers-modal-genz-icon-btn {
+    z-index: 5;
+  }
+  .customers-modal-genz-header-eyeline {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(125 211 252) !important;
+  }
+  .customers-modal-genz-header-hint {
+    margin: 0;
+    max-width: 42rem;
+    font-size: 12px;
+    line-height: 1.45;
+    color: rgb(148 163 184) !important;
+  }
+  .customers-modal-genz-header-address-row {
+    color: rgb(203 213 225);
+  }
+  .customers-modal-genz-header-address-row svg {
+    color: rgb(125 211 252);
+    opacity: 0.88;
+  }
+  .customers-modal-genz-header-summary h2,
+  .customers-modal-genz-header-summary h2 .customers-modal-genz-header-link,
+  .customers-modal-genz-header-summary .text-slate-900 {
+    color: rgb(248 250 252) !important;
+  }
+  .customers-modal-genz-header-summary .customers-modal-genz-header-link:hover {
+    color: rgb(125 211 252) !important;
+  }
+  .customers-modal-genz-header-summary .text-slate-600,
+  .customers-modal-genz-header-summary .text-inherit {
+    color: rgb(203 213 225) !important;
+  }
+  .customers-modal-genz-header-summary .customers-modal-genz-header-link.text-inherit:hover {
+    color: rgb(248 250 252) !important;
+  }
+  .customers-modal-genz-header-summary .text-slate-500,
+  .customers-modal-genz-header-summary .text-slate-400 {
+    color: rgb(148 163 184) !important;
+  }
+  .customers-modal-genz-header-summary .font-medium.text-slate-600 {
+    color: rgb(226 232 240) !important;
+  }
+  .customers-modal-genz-header-summary .tabular-nums.text-slate-400 {
+    color: rgb(148 163 184) !important;
+  }
+  .customers-modal-genz-header-meta-label {
+    color: rgb(125 211 252) !important;
+  }
+  .customers-modal-genz-header-meta-value {
+    color: rgb(248 250 252) !important;
+  }
+  .customers-modal-genz-header .customers-modal-genz-icon-btn {
+    color: rgb(148 163 184);
+  }
+  .customers-modal-genz-header .customers-modal-genz-icon-btn:hover {
+    color: rgb(248 250 252);
+    background-color: rgb(255 255 255 / 0.08);
+  }
+  .customers-modal-genz-header .customers-modal-genz-icon-btn:disabled {
+    color: rgb(100 116 139);
+  }
+  .customers-modal-genz-header .customers-modal-genz-mode-badge {
+    border: 1px solid rgb(59 130 246 / 0.45) !important;
+    background: rgb(30 58 138 / 0.75) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: rgb(191 219 254) !important;
+  }
+  .customers-modal-genz-header .customers-modal-genz-header-link:focus-visible {
+    outline: none;
+    border-radius: 0.125rem;
+    box-shadow: 0 0 0 2px rgb(56 189 248 / 0.55);
+  }
+  .customers-modal-genz-header-copy-flash--ok {
+    color: rgb(52 211 153) !important;
+  }
+  .customers-modal-genz-header-copy-flash--err {
+    color: rgb(252 165 165) !important;
+  }
+  /* Header metric chips — high-contrast on dark */
+  .customers-modal-genz-h-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 100%;
+    border-radius: 9999px;
+    border: 1px solid rgb(56 189 248 / 0.35);
+    background: rgb(15 23 42 / 0.72);
+    padding: 0.25rem 0.625rem;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: rgb(224 242 254);
+    backdrop-filter: blur(10px) saturate(1.15);
+    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+      0 1px 2px rgb(0 0 0 / 0.25);
+  }
+  @media (min-width: 640px) {
+    .customers-modal-genz-h-chip {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.7rem;
+    }
+  }
+  .customers-modal-genz-h-chip--interactive {
+    cursor: pointer;
+    text-align: left;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .customers-modal-genz-h-chip--interactive:hover {
+    border-color: rgb(125 211 252 / 0.55);
+    background: rgb(30 41 59 / 0.88);
+    color: rgb(240 249 255);
+  }
+  .customers-modal-genz-h-chip--interactive:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgb(56 189 248 / 0.5),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.07);
+  }
+  .customers-modal-genz-h-chip--status-active {
+    border-color: rgb(52 211 153 / 0.55);
+    background: rgb(6 78 59 / 0.58);
+    color: rgb(167 243 208);
+  }
+  .customers-modal-genz-h-chip--status-inactive {
+    border-color: rgb(148 163 184 / 0.45);
+    background: rgb(30 41 59 / 0.85);
+    color: rgb(226 232 240);
+  }
+  .customers-modal-genz-h-chip--status-blocked {
+    border-color: rgb(248 113 113 / 0.55);
+    background: rgb(127 29 29 / 0.52);
+    color: rgb(254 202 202);
+  }
+  .customers-modal-genz-h-chip--vat-valid {
+    border-color: rgb(52 211 153 / 0.5);
+    background: rgb(6 78 59 / 0.48);
+    color: rgb(209 250 229);
+  }
+  .customers-modal-genz-h-chip--vat-invalid {
+    border-color: rgb(251 191 36 / 0.55);
+    background: rgb(120 53 15 / 0.48);
+    color: rgb(254 243 199);
+  }
+  .customers-modal-genz-h-chip--vat-unknown {
+    border-color: rgb(56 189 248 / 0.42);
+    background: rgb(12 74 110 / 0.48);
+    color: rgb(186 230 253);
+  }
+  .customers-modal-genz-h-chip--metric {
+    border-color: rgb(129 140 248 / 0.45);
+    background: rgb(49 46 129 / 0.48);
+    color: rgb(224 231 255);
+  }
+  .customers-modal-genz-h-chip-accent {
+    font-weight: 700;
+    color: rgb(199 210 254) !important;
+  }
+  .customers-modal-genz-h-chip--risk-blocked,
+  .customers-modal-genz-h-chip--risk-payment {
+    border-color: rgb(248 113 113 / 0.55);
+    background: rgb(127 29 29 / 0.5);
+    color: rgb(254 202 202);
+  }
+  .customers-modal-genz-h-chip--risk-billing {
+    border-color: rgb(251 191 36 / 0.55);
+    background: rgb(120 53 15 / 0.45);
+    color: rgb(254 243 199);
+  }
+  .customers-modal-genz-h-chip--risk-low {
+    border-color: rgb(34 211 238 / 0.42);
+    background: rgb(22 78 99 / 0.42);
+    color: rgb(207 250 254);
+  }
+  .customers-modal-genz-h-chip--doc-alert {
+    border-color: rgb(251 113 133 / 0.55);
+    background: rgb(136 19 55 / 0.48);
+    color: rgb(255 228 230);
+  }
+  .customers-modal-genz-h-chip--doc-calm {
+    border-color: rgb(56 189 248 / 0.38);
+    background: rgb(12 74 110 / 0.4);
+    color: rgb(186 230 253);
+  }
+  .customers-modal-genz-h-chip--meta {
+    border-color: rgb(148 163 184 / 0.38);
+    background: rgb(15 23 42 / 0.62);
+    color: rgb(203 213 225);
+    font-weight: 500;
+  }
+  .customers-modal-genz-h-chip--meta .customers-modal-genz-h-chip-strong {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: rgb(226 232 240) !important;
+  }
+  .customers-modal-genz-h-chip time,
+  .customers-modal-genz-h-chip .opacity-70 {
+    color: inherit;
+    opacity: 0.85;
+  }
+  .customers-modal-genz-header-meta.border-t {
+    border-top-color: rgb(255 255 255 / 0.12) !important;
+  }
+  .customers-modal-genz-header-chips-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .customers-modal-genz-header-chips-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  .customers-modal-genz-header .customer360-strip-chips {
+    position: relative;
+    padding: 0.25rem 0;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .customers-modal-genz-header::after {
+      animation: none;
+    }
+  }
+  .customers-modal-genz-tabs {
+    border-bottom: 1px solid rgb(255 255 255 / 0.5) !important;
+    background: rgb(255 255 255 / 0.38) !important;
+    backdrop-filter: blur(12px) saturate(1.12);
+    -webkit-backdrop-filter: blur(12px) saturate(1.12);
+  }
+  .customers-modal-genz-tabs.has-edit-side {
+    background: rgb(255 255 255 / 0.4) !important;
+    backdrop-filter: blur(12px) saturate(1.12);
+    -webkit-backdrop-filter: blur(12px) saturate(1.12);
+  }
+  /* Scrollable tab body — neutral canvas so white column cards read clearly (no DOM/layout change) */
+  .customers-modal-genz-body {
+    background: linear-gradient(
+      168deg,
+      rgb(232 238 246 / 0.88) 0%,
+      rgb(218 227 239 / 0.78) 42%,
+      rgb(208 218 232 / 0.72) 100%
+    ) !important;
+    backdrop-filter: blur(10px) saturate(1.06);
+    -webkit-backdrop-filter: blur(10px) saturate(1.06);
+  }
+  .customers-modal-genz-body.has-edit-side {
+    background: linear-gradient(
+      168deg,
+      rgb(230 236 244 / 0.9) 0%,
+      rgb(216 226 238 / 0.8) 42%,
+      rgb(206 216 230 / 0.74) 100%
+    ) !important;
+    backdrop-filter: blur(10px) saturate(1.06);
+    -webkit-backdrop-filter: blur(10px) saturate(1.06);
+  }
+  .customers-modal-genz-footer {
+    border-top: 1px solid rgb(255 255 255 / 0.55) !important;
+    background: rgb(255 255 255 / 0.48) !important;
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.45);
+  }
+  .customers-modal-genz-footer.is-edit-footer {
+    background: rgb(255 255 255 / 0.48) !important;
+  }
+  .customers-modal-genz-subbackdrop {
+    background: rgb(15 23 42 / 0.42) !important;
+    backdrop-filter: blur(8px) saturate(1.05);
+    -webkit-backdrop-filter: blur(8px) saturate(1.05);
+  }
+  .customers-modal-genz-subcard {
+    border: 1px solid rgb(255 255 255 / 0.65) !important;
+    box-shadow:
+      0 12px 40px -12px rgb(15 23 42 / 0.2),
+      0 0 0 1px rgb(255 255 255 / 0.45),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.88) !important;
+    background: rgb(255 255 255 / 0.72) !important;
+    backdrop-filter: blur(20px) saturate(1.18);
+    -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  }
+
+  /* Customer & Address columns — flat panels */
+  .customers-modal-genz-kunde-col {
+    position: relative;
+    isolation: isolate;
+  }
+  .customers-modal-genz-kunde-col::before,
+  .customers-modal-genz-kunde-col::after {
+    display: none;
+  }
+  .customers-modal-genz-kunde-col > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .customers-modal-genz-kunde-col--1,
+  .customers-modal-genz-kunde-col--2,
+  .customers-modal-genz-kunde-col--3,
+  .customers-modal-genz-kunde-col--4 {
+    background: rgb(255 255 255 / 0.97) !important;
+    background-image: none !important;
+    border: 1px solid rgb(226 232 240 / 0.95) !important;
+    border-color: rgb(226 232 240 / 0.95) !important;
+    box-shadow:
+      0 10px 36px -12px rgb(15 23 42 / 0.16),
+      0 0 0 1px rgb(255 255 255 / 0.75),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.98) !important;
+    backdrop-filter: blur(14px) saturate(1.12);
+    -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  }
+
+  .customers-modal-genz-kunde-col-title--1,
+  .customers-modal-genz-kunde-col-title--2,
+  .customers-modal-genz-kunde-col-title--3,
+  .customers-modal-genz-kunde-col-title--4 {
+    border-left-style: solid !important;
+    border-left-width: 3px !important;
+    padding-left: 0.625rem !important;
+    border-left-color: rgb(96 94 92) !important;
+    color: rgb(32 31 30) !important;
+  }
+
+  .customers-modal-genz-kunde-col--3 .customers-modal-genz-kontakt-nested-card {
+    border-color: rgb(226 232 240 / 0.98) !important;
+    background: rgb(248 250 252 / 0.96) !important;
+    box-shadow:
+      0 4px 20px -8px rgb(15 23 42 / 0.12),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.98) !important;
+    backdrop-filter: blur(12px) saturate(1.08);
+    -webkit-backdrop-filter: blur(12px) saturate(1.08);
+  }
+
+  /* Tab panels (VAT, Art, Wash, FZG, History) — same card language as Customer & Address columns */
+  .customers-modal-genz-frost-card {
+    background: rgb(255 255 255 / 0.96) !important;
+    border-color: rgb(226 232 240 / 0.95) !important;
+    box-shadow:
+      0 10px 36px -12px rgb(15 23 42 / 0.15),
+      0 0 0 1px rgb(255 255 255 / 0.72),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.97) !important;
+    backdrop-filter: blur(14px) saturate(1.12);
+    -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .customers-modal-genz-kunde-col--1::before,
+    .customers-modal-genz-kunde-col--2::before,
+    .customers-modal-genz-kunde-col--3::before,
+    .customers-modal-genz-kunde-col--4::before {
+      animation: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .customers-modal-genz-backdrop.dema-modal-backdrop-vibe {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    .customers-modal-genz-panel,
+    .customers-modal-genz-header,
+    .customers-modal-genz-tabs,
+    .customers-modal-genz-tabs.has-edit-side,
+    .customers-modal-genz-body,
+    .customers-modal-genz-body.has-edit-side,
+    .customers-modal-genz-footer,
+    .customers-modal-genz-footer.is-edit-footer,
+    .customers-modal-genz-subcard,
+    .customers-modal-genz-kunde-col--1,
+    .customers-modal-genz-kunde-col--2,
+    .customers-modal-genz-kunde-col--3,
+    .customers-modal-genz-kunde-col--4,
+    .customers-modal-genz-kunde-col--3 .customers-modal-genz-kontakt-nested-card,
+    .customers-modal-genz-frost-card,
+    .customers-modal-genz-btn-cancel {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    .customers-modal-genz-panel {
+      background: rgb(248 250 252) !important;
+    }
+    .customers-modal-genz-header {
+      background: rgb(5 10 20) !important;
+      border-bottom-color: rgb(255 255 255 / 0.12) !important;
+    }
+    .customers-modal-genz-header::after {
+      display: none;
+    }
+    .customers-modal-genz-tabs,
+    .customers-modal-genz-tabs.has-edit-side {
+      background: rgb(249 250 251) !important;
+    }
+    .customers-modal-genz-body,
+    .customers-modal-genz-body.has-edit-side {
+      background: rgb(241 245 249) !important;
+    }
+    .customers-modal-genz-footer,
+    .customers-modal-genz-footer.is-edit-footer {
+      background: rgb(243 244 246) !important;
+    }
+    .customers-modal-genz-kunde-col--1,
+    .customers-modal-genz-kunde-col--2,
+    .customers-modal-genz-kunde-col--3,
+    .customers-modal-genz-kunde-col--4,
+    .customers-modal-genz-frost-card {
+      background: rgb(255 255 255) !important;
+    }
+    .customers-modal-genz-kunde-col--3 .customers-modal-genz-kontakt-nested-card,
+    .customers-modal-genz-subcard {
+      background: rgb(255 255 255) !important;
+    }
+
+    html[data-dema-theme="dark"] .customers-modal-genz-backdrop.dema-modal-backdrop-vibe {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-panel {
+      background: rgb(30 41 59) !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-header {
+      background: rgb(5 10 20) !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-header::after {
+      display: none;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-tabs,
+    html[data-dema-theme="dark"] .customers-modal-genz-tabs.has-edit-side {
+      background: rgb(15 23 42) !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-body,
+    html[data-dema-theme="dark"] .customers-modal-genz-body.has-edit-side {
+      background: rgb(15 23 42) !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-footer,
+    html[data-dema-theme="dark"] .customers-modal-genz-footer.is-edit-footer {
+      background: rgb(23 31 50) !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--1,
+    html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--2,
+    html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--3,
+    html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--4,
+    html[data-dema-theme="dark"] .customers-modal-genz-frost-card {
+      background: rgb(30 41 59) !important;
+    }
+    html[data-dema-theme="dark"] .customers-modal-genz-kunde-col--3 .customers-modal-genz-kontakt-nested-card,
+    html[data-dema-theme="dark"] .customers-modal-genz-subcard {
+      background: rgb(30 41 59) !important;
+    }
+  }
+
+  /* Inputs — solid opaque on glass (mockup: fields sit above frosted panels) */
+  .customers-modal-genz-panel :is(
+      select,
+      textarea,
+      input[type="text"],
+      input[type="search"],
+      input[type="url"],
+      input[type="email"],
+      input[type="tel"],
+      input[type="number"],
+      input[type="date"],
+      input[type="datetime-local"],
+      input[type="month"],
+      input[type="time"]
+    ):not(:disabled) {
+    background-color: rgb(255 255 255) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: rgb(209 209 209) !important;
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.06),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.95) !important;
+  }
+  .customers-modal-genz-panel :is(select, textarea, input[type="text"], input[type="search"], input[type="url"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="month"], input[type="time"]):disabled {
+    background-color: rgb(248 248 248) !important;
+    opacity: 0.72;
+  }
+  .customers-modal-genz-panel :is(select, textarea, input[type="text"], input[type="search"], input[type="url"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="month"], input[type="time"]):focus {
+    background-color: rgb(255 255 255) !important;
+    border-color: rgb(96 94 92) !important;
+    box-shadow: 0 0 0 1px rgb(96 94 92) !important;
+  }
+  .customers-modal-genz-icon-btn {
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .customers-modal-genz-icon-btn:hover {
+    background-color: rgb(243 242 241);
+    color: rgb(32 31 30);
+    box-shadow: none;
+  }
+  .customers-modal-genz-mode-badge {
+    border: 1px solid rgb(200 200 200);
+    background: rgb(255 255 255);
+    color: rgb(50 49 48);
+    font-weight: 600;
+  }
+  .customers-modal-genz-vat-check:not(:disabled):hover {
+    filter: none;
+    opacity: 0.92;
+  }
+  .customers-modal-genz-save {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background-color: rgb(32 31 30) !important;
+    background-image: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+  .customers-modal-genz-save:hover {
+    background-color: rgb(50 49 48) !important;
+  }
+  .customers-modal-genz-save.is-edit-save {
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  .customers-modal-genz-btn-cancel {
+    position: relative;
+    isolation: isolate;
+    font-weight: 600;
+    color: rgb(50 49 48);
+    border: 1px solid rgb(255 255 255 / 0.75);
+    background: rgb(255 255 255 / 0.85);
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+    box-shadow:
+      0 2px 8px -2px rgb(15 23 42 / 0.08),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9);
+    transition:
+      border-color 0.25s ease,
+      background 0.25s ease,
+      color 0.2s ease;
+  }
+  .customers-modal-genz-btn-cancel:hover {
+    border-color: rgb(96 94 92);
+    color: rgb(32 31 30);
+    background: rgb(255 255 255 / 0.95);
+    box-shadow: 0 2px 10px -2px rgb(15 23 42 / 0.1);
+  }
+  .customers-modal-genz-btn-cancel:active {
+    transform: scale(0.98);
+  }
+
+  /* Customers list — primary / secondary Gen Z CTAs */
+  .customers-genz-btn-primary {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: none;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: rgb(255 255 255);
+    background: linear-gradient(
+      105deg,
+      rgb(23 37 84),
+      rgb(30 58 138),
+      rgb(37 99 235),
+      rgb(14 165 233),
+      rgb(56 189 248),
+      rgb(23 37 84)
+    );
+    background-size: 220% 100%;
+    animation: customers-genz-btn-primary-flow 5.5s ease-in-out infinite;
+    box-shadow:
+      0 4px 24px -4px rgb(30 58 138 / 0.42),
+      0 10px 40px -12px rgb(37 99 235 / 0.24),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.24);
+  }
+  .customers-genz-btn-primary:hover {
+    filter: brightness(1.05) saturate(1.02);
+  }
+  .customers-genz-btn-primary:active {
+    transform: scale(0.98);
+  }
+  .customers-genz-btn-secondary {
+    position: relative;
+    isolation: isolate;
+    font-weight: 600;
+    color: rgb(30 41 59);
+    border: 1px solid rgb(255 255 255 / 0.95);
+    background: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.99),
+      rgb(248 250 252 / 0.92)
+    );
+    box-shadow:
+      0 0 0 1px rgb(226 232 240 / 0.95),
+      0 6px 28px -10px rgb(30 58 138 / 0.08),
+      inset 0 1px 0 0 rgb(255 255 255 / 1);
+    backdrop-filter: blur(10px);
+    transition:
+      border-color 0.25s ease,
+      box-shadow 0.25s ease,
+      transform 0.15s ease;
+  }
+  .customers-genz-btn-secondary:hover {
+    border-color: rgb(191 219 254 / 0.88);
+    box-shadow:
+      0 0 0 1px rgb(147 197 253 / 0.38),
+      0 10px 36px -12px rgb(37 99 235 / 0.14),
+      inset 0 1px 0 0 rgb(255 255 255 / 1);
+  }
+  .customers-genz-btn-secondary:active {
+    transform: scale(0.98);
+  }
+  .customers-genz-inline-badge {
+    background: linear-gradient(135deg, rgb(239 68 68), rgb(185 28 28));
+    box-shadow:
+      0 2px 10px -2px rgb(220 38 38 / 0.45),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.2);
+  }
+  .customers-unterlagen-genz-backdrop {
+    background: linear-gradient(
+      165deg,
+      rgb(15 23 42 / 0.55) 0%,
+      rgb(30 41 69 / 0.48) 50%,
+      rgb(15 23 42 / 0.6) 100%
+    ) !important;
+    backdrop-filter: blur(4px);
+    box-shadow: inset 0 0 80px -24px rgb(30 58 138 / 0.12);
+  }
 }
 
 @keyframes auth-gradient-shift {
@@ -753,6 +2194,197 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   }
   100% {
     translate: 120% 0;
+  }
+}
+
+@keyframes dema-canvas-base-shift {
+  0% {
+    background-position: 0% 20%, 100% 80%, 20% 90%, 80% 10%, 0 0;
+  }
+  100% {
+    background-position: 100% 40%, 0% 60%, 80% 20%, 20% 85%, 0 0;
+  }
+}
+
+@keyframes dema-canvas-orb-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(5%, 6%) scale(1.08);
+  }
+  66% {
+    transform: translate(-4%, -3%) scale(0.94);
+  }
+}
+
+@keyframes dema-canvas-orb-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate(-7%, 8%) scale(1.1) rotate(6deg);
+  }
+}
+
+@keyframes dema-canvas-orb-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  40% {
+    transform: translate(6%, -5%) scale(1.06);
+  }
+  80% {
+    transform: translate(-3%, 4%) scale(0.97);
+  }
+}
+
+@keyframes dema-canvas-orb-d {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate(-6%, -8%) scale(1.12);
+    opacity: 0.55;
+  }
+}
+
+@keyframes dema-canvas-shine-sweep {
+  0%,
+  100% {
+    transform: translate(-15%, -5%) rotate(0deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(15%, 8%) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes dema-canvas-grid-drift {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+  100% {
+    background-position: 40px 40px, 40px 40px;
+  }
+}
+
+@keyframes dema-modal-backdrop-flow {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    filter: brightness(1.09) saturate(1.08);
+  }
+}
+
+@keyframes customers-header-ai-line {
+  0%,
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.85;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 1;
+  }
+}
+
+@keyframes customers-genz-title-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes customers-modal-genz-topline-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes customers-modal-genz-kcol-rail {
+  0%,
+  100% {
+    background-position: 0% 12%;
+  }
+  50% {
+    background-position: 0% 88%;
+  }
+}
+
+@keyframes customers-modal-genz-header-hem {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes customers-modal-genz-save-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes customers-genz-btn-primary-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dema-canvas-base,
+  .dema-canvas-orb-a,
+  .dema-canvas-orb-b,
+  .dema-canvas-orb-c,
+  .dema-canvas-orb-d,
+  .dema-canvas-shine,
+  .dema-canvas-grid,
+  .dema-modal-backdrop-vibe {
+    animation: none !important;
+  }
+  .dema-modal-backdrop-vibe {
+    filter: none !important;
+  }
+  .customers-header-ai::after {
+    animation: none !important;
+    background-position: 50% 50%;
+  }
+  .customers-genz-title {
+    animation: none !important;
+  }
+  .customers-modal-genz-topline {
+    animation: none !important;
+    background-position: 50% 50% !important;
+  }
+  .customers-modal-genz-save,
+  .customers-genz-btn-primary {
+    animation: none !important;
   }
 }
 
@@ -958,21 +2590,21 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   z-index: 30;
 }
 
-/* Kontakt horizontal scrollbar — always visible, indigo-themed */
+/* Kontakt horizontal scrollbar — sapphire ice */
 .kontakt-scroll::-webkit-scrollbar {
   height: 8px;
 }
 .kontakt-scroll::-webkit-scrollbar-track {
-  background: #e0e7ff;
+  background: #dbeafe;
   border-radius: 999px;
 }
 .kontakt-scroll::-webkit-scrollbar-thumb {
-  background: #6366f1;
+  background: #2563eb;
   border-radius: 999px;
-  border: 2px solid #e0e7ff;
+  border: 2px solid #dbeafe;
 }
 .kontakt-scroll::-webkit-scrollbar-thumb:hover {
-  background: #4f46e5;
+  background: #1d4ed8;
 }
 
 /* Customer 360 strip — staggered chip entrance (modal summary row) */

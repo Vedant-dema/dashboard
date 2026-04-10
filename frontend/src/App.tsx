@@ -216,7 +216,10 @@ export default function App() {
       <PresenceReporter />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-h-screen min-w-0 flex-col md:pl-[260px]">
-        <Header onMenuClick={() => setSidebarOpen((v) => !v)} />
+        <Header
+          onMenuClick={() => setSidebarOpen((v) => !v)}
+          customersVibe={isCustomers}
+        />
         <main className="flex min-h-0 flex-1 flex-col">
           {isBestand ? (
             <BestandPage department={customerDepartmentFromRoute(route)} />

@@ -11,8 +11,8 @@ type Props = {
 export function CustomerHistoryTimeline({ historyEntries, localeTag, t }: Props) {
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden />
+      <div className="customers-modal-genz-frost-card flex items-start gap-3 rounded-2xl border border-white/60 p-4">
+        <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" aria-hidden />
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
             {t("historyTimelineTitle", "Activity timeline")}
@@ -26,7 +26,7 @@ export function CustomerHistoryTimeline({ historyEntries, localeTag, t }: Props)
         </div>
       </div>
       {historyEntries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 py-16 text-center">
+        <div className="customers-modal-genz-frost-card flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/50 py-16 text-center">
           <svg
             className="mb-3 h-8 w-8 text-slate-300"
             fill="none"
@@ -87,8 +87,8 @@ export function CustomerHistoryTimeline({ historyEntries, localeTag, t }: Props)
                   <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-white ${dotColor}`} />
                   <div className="mt-1 w-px flex-1 bg-slate-200" />
                 </div>
-                <div className="mb-1 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+                <div className="customers-modal-genz-frost-card mb-1 flex-1 overflow-hidden rounded-2xl border border-white/60">
+                  <div className="flex flex-wrap items-center gap-3 border-b border-white/40 bg-white/35 px-4 py-2.5">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-white">
                       {initials}
                     </div>

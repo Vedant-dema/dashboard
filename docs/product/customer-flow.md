@@ -1,5 +1,12 @@
 # Customer flow (product notes)
 
+## Customer modal layout (Phase 2C UI)
+
+- **Single shell**: One modal with a **compact top summary** (company, address, status / USt / profile / risk chips, document-deadlines jump, customer number and entry date on the right), a **single tab row** (with **Open documents** aligned to the right in edit mode), and the existing footer (shortcuts hint, responsible person, Cancel / Save).
+- **Customer & Address tab**: Four columns — **Kundenart** (classification fields + profile/operational notes; in **edit** mode, **Rechnungen** shortcuts sit **below Operative Notizen**), **Stammdaten** (company + main address + tax + website), **Kontaktperson** (contact card + **appointments** in edit mode), **Kundenbeziehungen & Risikoanalyse** (relationships + risk only in edit mode).
+- **New tab** **Beziehungen zu FZG'e**: Placeholder for future vehicle/fleet links; does not change save, VAT, history, or documents behavior.
+- **Documents**: No full-width documents strip inside the tab body; the **Unterlagen** overlay is opened from the header-adjacent action.
+
 ## Edit / save
 
 - Customer master data is edited in the unified customer modal (create and edit). Saving merges the payload into the stored customer record and appends history for tracked fields.

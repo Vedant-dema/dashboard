@@ -138,7 +138,19 @@ export function DynamicDashboard() {
   const groupedPalette = getAddableWidgetsByGroup();
 
   return (
-    <div className="relative p-6 pb-12">
+    <div className="dema-canvas-root relative min-h-full min-h-0 flex-1">
+      <div className="dema-canvas-ambient" aria-hidden>
+        <div className="dema-canvas-base" />
+        <div className="dema-canvas-orb dema-canvas-orb-a" />
+        <div className="dema-canvas-orb dema-canvas-orb-b" />
+        <div className="dema-canvas-orb dema-canvas-orb-c" />
+        <div className="dema-canvas-orb dema-canvas-orb-d" />
+        <div className="dema-canvas-shine" />
+        <div className="dema-canvas-grid" />
+        <div className="dema-canvas-noise" />
+        <div className="dema-canvas-vignette" />
+      </div>
+      <div className="dema-canvas-content relative p-6 pb-12">
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -274,6 +286,7 @@ export function DynamicDashboard() {
             );
           })}
         </GridLayout>
+      </div>
       </div>
     </div>
   );

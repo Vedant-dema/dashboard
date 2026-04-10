@@ -41,6 +41,8 @@ export default {
       colors: {
         dema: {
           blue: "#2563eb",
+          navy: "#0c1e3d",
+          ice: "#e8f2ff",
           teal: "#0d9488",
         },
       },

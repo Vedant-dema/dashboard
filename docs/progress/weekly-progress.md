@@ -1,5 +1,21 @@
 # Weekly Progress
 
+## 2026-04-10 - Customer UI Phase 2C (manager layout)
+
+### Delivered
+
+- Compact customer summary integrated into the modal header; removed the separate Customer 360 overview card.
+- Documents action moved next to the tab row (edit mode); appointments moved under the contact column.
+- Customer & Address tab reorganized into Kundenart | Stammdaten | Kontaktperson | Beziehungen & Risikoanalyse.
+- New tab **Beziehungen zu FZG'e** with non-breaking placeholder content.
+- i18n keys for new labels (de / en / fr); product/architecture docs updated.
+- Restored **timetable** TypeScript surface from `feature/purchase-timetable-ui` so `npm run build` matches the checked-in timetable pages (branch had been in a broken intermediate state).
+
+### Verification
+
+- `npm run build` (frontend) — pass.
+- `GET /api/health` — not run (API not started in this session); run when backend is up.
+
 ## 2026-04-08 - Milestone 7 (quality foundation)
 
 ### Delivered

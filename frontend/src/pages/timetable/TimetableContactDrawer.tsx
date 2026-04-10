@@ -147,13 +147,13 @@ function getContactSmartBullets(
 function outcomePillClass(outcome: TimetableEntry['outcome']): string {
   switch (outcome) {
     case 'has_trucks':
-      return 'bg-emerald-500/20 text-emerald-100 ring-emerald-400/30';
+      return 'bg-blue-500/20 text-blue-100 ring-blue-400/35';
     case 'follow_up':
-      return 'bg-amber-500/20 text-amber-100 ring-amber-400/35';
+      return 'bg-sky-500/20 text-sky-100 ring-sky-400/35';
     case 'no_trucks':
       return 'bg-slate-500/25 text-slate-200 ring-slate-400/25';
     default:
-      return 'bg-sky-500/20 text-sky-100 ring-sky-400/30';
+      return 'bg-indigo-500/20 text-indigo-100 ring-indigo-400/30';
   }
 }
 
@@ -233,13 +233,13 @@ const overviewLabelClass =
   'text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500';
 /** Match NewCustomerModal `inputClass` (+ touch-friendly min height). */
 const overviewInputClass =
-  'min-h-[44px] w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm shadow-slate-900/[0.03] outline-none ring-0 transition placeholder:text-slate-400 focus:border-emerald-400/80 focus:shadow-md focus:shadow-emerald-900/[0.06] focus:ring-2 focus:ring-emerald-500/20 sm:min-h-[2.75rem] sm:px-3.5';
+  'min-h-[44px] w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm shadow-slate-900/[0.03] outline-none ring-0 transition placeholder:text-slate-400 focus:border-blue-400/80 focus:shadow-md focus:shadow-blue-900/[0.06] focus:ring-2 focus:ring-blue-500/20 sm:min-h-[2.75rem] sm:px-3.5';
 /** Long-form row — same chrome as overview inputs, taller + resize. */
 const overviewNotesTextareaClass =
-  'min-h-[6rem] w-full resize-y rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-sm shadow-slate-900/[0.03] outline-none transition placeholder:text-slate-400 focus:border-emerald-400/80 focus:ring-2 focus:ring-emerald-500/20 sm:min-h-[7rem]';
+  'min-h-[6rem] w-full resize-y rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-sm shadow-slate-900/[0.03] outline-none transition placeholder:text-slate-400 focus:border-blue-400/80 focus:ring-2 focus:ring-blue-500/20 sm:min-h-[7rem]';
 const overviewFieldClass = 'flex flex-col gap-2';
 const overviewAddBtnClass =
-  'rounded-xl border border-violet-200/50 bg-gradient-to-r from-white to-violet-50/40 px-3 py-1.5 text-xs font-semibold text-violet-950 shadow-sm shadow-violet-900/[0.06] transition hover:border-violet-300/80 hover:from-violet-50/80 hover:shadow-md active:scale-[0.98]';
+  'rounded-xl border border-blue-200/60 bg-gradient-to-r from-white to-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300/80 hover:from-blue-50/80 hover:shadow-md active:scale-[0.98]';
 
 /** Staggered entrance for overview column stacks (motion-safe). */
 function overviewStaggerClass(ms: number): string {
@@ -266,22 +266,22 @@ function ContactSmartSummaryCard({
 }) {
   const shell =
     variant === 'dropdown'
-      ? 'relative overflow-hidden rounded-2xl border border-violet-200/45 bg-gradient-to-br from-violet-50/90 via-white/75 to-emerald-50/50 p-3.5 shadow-none ring-1 ring-violet-500/[0.08] backdrop-blur-md sm:p-4'
-      : `relative overflow-hidden rounded-3xl border border-violet-200/45 bg-gradient-to-br from-violet-50/85 via-white/60 to-emerald-50/45 p-4 shadow-[0_24px_56px_-24px_rgba(109,40,217,0.28)] backdrop-blur-xl ring-1 ring-violet-500/[0.08] sm:p-5 ${overviewStaggerClass(0)}`;
+      ? 'relative overflow-hidden rounded-2xl border border-blue-200/45 bg-gradient-to-br from-blue-50/90 via-white/75 to-slate-50/50 p-3.5 shadow-none ring-1 ring-blue-500/[0.08] backdrop-blur-md sm:p-4'
+      : `relative overflow-hidden rounded-3xl border border-blue-200/45 bg-gradient-to-br from-blue-50/85 via-white/60 to-indigo-50/40 p-4 shadow-[0_24px_56px_-24px_rgba(30,58,138,0.22)] backdrop-blur-xl ring-1 ring-blue-500/[0.08] sm:p-5 ${overviewStaggerClass(0)}`;
 
   return (
     <div className={shell}>
       <div
-        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-fuchsia-400/25 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
+        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-blue-400/20 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-40 rounded-full bg-emerald-400/20 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-11s]"
+        className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-40 rounded-full bg-indigo-400/18 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-11s]"
         aria-hidden
       />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
         <div
-          className={`flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-lg shadow-violet-500/35 ring-2 ring-white/30 ${variant === 'dropdown' ? 'h-9 w-9' : 'h-11 w-11'}`}
+          className={`flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white shadow-lg shadow-blue-600/35 ring-2 ring-white/30 ${variant === 'dropdown' ? 'h-9 w-9' : 'h-11 w-11'}`}
         >
           <Sparkles
             className={variant === 'dropdown' ? 'h-4 w-4' : 'h-5 w-5'}
@@ -296,7 +296,7 @@ function ContactSmartSummaryCard({
             >
               {t('timetableContactAiTitle', 'Smart summary')}
             </h3>
-            <span className="rounded-full bg-violet-600/12 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-800 ring-1 ring-violet-500/25">
+            <span className="rounded-full bg-blue-600/12 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-900 ring-1 ring-blue-500/25">
               {t('timetableContactAiBadge', 'Live')}
             </span>
           </div>
@@ -307,7 +307,7 @@ function ContactSmartSummaryCard({
                 className={`flex gap-2.5 leading-snug text-slate-700 ${variant === 'dropdown' ? 'text-xs sm:text-sm' : 'text-sm'} ${variant === 'inline' ? overviewStaggerClass(70 + i * 55) : ''}`}
               >
                 <span
-                  className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-r from-violet-500 to-emerald-400 shadow-sm shadow-violet-500/40"
+                  className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-r from-blue-500 to-sky-400 shadow-sm shadow-blue-500/40"
                   aria-hidden
                 />
                 <span>{line}</span>
@@ -366,7 +366,7 @@ function OverviewPanel({
 
   return (
     <section
-      className={`group min-w-0 rounded-3xl border border-white/60 bg-white/55 p-4 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] shadow-violet-900/[0.04] ring-1 ring-slate-900/[0.04] backdrop-blur-xl transition duration-300 hover:border-white/80 hover:bg-white/65 hover:shadow-[0_20px_50px_-16px_rgba(15,23,42,0.14)] sm:p-5 ${className}`}
+      className={`group min-w-0 rounded-3xl border border-white/60 bg-white/55 p-4 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] shadow-blue-900/[0.04] ring-1 ring-slate-900/[0.04] backdrop-blur-xl transition duration-300 hover:border-white/80 hover:bg-white/65 hover:shadow-[0_20px_50px_-16px_rgba(15,23,42,0.14)] sm:p-5 ${className}`}
       aria-label={sectionAriaLabel}
     >
       <div
@@ -404,12 +404,12 @@ function ContactCard({
 }) {
   return (
     <section
-      className={`rounded-3xl border border-white/55 bg-white/70 p-6 shadow-[0_16px_48px_-20px_rgba(15,23,42,0.12)] ring-1 ring-violet-500/[0.06] backdrop-blur-xl md:p-7 ${className}`}
+      className={`rounded-3xl border border-white/55 bg-white/70 p-6 shadow-[0_16px_48px_-20px_rgba(15,23,42,0.12)] ring-1 ring-blue-500/[0.06] backdrop-blur-xl md:p-7 ${className}`}
     >
       <div className="flex gap-4">
         {Icon ? (
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/15 via-fuchsia-500/10 to-emerald-500/15 text-violet-700 ring-1 ring-violet-300/40"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-sky-500/15 text-blue-800 ring-1 ring-blue-300/45"
             aria-hidden
           >
             <Icon className="h-5 w-5" strokeWidth={2} />
@@ -652,32 +652,32 @@ export function TimetableContactDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950/55 via-slate-900/50 to-emerald-950/35 p-1.5 backdrop-blur-[6px] sm:p-2"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950/55 via-slate-900/50 to-blue-950/40 p-1.5 backdrop-blur-[6px] sm:p-2"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative flex h-[min(78dvh,calc(100dvh-12px))] max-h-[min(78dvh,calc(100dvh-12px))] w-[min(92rem,calc(100vw-12px))] max-w-[min(92rem,calc(100vw-12px))] flex-col overflow-hidden rounded-3xl border border-white/25 bg-gradient-to-b from-slate-50/98 via-violet-50/[0.15] to-emerald-50/[0.2] shadow-[0_32px_64px_-16px_rgba(15,23,42,0.45)] shadow-violet-900/10 ring-1 ring-slate-900/10 motion-safe:animate-timetable-fade-up motion-reduce:animate-none sm:h-[min(78dvh,calc(100dvh-16px))] sm:max-h-[min(78dvh,calc(100dvh-16px))] sm:w-[min(92rem,calc(100vw-16px))] sm:max-w-[min(92rem,calc(100vw-16px))]"
+        className="relative flex h-[min(78dvh,calc(100dvh-12px))] max-h-[min(78dvh,calc(100dvh-12px))] w-[min(92rem,calc(100vw-12px))] max-w-[min(92rem,calc(100vw-12px))] flex-col overflow-hidden rounded-3xl border border-white/25 bg-gradient-to-b from-slate-50/98 via-blue-50/[0.2] to-slate-100/[0.35] shadow-[0_32px_64px_-16px_rgba(15,23,42,0.45)] shadow-blue-900/12 ring-1 ring-slate-900/10 motion-safe:animate-timetable-fade-up motion-reduce:animate-none sm:h-[min(78dvh,calc(100dvh-16px))] sm:max-h-[min(78dvh,calc(100dvh-16px))] sm:w-[min(92rem,calc(100vw-16px))] sm:max-w-[min(92rem,calc(100vw-16px))]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="timetable-contact-drawer-title"
       >
-        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0c1222] via-slate-900 to-[#0a1628] px-3.5 py-3 pr-12 text-white sm:px-5 sm:py-3.5 sm:pr-14 md:pr-[4.25rem]">
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0b1428] via-slate-900 to-[#0a1628] px-3.5 py-3 pr-12 text-white sm:px-5 sm:py-3.5 sm:pr-14 md:pr-[4.25rem]">
           <div
-            className="pointer-events-none absolute -right-24 -top-32 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
+            className="pointer-events-none absolute -right-24 -top-32 h-72 w-72 rounded-full bg-blue-600/18 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-500/15 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-9s]"
+            className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-600/16 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-9s]"
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute right-1/4 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-fuchsia-500/12 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-5s]"
+            className="pointer-events-none absolute right-1/4 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-sky-500/14 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-5s]"
             aria-hidden
           />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/25 via-emerald-400/30 to-transparent" />
-          <p className="relative text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300/90">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 via-sky-400/25 to-transparent" />
+          <p className="relative text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300/95">
             {t('timetableContactTitle', 'Customer contact')}
           </p>
           <h2
@@ -699,7 +699,7 @@ export function TimetableContactDrawer({
               {outcomeLabel(draft, t)}
             </span>
             <div
-              className="flex items-center gap-0.5 rounded-md border border-white/[0.18] bg-white/[0.08] px-1.5 py-0.5 ring-1 ring-white/[0.05] focus-within:border-emerald-400/50 focus-within:ring-2 focus-within:ring-emerald-400/20"
+              className="flex items-center gap-0.5 rounded-md border border-white/[0.18] bg-white/[0.08] px-1.5 py-0.5 ring-1 ring-white/[0.05] focus-within:border-blue-400/55 focus-within:ring-2 focus-within:ring-blue-400/25"
               title={t('timetableContactCardClassification', 'Codes & profile')}
             >
               <input
@@ -739,22 +739,22 @@ export function TimetableContactDrawer({
                 'timetableContactCrmSnapshotAria',
                 'Customer master: customer number and industry'
               )}
-              className="flex min-w-0 max-w-[min(100%,19rem)] items-center gap-2 rounded-lg border border-teal-500/35 bg-gradient-to-r from-teal-500/[0.1] via-slate-900/35 to-sky-500/[0.06] px-2 py-1 shadow-inner shadow-black/15 ring-1 ring-inset ring-white/[0.05] sm:max-w-md sm:flex-1 sm:gap-2.5 sm:px-2.5 sm:py-1.5"
+              className="flex min-w-0 max-w-[min(100%,19rem)] items-center gap-2 rounded-lg border border-blue-500/40 bg-gradient-to-r from-blue-600/[0.12] via-slate-900/35 to-sky-500/[0.08] px-2 py-1 shadow-inner shadow-black/15 ring-1 ring-inset ring-white/[0.06] sm:max-w-md sm:flex-1 sm:gap-2.5 sm:px-2.5 sm:py-1.5"
             >
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-500/25 text-teal-200/95 shadow-sm shadow-black/20"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/28 text-sky-200/95 shadow-sm shadow-black/20"
                 aria-hidden
               >
                 <Building2 className="h-3.5 w-3.5" strokeWidth={2} />
               </div>
               {headerCrmDisplay.showDemoBadge ? (
-                <span className="shrink-0 rounded-full bg-amber-400/12 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-amber-200/95 ring-1 ring-amber-400/20">
+                <span className="shrink-0 rounded-full bg-sky-400/15 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-sky-100 ring-1 ring-sky-400/30">
                   {t('timetableContactDemoBadge', 'Demo')}
                 </span>
               ) : null}
               <div className="flex min-w-0 flex-1 items-end gap-2 sm:gap-3">
                 <div className="min-w-0 shrink-0">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400">
                     {t('customersLabelCustomerNr', 'Customer no.')}
                   </p>
                   <p className="font-mono text-sm font-bold leading-none tabular-nums tracking-tight text-white sm:text-[0.95rem]">
@@ -765,7 +765,7 @@ export function TimetableContactDrawer({
                   ·
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400">
                     {t('newCustomerLabelBranche', 'Industry')}
                   </p>
                   <p className="truncate text-xs font-semibold leading-tight text-slate-100">
@@ -781,12 +781,12 @@ export function TimetableContactDrawer({
               {slotDate} · {slotTime}
             </span>
             {draft.is_parked ? (
-              <span className="rounded-md bg-amber-400/18 px-2 py-0.5 text-[11px] font-semibold leading-none text-amber-100 ring-1 ring-amber-400/25">
+              <span className="rounded-md bg-sky-500/20 px-2 py-0.5 text-[11px] font-semibold leading-none text-sky-100 ring-1 ring-sky-400/35">
                 {t('timetableFilterParked', 'Parked')}
               </span>
             ) : null}
             {p.purchase_confirmed ? (
-              <span className="rounded-md bg-emerald-500/18 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-100 ring-1 ring-emerald-400/30">
+              <span className="rounded-md bg-blue-500/22 px-2 py-0.5 text-[11px] font-semibold leading-none text-blue-100 ring-1 ring-blue-400/35">
                 {t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}
               </span>
             ) : null}
@@ -817,13 +817,13 @@ export function TimetableContactDrawer({
                   onClick={() => setTab(id)}
                   className={`flex min-h-[2.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-center text-[10px] font-semibold leading-tight transition-all duration-200 motion-safe:animate-contact-card-in motion-reduce:animate-none sm:min-h-0 sm:flex-row sm:gap-1 sm:rounded-xl sm:px-2 sm:py-1.5 sm:text-xs md:text-[13px] [animation-delay:calc(35ms*var(--tw-contact-tab-i))] ${
                     tab === id
-                      ? 'bg-white text-slate-900 shadow-sm shadow-slate-900/8 ring-1 ring-violet-300/55'
+                      ? 'bg-white text-slate-900 shadow-sm shadow-slate-900/8 ring-1 ring-blue-300/55'
                       : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
                   }`}
                   style={{ '--tw-contact-tab-i': idx } as React.CSSProperties}
                 >
                   <Icon
-                    className={`h-3.5 w-3.5 shrink-0 sm:h-[0.95rem] sm:w-[0.95rem] ${tab === id ? 'text-emerald-600' : 'opacity-80'}`}
+                    className={`h-3.5 w-3.5 shrink-0 sm:h-[0.95rem] sm:w-[0.95rem] ${tab === id ? 'text-blue-600' : 'opacity-80'}`}
                     strokeWidth={2}
                   />
                   <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{label}</span>
@@ -835,7 +835,7 @@ export function TimetableContactDrawer({
               <button
                 type="button"
                 onClick={() => onLogCall(draft)}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 text-[11px] font-semibold text-white shadow-md shadow-emerald-900/20 ring-1 ring-white/10 transition duration-200 hover:brightness-105 active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
+                className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 text-[11px] font-semibold text-white shadow-md shadow-blue-900/25 ring-1 ring-white/10 transition duration-200 hover:brightness-105 active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
               >
                 <PhoneCall className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
                 {t('timetableContactLogCall', 'Log call')}
@@ -844,7 +844,7 @@ export function TimetableContactDrawer({
                 type="button"
                 onClick={() => onEditOffer(draft)}
                 disabled={draft.outcome !== 'has_trucks'}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-emerald-200/90 bg-white px-3 text-[11px] font-semibold text-emerald-900 shadow-sm ring-1 ring-emerald-900/5 transition hover:border-emerald-300 hover:bg-emerald-50/80 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
+                className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-blue-200/90 bg-white px-3 text-[11px] font-semibold text-blue-950 shadow-sm ring-1 ring-blue-900/5 transition hover:border-blue-300 hover:bg-blue-50/80 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
               >
                 <Truck className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
                 {draft.offer
@@ -861,7 +861,7 @@ export function TimetableContactDrawer({
                     setSmartSummaryOpen((o) => !o);
                     setActionsMenuOpen(false);
                   }}
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-violet-200/80 bg-gradient-to-r from-white to-violet-50/50 px-2 text-[11px] font-semibold text-violet-950 shadow-sm shadow-violet-900/[0.06] transition hover:border-violet-300 hover:shadow-md active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-blue-200/80 bg-gradient-to-r from-white to-blue-50/50 px-2 text-[11px] font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300 hover:shadow-md active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
                   aria-expanded={smartSummaryOpen}
                   aria-haspopup="dialog"
                   aria-controls="timetable-contact-smart-summary-popover"
@@ -877,7 +877,7 @@ export function TimetableContactDrawer({
                     id="timetable-contact-smart-summary-popover"
                     role="dialog"
                     aria-label={t('timetableContactAiTitle', 'Smart summary')}
-                    className="absolute right-0 top-[calc(100%+0.5rem)] z-[115] w-[min(calc(100vw-1.5rem),22rem)] max-h-[min(65dvh,26rem)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl shadow-violet-900/20 ring-1 ring-slate-900/[0.06] backdrop-blur-xl [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/90"
+                    className="absolute right-0 top-[calc(100%+0.5rem)] z-[115] w-[min(calc(100vw-1.5rem),22rem)] max-h-[min(65dvh,26rem)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl shadow-blue-900/18 ring-1 ring-slate-900/[0.06] backdrop-blur-xl [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/90"
                   >
                     <ContactSmartSummaryCard bullets={smartBullets} t={t} variant="dropdown" />
                   </div>
@@ -971,7 +971,7 @@ export function TimetableContactDrawer({
                   <button
                     type="button"
                     role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-900 transition hover:bg-blue-50"
                     onClick={() => {
                       patchDraft((prev) => {
                         const pr = ensureProfile(prev);
@@ -993,7 +993,7 @@ export function TimetableContactDrawer({
           <div
             className={
               tab === 'overview'
-                ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-slate-200/40 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(167,139,250,0.12),transparent_50%),linear-gradient(180deg,rgba(250,251,255,0.98)_0%,rgba(241,245,249,0.65)_55%,rgba(236,253,245,0.35)_100%)] p-2 sm:p-3'
+                ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-slate-200/40 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(59,130,246,0.1),transparent_50%),linear-gradient(180deg,rgba(250,251,255,0.98)_0%,rgba(241,245,249,0.65)_55%,rgba(239,246,255,0.45)_100%)] p-2 sm:p-3'
                 : 'min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200/40 bg-[linear-gradient(180deg,rgba(250,251,255,0.95)_0%,#f1f5f9_100%)] px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-8'
             }
           >
@@ -1142,7 +1142,7 @@ export function TimetableContactDrawer({
                           ))}
                         </select>
                       </label>
-                      <div className="flex flex-col gap-3 rounded-2xl border border-violet-200/35 bg-white/45 p-3 shadow-inner shadow-violet-900/[0.03] backdrop-blur-sm">
+                      <div className="flex flex-col gap-3 rounded-2xl border border-blue-200/40 bg-white/45 p-3 shadow-inner shadow-blue-900/[0.03] backdrop-blur-sm">
                         <label className="flex cursor-pointer items-center gap-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:text-slate-900">
                           <input
                             type="checkbox"
@@ -1150,7 +1150,7 @@ export function TimetableContactDrawer({
                             onChange={(e) =>
                               patchDraft((prev) => ({ ...prev, is_completed: e.target.checked }))
                             }
-                            className="h-4 w-4 rounded-md border-slate-300 text-emerald-600 transition focus:ring-2 focus:ring-violet-400/40"
+                            className="h-4 w-4 rounded-md border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-400/40"
                           />
                           {t('timetableColDone', 'Done')}
                         </label>
@@ -1161,7 +1161,7 @@ export function TimetableContactDrawer({
                             onChange={(e) =>
                               patchDraft((prev) => ({ ...prev, is_parked: e.target.checked }))
                             }
-                            className="h-4 w-4 rounded-md border-slate-300 text-amber-600 transition focus:ring-2 focus:ring-violet-400/40"
+                            className="h-4 w-4 rounded-md border-slate-300 text-sky-600 transition focus:ring-2 focus:ring-blue-400/40"
                           />
                           {t('timetableContactParkedLabel', 'Parked')}
                         </label>
@@ -1176,7 +1176,7 @@ export function TimetableContactDrawer({
                                 return { ...prev, contact_profile: { ...pr } };
                               })
                             }
-                            className="h-4 w-4 rounded-md border-slate-300 text-violet-600 transition focus:ring-2 focus:ring-violet-400/40"
+                            className="h-4 w-4 rounded-md border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-400/40"
                           />
                           {t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}
                         </label>
@@ -1750,7 +1750,7 @@ export function TimetableContactDrawer({
                 ) : (
                   <p className="mt-5 text-sm text-slate-600">
                     {t('timetableOfferExpectedPrice', 'Expected price (EUR)')}:{' '}
-                    <span className="font-semibold text-emerald-800">
+                    <span className="font-semibold text-blue-900">
                       {formatEur(offer.expected_price_eur, localeTag)}
                     </span>
                   </p>
@@ -1759,7 +1759,7 @@ export function TimetableContactDrawer({
 
               <ContactCard
                 icon={Package}
-                className="border-amber-100/90 bg-gradient-to-br from-amber-50/80 via-white to-white ring-amber-100/50"
+                className="border-blue-100/90 bg-gradient-to-br from-blue-50/80 via-white to-white ring-blue-100/50"
                 title={t('timetableContactVehicleExtra', 'Registration & status')}
                 subtitle={t(
                   'timetableContactVehicleExtraHint',
@@ -1859,7 +1859,7 @@ export function TimetableContactDrawer({
                     />
                   </label>
                 </div>
-                <div className="mt-6 flex flex-wrap gap-8 rounded-xl border border-amber-100/60 bg-white/60 p-4">
+                <div className="mt-6 flex flex-wrap gap-8 rounded-xl border border-blue-100/70 bg-white/60 p-4">
                   <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-slate-700">
                     <input
                       type="checkbox"
@@ -1917,13 +1917,13 @@ export function TimetableContactDrawer({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2 border-t border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-blue-50/45 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
             <span
               className={`h-2 w-2 shrink-0 rounded-full ring-2 ring-white ${
                 dirty
-                  ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.65)] motion-safe:animate-pulse motion-reduce:animate-none'
-                  : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]'
+                  ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.55)] motion-safe:animate-pulse motion-reduce:animate-none'
+                  : 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.45)]'
               }`}
               aria-hidden
             />

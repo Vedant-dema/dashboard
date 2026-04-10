@@ -69,7 +69,14 @@ function highlight(text: string, query: string): React.ReactNode {
   )
 }
 
-export function Header({ onMenuClick }: { onMenuClick: () => void }) {
+export function Header({
+  onMenuClick,
+  customersVibe = false,
+}: {
+  onMenuClick: () => void;
+  /** When true (customers routes): chrome + category tag rail — decorative only */
+  customersVibe?: boolean;
+}) {
   const { user, logout } = useAuth();
   useChatSync();
   const chatUnread = user ? getUnreadTotalForUser(user.email) : 0;
@@ -255,7 +262,14 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-[72px] items-center gap-2 border-b border-slate-200/60 bg-[#F4F7FE]/80 px-4 backdrop-blur-md sm:gap-4 sm:px-6">
+    <>
+    <header
+      className={`sticky top-0 z-30 flex h-[72px] items-center gap-2 px-4 backdrop-blur-md sm:gap-4 sm:px-6 ${
+        customersVibe
+          ? "customers-header-ai customers-header-genz border-b-0 bg-gradient-to-br from-slate-50/98 via-blue-50/45 to-sky-50/88"
+          : "border-b border-slate-200/60 bg-[#F4F7FE]/80"
+      }`}
+    >
       {/* Hamburger – mobile only */}
       <button
         type="button"
@@ -281,7 +295,9 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
           onKeyDown={handleKeyDown}
           placeholder={t("headerSearchPlaceholder", "Search customers, inventory, offers…")}
           autoComplete="off"
-          className="h-11 w-full rounded-2xl border border-slate-200/80 bg-white pl-11 pr-4 text-sm text-slate-700 shadow-sm outline-none ring-blue-500/20 placeholder:text-slate-400 focus:border-blue-300 focus:ring-2"
+          className={`h-11 w-full rounded-2xl border border-slate-200/80 bg-white pl-11 pr-4 text-sm text-slate-700 shadow-sm outline-none ring-blue-500/20 placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 ${
+            customersVibe ? "customers-header-ai-search" : ""
+          }`}
         />
 
         {showDropdown && (
@@ -556,5 +572,6 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
         )}
       </div>
     </header>
+    </>
   );
 }

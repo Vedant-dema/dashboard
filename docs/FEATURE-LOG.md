@@ -21,6 +21,7 @@
 | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
 | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137 … FEATURE-142 |
 | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
+| 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-181 |
 
 ---
 
@@ -174,6 +175,40 @@
 | FEATURE-145 | Purchase Kalender — Timetable UI (call planner prototype) | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 | FEATURE-146 | Purchase Timetable — premium visual refresh | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 | FEATURE-147 | Purchase Timetable — layout & visual system refresh | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-148 | Customer modal Phase 2C — compact header, 4 columns, FZG tab, docs action | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-149 | Customers route — Gen-Z ambient background + header category tag rail | Added | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-150 | Customer modal edit — 2×2 grid until 2xl, scroll chips/tabs, panel chrome | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-151 | Customers — no scope rail; AI-slab palette; edit grid from 1420px | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-152 | DEMA canvas on home + customers; cinematic modal backdrop | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-153 | Customers Gen Z scoped chrome (canvas, glass, header, table) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-154 | Customer modal + Unterlagen overlay Gen Z shell | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-155 | Customers page — remove department hint line | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-156 | Gen Z CTA buttons — list + modal footer | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-157 | Customers chrome — professional indigo/slate/teal palette | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-158 | Customer modal — body portal + z-index above header (search overlap) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-159 | Customer modal — glassy tabs, subcards, selects/inputs/textareas | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-160 | Customer modal — remove animated gradient field borders | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-161 | Customer modal — Gen-Z differentiated columns on Customer & Address | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-162 | Customer modal — Gen-Z hero summary header vs tab bar | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-163 | Customer modal — thinner tab bar for more form viewport | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-164 | Customer modal — dark summary header + hidden chip scrollbar | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-165 | Customer modal — header chip text contrast (scoped slate overrides) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-166 | Customers UI — professional sapphire blue Gen-Z visual refresh | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-167 | Customer modal — keyboard hint beside responsible-person dropdown | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-168 | Customer modal — alignment, typography, productive layout polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-169 | Customer modal & edit shell — neutral Fluent-style UI (no Gen-Z gradients) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-170 | Customer modal — glassmorphism (frosted panels + opaque inputs) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-171 | Customer modal — dark “AI” glass header + vivid header chips | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-172 | Customer modal — main address block label shortened to “Adresse” / “Address” | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-173 | Customer modal — larger column titles, tab bar, and panel section headings | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-174 | Customer modal edit — Rechnungen rail + taller shell (no buried invoice actions) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-175 | Customer modal — darker tab body canvas + stronger white column cards | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-176 | Customer modal edit — revert Rechnungen rail (restore bottom placement + 92vh shell) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-177 | Customer modal — remove duplicate address block title | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-178 | Customer modal — address “+ New” full-width row below pills | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-179 | Customer modal — compact + Neu inline with address pills | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-180 | Customer edit — Rechnungen block under Operative Notizen (column 1) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-181 | Customers page — responsive layout + dark-theme polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

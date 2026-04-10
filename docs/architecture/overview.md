@@ -1,5 +1,9 @@
 # Architecture Overview
 
+## Frontend: customer modal (Phase 2C)
+
+The customer create/edit experience remains a **single React modal** (`NewCustomerModal`) driven by the customers page for edit-only slots (documents action, appointments, relationships, risk). Layout was refactored for a **compact summary header** and **four-column** main grid on the Customer & Address tab; repository and API boundaries are unchanged.
+
 ## Milestone 6: PostgreSQL Foundation for Customer Domain
 
 ### Persistence Modes

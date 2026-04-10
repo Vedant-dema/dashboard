@@ -632,6 +632,39 @@ export function getDetailByKundenNr(db: KundenDbState, kuNr: string): KundenDeta
   return { kunden, kunden_wash, rollen };
 }
 
+/** Normalize company name for timetable ↔ Kundenstamm matching. */
+function normalizeTimetableCompanyKey(name: string): string {
+  return name
+    .normalize('NFKC')
+    .replace(/\u00a0/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Resolve master customer for the purchase timetable contact drawer.
+ * Prefers `contact_profile.customer_number` when it equals a live `kunden_nr`;
+ * otherwise matches non-deleted `firmenname` (case- and space-insensitive).
+ */
+export function resolveKundeForTimetableRow(
+  db: KundenDbState,
+  companyName: string,
+  profileCustomerNr?: string | null
+): KundenStamm | null {
+  const active = db.kunden.filter((k) => !k.deleted);
+  const nr = profileCustomerNr?.trim();
+  if (nr) {
+    const byNr = active.find((k) => k.kunden_nr.trim() === nr);
+    if (byNr) return byNr;
+  }
+  const key = normalizeTimetableCompanyKey(companyName);
+  if (!key) return null;
+  const byName = active.filter((k) => normalizeTimetableCompanyKey(k.firmenname) === key);
+  if (byName.length === 0) return null;
+  return byName[0];
+}
+
 /** Felder für neuen Kunden (ohne `id`; `kunden_nr` optional = automatisch). */
 export type NewKundeInput = Pick<KundenStamm, "firmenname"> &
   Partial<Omit<KundenStamm, "id" | "firmenname">>;

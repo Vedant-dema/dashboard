@@ -20,7 +20,8 @@
 | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134, FEATURE-135 |
 | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
 | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137 … FEATURE-142 |
-| 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
+| 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-166 |
+| 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-167, FEATURE-168, FEATURE-169, FEATURE-170, FEATURE-171, FEATURE-172, FEATURE-173, FEATURE-174, FEATURE-175, FEATURE-176 |
 
 ---
 
@@ -174,6 +175,35 @@
 | FEATURE-145 | Purchase Kalender — Timetable UI (call planner prototype) | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 | FEATURE-146 | Purchase Timetable — premium visual refresh | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 | FEATURE-147 | Purchase Timetable — layout & visual system refresh | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-148 | Purchase Timetable — header-only day summary KPIs | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-149 | Purchase Timetable — operations toolbar, calendar on demand | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-150 | Purchase Timetable — day picker z-index above table | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-151 | Purchase Timetable — AI assistant preview panel | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-152 | Purchase Timetable — legacy parity, demo seed, print | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-153 | Purchase Timetable — modern UI, actions menu, v4 seed | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-154 | Purchase Timetable — filters dropdown by search bar | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-155 | Purchase Timetable — filter/search labels, panel polish, remove count | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-156 | Purchase Timetable — Termin-Kalender seed, Ka/Arte cols, v5 storage | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-157 | Purchase Timetable — Kundenkontakt drawer, contact_profile, v6 storage | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-158 | Purchase Timetable — contact UI as centered popup (edit-style) | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-159 | Purchase Timetable — contact modal toolbar, denser layout | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-160 | Purchase Timetable — full editable Kundenkontakt workspace | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-161 | Purchase Timetable — contact modal card layout & calmer chrome | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-162 | Kundenkontakt overview — compact columns, wide long-text row | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-163 | Kundenkontakt overview aligned with customer edit layout | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-164 | Kundenkontakt modal — wider, shorter, parallel tabs | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-165 | Einkaufs-Terminplan — demo rows across three days + DEMO merge | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-166 | Kundenkontakt overview — address row overlap fix + modern cards | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
+| FEATURE-167 | Purchase timetable — premium calendar UI, motion, mini-calendar polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-168 | Kundenkontakt modal — premium shell, motion, field spacing | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-169 | Kundenkontakt — Gen Z glass UI + live smart summary (on-device) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-170 | Kundenkontakt — smart summary in toolbar dropdown | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-171 | Kundenkontakt Übersicht — horizontal card strip, vertical fields | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-172 | Kundenkontakt — section tabs horizontal on top | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-173 | Kundenkontakt Übersicht — Codes & profile dark stat card | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-174 | Kundenkontakt — Codes & profile in header; remove Overview card | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-175 | Kundenkontakt header — customer no. & industry from Kundenstamm | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-176 | Kundenkontakt — CRM demo fallbacks + vertical address block | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

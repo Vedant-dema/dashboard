@@ -1,17 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   LayoutGrid,
+  ListPlus,
+  MoreHorizontal,
   PhoneCall,
   Plus,
+  Printer,
   Search,
   Sparkles,
-  Target,
   UserRound,
   Zap,
 } from 'lucide-react';
+import './timetable-print.css';
 import type {
   TimetableCallLogInput,
   TimetableDbState,
@@ -22,9 +28,12 @@ import type {
 import {
   addTimetableEntries,
   createDraftTimetableEntry,
+  insertFiveDraftTimetableRows,
   loadTimetableDb,
   nowIsoDateTime,
   saveTimetableDb,
+  timetableRowIsMine,
+  timetableRowIsOtherBuyer,
   upsertTimetableEntry,
 } from '../../store/timetableStore';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -34,6 +43,7 @@ import { DEPARTMENT_I18N_KEY } from '../../types/departmentArea';
 import { TimetableMiniCalendar } from './TimetableMiniCalendar';
 import { TimetableTable } from './TimetableTable';
 import { TimetableCallModal } from './TimetableCallModal';
+import { TimetableContactDrawer } from './TimetableContactDrawer';
 import { TimetableOfferModal } from './TimetableOfferModal';
 
 type CreateFormState = {
@@ -45,13 +55,24 @@ type CreateFormState = {
   purpose: string;
 };
 
-type TimetableSummaryTab = 'today' | 'pipeline' | 'performance';
-
 function localIsoDate(now: Date = new Date()): string {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function addDaysToIso(iso: string, deltaDays: number): string {
+  const base = new Date(`${iso}T12:00:00`);
+  base.setDate(base.getDate() + deltaDays);
+  return localIsoDate(base);
+}
+
+function monthRangeIso(anchorIso: string): { from: string; to: string } {
+  const d = new Date(`${anchorIso}T12:00:00`);
+  const start = new Date(d.getFullYear(), d.getMonth(), 1);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return { from: localIsoDate(start), to: localIsoDate(end) };
 }
 
 function pickLocaleTag(language: string): string {
@@ -78,10 +99,6 @@ function parseDateForSort(raw: string): number {
   const ms = Date.parse(raw);
   if (Number.isNaN(ms)) return Number.MAX_SAFE_INTEGER;
   return ms;
-}
-
-function parseIsoDayToMs(isoDate: string): number {
-  return Date.parse(`${isoDate}T00:00:00`);
 }
 
 function buyerCodeFromName(raw: string | undefined): string {
@@ -111,28 +128,91 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<TimetableFilterMode>('all_day');
-  const [summaryTab, setSummaryTab] = useState<TimetableSummaryTab>('today');
+  const [showOffersOnly, setShowOffersOnly] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState(() => monthRangeIso(todayIso).from);
+  const [rangeTo, setRangeTo] = useState(() => monthRangeIso(todayIso).to);
+  const [toast, setToast] = useState<string | null>(null);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [showDayPicker, setShowDayPicker] = useState(false);
+  const dayPickerRef = useRef<HTMLDivElement>(null);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const filtersMenuRef = useRef<HTMLDivElement>(null);
   const [callModalEntry, setCallModalEntry] = useState<TimetableEntry | null>(null);
   const [offerModalEntry, setOfferModalEntry] = useState<TimetableEntry | null>(null);
+  const [contactDrawerEntryId, setContactDrawerEntryId] = useState<number | null>(null);
   const viewerBuyerCode = useMemo(() => buyerCodeFromName(user?.name), [user?.name]);
+  const contactDrawerEntry = useMemo(
+    () =>
+      contactDrawerEntryId != null
+        ? db.entries.find((e) => e.id === contactDrawerEntryId) ?? null
+        : null,
+    [contactDrawerEntryId, db.entries]
+  );
   const [createForm, setCreateForm] = useState<CreateFormState>({
     date: todayIso,
     time: '09:00',
     company_name: '',
     contact_name: '',
     phone: '',
-    purpose: 'Outbound call',
+    purpose: 'Anruf',
   });
 
   useEffect(() => {
     saveTimetableDb(db);
   }, [db]);
 
+  useEffect(() => {
+    const asDate = new Date(`${selectedDate}T12:00:00`);
+    setViewYear(asDate.getFullYear());
+    setViewMonth(asDate.getMonth());
+    setCreateForm((prev) => (prev.date === selectedDate ? prev : { ...prev, date: selectedDate }));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!showDayPicker) return;
+    const onDocDown = (e: MouseEvent) => {
+      if (dayPickerRef.current && !dayPickerRef.current.contains(e.target as Node)) {
+        setShowDayPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocDown);
+    return () => document.removeEventListener('mousedown', onDocDown);
+  }, [showDayPicker]);
+
+  useEffect(() => {
+    if (!actionsMenuOpen) return;
+    const onDocDown = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setActionsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocDown);
+    return () => document.removeEventListener('mousedown', onDocDown);
+  }, [actionsMenuOpen]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onDocDown = (e: MouseEvent) => {
+      if (filtersMenuRef.current && !filtersMenuRef.current.contains(e.target as Node)) {
+        setFiltersOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocDown);
+    return () => document.removeEventListener('mousedown', onDocDown);
+  }, [filtersOpen]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 4200);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
   const viewerRows = useMemo(
-    () => db.entries.filter((entry) => entry.buyer_name === viewerBuyerCode),
+    () => db.entries.filter((entry) => timetableRowIsMine(entry, viewerBuyerCode)),
     [db.entries, viewerBuyerCode]
   );
 
@@ -148,22 +228,51 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const filteredRows = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return viewerRows
-      .filter((row) => normalizeIsoDateFromScheduled(row.scheduled_at) === selectedDate)
+      .filter((row) => {
+        const day = normalizeIsoDateFromScheduled(row.scheduled_at);
+        if (filterMode === 'other_buyer_range') return day >= rangeFrom && day <= rangeTo;
+        return day === selectedDate;
+      })
       .filter((row) => {
         if (!q) return true;
         const haystack = `${row.company_name} ${row.contact_name} ${row.phone} ${row.notes} ${row.purpose}`.toLowerCase();
         return haystack.includes(q);
       })
       .filter((row) => {
-        if (filterMode === 'open') return !row.is_completed && row.outcome !== 'no_trucks';
+        if (filterMode === 'open')
+          return !row.is_completed && row.outcome !== 'no_trucks';
+        if (filterMode === 'open_other_buyer')
+          return (
+            !row.is_completed &&
+            row.outcome !== 'no_trucks' &&
+            timetableRowIsOtherBuyer(row, viewerBuyerCode)
+          );
+        if (filterMode === 'other_buyer_range')
+          return timetableRowIsOtherBuyer(row, viewerBuyerCode);
         if (filterMode === 'follow_up') return Boolean(row.follow_up_at);
         if (filterMode === 'offers') return row.outcome === 'has_trucks';
         if (filterMode === 'completed') return row.is_completed || row.outcome === 'no_trucks';
+        if (filterMode === 'completed_no_followup')
+          return (row.is_completed || row.outcome === 'no_trucks') && !row.follow_up_at;
+        if (filterMode === 'parked') return row.is_parked;
         return true;
+      })
+      .filter((row) => {
+        if (!showOffersOnly) return true;
+        return row.outcome === 'has_trucks' || Boolean(row.offer);
       })
       .slice()
       .sort((a, b) => parseDateForSort(a.scheduled_at) - parseDateForSort(b.scheduled_at));
-  }, [filterMode, searchTerm, selectedDate, viewerRows]);
+  }, [
+    filterMode,
+    rangeFrom,
+    rangeTo,
+    searchTerm,
+    selectedDate,
+    showOffersOnly,
+    viewerBuyerCode,
+    viewerRows,
+  ]);
 
   const stats = useMemo(() => {
     const dayRows = viewerRows.filter((row) => normalizeIsoDateFromScheduled(row.scheduled_at) === selectedDate);
@@ -175,56 +284,49 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
     };
   }, [selectedDate, viewerRows]);
 
-  const insightStats = useMemo(() => {
-    const selectedDayMs = parseIsoDayToMs(selectedDate);
-    const endWeekMs = selectedDayMs + 6 * 24 * 60 * 60 * 1000;
+  const selectedDateLabel = useMemo(
+    () =>
+      new Date(`${selectedDate}T12:00:00`).toLocaleDateString(localeTag, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+    [localeTag, selectedDate]
+  );
 
-    const nextWeekRows = viewerRows.filter((row) => {
-      const dayMs = parseIsoDayToMs(normalizeIsoDateFromScheduled(row.scheduled_at));
-      return dayMs >= selectedDayMs && dayMs <= endWeekMs;
-    });
+  const filterChipItems = useMemo(
+    () =>
+      [
+        ['all_day', t('timetableFilterAllDay', 'All day')],
+        ['open', t('timetableFilterUnfinished', 'Open calls')],
+        ['open_other_buyer', t('timetableFilterUnfinishedOther', 'Open — other buyer')],
+        ['other_buyer_range', t('timetableFilterOtherBuyerRange', 'Other buyers (range)')],
+        ['follow_up', t('timetableFilterFollowUp', 'Follow-up')],
+        ['offers', t('timetableFilterOffers', 'Offers')],
+        ['completed', t('timetableFilterCompleted', 'Completed')],
+        ['completed_no_followup', t('timetableFilterDoneNoFollowUp', 'Done without follow-up')],
+        ['parked', t('timetableFilterParked', 'Parked')],
+      ] as Array<[TimetableFilterMode, string]>,
+    [t]
+  );
 
-    const dueTodayFollowUps = viewerRows.filter(
-      (row) => row.follow_up_at && normalizeIsoDateFromScheduled(row.follow_up_at) === selectedDate
-    ).length;
-
-    const calledRows = viewerRows.filter((row) => Boolean(row.last_called_at));
-    const wonRows = viewerRows.filter((row) => row.outcome === 'has_trucks');
-    const noTruckRows = viewerRows.filter((row) => row.outcome === 'no_trucks');
-    const followUpRows = viewerRows.filter((row) => row.outcome === 'follow_up');
-    const conversionPct = calledRows.length ? Math.round((wonRows.length / calledRows.length) * 100) : 0;
-
-    const topCompanies = viewerRows
-      .reduce<Record<string, number>>((acc, row) => {
-        if (!row.company_name.trim()) return acc;
-        const key = row.company_name.trim();
-        acc[key] = (acc[key] ?? 0) + 1;
-        return acc;
-      }, {});
-
-    const topCompanyRows = Object.entries(topCompanies)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, 3);
-
-    return {
-      dueTodayFollowUps,
-      nextWeekTotal: nextWeekRows.length,
-      nextWeekOpen: nextWeekRows.filter((row) => !row.is_completed && row.outcome !== 'no_trucks').length,
-      conversionPct,
-      calledTotal: calledRows.length,
-      wonTotal: wonRows.length,
-      noTrucksTotal: noTruckRows.length,
-      followUpTotal: followUpRows.length,
-      topCompanyRows,
-    };
-  }, [selectedDate, viewerRows]);
+  const filtersActive = useMemo(
+    () => showOffersOnly || filterMode !== 'all_day',
+    [filterMode, showOffersOnly]
+  );
 
   const selectCalendarDay = useCallback((isoDate: string) => {
     setSelectedDate(isoDate);
-    setCreateForm((prev) => ({ ...prev, date: isoDate }));
-    const asDate = new Date(`${isoDate}T12:00:00`);
-    setViewYear(asDate.getFullYear());
-    setViewMonth(asDate.getMonth());
+  }, []);
+
+  const onPickDayFromCalendar = useCallback((isoDate: string) => {
+    setSelectedDate(isoDate);
+    setShowDayPicker(false);
+  }, []);
+
+  const shiftSelectedDay = useCallback((delta: number) => {
+    setSelectedDate((prev) => addDaysToIso(prev, delta));
   }, []);
 
   const prevMonth = useCallback(() => {
@@ -266,10 +368,26 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
       company_name: '',
       contact_name: '',
       phone: '',
-      purpose: 'Outbound call',
+      purpose: 'Anruf',
     }));
     setShowCreatePanel(false);
   }, [createForm, viewerBuyerCode]);
+
+  const handlePrint = useCallback(() => {
+    setActionsMenuOpen(false);
+    window.print();
+  }, []);
+
+  const handleInsertFiveDrafts = useCallback(() => {
+    setActionsMenuOpen(false);
+    setDb((prev) => insertFiveDraftTimetableRows(prev, viewerBuyerCode, selectedDate));
+    setToast(t('timetableToastInsertedFive', 'Five draft rows added.'));
+  }, [selectedDate, t, viewerBuyerCode]);
+
+  const handleMoveInList = useCallback(() => {
+    setActionsMenuOpen(false);
+    setToast(t('timetableToastMoveSoon', 'Bulk move is coming soon.'));
+  }, [t]);
 
   const applyCallLog = useCallback(
     (payload: TimetableCallLogInput) => {
@@ -313,85 +431,131 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
     [offerModalEntry]
   );
 
+  const persistContactEntry = useCallback(
+    (updated: TimetableEntry) => {
+      setDb((prev) => upsertTimetableEntry(prev, updated));
+      setToast(t('timetableContactSaved', 'Contact saved.'));
+    },
+    [setDb, t]
+  );
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(165deg,#f8fafc_0%,#ecfeff_35%,#f5f3ff_70%,#fffbeb_100%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(165deg,#eef2ff_0%,#f8fafc_38%,#ecfdf5_100%)]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-40 [background-image:radial-gradient(circle_at_1px_1px,rgb(148_163_184/0.22)_1px,transparent_0)] [background-size:24px_24px]"
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.4] [background-image:radial-gradient(circle_at_1px_1px,rgb(100_116_139/0.14)_1px,transparent_0)] [background-size:24px_24px]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_90%_60%_at_100%_-10%,rgba(16,185,129,0.14),transparent_50%),radial-gradient(ellipse_70%_50%_at_0%_80%,rgba(99,102,241,0.12),transparent_55%)]"
+        className="pointer-events-none absolute -left-32 top-1/4 -z-10 h-[28rem] w-[28rem] rounded-full bg-emerald-400/25 blur-[100px] motion-safe:animate-timetable-blob motion-reduce:animate-none"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-[22rem] w-[22rem] rounded-full bg-indigo-400/20 blur-[90px] motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-7s]"
         aria-hidden
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 p-4 pb-10 md:gap-8 md:p-6">
-        <header className="order-1 overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-slate-950 shadow-2xl shadow-slate-900/40 ring-1 ring-white/10">
+      <div className="timetable-print-root flex min-h-0 flex-1 flex-col gap-5 p-4 pb-10 md:gap-7 md:p-6">
+        <header className="order-1 overflow-hidden rounded-3xl border border-slate-800/50 bg-[#06060d] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.45)] ring-1 ring-white/[0.06]">
           <div className="relative px-5 py-6 md:px-8 md:py-8">
-            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 left-1/4 h-56 w-56 rounded-full bg-violet-600/25 blur-3xl" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-            <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end">
-              <div className="min-w-0">
-                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200">
-                  <Sparkles className="h-3.5 w-3.5 text-emerald-300" strokeWidth={2} />
+            <div className="pointer-events-none absolute -right-16 -top-32 h-[22rem] w-[22rem] rounded-full bg-indigo-500/25 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-11s]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent blur-sm" />
+            <div className="relative flex flex-col gap-8 motion-safe:animate-timetable-fade-up motion-reduce:animate-none lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+              <div className="min-w-0 flex-1">
+                <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/15 to-teal-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200 shadow-sm shadow-emerald-950/20">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-300 motion-safe:animate-pulse motion-reduce:animate-none" strokeWidth={2} />
                   {t('timetableBadgePurchase', 'Purchase desk')}
                 </p>
-                <h1 className="text-balance text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-[2.35rem] lg:leading-tight">
-                  {t('timetablePageTitle', 'Timetable')}
+                <h1 className="text-balance bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-2xl font-semibold tracking-tight text-transparent md:text-3xl md:leading-tight">
+                  {t('timetablePageTitle', 'Purchase call timetable')}
                 </h1>
-                <p className="mt-2 max-w-xl text-sm font-light leading-relaxed text-slate-300 md:text-base">
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">
+                  {t('timetableDailyOverview', 'Daily overview')}
+                </p>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
                   {t(
                     'timetablePageSubtitle',
-                    'Personal queue for your outbound calls with fast logging, follow-ups, and offer capture.'
+                    'Your personal queue for outbound calls — fast logging, follow-ups, and offer capture.'
                   )}
                 </p>
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
-                    <UserRound className="h-3.5 w-3.5 text-slate-300" />
-                    <span className="text-slate-200">{user?.name || t('commonUser', 'User')}</span>
+                <div className="mt-5 flex flex-wrap items-center gap-3 text-xs">
+                  <span className="inline-flex items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 ring-1 ring-white/10">
+                    <UserRound className="h-4 w-4 text-slate-400" strokeWidth={2} />
+                    <span className="font-medium text-slate-200">{user?.name || t('commonUser', 'User')}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-slate-300">
-                    <Target className="h-3.5 w-3.5" />
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold uppercase tracking-tight text-white shadow-lg shadow-violet-950/40 ring-2 ring-white/10"
+                    title={t('timetableOwnerCode', 'Owner code')}
+                  >
                     {viewerBuyerCode}
                   </span>
                   {department ? (
                     <span className="text-slate-500">
                       {t('customersArea', 'Area')}:{' '}
-                      <span className="font-semibold text-slate-300">
+                      <span className="font-semibold text-slate-200">
                         {t(DEPARTMENT_I18N_KEY[department], department)}
                       </span>
                     </span>
                   ) : null}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3">
-                {[
-                  { value: stats.total, label: t('commonTotal', 'Total'), icon: LayoutGrid, tone: 'text-white' },
-                  { value: stats.open, label: t('timetableStatOpen', 'Open'), icon: Zap, tone: 'text-amber-300' },
-                  {
-                    value: stats.offers,
-                    label: t('timetableStatOffers', 'Offers'),
-                    icon: Sparkles,
-                    tone: 'text-emerald-300',
-                  },
-                  {
-                    value: stats.followUp,
-                    label: t('timetableStatFollowUp', 'Follow-up'),
-                    icon: BarChart3,
-                    tone: 'text-cyan-300',
-                  },
-                ].map(({ value, label, icon: Icon, tone }) => (
+              <div
+                className="grid w-full shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:max-w-[min(100%,28rem)] lg:gap-3"
+                aria-label={t('timetableHeaderSummary', 'Day summary')}
+              >
+                {(
+                  [
+                    {
+                      value: stats.total,
+                      label: t('commonTotal', 'Total'),
+                      icon: LayoutGrid,
+                      valueClass: 'text-white',
+                      labelClass: 'text-slate-300',
+                      iconClass: 'text-slate-400',
+                      cardClass: 'border-white/10 bg-white/[0.07]',
+                    },
+                    {
+                      value: stats.open,
+                      label: t('timetableStatOpen', 'Open'),
+                      icon: Zap,
+                      valueClass: 'text-amber-300',
+                      labelClass: 'text-amber-300/90',
+                      iconClass: 'text-amber-400/90',
+                      cardClass: 'border-amber-500/15 bg-amber-500/[0.08]',
+                    },
+                    {
+                      value: stats.offers,
+                      label: t('timetableStatOffers', 'Offers'),
+                      icon: Sparkles,
+                      valueClass: 'text-emerald-400',
+                      labelClass: 'text-emerald-400/90',
+                      iconClass: 'text-emerald-400/85',
+                      cardClass: 'border-emerald-500/15 bg-emerald-500/[0.08]',
+                    },
+                    {
+                      value: stats.followUp,
+                      label: t('timetableStatFollowUp', 'Follow-up'),
+                      icon: BarChart3,
+                      valueClass: 'text-cyan-300',
+                      labelClass: 'text-cyan-300/90',
+                      iconClass: 'text-cyan-400/90',
+                      cardClass: 'border-cyan-500/15 bg-cyan-500/[0.08]',
+                    },
+                  ] as const
+                ).map(({ value, label, icon: Icon, valueClass, labelClass, iconClass, cardClass }, idx) => (
                   <div
                     key={label}
-                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] p-3 text-center ring-1 ring-white/5 transition hover:bg-white/[0.09] md:p-3.5"
+                    style={{ animationDelay: `${idx * 90}ms` }}
+                    className={`rounded-2xl border p-3 text-center ring-1 ring-white/[0.06] backdrop-blur-md transition duration-300 will-change-transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 motion-safe:animate-timetable-stat motion-reduce:animate-none md:p-3.5 ${cardClass}`}
                   >
-                    <Icon className="mx-auto mb-1 h-4 w-4 text-slate-500 opacity-80 transition group-hover:text-slate-400" />
-                    <p className={`text-2xl font-bold tabular-nums tracking-tight ${tone}`}>{value}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+                    <Icon className={`mx-auto mb-1.5 h-4 w-4 ${iconClass}`} strokeWidth={2} />
+                    <p className={`text-2xl font-bold tabular-nums tracking-tight ${valueClass}`}>{value}</p>
+                    <p className={`mt-1 text-[10px] font-bold uppercase tracking-[0.14em] ${labelClass}`}>{label}</p>
                   </div>
                 ))}
               </div>
@@ -399,196 +563,299 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
           </div>
         </header>
 
-        <div className="order-2 flex min-h-0 flex-1 flex-col gap-6 xl:grid xl:grid-cols-12 xl:items-start xl:gap-6">
-          <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:col-span-4 xl:order-1 xl:max-w-none">
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/90 p-1 shadow-xl shadow-slate-900/[0.06] ring-1 ring-slate-100/80 backdrop-blur-xl">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-              <div className="p-4 pt-5">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      {t('timetableSelectedDay', 'Selected day')}
-                    </p>
-                    <p className="mt-1 text-xl font-bold capitalize tracking-tight text-slate-900 md:text-2xl">
-                      {new Date(`${selectedDate}T12:00:00`).toLocaleDateString(localeTag, {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </p>
+        <main className="order-2 flex min-h-0 flex-1 flex-col gap-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
+            <div className="no-print relative z-10 overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:p-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
+                      <div className="relative flex shrink-0 flex-col" ref={filtersMenuRef}>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          {t('timetableFilterLabel', 'Filter')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionsMenuOpen(false);
+                            setShowDayPicker(false);
+                            setFiltersOpen((o) => !o);
+                          }}
+                          aria-expanded={filtersOpen}
+                          aria-haspopup="dialog"
+                          aria-label={t('timetableFiltersMenuAria', 'Open filters')}
+                          className={`relative mt-2 flex h-11 w-11 items-center justify-center rounded-xl ring-1 transition ${
+                            filtersOpen
+                              ? 'bg-slate-900 text-white ring-slate-900'
+                              : filtersActive
+                                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200/80 hover:bg-emerald-100/80'
+                                : 'bg-slate-100/80 text-slate-600 ring-slate-200/60 hover:bg-white hover:text-slate-900'
+                          }`}
+                        >
+                          <Filter className="h-5 w-5" strokeWidth={2} />
+                          {filtersActive && !filtersOpen ? (
+                            <span
+                              className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white"
+                              aria-hidden
+                            />
+                          ) : null}
+                        </button>
+                        {filtersOpen ? (
+                          <div
+                            className="absolute left-0 top-[calc(100%+0.35rem)] z-[62] w-[min(calc(100vw-2rem),24rem)] overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/[0.04]"
+                            role="dialog"
+                            aria-label={t('timetableFiltersTitle', 'Quick filters')}
+                          >
+                            <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/90 to-slate-50/40 px-4 py-3">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {t('timetableFiltersTitle', 'Quick filters')}
+                              </p>
+                              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                                {t(
+                                  'timetableFiltersSubtitle',
+                                  'Refine which rows appear in the table below.'
+                                )}
+                              </p>
+                            </div>
+                            <div className="space-y-5 p-4">
+                              <div>
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                  {t('timetableFiltersSectionOffers', 'Offer visibility')}
+                                </p>
+                                <button
+                                  type="button"
+                                  aria-pressed={showOffersOnly}
+                                  onClick={() => setShowOffersOnly((v) => !v)}
+                                  className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left text-sm font-semibold transition ${
+                                    showOffersOnly
+                                      ? 'border-emerald-300/80 bg-emerald-50 text-emerald-900 shadow-sm ring-1 ring-emerald-500/15'
+                                      : 'border-slate-200/80 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-slate-100/80'
+                                  }`}
+                                >
+                                  <span>{t('timetableShowOffers', 'Show offers')}</span>
+                                  <span
+                                    className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition ${
+                                      showOffersOnly ? 'bg-emerald-500' : 'bg-slate-300/90'
+                                    }`}
+                                    aria-hidden
+                                  >
+                                    <span
+                                      className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                                        showOffersOnly ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </span>
+                                </button>
+                              </div>
+                              <div className="border-t border-slate-100 pt-5">
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                  {t('timetableFiltersSectionModes', 'Row filters')}
+                                </p>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                  {filterChipItems.map(([mode, label]) => (
+                                    <button
+                                      key={mode}
+                                      type="button"
+                                      onClick={() => setFilterMode(mode)}
+                                      className={`min-h-[2.5rem] rounded-xl px-3 py-2 text-left text-xs font-semibold leading-snug transition ${
+                                        filterMode === mode
+                                          ? 'bg-slate-900 text-white shadow-sm ring-1 ring-slate-900'
+                                          : 'bg-slate-50 text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
+                                      }`}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              {filterMode === 'other_buyer_range' ? (
+                                <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-3">
+                                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                    {t('timetableRangeTitle', 'Date range')}
+                                  </p>
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                      {t('timetableDateFrom', 'From')}
+                                      <input
+                                        type="date"
+                                        value={rangeFrom}
+                                        onChange={(e) => setRangeFrom(e.target.value)}
+                                        className="mt-1.5 block h-10 w-full rounded-lg border border-slate-200/90 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                      />
+                                    </label>
+                                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                      {t('timetableDateTo', 'To')}
+                                      <input
+                                        type="date"
+                                        value={rangeTo}
+                                        onChange={(e) => setRangeTo(e.target.value)}
+                                        className="mt-1.5 block h-10 w-full rounded-lg border border-slate-200/90 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                          {t('timetableSearch', 'Search')}
+                        </span>
+                        <div className="mt-2 flex min-h-11 min-w-0 items-center gap-3 rounded-xl bg-slate-100/80 px-4 ring-1 ring-slate-200/60 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/25">
+                          <Search className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
+                          <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder={t('timetableSearchPlaceholder', 'Company, contact, notes...')}
+                            className="h-11 w-full min-w-0 bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-900/25">
-                    <CalendarDays className="h-6 w-6" strokeWidth={2} />
-                  </span>
-                </div>
-                <TimetableMiniCalendar
-                  localeTag={localeTag}
-                  viewYear={viewYear}
-                  viewMonth={viewMonth}
-                  selectedDate={selectedDate}
-                  dayCounts={dayCounts}
-                  onPrevMonth={prevMonth}
-                  onNextMonth={nextMonth}
-                  onSelectDay={selectCalendarDay}
-                  title={t('timetableMiniCalTitle', 'Jump to day')}
-                  prevLabel={t('timetablePrevMonth', 'Previous month')}
-                  nextLabel={t('timetableNextMonth', 'Next month')}
-                />
-              </div>
-            </div>
 
-            <div className="rounded-3xl border border-slate-200/90 bg-white/95 p-5 shadow-lg shadow-slate-900/[0.05] ring-1 ring-slate-100/90 backdrop-blur-xl">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
-                  <UserRound className="h-4 w-4" />
-                </span>
-                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">
-                  {t('timetableQueueSummary', 'Summary')}
-                </h2>
-              </div>
-              <div className="mb-4 flex gap-1 rounded-2xl bg-slate-100/90 p-1">
-                {([
-                  ['today', t('timetableSummaryTabToday', 'Today')],
-                  ['pipeline', t('timetableSummaryTabPipeline', 'Pipeline')],
-                  ['performance', t('timetableSummaryTabPerformance', 'Performance')],
-                ] as Array<[TimetableSummaryTab, string]>).map(([tab, label]) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setSummaryTab(tab)}
-                    className={`min-h-10 flex-1 rounded-xl px-2 py-2 text-center text-[11px] font-bold uppercase tracking-wide transition ${
-                      summaryTab === tab
-                        ? 'bg-white text-slate-900 shadow-md shadow-slate-900/10 ring-1 ring-slate-200/80'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            {summaryTab === 'today' ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryDate', 'Date')}</span>
-                  <strong className="text-slate-900">
-                    {new Date(`${selectedDate}T12:00:00`).toLocaleDateString(localeTag, {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                    })}
-                  </strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryRowsShown', 'Rows shown')}</span>
-                  <strong className="text-slate-900">{filteredRows.length}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryNeedsFollowUp', 'Follow-ups due')}</span>
-                  <strong className="text-slate-900">{insightStats.dueTodayFollowUps}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryOwner', 'Owner')}</span>
-                  <strong className="text-slate-900">{viewerBuyerCode}</strong>
-                </div>
-              </div>
-            ) : null}
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap lg:w-auto lg:shrink-0">
+                    <div className="flex min-h-11 flex-1 items-stretch gap-0.5 rounded-2xl bg-gradient-to-b from-slate-100/95 to-slate-50/90 p-1 shadow-inner shadow-slate-900/5 ring-1 ring-slate-200/70 sm:min-w-0 sm:flex-initial">
+                      <button
+                        type="button"
+                        onClick={() => shiftSelectedDay(-1)}
+                        className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95"
+                        aria-label={t('timetablePrevDay', 'Previous day')}
+                      >
+                        <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+                      </button>
+                      <div className="relative min-w-0 flex-1 sm:min-w-[11rem]" ref={dayPickerRef}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFiltersOpen(false);
+                            setShowDayPicker((open) => !open);
+                          }}
+                          aria-expanded={showDayPicker}
+                          aria-haspopup="dialog"
+                          aria-label={t('timetableOpenDayPicker', 'Open calendar')}
+                          className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-semibold text-slate-900 shadow-md shadow-slate-900/5 ring-1 ring-slate-200/50 transition hover:ring-emerald-300/50"
+                        >
+                          <CalendarDays className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2} />
+                          <span className="truncate capitalize">{selectedDateLabel}</span>
+                        </button>
+                        {showDayPicker ? (
+                          <div
+                            className="absolute right-0 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-2rem),20.5rem)] rounded-xl border border-slate-200/90 bg-white p-3 shadow-xl shadow-slate-900/15 ring-1 ring-slate-100 sm:left-0 sm:right-auto"
+                            role="dialog"
+                            aria-label={t('timetableMiniCalTitle', 'Jump to day')}
+                          >
+                            <TimetableMiniCalendar
+                              localeTag={localeTag}
+                              viewYear={viewYear}
+                              viewMonth={viewMonth}
+                              selectedDate={selectedDate}
+                              dayCounts={dayCounts}
+                              onPrevMonth={prevMonth}
+                              onNextMonth={nextMonth}
+                              onSelectDay={onPickDayFromCalendar}
+                              title={t('timetableMiniCalTitle', 'Jump to day')}
+                              prevLabel={t('timetablePrevMonth', 'Previous month')}
+                              nextLabel={t('timetableNextMonth', 'Next month')}
+                            />
+                            <label className="mt-3 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                              {t('timetableExactDateLabel', 'Or pick exact date')}
+                              <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => selectCalendarDay(e.target.value)}
+                                className="mt-2 h-10 w-full rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 text-sm font-semibold text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              />
+                            </label>
+                          </div>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => shiftSelectedDay(1)}
+                        className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95"
+                        aria-label={t('timetableNextDay', 'Next day')}
+                      >
+                        <ChevronRight className="h-5 w-5" strokeWidth={2} />
+                      </button>
+                    </div>
 
-            {summaryTab === 'pipeline' ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryWeekTotal', 'Next 7 days')}</span>
-                  <strong className="text-slate-900">{insightStats.nextWeekTotal}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryWeekOpen', 'Open in pipeline')}</span>
-                  <strong className="text-slate-900">{insightStats.nextWeekOpen}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableStatFollowUp', 'Follow-up')}</span>
-                  <strong className="text-slate-900">{insightStats.followUpTotal}</strong>
-                </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
-                  <p className="mb-1 text-slate-600">{t('timetableSummaryTopAccounts', 'Top accounts')}</p>
-                  {insightStats.topCompanyRows.length ? (
-                    <ul className="space-y-1">
-                      {insightStats.topCompanyRows.map(([company, count]) => (
-                        <li key={company} className="flex items-center justify-between text-xs text-slate-700">
-                          <span className="line-clamp-1 max-w-[200px]">{company}</span>
-                          <strong>{count}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-slate-500">{t('timetableEmptyRows', 'No timetable rows match the selected filters.')}</p>
-                  )}
-                </div>
-              </div>
-            ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePanel((prev) => !prev)}
+                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/25 ring-1 ring-white/10 transition duration-300 hover:scale-[1.02] hover:shadow-emerald-900/35 hover:brightness-105 active:scale-[0.98]"
+                    >
+                      <Plus className="h-4 w-4" strokeWidth={2.5} />
+                      {t('timetableNewAppointment', 'New appointment')}
+                    </button>
 
-            {summaryTab === 'performance' ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryCallsLogged', 'Calls logged')}</span>
-                  <strong className="text-slate-900">{insightStats.calledTotal}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryOffersWon', 'Offers captured')}</span>
-                  <strong className="text-slate-900">{insightStats.wonTotal}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                  <span className="text-slate-600">{t('timetableSummaryNoTrucks', 'No-truck outcomes')}</span>
-                  <strong className="text-slate-900">{insightStats.noTrucksTotal}</strong>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2">
-                  <span className="text-emerald-800">{t('timetableSummaryConversion', 'Offer conversion')}</span>
-                  <strong className="text-emerald-900">{insightStats.conversionPct}%</strong>
-                </div>
-              </div>
-            ) : null}
-            </div>
-          </aside>
-
-          <main className="order-3 flex min-h-[50vh] flex-1 flex-col gap-4 xl:order-2 xl:col-span-8">
-            <div className="rounded-3xl border border-slate-200/90 bg-white/90 p-4 shadow-xl shadow-slate-900/[0.05] ring-1 ring-slate-100/90 backdrop-blur-xl md:p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <label className="min-w-0 flex-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                  {t('timetableSearch', 'Search')}
-                  <span className="mt-2 flex h-12 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/80 px-4 ring-1 ring-slate-100/80 transition focus-within:border-emerald-300/80 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/20">
-                    <Search className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
-                    <input
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder={t('timetableSearchPlaceholder', 'Company, contact, notes...')}
-                      className="w-full bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
-                    />
-                  </span>
-                </label>
-                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end lg:w-auto lg:shrink-0">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 sm:min-w-[10.5rem]">
-                    {t('timetableSelectedDay', 'Selected day')}
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => selectCalendarDay(e.target.value)}
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200/90 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreatePanel((prev) => !prev)}
-                    className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 px-6 text-sm font-bold text-white shadow-lg shadow-slate-900/25 transition hover:brightness-110 active:scale-[0.98]"
-                  >
-                    <Plus className="h-4 w-4" strokeWidth={2.5} />
-                    {t('timetableNewSlot', 'New call slot')}
-                  </button>
+                    <div className="relative shrink-0" ref={actionsMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFiltersOpen(false);
+                          setActionsMenuOpen((o) => !o);
+                        }}
+                        aria-expanded={actionsMenuOpen}
+                        aria-haspopup="menu"
+                        aria-label={t('timetableActionsMenuAria', 'More actions')}
+                        className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                      >
+                        <MoreHorizontal className="h-4 w-4 text-slate-500" strokeWidth={2} />
+                        {t('timetableActionsMenu', 'Actions')}
+                        <ChevronDown
+                          className={`h-4 w-4 text-slate-400 transition ${actionsMenuOpen ? 'rotate-180' : ''}`}
+                          strokeWidth={2}
+                        />
+                      </button>
+                      {actionsMenuOpen ? (
+                        <div
+                          className="absolute right-0 top-[calc(100%+0.35rem)] z-[70] min-w-[13.5rem] overflow-hidden rounded-xl border border-slate-200/90 bg-white py-1 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/[0.04]"
+                          role="menu"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={handlePrint}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Printer className="h-4 w-4 text-slate-500" strokeWidth={2} />
+                            {t('timetablePrint', 'Print list')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={handleInsertFiveDrafts}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <ListPlus className="h-4 w-4 text-emerald-600" strokeWidth={2} />
+                            {t('timetableInsertFive', 'Insert five drafts')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={handleMoveInList}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            {t('timetableMoveInList', 'Move in list')}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {showCreatePanel ? (
-              <div className="relative overflow-hidden rounded-3xl border border-emerald-200/60 bg-gradient-to-br from-emerald-50/90 via-white to-white p-5 shadow-xl shadow-emerald-900/10 ring-1 ring-emerald-100/80">
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+              <div className="no-print relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/40 p-5 shadow-[0_24px_50px_-12px_rgba(5,150,105,0.2)] ring-1 ring-emerald-900/[0.04] motion-safe:animate-timetable-fade-up motion-reduce:animate-none">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+                <div
+                  className="pointer-events-none absolute -right-20 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-emerald-400/20 blur-3xl"
+                  aria-hidden
+                />
                 <div className="mb-4 flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md">
                     <PhoneCall className="h-5 w-5" strokeWidth={2} />
@@ -656,75 +923,78 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
               </div>
             ) : null}
 
-            <div className="rounded-3xl border border-slate-200/90 bg-slate-900/[0.03] p-4 ring-1 ring-slate-200/60 backdrop-blur-sm">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
-                  <Filter className="h-4 w-4" strokeWidth={2} />
-                </span>
-                <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
-                  {t('timetableFiltersTitle', 'Quick filters')}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ['all_day', t('timetableFilterAllDay', 'All day')],
-                    ['open', t('timetableFilterOpen', 'Open')],
-                    ['follow_up', t('timetableFilterFollowUp', 'Follow-up')],
-                    ['offers', t('timetableFilterOffers', 'Offers')],
-                    ['completed', t('timetableFilterCompleted', 'Completed')],
-                  ] as Array<[TimetableFilterMode, string]>
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setFilterMode(mode)}
-                    className={`min-h-10 rounded-full px-4 py-2 text-xs font-bold transition active:scale-[0.98] ${
-                      filterMode === mode
-                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 ring-2 ring-emerald-400/60'
-                        : 'border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="min-h-0 flex-1">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-slate-800">
-                  {t('timetableDailyQueue', 'Your queue')}
-                  <span className="ml-2 font-mono text-xs font-normal text-slate-500">
-                    {filteredRows.length} {t('timetableRowsLabel', 'rows')}
-                  </span>
-                </p>
+            <div className="relative z-0 min-h-0 flex-1">
+              <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md shadow-slate-900/20">
+                      {t('timetableDailyQueue', 'Your queue')}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-white px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-slate-600 shadow-sm">
+                      {filteredRows.length} {t('timetableRowsLabel', 'rows')}
+                    </span>
+                  </div>
+                  <p className="max-w-xl text-xs leading-relaxed text-slate-500 sm:border-l sm:border-slate-200 sm:pl-4">
+                    {t('timetableQueueOpenRow', 'Click a row to open the customer contact workspace.')}
+                  </p>
+                </div>
               </div>
               <TimetableTable
                 rows={filteredRows}
                 localeTag={localeTag}
                 t={t}
+                onOpenContact={(row) => setContactDrawerEntryId(row.id)}
                 onOpenCallLog={setCallModalEntry}
                 onOpenOffer={setOfferModalEntry}
               />
             </div>
-          </main>
-        </div>
-
-        <TimetableCallModal
-          entry={callModalEntry}
-          t={t}
-          onClose={() => setCallModalEntry(null)}
-          onSave={applyCallLog}
-        />
-
-        <TimetableOfferModal
-          entry={offerModalEntry}
-          t={t}
-          onClose={() => setOfferModalEntry(null)}
-          onSave={applyOffer}
-        />
+        </main>
       </div>
+
+      {toast ? (
+        <div
+          className="pointer-events-none fixed bottom-6 left-1/2 z-[120] max-w-md -translate-x-1/2 px-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none"
+          role="status"
+        >
+          <div className="pointer-events-auto rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3.5 text-center text-sm font-semibold text-white shadow-2xl shadow-slate-900/50 ring-1 ring-white/10">
+            {toast}
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-3 text-xs font-bold text-emerald-300 underline-offset-2 hover:underline"
+            >
+              {t('commonClose', 'Close')}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <TimetableContactDrawer
+        entry={contactDrawerEntry}
+        localeTag={localeTag}
+        t={t}
+        onClose={() => setContactDrawerEntryId(null)}
+        onPersist={persistContactEntry}
+        onLogCall={(row) => setCallModalEntry(row)}
+        onEditOffer={(row) => setOfferModalEntry(row)}
+        onComingSoon={() =>
+          setToast(t('timetableContactSoon', 'This action will be available when CRM is connected.'))
+        }
+      />
+
+      <TimetableCallModal
+        entry={callModalEntry}
+        t={t}
+        onClose={() => setCallModalEntry(null)}
+        onSave={applyCallLog}
+      />
+
+      <TimetableOfferModal
+        entry={offerModalEntry}
+        t={t}
+        onClose={() => setOfferModalEntry(null)}
+        onSave={applyOffer}
+      />
     </div>
   );
 }

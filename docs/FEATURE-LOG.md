@@ -21,7 +21,8 @@
 | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
 | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137 … FEATURE-142 |
 | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
-| 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-181 |
+| 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
+| 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-199 |
 
 ---
 
@@ -209,6 +210,24 @@
 | FEATURE-179 | Customer modal — compact + Neu inline with address pills | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
 | FEATURE-180 | Customer edit — Rechnungen block under Operative Notizen (column 1) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
 | FEATURE-181 | Customers page — responsive layout + dark-theme polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-182 | Timetable contact drawer — Assignment under Contact persons | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-183 | Timetable contact drawer — Contact persons and Assignment separate again | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-184 | Timetable overview — location by appointment; contacts + assignment stacked column | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-185 | Timetable toolbar — filter popover visible (overflow fix) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-186 | Timetable — single-day legacy demo seeds; clear demos on first saved appointment | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-187 | Timetable contact drawer — wider overview column for address / fleet / notes | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-188 | Timetable toolbar — remove Actions dropdown; print + insert five as direct buttons | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-189 | Timetable toolbar — remove print + insert-five buttons (no secondary actions) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-190 | Timetable contact drawer — remove “More actions” overflow menu | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-191 | Timetable contact drawer — wider Address / fleet / notes overview column | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-192 | Timetable contact drawer — remove overview card hint subtitles | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-193 | Timetable contact drawer — fix right-side clipping (toolbar + overview strip) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-194 | Timetable contact drawer — slightly wider dialog shell | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-195 | Timetable contact drawer — remove header “Demo” CRM badge | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-196 | Timetable contact drawer — remove header subtitle hint | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-197 | Cursor rule — i18n 12-language full coverage agent | Added | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-198 | Timetable (calendar) module — locale + empty-cell i18n hardening | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-199 | Timetable customer contact drawer — full de/en/fr message catalogue | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

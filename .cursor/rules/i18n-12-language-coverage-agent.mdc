@@ -1,0 +1,49 @@
+---
+description: Agent checklist — full i18n parity across all 12 dashboard languages; no stray language in UI.
+alwaysApply: true
+---
+
+# i18n Language Module — Full Coverage Agent
+
+Treat this as a **standing mandate on every task** that adds or changes user-visible text, keys in `LanguageContext.tsx`, or locale behavior. Re-run the checklist before marking work done (same as “run infinitely”: **no session ends with broken language parity**).
+
+## Source of truth
+
+- **File:** `frontend/src/contexts/LanguageContext.tsx`
+- **Primary bundles (must define every new key):** `MESSAGES.de`, `MESSAGES.en`, `MESSAGES.fr`
+- **Secondary (9 codes):** `es`, `it`, `pt`, `tr`, `ru`, `hi`, `ar`, `zh`, `ja` — merged from `LANGUAGE_OVERRIDES[code]` over `en` or `fr` per existing `ROMANCE_FALLBACK_BASE` logic. Any key missing in an override falls back; **do not rely on English showing for “done”** if product expectation is localized copy.
+- **Runtime resolution:** `t(key, englishFallback)` — fallbacks must stay **English** only.
+
+## Visibility rule (only selected language)
+
+1. **No hardcoded user-visible strings** in JSX, placeholders, `title`, `aria-label`, `toast`, empty states, table headers, options, or `document.title`.
+2. **No wrong-language literals** (e.g. German in components, German as `t()` second argument). One character shown = it came from `t()` for the **active** `language` state.
+3. **Dates/times:** use `localeTagForLanguage(language)` (or existing project helper); never hardcode `"de-DE"` etc.
+
+## Adding or changing a key (parity workflow)
+
+When you add or rename a key, **in the same change** (or immediate follow-up commit):
+
+1. Add the string to **`MESSAGES.de`**, **`MESSAGES.en`**, **`MESSAGES.fr`** with natural, UI-appropriate wording (German is default market copy; English/French are first-class, not stubs).
+2. For each of **`es,it,pt,tr,ru,hi,ar,zh,ja`**: add or update the entry in **`LANGUAGE_OVERRIDES.<code>`** with a **fluent, idiomatic** translation (quality bar: professional product UI, comparable to Google Translate **post-edit**, not raw garbage). If a locale truly should inherit, document in PR/note — default is **explicit override** for new keys.
+3. **Key set equality:** new keys must exist in all three primaries; grep for the key name across `MESSAGES` and each override block to catch typos.
+4. **Renames / deletes:** update or remove the key in **all** bundles and overrides so no orphan or duplicate keys remain.
+
+## Regression guard (past + future edits)
+
+- If you touch **any** `frontend/src/**/*.tsx` or `LanguageContext.tsx`, scan the diff for string literals users could see; convert to `t()` and add keys as above.
+- If you only change **backend** strings surfaced to the UI, the **frontend** must still expose them through `t()` with keys.
+- After edits, mentally verify: **Settings → each language in `LANGUAGE_OPTIONS`** would show consistent UI (no English bleed in `de`, no missing keys).
+
+## Optional tooling
+
+- If `frontend/src/services/uiTranslateApi.ts` (or related scripts) is available for batch assist, you may use it to **draft** translations, then **edit** for tone, gender, length, and placeholders `{n}` / `{detail}` preserved across all locales.
+
+## Non-goals
+
+- Do not start background daemons or “infinite loops” in repo automation; **enforcement is procedural** via this rule on every applicable edit.
+- Do not replace `MESSAGES` structure or language list without an ADR and migration plan.
+
+## Conflict resolution
+
+If this rule and another instruction disagree on wording, **this project’s `i18n-always.mdc` + this file** win for anything user-visible and `LanguageContext.tsx` structure.

@@ -2,17 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import {
   Building2,
   Car,
-  ChevronDown,
-  ClipboardList,
   FileText,
   History,
   LayoutDashboard,
   Package,
-  PanelRightClose,
   PhoneCall,
   Sparkles,
   Truck,
-  UserRound,
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -38,7 +34,6 @@ type Props = {
   onPersist: (entry: TimetableEntry) => void;
   onLogCall: (entry: TimetableEntry) => void;
   onEditOffer: (entry: TimetableEntry) => void;
-  onComingSoon: () => void;
 };
 
 const EMPTY_OFFER: TimetableTruckOffer = {
@@ -105,9 +100,9 @@ function getContactSmartBullets(
       .replace('{contact}', contact)
   );
   const { date, time } = formatRowDateTime(draft.scheduled_at, localeTag);
-  const slot = time ? `${date} · ${time}` : date || '—';
+  const slot = time ? `${date} · ${time}` : date || t('commonPlaceholderDash', '—');
   bullets.push(
-    t('timetableContactAiBulletStatus', '{outcome} · slot {slot}')
+    t('timetableContactAiBulletStatus', '{outcome} · {slot}')
       .replace('{outcome}', outcomeLabel(draft, t))
       .replace('{slot}', slot)
   );
@@ -250,6 +245,10 @@ function overviewStaggerClass(ms: number): string {
 const overviewHScrollColClass =
   'w-[min(calc(100vw-2.75rem),19.25rem)] shrink-0 snap-start sm:w-80 md:min-w-[20.5rem] md:max-w-[22rem]';
 
+/** Same strip, wider for address / fleet / notes (long-form fields). */
+const overviewHScrollColLocationClass =
+  'w-[min(calc(100vw-2.75rem),24rem)] shrink-0 snap-start sm:w-[25rem] md:min-w-[27rem] md:max-w-[31rem]';
+
 /** Compact inputs in the dark drawer header (Ka / Arte only — CRM fields come from Kundenstamm). */
 const headerCodesInputClass =
   'min-h-7 min-w-0 border-0 bg-transparent py-0 text-xs font-semibold text-white outline-none ring-0 placeholder:text-slate-500 focus:ring-0 sm:text-[13px]';
@@ -370,9 +369,13 @@ function OverviewPanel({
       aria-label={sectionAriaLabel}
     >
       <div
-        className={`flex border-b border-slate-200/40 pb-3 ${actions ? 'items-start justify-between gap-3' : 'flex-col gap-2'}`}
+        className={`flex border-b border-slate-200/40 pb-3 ${
+          actions
+            ? 'min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3'
+            : 'flex-col gap-2'
+        }`}
       >
-        <header className="min-w-0">
+        <header className="min-w-0 flex-1">
           {headingBlock}
           {hint ? (
             <p
@@ -382,7 +385,7 @@ function OverviewPanel({
             </p>
           ) : null}
         </header>
-        {actions ? <div className="shrink-0 pt-0.5">{actions}</div> : null}
+        {actions ? <div className="shrink-0 self-end pt-0.5 sm:self-start sm:pt-0.5">{actions}</div> : null}
       </div>
       <div className="mt-4 flex w-full flex-col space-y-1">{children}</div>
     </section>
@@ -435,15 +438,12 @@ export function TimetableContactDrawer({
   onPersist,
   onLogCall,
   onEditOffer,
-  onComingSoon,
 }: Props) {
   const [tab, setTab] = useState<TabId>('overview');
   const [draft, setDraft] = useState<TimetableEntry | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [smartSummaryOpen, setSmartSummaryOpen] = useState(false);
   const [kundenDbTick, setKundenDbTick] = useState(0);
-  const actionsMenuRef = useRef<HTMLDivElement>(null);
   const smartSummaryRef = useRef<HTMLDivElement>(null);
   const prevEntryIdRef = useRef<number | null>(null);
 
@@ -489,24 +489,20 @@ export function TimetableContactDrawer({
   }, [entry?.id]);
 
   useEffect(() => {
-    setActionsMenuOpen(false);
     setSmartSummaryOpen(false);
   }, [tab]);
 
   useEffect(() => {
-    if (!actionsMenuOpen && !smartSummaryOpen) return;
+    if (!smartSummaryOpen) return;
     const onDoc = (e: MouseEvent) => {
       const node = e.target as Node;
-      if (actionsMenuOpen && actionsMenuRef.current && !actionsMenuRef.current.contains(node)) {
-        setActionsMenuOpen(false);
-      }
-      if (smartSummaryOpen && smartSummaryRef.current && !smartSummaryRef.current.contains(node)) {
+      if (smartSummaryRef.current && !smartSummaryRef.current.contains(node)) {
         setSmartSummaryOpen(false);
       }
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [actionsMenuOpen, smartSummaryOpen]);
+  }, [smartSummaryOpen]);
 
   useEffect(() => {
     if (!entry) return;
@@ -516,16 +512,12 @@ export function TimetableContactDrawer({
           setSmartSummaryOpen(false);
           return;
         }
-        if (actionsMenuOpen) {
-          setActionsMenuOpen(false);
-          return;
-        }
         onClose();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [entry, onClose, actionsMenuOpen, smartSummaryOpen]);
+  }, [entry, onClose, smartSummaryOpen]);
 
   const tabs = useMemo(
     () =>
@@ -565,7 +557,6 @@ export function TimetableContactDrawer({
       return {
         kuNr: '',
         branche: '',
-        showDemoBadge: false,
       };
     }
     const pr = ensureProfile(draft);
@@ -575,13 +566,11 @@ export function TimetableContactDrawer({
     const brP = pr.industry?.trim();
     const demoKu = t('timetableContactDemoKuNr', '35258');
     const demoBr = t('timetableContactDemoBranche', 'Logistics');
-    const fullDemoFallback = !kuM && !kuP && !brM && !brP;
     const kuNr = kuM ?? kuP ?? demoKu;
     const branche = brM ?? brP ?? demoBr;
     return {
       kuNr,
       branche,
-      showDemoBadge: fullDemoFallback,
     };
   }, [draft, masterKundeForHeader, t]);
 
@@ -657,7 +646,7 @@ export function TimetableContactDrawer({
       role="presentation"
     >
       <div
-        className="relative flex h-[min(78dvh,calc(100dvh-12px))] max-h-[min(78dvh,calc(100dvh-12px))] w-[min(92rem,calc(100vw-12px))] max-w-[min(92rem,calc(100vw-12px))] flex-col overflow-hidden rounded-3xl border border-white/25 bg-gradient-to-b from-slate-50/98 via-blue-50/[0.2] to-slate-100/[0.35] shadow-[0_32px_64px_-16px_rgba(15,23,42,0.45)] shadow-blue-900/12 ring-1 ring-slate-900/10 motion-safe:animate-timetable-fade-up motion-reduce:animate-none sm:h-[min(78dvh,calc(100dvh-16px))] sm:max-h-[min(78dvh,calc(100dvh-16px))] sm:w-[min(92rem,calc(100vw-16px))] sm:max-w-[min(92rem,calc(100vw-16px))]"
+        className="relative flex h-[min(78dvh,calc(100dvh-12px))] max-h-[min(78dvh,calc(100dvh-12px))] w-[min(96rem,calc(100vw-10px))] max-w-[min(96rem,calc(100vw-10px))] flex-col overflow-hidden rounded-3xl border border-white/25 bg-gradient-to-b from-slate-50/98 via-blue-50/[0.2] to-slate-100/[0.35] shadow-[0_32px_64px_-16px_rgba(15,23,42,0.45)] shadow-blue-900/12 ring-1 ring-slate-900/10 motion-safe:animate-timetable-fade-up motion-reduce:animate-none sm:h-[min(78dvh,calc(100dvh-16px))] sm:max-h-[min(78dvh,calc(100dvh-16px))] sm:w-[min(96rem,calc(100vw-14px))] sm:max-w-[min(96rem,calc(100vw-14px))] lg:w-[min(96rem,calc(100vw-20px))] lg:max-w-[min(96rem,calc(100vw-20px))]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -684,14 +673,8 @@ export function TimetableContactDrawer({
             id="timetable-contact-drawer-title"
             className="relative mt-1.5 text-balance bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent sm:mt-2 sm:text-xl sm:leading-snug"
           >
-            {draft.company_name || '—'}
+            {draft.company_name || t('commonPlaceholderDash', '—')}
           </h2>
-          <p className="relative mt-1 max-w-xl text-xs leading-relaxed text-slate-400 line-clamp-2 sm:line-clamp-2">
-            {t(
-              'timetableContactHeaderHint',
-              'Work through the cards below — save when the call is done.'
-            )}
-          </p>
           <div className="relative mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:mt-3 sm:gap-x-2">
             <span
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold leading-none ring-1 ${outcomePillClass(draft.outcome)}`}
@@ -747,11 +730,6 @@ export function TimetableContactDrawer({
               >
                 <Building2 className="h-3.5 w-3.5" strokeWidth={2} />
               </div>
-              {headerCrmDisplay.showDemoBadge ? (
-                <span className="shrink-0 rounded-full bg-sky-400/15 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-sky-100 ring-1 ring-sky-400/30">
-                  {t('timetableContactDemoBadge', 'Demo')}
-                </span>
-              ) : null}
               <div className="flex min-w-0 flex-1 items-end gap-2 sm:gap-3">
                 <div className="min-w-0 shrink-0">
                   <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400">
@@ -830,8 +808,8 @@ export function TimetableContactDrawer({
                 </button>
               ))}
             </nav>
-            <div className="mt-2 flex flex-nowrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-2 sm:pt-2">
-            <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+            <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 sm:mt-2 sm:flex-nowrap sm:pt-2">
+            <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 sm:flex-nowrap sm:gap-2">
               <button
                 type="button"
                 onClick={() => onLogCall(draft)}
@@ -853,13 +831,12 @@ export function TimetableContactDrawer({
               </button>
             </div>
 
-            <div className="flex shrink-0 flex-nowrap items-center gap-2">
+            <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               <div className="relative shrink-0" ref={smartSummaryRef}>
                 <button
                   type="button"
                   onClick={() => {
                     setSmartSummaryOpen((o) => !o);
-                    setActionsMenuOpen(false);
                   }}
                   className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-blue-200/80 bg-gradient-to-r from-white to-blue-50/50 px-2 text-[11px] font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300 hover:shadow-md active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
                   aria-expanded={smartSummaryOpen}
@@ -883,109 +860,6 @@ export function TimetableContactDrawer({
                   </div>
                 ) : null}
               </div>
-
-              <div className="relative shrink-0" ref={actionsMenuRef}>
-                <button
-                type="button"
-                onClick={() => {
-                  setActionsMenuOpen((o) => !o);
-                  setSmartSummaryOpen(false);
-                }}
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-slate-200/90 bg-white px-2.5 text-[11px] font-semibold text-slate-700 shadow-sm shadow-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50/90 sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
-                  aria-expanded={actionsMenuOpen}
-                  aria-haspopup="menu"
-                >
-                  {t('timetableContactMoreActions', 'More actions')}
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-slate-400 transition ${actionsMenuOpen ? 'rotate-180' : ''}`}
-                    strokeWidth={2}
-                  />
-                </button>
-                {actionsMenuOpen ? (
-                <div
-                  className="absolute right-0 top-[calc(100%+0.5rem)] z-[110] w-[min(calc(100vw-2rem),18rem)] overflow-hidden rounded-2xl border border-slate-200/90 bg-white py-2 shadow-xl shadow-slate-900/15 ring-1 ring-slate-900/[0.04]"
-                  role="menu"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => {
-                      setTab('vehicle');
-                      setActionsMenuOpen(false);
-                    }}
-                  >
-                    <Package className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
-                    {t('timetableContactOpenOffers', 'Open offers')}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => {
-                      setTab('activity');
-                      setActionsMenuOpen(false);
-                    }}
-                  >
-                    <ClipboardList className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
-                    {t('timetableContactHistoryProto', 'Call log / notes')}
-                  </button>
-                  <div className="my-1 border-t border-slate-100" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => {
-                      onComingSoon();
-                      setActionsMenuOpen(false);
-                    }}
-                  >
-                    <UserRound className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
-                    {t('timetableContactShowCustomerData', 'Customer data')}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => {
-                      onComingSoon();
-                      setActionsMenuOpen(false);
-                    }}
-                  >
-                    <Building2 className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
-                    {t('timetableContactOpenCustomerMask', 'Open customer form')}
-                  </button>
-                  <div className="my-1 border-t border-slate-100" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => {
-                      patchDraft((prev) => ({ ...prev, is_parked: !prev.is_parked }));
-                      setActionsMenuOpen(false);
-                    }}
-                  >
-                    <PanelRightClose className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
-                    {t('timetableContactParkSlot', 'Park appointment')}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-blue-900 transition hover:bg-blue-50"
-                    onClick={() => {
-                      patchDraft((prev) => {
-                        const pr = ensureProfile(prev);
-                        pr.purchase_confirmed = !pr.purchase_confirmed;
-                        return { ...prev, contact_profile: { ...pr } };
-                      });
-                      setActionsMenuOpen(false);
-                    }}
-                  >
-                    {t('timetableContactPurchaseConfirm', 'Purchase confirmation')}
-                  </button>
-                </div>
-              ) : null}
-              </div>
             </div>
             </div>
           </div>
@@ -1004,7 +878,7 @@ export function TimetableContactDrawer({
                 role="region"
                 aria-label={t(
                   'timetableContactOverviewVerticalScrollAria',
-                  'Overview — scroll down for address and notes'
+                  'Overview — scroll sideways for columns; scroll down if needed'
                 )}
               >
                 <div className="flex flex-col gap-4 pb-6 md:gap-5 md:pb-8 lg:pb-10">
@@ -1013,15 +887,9 @@ export function TimetableContactDrawer({
                     role="region"
                     aria-label={t('timetableContactOverviewScrollAria', 'Overview columns — scroll sideways')}
                   >
-                    <div className="flex w-max min-h-0 flex-nowrap gap-3 px-1 snap-x snap-mandatory sm:gap-4 md:gap-5 sm:px-0">
+                    <div className="flex w-max min-h-0 flex-nowrap gap-3 px-1 pb-1 pr-4 snap-x snap-mandatory sm:gap-4 sm:px-0 sm:pr-5 md:gap-5 md:pr-6">
                   <div className={`${overviewHScrollColClass} ${overviewStaggerClass(40)}`}>
-                  <OverviewPanel
-                    title={t('timetableContactCardIdentity', 'Who you are calling')}
-                    hint={t(
-                      'timetableContactCardIdentityHint',
-                      'Name the company and the person on the line first — everything else builds on this.'
-                    )}
-                  >
+                  <OverviewPanel title={t('timetableContactCardIdentity', 'Who you are calling')}>
                     <div className="flex flex-col gap-2">
                       <label className={overviewFieldClass}>
                         <span className={overviewLabelClass}>
@@ -1081,13 +949,7 @@ export function TimetableContactDrawer({
                 </div>
 
                 <div className={`${overviewHScrollColClass} ${overviewStaggerClass(95)}`}>
-                  <OverviewPanel
-                    title={t('timetableContactCardAppointment', 'Appointment & outcome')}
-                    hint={t(
-                      'timetableContactCardAppointmentHint',
-                      'Set the slot, then capture where the conversation landed.'
-                    )}
-                  >
+                  <OverviewPanel title={t('timetableContactCardAppointment', 'Appointment & outcome')}>
                     <div className="flex flex-col gap-2">
                       <label className={overviewFieldClass}>
                         <span className={overviewLabelClass}>
@@ -1185,13 +1047,71 @@ export function TimetableContactDrawer({
                   </OverviewPanel>
                 </div>
 
-                <div className={`${overviewHScrollColClass} ${overviewStaggerClass(120)}`}>
+                <div className={`${overviewHScrollColLocationClass} ${overviewStaggerClass(110)}`}>
+                  <OverviewPanel
+                    sectionAriaLabel={t(
+                      'timetableContactCardLocation',
+                      'Address, fleet & quick notes'
+                    )}
+                    title={t('timetableContactCardLocation', 'Address, fleet & quick notes')}
+                  >
+                    <div className="flex w-full flex-col gap-4">
+                      <label className={`${overviewFieldClass} w-full`}>
+                        <span className={overviewLabelClass}>
+                          {t('timetableContactAddress', 'Address')}
+                        </span>
+                        <textarea
+                          value={p.address ?? ''}
+                          onChange={(e) =>
+                            patchDraft((prev) => {
+                              const pr = ensureProfile(prev);
+                              pr.address = e.target.value || undefined;
+                              return { ...prev, contact_profile: { ...pr } };
+                            })
+                          }
+                          rows={5}
+                          className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
+                        />
+                      </label>
+                      <label className={`${overviewFieldClass} w-full`}>
+                        <span className={overviewLabelClass}>{t('timetableContactFleet', 'Fleet')}</span>
+                        <textarea
+                          value={p.fleet_summary ?? ''}
+                          onChange={(e) =>
+                            patchDraft((prev) => {
+                              const pr = ensureProfile(prev);
+                              pr.fleet_summary = e.target.value || undefined;
+                              return { ...prev, contact_profile: { ...pr } };
+                            })
+                          }
+                          rows={5}
+                          className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
+                        />
+                      </label>
+                      <label className={`${overviewFieldClass} w-full`}>
+                        <span className={overviewLabelClass}>
+                          {t('timetableContactTableNotes', 'Call / list notes')}
+                        </span>
+                        <textarea
+                          value={draft.notes}
+                          onChange={(e) => patchDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                          rows={5}
+                          className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
+                          placeholder={t(
+                            'timetableContactTableNotesPh',
+                            'Short notes visible in the timetable row.'
+                          )}
+                        />
+                      </label>
+                    </div>
+                  </OverviewPanel>
+                </div>
+
+                <div
+                  className={`${overviewHScrollColClass} flex flex-col gap-3 sm:gap-4 ${overviewStaggerClass(120)}`}
+                >
                   <OverviewPanel
                     title={t('timetableContactMoreContacts', 'Contact persons')}
-                    hint={t(
-                      'timetableContactCardPeopleHint',
-                      'Additional names at this company.'
-                    )}
                     actions={
                       <button
                         type="button"
@@ -1290,15 +1210,9 @@ export function TimetableContactDrawer({
                       ))}
                     </div>
                   </OverviewPanel>
-                </div>
 
-                <div className={`${overviewHScrollColClass} ${overviewStaggerClass(150)}`}>
                   <OverviewPanel
                     title={t('timetableContactAssignments', 'Assignment')}
-                    hint={t(
-                      'timetableContactCardAssignHint',
-                      'Who owns the case and since when.'
-                    )}
                     actions={
                       <button
                         type="button"
@@ -1386,76 +1300,6 @@ export function TimetableContactDrawer({
                   </OverviewPanel>
                 </div>
                     </div>
-                  </div>
-
-                  <div
-                    className={`w-full shrink-0 border-t border-slate-200/60 pt-4 md:pt-5 ${overviewStaggerClass(205)}`}
-                  >
-                    <OverviewPanel
-                      sectionAriaLabel={t(
-                        'timetableContactCardLocation',
-                        'Address, fleet & quick notes'
-                      )}
-                      titleLines={[
-                        t('timetableContactCardLocationLineAddress', 'Address'),
-                        t('timetableContactCardLocationLineFleet', 'Fleet'),
-                        t('timetableContactCardLocationLineNotes', 'Quick notes'),
-                      ]}
-                      hint={t(
-                        'timetableContactCardLocationHint',
-                        'Longer text belongs here; the timetable row only shows the short note below.'
-                      )}
-                    >
-                      <div className="flex w-full flex-col gap-4 sm:gap-5">
-                        <label className={`${overviewFieldClass} w-full`}>
-                          <span className={overviewLabelClass}>
-                            {t('timetableContactAddress', 'Address')}
-                          </span>
-                          <textarea
-                            value={p.address ?? ''}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                pr.address = e.target.value || undefined;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            rows={5}
-                            className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
-                          />
-                        </label>
-                        <label className={`${overviewFieldClass} w-full`}>
-                          <span className={overviewLabelClass}>{t('timetableContactFleet', 'Fleet')}</span>
-                          <textarea
-                            value={p.fleet_summary ?? ''}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                pr.fleet_summary = e.target.value || undefined;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            rows={5}
-                            className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
-                          />
-                        </label>
-                        <label className={`${overviewFieldClass} w-full`}>
-                          <span className={overviewLabelClass}>
-                            {t('timetableContactTableNotes', 'Call / list notes')}
-                          </span>
-                          <textarea
-                            value={draft.notes}
-                            onChange={(e) => patchDraft((prev) => ({ ...prev, notes: e.target.value }))}
-                            rows={5}
-                            className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
-                            placeholder={t(
-                              'timetableContactTableNotesPh',
-                              'Short notes visible in the timetable row.'
-                            )}
-                          />
-                        </label>
-                      </div>
-                    </OverviewPanel>
                   </div>
                 </div>
               </div>
@@ -1783,7 +1627,7 @@ export function TimetableContactDrawer({
                         setVehicleExtra({ registration_mm_yyyy: e.target.value || undefined })
                       }
                       className={inputClass}
-                      placeholder="MM/YYYY"
+                      placeholder={t('timetableContactRegistrationPh', 'MM/YYYY')}
                     />
                   </label>
                   <label className={labelClass}>

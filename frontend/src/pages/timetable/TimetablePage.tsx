@@ -2,16 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   CalendarDays,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Filter,
   LayoutGrid,
-  ListPlus,
-  MoreHorizontal,
   PhoneCall,
   Plus,
-  Printer,
   Search,
   Sparkles,
   UserRound,
@@ -28,15 +24,15 @@ import type {
 import {
   addTimetableEntries,
   createDraftTimetableEntry,
-  insertFiveDraftTimetableRows,
   loadTimetableDb,
   nowIsoDateTime,
   saveTimetableDb,
+  stripTimetableDemoBuyerRows,
   timetableRowIsMine,
   timetableRowIsOtherBuyer,
   upsertTimetableEntry,
 } from '../../store/timetableStore';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { localeTagForLanguage, useLanguage, type LanguageCode } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import type { DepartmentArea } from '../../types/departmentArea';
 import { DEPARTMENT_I18N_KEY } from '../../types/departmentArea';
@@ -75,21 +71,6 @@ function monthRangeIso(anchorIso: string): { from: string; to: string } {
   return { from: localIsoDate(start), to: localIsoDate(end) };
 }
 
-function pickLocaleTag(language: string): string {
-  if (language === 'de') return 'de-DE';
-  if (language === 'fr') return 'fr-FR';
-  if (language === 'es') return 'es-ES';
-  if (language === 'it') return 'it-IT';
-  if (language === 'pt') return 'pt-PT';
-  if (language === 'tr') return 'tr-TR';
-  if (language === 'ru') return 'ru-RU';
-  if (language === 'ar') return 'ar-SA';
-  if (language === 'zh') return 'zh-CN';
-  if (language === 'ja') return 'ja-JP';
-  if (language === 'hi') return 'hi-IN';
-  return 'en-GB';
-}
-
 function normalizeIsoDateFromScheduled(scheduledAt: string): string {
   const raw = scheduledAt.trim();
   return raw.length >= 10 ? raw.slice(0, 10) : localIsoDate();
@@ -121,7 +102,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const { t, language } = useLanguage();
   const { user } = useAuth();
 
-  const localeTag = pickLocaleTag(language);
+  const localeTag = localeTagForLanguage(language as LanguageCode);
   const todayIso = localIsoDate();
 
   const [db, setDb] = useState<TimetableDbState>(() => loadTimetableDb());
@@ -129,7 +110,6 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<TimetableFilterMode>('all_day');
   const [showOffersOnly, setShowOffersOnly] = useState(false);
-  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [rangeFrom, setRangeFrom] = useState(() => monthRangeIso(todayIso).from);
   const [rangeTo, setRangeTo] = useState(() => monthRangeIso(todayIso).to);
@@ -139,7 +119,6 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [showDayPicker, setShowDayPicker] = useState(false);
   const dayPickerRef = useRef<HTMLDivElement>(null);
-  const actionsMenuRef = useRef<HTMLDivElement>(null);
   const filtersMenuRef = useRef<HTMLDivElement>(null);
   const [callModalEntry, setCallModalEntry] = useState<TimetableEntry | null>(null);
   const [offerModalEntry, setOfferModalEntry] = useState<TimetableEntry | null>(null);
@@ -158,7 +137,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
     company_name: '',
     contact_name: '',
     phone: '',
-    purpose: 'Anruf',
+    purpose: '',
   });
 
   useEffect(() => {
@@ -182,17 +161,6 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
     document.addEventListener('mousedown', onDocDown);
     return () => document.removeEventListener('mousedown', onDocDown);
   }, [showDayPicker]);
-
-  useEffect(() => {
-    if (!actionsMenuOpen) return;
-    const onDocDown = (e: MouseEvent) => {
-      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
-        setActionsMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocDown);
-    return () => document.removeEventListener('mousedown', onDocDown);
-  }, [actionsMenuOpen]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -360,34 +328,18 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
       company_name: createForm.company_name.trim(),
       contact_name: createForm.contact_name.trim(),
       phone: createForm.phone.trim(),
-      purpose: createForm.purpose.trim() || baseDraft.purpose,
+      purpose: createForm.purpose.trim(),
     };
-    setDb((prev) => addTimetableEntries(prev, [payload]));
+    setDb((prev) => stripTimetableDemoBuyerRows(addTimetableEntries(prev, [payload])));
     setCreateForm((prev) => ({
       ...prev,
       company_name: '',
       contact_name: '',
       phone: '',
-      purpose: 'Anruf',
+      purpose: '',
     }));
     setShowCreatePanel(false);
   }, [createForm, viewerBuyerCode]);
-
-  const handlePrint = useCallback(() => {
-    setActionsMenuOpen(false);
-    window.print();
-  }, []);
-
-  const handleInsertFiveDrafts = useCallback(() => {
-    setActionsMenuOpen(false);
-    setDb((prev) => insertFiveDraftTimetableRows(prev, viewerBuyerCode, selectedDate));
-    setToast(t('timetableToastInsertedFive', 'Five draft rows added.'));
-  }, [selectedDate, t, viewerBuyerCode]);
-
-  const handleMoveInList = useCallback(() => {
-    setActionsMenuOpen(false);
-    setToast(t('timetableToastMoveSoon', 'Bulk move is coming soon.'));
-  }, [t]);
 
   const applyCallLog = useCallback(
     (payload: TimetableCallLogInput) => {
@@ -564,7 +516,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         </header>
 
         <main className="order-2 flex min-h-0 flex-1 flex-col gap-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
-            <div className="no-print relative z-10 overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:p-6">
+            <div className="no-print relative z-10 overflow-visible rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:p-6">
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
                   <div className="min-w-0 flex-1">
@@ -576,7 +528,6 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                         <button
                           type="button"
                           onClick={() => {
-                            setActionsMenuOpen(false);
                             setShowDayPicker(false);
                             setFiltersOpen((o) => !o);
                           }}
@@ -790,60 +741,6 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                       <Plus className="h-4 w-4" strokeWidth={2.5} />
                       {t('timetableNewAppointment', 'New appointment')}
                     </button>
-
-                    <div className="relative shrink-0" ref={actionsMenuRef}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFiltersOpen(false);
-                          setActionsMenuOpen((o) => !o);
-                        }}
-                        aria-expanded={actionsMenuOpen}
-                        aria-haspopup="menu"
-                        aria-label={t('timetableActionsMenuAria', 'More actions')}
-                        className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        <MoreHorizontal className="h-4 w-4 text-slate-500" strokeWidth={2} />
-                        {t('timetableActionsMenu', 'Actions')}
-                        <ChevronDown
-                          className={`h-4 w-4 text-slate-400 transition ${actionsMenuOpen ? 'rotate-180' : ''}`}
-                          strokeWidth={2}
-                        />
-                      </button>
-                      {actionsMenuOpen ? (
-                        <div
-                          className="absolute right-0 top-[calc(100%+0.35rem)] z-[70] min-w-[13.5rem] overflow-hidden rounded-xl border border-slate-200/90 bg-white py-1 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/[0.04]"
-                          role="menu"
-                        >
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={handlePrint}
-                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Printer className="h-4 w-4 text-slate-500" strokeWidth={2} />
-                            {t('timetablePrint', 'Print list')}
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={handleInsertFiveDrafts}
-                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <ListPlus className="h-4 w-4 text-emerald-600" strokeWidth={2} />
-                            {t('timetableInsertFive', 'Insert five drafts')}
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={handleMoveInList}
-                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                          >
-                            {t('timetableMoveInList', 'Move in list')}
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -977,9 +874,6 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         onPersist={persistContactEntry}
         onLogCall={(row) => setCallModalEntry(row)}
         onEditOffer={(row) => setOfferModalEntry(row)}
-        onComingSoon={() =>
-          setToast(t('timetableContactSoon', 'This action will be available when CRM is connected.'))
-        }
       />
 
       <TimetableCallModal

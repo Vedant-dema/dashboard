@@ -20,8 +20,9 @@
 | 2026-04-01 | [2026-04-01.md](feature-logs/2026-04-01.md) | FEATURE-134, FEATURE-135 |
 | 2026-04-07 | [2026-04-07.md](feature-logs/2026-04-07.md) | FEATURE-136 |
 | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137 … FEATURE-142 |
-| 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-166 |
-| 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-167, FEATURE-168, FEATURE-169, FEATURE-170, FEATURE-171, FEATURE-172, FEATURE-173, FEATURE-174, FEATURE-175, FEATURE-176 |
+| 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
+| 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
+| 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-204 |
 
 ---
 
@@ -175,35 +176,63 @@
 | FEATURE-145 | Purchase Kalender — Timetable UI (call planner prototype) | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 | FEATURE-146 | Purchase Timetable — premium visual refresh | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
 | FEATURE-147 | Purchase Timetable — layout & visual system refresh | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-148 | Purchase Timetable — header-only day summary KPIs | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-149 | Purchase Timetable — operations toolbar, calendar on demand | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-150 | Purchase Timetable — day picker z-index above table | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-151 | Purchase Timetable — AI assistant preview panel | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-152 | Purchase Timetable — legacy parity, demo seed, print | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-153 | Purchase Timetable — modern UI, actions menu, v4 seed | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-154 | Purchase Timetable — filters dropdown by search bar | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-155 | Purchase Timetable — filter/search labels, panel polish, remove count | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-156 | Purchase Timetable — Termin-Kalender seed, Ka/Arte cols, v5 storage | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-157 | Purchase Timetable — Kundenkontakt drawer, contact_profile, v6 storage | Added | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-158 | Purchase Timetable — contact UI as centered popup (edit-style) | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-159 | Purchase Timetable — contact modal toolbar, denser layout | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-160 | Purchase Timetable — full editable Kundenkontakt workspace | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-161 | Purchase Timetable — contact modal card layout & calmer chrome | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-162 | Kundenkontakt overview — compact columns, wide long-text row | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-163 | Kundenkontakt overview aligned with customer edit layout | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-164 | Kundenkontakt modal — wider, shorter, parallel tabs | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-165 | Einkaufs-Terminplan — demo rows across three days + DEMO merge | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-166 | Kundenkontakt overview — address row overlap fix + modern cards | Modified | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) |
-| FEATURE-167 | Purchase timetable — premium calendar UI, motion, mini-calendar polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-168 | Kundenkontakt modal — premium shell, motion, field spacing | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-169 | Kundenkontakt — Gen Z glass UI + live smart summary (on-device) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-170 | Kundenkontakt — smart summary in toolbar dropdown | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-171 | Kundenkontakt Übersicht — horizontal card strip, vertical fields | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-172 | Kundenkontakt — section tabs horizontal on top | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-173 | Kundenkontakt Übersicht — Codes & profile dark stat card | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-174 | Kundenkontakt — Codes & profile in header; remove Overview card | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-175 | Kundenkontakt header — customer no. & industry from Kundenstamm | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
-| FEATURE-176 | Kundenkontakt — CRM demo fallbacks + vertical address block | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-148 | Customer modal Phase 2C — compact header, 4 columns, FZG tab, docs action | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-149 | Customers route — Gen-Z ambient background + header category tag rail | Added | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-150 | Customer modal edit — 2×2 grid until 2xl, scroll chips/tabs, panel chrome | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-151 | Customers — no scope rail; AI-slab palette; edit grid from 1420px | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-152 | DEMA canvas on home + customers; cinematic modal backdrop | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-153 | Customers Gen Z scoped chrome (canvas, glass, header, table) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-154 | Customer modal + Unterlagen overlay Gen Z shell | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-155 | Customers page — remove department hint line | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-156 | Gen Z CTA buttons — list + modal footer | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-157 | Customers chrome — professional indigo/slate/teal palette | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-158 | Customer modal — body portal + z-index above header (search overlap) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-159 | Customer modal — glassy tabs, subcards, selects/inputs/textareas | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-160 | Customer modal — remove animated gradient field borders | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-161 | Customer modal — Gen-Z differentiated columns on Customer & Address | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-162 | Customer modal — Gen-Z hero summary header vs tab bar | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-163 | Customer modal — thinner tab bar for more form viewport | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-164 | Customer modal — dark summary header + hidden chip scrollbar | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-165 | Customer modal — header chip text contrast (scoped slate overrides) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-166 | Customers UI — professional sapphire blue Gen-Z visual refresh | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-167 | Customer modal — keyboard hint beside responsible-person dropdown | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-168 | Customer modal — alignment, typography, productive layout polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-169 | Customer modal & edit shell — neutral Fluent-style UI (no Gen-Z gradients) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-170 | Customer modal — glassmorphism (frosted panels + opaque inputs) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-171 | Customer modal — dark “AI” glass header + vivid header chips | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-172 | Customer modal — main address block label shortened to “Adresse” / “Address” | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-173 | Customer modal — larger column titles, tab bar, and panel section headings | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-174 | Customer modal edit — Rechnungen rail + taller shell (no buried invoice actions) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-175 | Customer modal — darker tab body canvas + stronger white column cards | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-176 | Customer modal edit — revert Rechnungen rail (restore bottom placement + 92vh shell) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-177 | Customer modal — remove duplicate address block title | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-178 | Customer modal — address “+ New” full-width row below pills | Extended | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-179 | Customer modal — compact + Neu inline with address pills | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-180 | Customer edit — Rechnungen block under Operative Notizen (column 1) | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-181 | Customers page — responsive layout + dark-theme polish | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-182 | Timetable contact drawer — Assignment under Contact persons | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-183 | Timetable contact drawer — Contact persons and Assignment separate again | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-184 | Timetable overview — location by appointment; contacts + assignment stacked column | Modified | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) |
+| FEATURE-185 | Timetable toolbar — filter popover visible (overflow fix) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-186 | Timetable — single-day legacy demo seeds; clear demos on first saved appointment | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-187 | Timetable contact drawer — wider overview column for address / fleet / notes | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-188 | Timetable toolbar — remove Actions dropdown; print + insert five as direct buttons | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-189 | Timetable toolbar — remove print + insert-five buttons (no secondary actions) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-190 | Timetable contact drawer — remove “More actions” overflow menu | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-191 | Timetable contact drawer — wider Address / fleet / notes overview column | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-192 | Timetable contact drawer — remove overview card hint subtitles | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-193 | Timetable contact drawer — fix right-side clipping (toolbar + overview strip) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-194 | Timetable contact drawer — slightly wider dialog shell | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-195 | Timetable contact drawer — remove header “Demo” CRM badge | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-196 | Timetable contact drawer — remove header subtitle hint | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-197 | Cursor rule — i18n 12-language full coverage agent | Added | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-198 | Timetable (calendar) module — locale + empty-cell i18n hardening | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-199 | Timetable customer contact drawer — full de/en/fr message catalogue | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-200 | Timetable customer contact drawer — single-page scroll form | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-201 | Timetable contact drawer — larger viewport + grid section pills | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-202 | Timetable contact drawer — two-pane desktop (A–E + correspondence column) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-203 | Timetable contact drawer — legacy-style split + hidden scrollbars | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-204 | Kunden list — unified filter label typography | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

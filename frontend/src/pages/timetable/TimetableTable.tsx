@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Phone, PhoneCall, Truck } from 'lucide-react';
 import type { TimetableEntry } from '../../types/timetable';
 
@@ -29,9 +30,16 @@ function formatRowTime(raw: string, localeTag: string): string {
   });
 }
 
+const EM_DASH = '\u2014';
+
 function kaArtFromRow(row: TimetableEntry): string {
   if (row.outcome === 'has_trucks' || row.offer) return 'KA';
   return 'A';
+}
+
+function isPlaceholderPhone(phone: string | undefined | null): boolean {
+  const p = (phone ?? '').trim();
+  return !p || p === EM_DASH || p === '-' || p === '\u2013';
 }
 
 function outcomeBadgeClass(outcome: TimetableEntry['outcome']): string {
@@ -67,6 +75,8 @@ function rowAccentClass(outcome: TimetableEntry['outcome']): string {
 const COL_COUNT = 14;
 
 export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLog, onOpenOffer }: Props) {
+  const emptyMark = useMemo(() => t('commonPlaceholderDash', '—'), [t]);
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-900/[0.04]">
       <div className="overflow-x-auto">
@@ -136,7 +146,7 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                     ) : null}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5">
-                    {row.phone && row.phone !== '—' ? (
+                    {!isPlaceholderPhone(row.phone) ? (
                       <a
                         href={`tel:${row.phone.replace(/\s/g, '')}`}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200/80 transition hover:bg-emerald-50 hover:text-emerald-900 hover:ring-emerald-200"
@@ -145,13 +155,17 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                         {row.phone}
                       </a>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-slate-400">{emptyMark}</span>
                     )}
                   </td>
-                  <td className="max-w-[10rem] px-3 py-3.5 text-sm text-slate-700">{row.contact_name || '—'}</td>
-                  <td className="max-w-[8rem] px-3 py-3.5 text-xs font-medium text-slate-600">{row.purpose || '—'}</td>
+                  <td className="max-w-[10rem] px-3 py-3.5 text-sm text-slate-700">
+                    {row.contact_name || emptyMark}
+                  </td>
+                  <td className="max-w-[8rem] px-3 py-3.5 text-xs font-medium text-slate-600">
+                    {row.purpose || emptyMark}
+                  </td>
                   <td className="max-w-md px-3 py-3.5 text-sm leading-relaxed text-slate-600">
-                    <p className="line-clamp-3 print:line-clamp-none">{row.notes || '—'}</p>
+                    <p className="line-clamp-3 print:line-clamp-none">{row.notes || emptyMark}</p>
                   </td>
                   <td className="px-3 py-3.5">
                     <span
@@ -163,7 +177,7 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5 text-xs font-medium tabular-nums text-slate-700">
-                    {row.follow_up_at ? formatRowTime(row.follow_up_at, localeTag) : '—'}
+                    {row.follow_up_at ? formatRowTime(row.follow_up_at, localeTag) : emptyMark}
                     {row.follow_up_at ? (
                       <span className="ml-1 block text-[10px] font-normal text-slate-500">
                         {formatRowDate(row.follow_up_at, localeTag)}

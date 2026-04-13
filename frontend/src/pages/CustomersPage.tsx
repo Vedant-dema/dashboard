@@ -1092,7 +1092,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelCustomerNr", "Customer no.")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelCustomerNr", "Customer no.")}</label>
             <SuggestTextInput
               type="text"
               value={kundenNr}
@@ -1103,7 +1103,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelCompany", "Company name")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelCompany", "Company name")}</label>
             <SuggestTextInput
               type="text"
               value={firmenname}
@@ -1114,7 +1114,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelContact", "Contact person")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelContact", "Contact person")}</label>
             <SuggestTextInput
               type="text"
               value={ansprechpartner}
@@ -1125,7 +1125,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelPhone", "Phone")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelPhone", "Phone")}</label>
             <SuggestTextInput
               type="text"
               value={telefon}
@@ -1136,7 +1136,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelZip", "ZIP")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelZip", "ZIP")}</label>
             <SuggestTextInput
               type="text"
               value={plz}
@@ -1147,7 +1147,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelCity", "City")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelCity", "City")}</label>
             <SuggestTextInput
               type="text"
               value={ort}
@@ -1158,7 +1158,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelCountry", "Country")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelCountry", "Country")}</label>
             <SuggestTextInput
               type="text"
               value={land}
@@ -1170,7 +1170,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterUstId", "VAT ID")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersFilterUstId", "VAT ID")}</label>
             <SuggestTextInput
               type="text"
               value={vatId}
@@ -1181,7 +1181,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersLabelSort", "Sort by")}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersLabelSort", "Sort by")}</label>
             <select
               value={sortierung}
               onChange={(e) => setSortierung(e.target.value as CustomerSortKey)}
@@ -1208,11 +1208,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           {showMoreFilters && (
             <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 md:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterAufnahmeVon", "Entry from")}</label>
+                <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersFilterAufnahmeVon", "Entry from")}</label>
                 <input type="date" className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">{t("customersFilterAufnahmeBis", "Entry to")}</label>
+                <label className="mb-1 block text-sm font-medium text-slate-600">{t("customersFilterAufnahmeBis", "Entry to")}</label>
                 <input type="date" className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" />
               </div>
             </div>

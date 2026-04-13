@@ -34,12 +34,6 @@ function toScheduledAt(dateIso: string, timeHm: string): string {
   return `${dateIso}T${timeHm}:00`;
 }
 
-function addDaysIso(iso: string, deltaDays: number): string {
-  const base = new Date(`${iso}T12:00:00`);
-  base.setDate(base.getDate() + deltaDays);
-  return localIsoDate(base);
-}
-
 /**
  * Placeholder calendar day baked into seed templates; remapped to real days in buildSpreadSeeds().
  * (Legacy screenshot: 09.04.2026 — content preserved, dates applied at runtime.)
@@ -73,29 +67,33 @@ function remapSeedDay(entries: TimetableEntry[], realIso: string): TimetableEntr
   });
 }
 
-/** Eight rows from legacy Termin-Kalender; spread across yesterday / today / tomorrow for any selected day. */
-function buildSpreadSeeds(): TimetableEntry[] {
-  const today = localIsoDate();
-  const y = addDaysIso(today, -1);
-  const t = today;
-  const tm = addDaysIso(today, 1);
-  const parts = [
-    ...remapSeedDay(SEED_ENTRIES_RAW.slice(0, 3), y),
-    ...remapSeedDay(SEED_ENTRIES_RAW.slice(3, 6), t),
-    ...remapSeedDay(SEED_ENTRIES_RAW.slice(6, 8), tm),
-  ];
-  return parts.map((e, i) => ({ ...e, id: i + 1 }));
+/**
+ * Legacy Termin-Kalender demo rows (same calendar day), for a dense “Tagesübersicht” like the reference UI.
+ * `startId` is the first assigned `id` (use 1 for empty DB, or `state.nextId` when appending).
+ */
+function demoSeedsForDay(realIso: string, startId: number): TimetableEntry[] {
+  const remapped = remapSeedDay(SEED_ENTRIES_RAW, realIso);
+  return remapped.map((e, i) => ({ ...e, id: startId + i }));
 }
 
 /**
- * If the DB has user rows but no shared demo buyer queue, append spread seeds once (manager demo).
+ * If the DB has user rows but no shared demo buyer queue, append demo seeds once (manager demo).
  */
 function ensureSharedDemoTimetableRows(state: TimetableDbState): TimetableDbState {
   if (state.entries.some((e) => e.buyer_name === TIMETABLE_DEMO_BUYER)) return state;
-  const seeds = buildSpreadSeeds();
-  let nid = state.nextId;
-  const added = seeds.map((e) => ({ ...e, id: nid++ }));
-  return { entries: [...state.entries, ...added], nextId: nid };
+  const seeds = demoSeedsForDay(localIsoDate(), state.nextId);
+  return {
+    entries: [...state.entries, ...seeds],
+    nextId: state.nextId + seeds.length,
+  };
+}
+
+/** Remove built-in demo buyer rows after the user saves their own appointment. */
+export function stripTimetableDemoBuyerRows(state: TimetableDbState): TimetableDbState {
+  return {
+    ...state,
+    entries: state.entries.filter((e) => e.buyer_name !== TIMETABLE_DEMO_BUYER),
+  };
 }
 
 /** Shared demo buyer — visible to every signed-in user alongside their own code. */
@@ -613,10 +611,10 @@ function normalizeEntry(raw: unknown, fallbackId: number): TimetableEntry | null
 }
 
 function fallbackState(): TimetableDbState {
-  const entries = buildSpreadSeeds();
+  const entries = demoSeedsForDay(localIsoDate(), 1);
   return {
     entries,
-    nextId: Math.max(...entries.map((e) => e.id)) + 1,
+    nextId: entries.length + 1,
   };
 }
 
@@ -681,7 +679,7 @@ export function createDraftTimetableEntry(buyerName: string): Omit<TimetableEntr
     company_name: '',
     phone: '',
     contact_name: '',
-    purpose: 'Anruf',
+    purpose: '',
     notes: '',
     outcome: 'pending',
     follow_up_at: null,
@@ -704,7 +702,7 @@ export function insertFiveDraftTimetableRows(
     ...base,
     buyer_name: buyerName.trim().toUpperCase() || 'ES',
     scheduled_at: toScheduledAt(dateIso, hm),
-    purpose: 'Anruf',
+    purpose: '',
   }));
   return addTimetableEntries(state, drafts);
 }

@@ -9,6 +9,8 @@ import type {
   TimetableTruckOffer,
   TimetableVehicleDisplayExtra,
 } from '../types/timetable';
+import { splitStoredPhone } from '../features/customers/mappers/customerFormMapper';
+import { normalizeTimetableOverviewKunde } from '../pages/timetable/timetableOverviewKunde';
 
 const STORAGE_KEY = 'dema-purchase-timetable-v6';
 const LEGACY_STORAGE_KEY = 'dema-purchase-timetable-v1';
@@ -136,8 +138,30 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
       customer_number: '35258',
       fleet_summary: 'gekauft am 04-2014 Atego 818 Bj 2003, TS 300',
       contacts: [
-        { name: 'Mathias Dahm', phone: '06551-981960' },
-        { name: 'Frau Monika Dahm', phone: '06551-981961', fax: '06551-981962' },
+        {
+          id: 'seed-tt-c1',
+          name: 'Mathias Dahm',
+          rolle: '',
+          telefonCode: '+49',
+          telefon: '06551-981960',
+          handyCode: '+49',
+          handy: '',
+          email: '',
+          website: '',
+          bemerkung: '',
+        },
+        {
+          id: 'seed-tt-c2',
+          name: 'Frau Monika Dahm',
+          rolle: '',
+          telefonCode: '+49',
+          telefon: '06551-981961',
+          handyCode: '+49',
+          handy: '',
+          email: '',
+          website: '',
+          bemerkung: 'Fax: 06551-981962',
+        },
       ],
       assignment_history: [{ name: 'Valergas Panagiotis', since: '2023' }],
       appointment_history: [
@@ -424,14 +448,48 @@ function normalizeOffer(raw: unknown): TimetableTruckOffer | null {
 function normalizeContactPerson(raw: unknown): TimetableContactPerson | null {
   const r = asRecord(raw);
   if (!r) return null;
-  const name = asText(r.name);
-  if (!name) return null;
-  const phone = asText(r.phone);
-  const fax = asText(r.fax);
+
+  const id =
+    asText(r.id) ||
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2));
+
+  const legacyPhone = asText(r.phone);
+  const legacyFax = asText(r.fax);
+
+  let telefonCode = asText(r.telefonCode);
+  let telefon = asText(r.telefon);
+  if (!telefon && legacyPhone) {
+    const sp = splitStoredPhone(legacyPhone);
+    telefonCode = sp.code || '+49';
+    telefon = sp.number;
+  }
+  if (!telefonCode) telefonCode = '+49';
+
+  let handyCode = asText(r.handyCode);
+  if (!handyCode) handyCode = '+49';
+  const handy = asText(r.handy);
+
+  let bemerkung = asText(r.bemerkung);
+  if (legacyFax) {
+    const faxLine = `Fax: ${legacyFax}`;
+    if (!bemerkung.includes(legacyFax.trim())) {
+      bemerkung = bemerkung ? `${bemerkung}\n${faxLine}` : faxLine;
+    }
+  }
+
   return {
-    name,
-    ...(phone ? { phone } : {}),
-    ...(fax ? { fax } : {}),
+    id,
+    name: asText(r.name),
+    rolle: asText(r.rolle),
+    telefonCode,
+    telefon,
+    handyCode,
+    handy,
+    email: asText(r.email),
+    website: asText(r.website),
+    bemerkung,
   };
 }
 
@@ -525,6 +583,13 @@ function normalizeContactProfile(raw: unknown): TimetableContactProfile | undefi
 
   const vehicle_extra = normalizeVehicleExtra(r.vehicle_extra);
 
+  const overview_kunde =
+    r.overview_kunde !== undefined && r.overview_kunde !== null
+      ? normalizeTimetableOverviewKunde(r.overview_kunde)
+      : undefined;
+
+  const zustaendige_person = asText(r.zustaendige_person);
+
   const profile: TimetableContactProfile = {
     ...(industry ? { industry } : {}),
     ...(address ? { address } : {}),
@@ -536,6 +601,8 @@ function normalizeContactProfile(raw: unknown): TimetableContactProfile | undefi
     ...(activity_notes ? { activity_notes } : {}),
     ...(vehicle_extra ? { vehicle_extra } : {}),
     ...(purchase_confirmed ? { purchase_confirmed: true } : {}),
+    ...(overview_kunde ? { overview_kunde } : {}),
+    ...(zustaendige_person ? { zustaendige_person } : {}),
   };
 
   return Object.keys(profile).length > 0 ? profile : undefined;

@@ -20,6 +20,23 @@ export const overviewFieldClass = 'flex flex-col gap-2';
 export const overviewAddBtnClass =
   'rounded-xl border border-blue-200/60 bg-gradient-to-r from-white to-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300/80 hover:from-blue-50/80 hover:shadow-md active:scale-[0.98]';
 
+/** Match `NewCustomerModal` contact column — `labelClass` / `inputClass` / add button / section title. */
+export const customerModalKontaktLabelClass =
+  'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-600';
+
+export const customerModalKontaktInputClass =
+  'min-h-[44px] w-full rounded border border-neutral-300 bg-white px-3 text-sm leading-normal text-slate-800 outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 sm:h-9 sm:min-h-0';
+
+/** Match `NewCustomerModal` kontakt role `<select>`. */
+export const customerModalKontaktSelectClass =
+  'h-9 w-full rounded border border-neutral-300 bg-white px-2.5 text-sm text-slate-700 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600';
+
+export const customerModalKontaktNewBtnClass =
+  'flex w-full shrink-0 items-center justify-center gap-1 rounded border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:bg-neutral-50 sm:w-auto';
+
+export const customerModalKundeSectionTitleClass =
+  'text-sm font-bold uppercase tracking-[0.08em] text-slate-600';
+
 export const headerCodesInputClass =
   'min-h-7 min-w-0 border-0 bg-transparent py-0 text-xs font-semibold text-white outline-none ring-0 placeholder:text-slate-500 focus:ring-0 sm:text-[13px]';
 

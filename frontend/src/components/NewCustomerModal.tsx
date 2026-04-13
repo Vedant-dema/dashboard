@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Droplets,
@@ -11,10 +12,12 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldAlert,
-  Building2,
   MapPin,
   Copy,
   Check,
+  Clock,
+  Building2,
+  Landmark,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -58,13 +61,15 @@ import {
 import { commitAsciiNormalized } from "../common/utils/commitAsciiNormalized";
 import { isViesProxyHttpErrorGarbage } from "../common/utils/viesProxyErrorText";
 import { useLanguage } from "../contexts/LanguageContext";
+import { normalizePhoneValue } from "../features/customers/mappers/customerFormMapper";
 
 type TabId =
   | "vat"
   | "kunde"
   | "art"
   | "waschanlage"
-  | "history";
+  | "history"
+  | "beziehungenFzg";
 
 type KontaktEntry = {
   id: string;
@@ -146,10 +151,6 @@ function splitStoredPhone(
   return { code: "+49", number: s };
 }
 
-function normalizePhoneValue(raw: string | undefined): string {
-  return (raw ?? "").replace(/\s+/g, " ").trim();
-}
-
 function ensurePhoneIncludesCode(rawValue: string | undefined, code: string | undefined): string {
   const normalized = normalizePhoneValue(rawValue);
   if (!normalized) return "";
@@ -190,13 +191,13 @@ const ADRESSE_TYP_I18N: Record<string, [string, string]> = {
 };
 
 const ADRESSE_COLORS: { dot: string; dotActive: string; activePill: string }[] = [
-  { dot: "bg-indigo-300",  dotActive: "bg-indigo-500",  activePill: "bg-indigo-500"  },
-  { dot: "bg-teal-300",    dotActive: "bg-teal-500",    activePill: "bg-teal-500"    },
-  { dot: "bg-violet-300",  dotActive: "bg-violet-500",  activePill: "bg-violet-500"  },
-  { dot: "bg-amber-300",   dotActive: "bg-amber-500",   activePill: "bg-amber-500"   },
-  { dot: "bg-rose-300",    dotActive: "bg-rose-500",    activePill: "bg-rose-500"    },
-  { dot: "bg-cyan-300",    dotActive: "bg-cyan-500",    activePill: "bg-cyan-500"    },
-  { dot: "bg-slate-400",   dotActive: "bg-slate-600",   activePill: "bg-slate-600"   },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
 ];
 
 function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
@@ -284,7 +285,7 @@ function ExternalDocLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="font-medium text-blue-700 underline decoration-blue-400/70 underline-offset-2 hover:text-blue-900"
+      className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
     >
       {children}
     </a>
@@ -1238,15 +1239,15 @@ function landCodeToArtLand(landCode: string): string {
 
 const ART_LAND_OPTIONS = ["IL", "EU", "Drittland"];
 
-const KONTAKT_COLORS: { from: string; to: string; dot: string; dotActive: string; activePill: string }[] = [
-  { from: "from-blue-500",    to: "to-indigo-500",  dot: "bg-blue-300",    dotActive: "bg-blue-500",    activePill: "bg-blue-500"    },
-  { from: "from-emerald-500", to: "to-teal-500",    dot: "bg-emerald-300", dotActive: "bg-emerald-500", activePill: "bg-emerald-500" },
-  { from: "from-violet-500",  to: "to-purple-500",  dot: "bg-violet-300",  dotActive: "bg-violet-500",  activePill: "bg-violet-500"  },
-  { from: "from-orange-500",  to: "to-amber-500",   dot: "bg-orange-300",  dotActive: "bg-orange-500",  activePill: "bg-orange-500"  },
-  { from: "from-pink-500",    to: "to-rose-500",    dot: "bg-pink-300",    dotActive: "bg-pink-500",    activePill: "bg-pink-500"    },
-  { from: "from-cyan-500",    to: "to-sky-500",     dot: "bg-cyan-300",    dotActive: "bg-cyan-500",    activePill: "bg-cyan-500"    },
-  { from: "from-slate-600",   to: "to-slate-800",   dot: "bg-slate-400",   dotActive: "bg-slate-600",   activePill: "bg-slate-600"   },
-  { from: "from-sky-500",     to: "to-indigo-500",  dot: "bg-sky-300",     dotActive: "bg-sky-500",     activePill: "bg-sky-500"     },
+const KONTAKT_COLORS: { dot: string; dotActive: string; activePill: string }[] = [
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
+  { dot: "bg-slate-400", dotActive: "bg-slate-500", activePill: "bg-slate-700" },
 ];
 
 type WashProgramOption = {
@@ -1852,11 +1853,12 @@ function washFormToPayload(form: FormState): KundenWashUpsertFields {
   };
 }
 
-const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage"];
+const BASE_TAB_ORDER: TabId[] = ["vat", "kunde", "art", "waschanlage", "beziehungenFzg"];
 
 const inputClass =
-  "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none ring-slate-200/50 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20";
-const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500";
+  "min-h-[44px] w-full rounded border border-neutral-300 bg-white px-3 text-sm leading-normal text-slate-800 outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 sm:h-9 sm:min-h-0";
+const labelClass =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-600";
 
 type Props = {
   open: boolean;
@@ -1868,8 +1870,12 @@ type Props = {
   editRisikoProfile?: KundenRisikoanalyse | null;
   /** Edit mode: scroll the modal content to the document expiry / risk analysis block (e.g. sidebar). */
   onScrollToDocumentExpiry?: () => void;
-  editKundeTopContent?: ReactNode;
-  editAdresseExtraContent?: ReactNode;
+  /** Edit mode: documents control shown to the right of the tab row (e.g. open Unterlagen). */
+  editHeaderDocumentsAction?: ReactNode;
+  /** Edit mode: appointments UI rendered under the contact column on the Customer & Address tab. */
+  editKundeAppointmentsContent?: ReactNode;
+  /** Edit mode: e.g. Rechnungen actions, rendered below “Operative Notizen” in column 1 (Customer classification). */
+  editAfterOperationalNotesContent?: ReactNode;
   editKundeSideContent?: ReactNode;
   /** Full-width content rendered below the main Firmendaten/Adresse/Kontakt grid (edit mode only). */
   editKundeBottomContent?: ReactNode;
@@ -1904,8 +1910,9 @@ export function NewCustomerModal({
   editInitial,
   editRisikoProfile,
   onScrollToDocumentExpiry,
-  editKundeTopContent,
-  editAdresseExtraContent,
+  editHeaderDocumentsAction,
+  editKundeAppointmentsContent,
+  editAfterOperationalNotesContent,
   editKundeSideContent,
   editKundeBottomContent,
   nextKundenNrPreview,
@@ -1935,6 +1942,7 @@ export function NewCustomerModal({
     art: t("newCustomerTabArt", "Type / Account"),
     waschanlage: t("newCustomerTabWaschanlage", "Car wash"),
     history: t("historyTabLabel", "History"),
+    beziehungenFzg: t("newCustomerTabBeziehungenFzg", "Vehicle relationships"),
   }), [t]);
   const acquisitionSourceOptions = useMemo(
     () =>
@@ -1989,9 +1997,25 @@ export function NewCustomerModal({
   }, [vatCheckResult]);
   const isEditMode = mode === "edit";
   const hasEditKundeSideContent = isEditMode && Boolean(editKundeSideContent);
-  const tabOrder: TabId[] = isEditMode
-    ? [...BASE_TAB_ORDER, "history"]
-    : BASE_TAB_ORDER;
+  /** Edit + relationships column: avoid 4 skinny columns at xl — use 2×2 until 2xl */
+  const editKundeGridClass = hasEditKundeSideContent
+    ? "grid-cols-1 lg:grid-cols-2 min-[1420px]:grid-cols-12"
+    : "grid-cols-1 md:grid-cols-3 lg:grid-cols-12";
+  const editKundeCol1 = hasEditKundeSideContent ? "lg:col-span-1 min-[1420px]:col-span-3" : "lg:col-span-4";
+  const editKundeCol2 = hasEditKundeSideContent ? "lg:col-span-1 min-[1420px]:col-span-3" : "lg:col-span-5";
+  const editKundeCol3 = hasEditKundeSideContent ? "lg:col-span-1 min-[1420px]:col-span-3" : "lg:col-span-3";
+  const editKundeCol4 = hasEditKundeSideContent ? "lg:col-span-1 min-[1420px]:col-span-3" : "";
+  const kundePanelSurface = hasEditKundeSideContent
+    ? "overflow-hidden rounded-2xl"
+    : "rounded-2xl";
+  const kundeSectionTitleClass = hasEditKundeSideContent
+    ? "text-sm font-bold uppercase tracking-[0.08em] text-slate-700"
+    : "text-sm font-bold uppercase tracking-[0.08em] text-slate-600";
+  const tabOrder: TabId[] = useMemo(() => {
+    if (!isEditMode) return BASE_TAB_ORDER;
+    const core = BASE_TAB_ORDER.filter((id) => id !== "beziehungenFzg");
+    return [...core, "history", "beziehungenFzg"];
+  }, [isEditMode]);
   const kundenNrDisplay = isEditMode ? editInitial?.kunde.kunden_nr ?? nextKundenNrPreview : nextKundenNrPreview;
 
   // Track whether the modal was open on the previous render so we only
@@ -2650,23 +2674,22 @@ export function NewCustomerModal({
     requestClose,
   ]);
 
-  const customer360EditSummary = useMemo(() => {
-    if (!isEditMode || !editInitial?.kunde) return null;
-    const k = editInitial.kunde;
+  const headerChipsData = useMemo(() => {
     const pct = computeCustomerProfileCompletionPct(form);
     let vatKind: "valid" | "invalid" | "unknown" = "unknown";
     if (vatCheckResult != null) {
       vatKind = coerceViesCheckValid(vatCheckResult.valid) ? "valid" : "invalid";
-    } else if (k.vies_snapshot != null) {
-      vatKind = k.vies_snapshot.valid ? "valid" : "invalid";
+    } else if (isEditMode && editInitial?.kunde.vies_snapshot != null) {
+      vatKind = editInitial.kunde.vies_snapshot.valid ? "valid" : "invalid";
     }
     let riskKind: "blocked" | "payment" | "billing" | "low" = "low";
     if (form.customer_status === "blocked") riskKind = "blocked";
     else if (form.payment_blocked) riskKind = "payment";
     else if (!form.iban.trim() && !form.bic.trim()) riskKind = "billing";
 
+    const k = editInitial?.kunde;
     const lastEditedLine =
-      k.updated_at != null && String(k.updated_at).trim() !== ""
+      isEditMode && k && k.updated_at != null && String(k.updated_at).trim() !== ""
         ? `${k.last_edited_by_name ?? t("auditUnknownEditor", "Unknown")} · ${new Date(k.updated_at).toLocaleString(localeTag, {
             dateStyle: "short",
             timeStyle: "short",
@@ -2674,7 +2697,7 @@ export function NewCustomerModal({
         : null;
     const vatRequestRaw =
       (vatCheckResult?.request_date && String(vatCheckResult.request_date).trim()) ||
-      (k.vies_snapshot?.request_date && String(k.vies_snapshot.request_date).trim()) ||
+      (isEditMode && k?.vies_snapshot?.request_date && String(k.vies_snapshot.request_date).trim()) ||
       "";
     const vatRequestDateDisplay = vatRequestRaw
       ? normalizeViesRequestDate(vatRequestRaw, localeTag) ?? vatRequestRaw
@@ -2690,18 +2713,19 @@ export function NewCustomerModal({
     ].filter(Boolean) as string[];
     const addressLine = addrParts.length > 0 ? addrParts.join(", ") : "";
     const companyLine = (form.firmenname ?? "").trim();
+    const kuNr = isEditMode && k?.kunden_nr ? k.kunden_nr : nextKundenNrPreview;
     return {
       pct,
       vatKind,
       riskKind,
       lastEditedLine,
-      kuNr: k.kunden_nr,
+      kuNr,
       vatRequestDateDisplay,
       vatRequestDateIso,
       companyLine,
       addressLine,
     };
-  }, [isEditMode, editInitial, form, vatCheckResult, localeTag, t]);
+  }, [isEditMode, editInitial, form, vatCheckResult, localeTag, t, nextKundenNrPreview]);
 
   const customer360DocExpiryAlertCount = useMemo(() => {
     if (!isEditMode || editRisikoProfile === undefined) return null;
@@ -2712,367 +2736,348 @@ export function NewCustomerModal({
 
   if (!open) return null;
 
-  return (
+  /** Portal to `body` so the overlay stacks above `Header` (z-30); otherwise `dema-canvas-root { isolation: isolate }` traps z-50 inside the page. */
+  const modalUi = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-3 backdrop-blur-[2px] sm:p-4 md:p-5"
+      className="customers-modal-genz-backdrop dema-modal-backdrop-vibe fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-5"
       onClick={requestClose}
       role="presentation"
     >
       <div
-        className="relative flex w-full max-h-[88vh] max-w-[min(112rem,99vw)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
+        className={`customers-modal-genz-panel relative flex w-full min-w-0 flex-col overflow-hidden rounded-2xl ${
+          hasEditKundeSideContent
+            ? "max-h-[92vh] max-w-[min(118rem,99vw)]"
+            : "max-h-[88vh] max-w-[min(112rem,99vw)]"
+        }`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-kunde-title"
         aria-describedby="new-kunde-shortcuts-hint"
       >
-        {/* Title bar — inspired by legacy DEMA header */}
-        <div className="relative flex shrink-0 flex-wrap items-start justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-4 pr-14 text-white sm:flex-nowrap sm:px-6 sm:pr-6">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h2 id="new-kunde-title" className="text-lg font-bold tracking-tight sm:text-xl">
-                {t("newCustomerModalTitle", "Customer data")}
-              </h2>
-              <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-semibold text-blue-100">
-                {isEditMode ? t("newCustomerModalEdit", "(Edit)") : t("newCustomerModalNew", "(New)")}
-              </span>
-              {isEditMode && editInitial?.kunde.kunden_nr && (
-                <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono text-xs text-slate-300">
-                  #{editInitial.kunde.kunden_nr}
-                </span>
-              )}
-            </div>
-            {isEditMode && editInitial?.kunde ? (() => {
-              const k = editInitial.kunde;
-              const fmt = (iso?: string) =>
-                iso
-                  ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
-                  : "—";
-              return (
-                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
-                  {k.created_by_name && (
-                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-600 text-[9px] font-bold text-white">
-                        {k.created_by_name.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="text-slate-500">{t("auditCreatedBy", "Created by")}</span>
-                      <span className="font-semibold text-slate-300">{k.created_by_name}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="tabular-nums text-slate-400">{fmt(k.created_at)}</span>
-                    </span>
-                  )}
-                  {k.last_edited_by_name && k.last_edited_by_name !== k.created_by_name && (
-                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-700 text-[9px] font-bold text-white">
-                        {k.last_edited_by_name.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="text-slate-500">{t("auditLastEditedBy", "Last edited by")}</span>
-                      <span className="font-semibold text-slate-300">{k.last_edited_by_name}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="tabular-nums text-slate-400">{fmt(k.updated_at)}</span>
-                    </span>
-                  )}
-                  {k.last_edited_by_name && k.last_edited_by_name === k.created_by_name && k.updated_at !== k.created_at && (
-                    <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-700 text-[9px] font-bold text-white">
-                        {k.last_edited_by_name.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="text-slate-500">{t("auditLastEditedBy", "Last edited by")}</span>
-                      <span className="font-semibold text-slate-300">{k.last_edited_by_name}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="tabular-nums text-slate-400">{fmt(k.updated_at)}</span>
-                    </span>
-                  )}
-                  {!k.created_by_name && !k.last_edited_by_name && (
-                    <span className="text-[11px] italic text-slate-600">
-                      {t("auditNoTrail", "No edit history available")}
-                    </span>
-                  )}
-                </div>
-              );
-            })() : (
-              <p className="mt-1 text-xs text-slate-400">
-                {t("newCustomerModalBrandSubtitle", "DEMA Management")}
-              </p>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end sm:text-right">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-              {t("newCustomerModalAufnahme", "Entry date")}
-            </p>
-            <p className="text-sm font-semibold tabular-nums text-white">{aufnahmePreview}</p>
-          </div>
+        <div
+          className={`customers-modal-genz-topline pointer-events-none absolute inset-x-0 top-0 z-10 ${
+            hasEditKundeSideContent ? "h-[2px]" : "h-px"
+          }`}
+          aria-hidden
+        />
+        {/* Compact summary header (manager layout — replaces separate Customer 360 card) */}
+        <div className="customers-modal-genz-header relative shrink-0 border-b border-transparent px-4 py-2.5 pr-14 sm:pl-5 sm:pr-16 md:pr-20">
           <button
             type="button"
             onClick={requestClose}
-            className="absolute right-2 top-2 rounded-xl p-2 text-slate-300 hover:bg-white/10 hover:text-white"
+            className="customers-modal-genz-icon-btn absolute right-2 top-2 rounded p-2"
             aria-label={t("newCustomerModalClose", "Close")}
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
-
-        {isEditMode && customer360EditSummary ? (
-          <div className="shrink-0 border-b border-slate-200/90 bg-gradient-to-br from-slate-100/90 via-white to-slate-50/95 px-3 py-2 sm:px-4 sm:py-2.5">
-            <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-gradient-to-r from-slate-50/95 to-white px-3 py-1.5 sm:px-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
-                  {t("customer360SummaryStripTitle", "Customer 360 overview")}
-                </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="customers-modal-genz-header-summary space-y-2">
+              <p className="customers-modal-genz-header-eyeline">
+                {t("newCustomerHeaderEyeline", "Customer record")}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2
+                  id="new-kunde-title"
+                  className="min-w-0 max-w-full text-lg font-bold tracking-tight sm:text-xl"
+                >
+                  <button
+                    type="button"
+                    onClick={goToCompanyFromSummary}
+                    title={t("newCustomerGoToFieldCompany", "Open Customer & Address — company name")}
+                    className="customers-modal-genz-header-link truncate text-left focus:outline-none rounded-sm"
+                  >
+                    {headerChipsData.companyLine || t("newCustomerModalTitle", "Customer data")}
+                  </button>
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => void copyPlainText(headerChipsData.companyLine)}
+                  disabled={!headerChipsData.companyLine.trim()}
+                  className="customers-modal-genz-icon-btn shrink-0 rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30"
+                  aria-label={t("newCustomerCopyCompanyNameAria", "Copy company name")}
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                <span className="customers-modal-genz-mode-badge shrink-0 rounded-md px-2 py-0.5 text-xs">
+                  {isEditMode ? t("newCustomerModalEdit", "(Edit)") : t("newCustomerModalNew", "(New)")}
+                </span>
+              </div>
+              <div className="customers-modal-genz-header-address-row flex items-start gap-2.5 text-lg font-bold tracking-tight leading-snug sm:gap-3 sm:text-xl">
+                <MapPin className="mt-1 h-5 w-5 shrink-0 sm:mt-1.5 sm:h-6 sm:w-6" aria-hidden />
+                <span className="block min-w-0 flex-1">
+                  <span className="inline-block max-w-full align-top leading-snug">
+                    <button
+                      type="button"
+                      onClick={goToAddressFromSummary}
+                      title={t("newCustomerGoToFieldAddress", "Open Customer & Address — street / ZIP / city")}
+                      className="customers-modal-genz-header-link inline border-0 bg-transparent p-0 text-left align-top break-words text-inherit focus:outline-none rounded-sm"
+                    >
+                      {headerChipsData.addressLine || t("commonPlaceholderDash", "—")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyPlainText(headerChipsData.addressLine)}
+                      disabled={!headerChipsData.addressLine.trim()}
+                      className="customers-modal-genz-icon-btn ml-1 inline-flex shrink-0 align-top rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30 sm:ml-1.5"
+                      aria-label={t("newCustomerCopyAddressAria", "Copy address")}
+                    >
+                      <Copy className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                    </button>
+                  </span>
+                </span>
+              </div>
+              {isEditMode && editInitial?.kunde ? (() => {
+                const k = editInitial.kunde;
+                const fmt = (iso?: string) =>
+                  iso
+                    ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
+                    : "—";
+                return (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                    {k.created_by_name ? (
+                      <span className="flex flex-wrap items-center gap-1">
+                        <span className="text-slate-400">{t("auditCreatedBy", "Created by")}</span>
+                        <span className="font-medium text-slate-600">{k.created_by_name}</span>
+                        <span className="tabular-nums text-slate-400">{fmt(k.created_at)}</span>
+                      </span>
+                    ) : null}
+                    {k.last_edited_by_name && k.updated_at !== k.created_at ? (
+                      <span className="flex flex-wrap items-center gap-1">
+                        <span className="text-slate-400">{t("auditLastEditedBy", "Last edited by")}</span>
+                        <span className="font-medium text-slate-600">{k.last_edited_by_name}</span>
+                        <span className="tabular-nums text-slate-400">{fmt(k.updated_at)}</span>
+                      </span>
+                    ) : null}
+                    {!k.created_by_name && !k.last_edited_by_name ? (
+                      <span className="italic text-slate-400">{t("auditNoTrail", "No edit history available")}</span>
+                    ) : null}
+                  </div>
+                );
+              })(              ) : !isEditMode ? (
+                <p className="text-xs text-slate-400">{t("newCustomerModalBrandSubtitle", "DEMA Management")}</p>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
                 {copyFlash === "ok" ? (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600" role="status">
+                  <span
+                    className="customers-modal-genz-header-copy-flash--ok flex items-center gap-1 text-[10px] font-semibold"
+                    role="status"
+                  >
                     <Check className="h-3.5 w-3.5" aria-hidden />
                     {t("newCustomerCopiedToClipboard", "Copied")}
                   </span>
                 ) : copyFlash === "err" ? (
-                  <span className="text-[10px] font-semibold text-red-600" role="status">
+                  <span className="customers-modal-genz-header-copy-flash--err text-[10px] font-semibold" role="status">
                     {t("newCustomerCopyFailed", "Copy failed")}
                   </span>
                 ) : null}
               </div>
-              <div className="grid gap-3 p-3 sm:gap-3.5 sm:p-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-                <div className="min-w-0">
-                  <div className="flex gap-2 sm:gap-3">
-                    <div
-                      className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 shadow-inner shadow-blue-900/5 sm:flex"
-                      aria-hidden
-                    >
-                      <Building2 className="h-4 w-4" strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="min-w-0">
-                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          {t("customer360StripCompany", "Company")}
-                        </p>
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
-                          <button
-                            type="button"
-                            onClick={goToCompanyFromSummary}
-                            title={t("newCustomerGoToFieldCompany", "Open Customer & Address — company name")}
-                            className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-sm font-semibold leading-snug tracking-tight text-slate-900 transition hover:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-blue-400/50 sm:text-base"
-                          >
-                            {customer360EditSummary.companyLine || "—"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void copyPlainText(customer360EditSummary.companyLine)}
-                            disabled={!customer360EditSummary.companyLine.trim()}
-                            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30"
-                            aria-label={t("newCustomerCopyCompanyNameAria", "Copy company name")}
-                          >
-                            <Copy className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                          <span
-                            className="inline-flex shrink-0 items-center rounded-lg bg-gradient-to-br from-slate-50 to-slate-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-slate-800 shadow-sm ring-1 ring-slate-200/70 sm:text-[11px]"
-                            title={t("customer360ChipKuNr", "Cust. no.")}
-                          >
-                            {t("customer360ChipKuNr", "Cust. no.")}{" "}
-                            <span className="text-slate-950">{customer360EditSummary.kuNr}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => void copyPlainText(customer360EditSummary.kuNr)}
-                            className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                            aria-label={t("newCustomerCopyKuNrAria", "Copy customer number")}
-                          >
-                            <Copy className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex min-w-0 items-start gap-1 border-t border-slate-100 pt-2">
-                        <button
-                          type="button"
-                          onClick={goToAddressFromSummary}
-                          title={t("newCustomerGoToFieldAddress", "Open Customer & Address — street / ZIP / city")}
-                          className="flex min-w-0 flex-1 gap-2 rounded-md px-1 py-0.5 text-left transition hover:bg-slate-100/90 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                        >
-                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
-                          <div className="min-w-0 flex-1">
-                            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                              {t("customer360StripAddress", "Address")}
-                            </p>
-                            <p
-                              className="text-xs leading-snug text-slate-600 line-clamp-2 break-words sm:text-sm sm:leading-snug"
-                              title={customer360EditSummary.addressLine || undefined}
-                            >
-                              {customer360EditSummary.addressLine || "—"}
-                            </p>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void copyPlainText(customer360EditSummary.addressLine)}
-                          disabled={!customer360EditSummary.addressLine.trim()}
-                          className="mt-0.5 shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-30"
-                          aria-label={t("newCustomerCopyAddressAria", "Copy address")}
-                        >
-                          <Copy className="h-3.5 w-3.5" aria-hidden />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="min-w-0 border-t border-slate-100 pt-2.5 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 lg:sr-only">
-                    {t("customer360StripMetrics", "Status & profile")}
-                  </p>
-                  <div className="customer360-strip-chips flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex cursor-default items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs ${
-                  form.customer_status === "active"
-                    ? "border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-emerald-50/30 text-emerald-900 shadow-emerald-900/[0.06]"
+              </div>
+              <div className="customers-modal-genz-header-chips-scroll -mx-1 max-w-full overflow-x-auto overflow-y-hidden pb-1">
+                <div className="customer360-strip-chips flex min-w-min flex-nowrap items-center gap-2 pr-2">
+                <span
+                  data-dema-chip={`status-${form.customer_status}`}
+                  className={`customers-modal-genz-h-chip cursor-default customers-modal-genz-h-chip--status-${form.customer_status}`}
+                >
+                  {t("customer360ChipStatus", "Status")}:{" "}
+                  {form.customer_status === "active"
+                    ? t("newCustomerStatusActive", "Active")
                     : form.customer_status === "inactive"
-                      ? "border-slate-200/90 bg-gradient-to-br from-slate-50 to-slate-100/80 text-slate-700"
-                      : "border-red-200/90 bg-gradient-to-br from-red-50 via-rose-50/50 to-red-50/20 text-red-900 shadow-red-900/[0.06]"
-                }`}
-              >
-                {t("customer360ChipStatus", "Status")}:{" "}
-                {form.customer_status === "active"
-                  ? t("newCustomerStatusActive", "Active")
-                  : form.customer_status === "inactive"
-                    ? t("newCustomerStatusInactive", "Inactive")
-                    : t("newCustomerStatusBlocked", "Blocked")}
-              </span>
-              <button
-                type="button"
-                onClick={goToVatFieldFromSummary}
-                title={t("newCustomerGoToFieldVat", "Open Customer & Address — VAT ID")}
-                className={`inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-lg border px-2.5 py-1 text-left text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-[0.99] sm:max-w-none sm:text-xs ${
-                  customer360EditSummary.vatKind === "valid"
-                    ? "border-emerald-300/80 bg-gradient-to-br from-emerald-50 to-teal-50/60 text-emerald-900 shadow-emerald-900/[0.07] focus:ring-emerald-400/50"
-                    : customer360EditSummary.vatKind === "invalid"
-                      ? "border-amber-300/80 bg-gradient-to-br from-amber-50 to-orange-50/50 text-amber-950 shadow-amber-900/[0.06] focus:ring-amber-400/45"
-                      : "border-slate-200/90 bg-gradient-to-br from-slate-50 to-indigo-50/35 text-slate-700 focus:ring-indigo-400/40"
-                }`}
-              >
-                {customer360EditSummary.vatKind === "valid" ? (
-                  <CheckCircle2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-                ) : customer360EditSummary.vatKind === "invalid" ? (
-                  <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-                ) : null}
-                <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
-                  <span>
-                    {t("customer360ChipVat", "VAT")}:{" "}
-                    {customer360EditSummary.vatKind === "valid"
-                      ? t("customer360VatValid", "VAT valid")
-                      : customer360EditSummary.vatKind === "invalid"
-                        ? t("customer360VatInvalid", "VAT invalid")
-                        : t("customer360VatUnknown", "Not verified")}
-                  </span>
-                  {customer360EditSummary.vatRequestDateDisplay ? (
-                    <>
-                      <span className="opacity-70" aria-hidden>
-                        {" · "}
-                      </span>
-                      {customer360EditSummary.vatRequestDateIso ? (
-                        <time
-                          dateTime={customer360EditSummary.vatRequestDateIso}
-                          className="tabular-nums font-normal opacity-90"
-                          title={t("customer360VatRequestDateTitle", "VIES check date")}
-                        >
-                          {customer360EditSummary.vatRequestDateDisplay}
-                        </time>
-                      ) : (
-                        <span
-                          className="tabular-nums font-normal opacity-90"
-                          title={t("customer360VatRequestDateTitle", "VIES check date")}
-                        >
-                          {customer360EditSummary.vatRequestDateDisplay}
-                        </span>
-                      )}
-                    </>
-                  ) : null}
+                      ? t("newCustomerStatusInactive", "Inactive")
+                      : t("newCustomerStatusBlocked", "Blocked")}
                 </span>
-              </button>
-              <span className="inline-flex cursor-default items-center gap-1 rounded-lg border border-indigo-200/80 bg-gradient-to-br from-indigo-50 via-blue-50/70 to-violet-50/40 px-2.5 py-1 text-[11px] font-semibold text-indigo-950 shadow-sm shadow-indigo-900/[0.05] ring-1 ring-indigo-200/50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs">
-                {t("customer360ChipCompletion", "Profile")}
-                <span className="tabular-nums font-bold text-indigo-900">{customer360EditSummary.pct}%</span>
-              </span>
-              <span
-                className={`inline-flex cursor-default items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm ring-1 ring-black/[0.04] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:text-xs ${
-                  customer360EditSummary.riskKind === "blocked" || customer360EditSummary.riskKind === "payment"
-                    ? "border-red-300/80 bg-gradient-to-br from-red-50 via-rose-50/60 to-red-50/25 text-red-900 shadow-red-900/[0.07]"
-                    : customer360EditSummary.riskKind === "billing"
-                      ? "border-amber-300/80 bg-gradient-to-br from-amber-50 to-yellow-50/40 text-amber-950 shadow-amber-900/[0.05]"
-                      : "border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 via-slate-50/50 to-slate-50/30 text-slate-700"
-                }`}
-              >
-                {t("customer360ChipRisk", "Risk")}
-                {": "}
-                {customer360EditSummary.riskKind === "blocked"
-                  ? t("customer360RiskBlocked", "Blocked account")
-                  : customer360EditSummary.riskKind === "payment"
-                    ? t("customer360RiskPayment", "Payment blocked")
-                    : customer360EditSummary.riskKind === "billing"
-                      ? t("customer360RiskBilling", "Billing incomplete")
-                      : t("customer360RiskLow", "No flags")}
-              </span>
-              {onScrollToDocumentExpiry ? (
                 <button
                   type="button"
-                  onClick={onScrollToDocumentExpiry}
-                  className={
-                    customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
-                      ? "inline-flex max-w-full items-center gap-1 rounded-lg border border-red-300/85 bg-gradient-to-br from-red-50 via-rose-50/70 to-red-50/30 px-2.5 py-1 text-left text-[11px] font-semibold text-red-900 shadow-md shadow-red-900/[0.08] ring-1 ring-red-200/60 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-400/45 focus:ring-offset-1 active:scale-[0.99] sm:text-xs"
-                      : "inline-flex max-w-full items-center gap-1 rounded-lg border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-sky-50/50 to-slate-50/40 px-2.5 py-1 text-left text-[11px] font-semibold text-slate-700 shadow-sm shadow-sky-900/[0.04] ring-1 ring-cyan-100/80 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:ring-offset-1 active:scale-[0.99] sm:text-xs"
-                  }
-                  title={t("customer360DocExpiryLinkTitle", "Jump to document dates in Risk analysis")}
+                  data-dema-chip={`vat-${headerChipsData.vatKind}`}
+                  onClick={goToVatFieldFromSummary}
+                  title={t("newCustomerGoToFieldVat", "Open Customer & Address — VAT ID")}
+                  className={`customers-modal-genz-h-chip customers-modal-genz-h-chip--interactive max-w-[min(100%,14rem)] sm:max-w-none customers-modal-genz-h-chip--vat-${headerChipsData.vatKind}`}
                 >
-                  <ShieldAlert className="h-3 w-3 shrink-0 text-current sm:h-3.5 sm:w-3.5" aria-hidden />
-                  {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
-                    <>
-                      {customer360DocExpiryAlertCount}{" "}
-                      {t("riskAlertBannerTitle", "Document Expiry Warning")}
-                    </>
-                  ) : (
-                    t("customer360DocExpiryLink", "Document dates")
-                  )}
-                </button>
-              ) : null}
-              {customer360EditSummary.lastEditedLine ? (
-                <span className="inline-flex min-w-0 max-w-full cursor-default items-center gap-1 rounded-lg border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 px-2.5 py-1 text-[11px] text-slate-600 shadow-sm ring-1 ring-slate-200/50 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md sm:max-w-[min(100%,26rem)] sm:text-xs">
-                  <span className="shrink-0 font-semibold text-slate-500">
-                    {t("customer360ChipLastEdited", "Last saved")}
+                  {headerChipsData.vatKind === "valid" ? (
+                    <CheckCircle2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
+                  ) : headerChipsData.vatKind === "invalid" ? (
+                    <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
+                  ) : null}
+                  <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                    <span>
+                      {t("customer360ChipVat", "VAT")}:{" "}
+                      {headerChipsData.vatKind === "valid"
+                        ? t("customer360VatValid", "VAT valid")
+                        : headerChipsData.vatKind === "invalid"
+                          ? t("customer360VatInvalid", "VAT invalid")
+                          : t("customer360VatUnknown", "Not verified")}
+                    </span>
+                    {headerChipsData.vatRequestDateDisplay ? (
+                      <>
+                        <span className="opacity-70" aria-hidden>
+                          {" · "}
+                        </span>
+                        {headerChipsData.vatRequestDateIso ? (
+                          <time
+                            dateTime={headerChipsData.vatRequestDateIso}
+                            className="tabular-nums font-normal opacity-90"
+                            title={t("customer360VatRequestDateTitle", "VIES check date")}
+                          >
+                            {headerChipsData.vatRequestDateDisplay}
+                          </time>
+                        ) : (
+                          <span
+                            className="tabular-nums font-normal opacity-90"
+                            title={t("customer360VatRequestDateTitle", "VIES check date")}
+                          >
+                            {headerChipsData.vatRequestDateDisplay}
+                          </span>
+                        )}
+                      </>
+                    ) : null}
                   </span>
-                  <span className="truncate tabular-nums">{customer360EditSummary.lastEditedLine}</span>
+                </button>
+                <span
+                  data-dema-chip="profile"
+                  className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default"
+                >
+                  {t("customer360ChipCompletion", "Profile")}
+                  <span className="customers-modal-genz-h-chip-accent tabular-nums">{headerChipsData.pct}%</span>
                 </span>
-              ) : null}
-                  </div>
+                <span
+                  data-dema-chip={`risk-${headerChipsData.riskKind}`}
+                  className={`customers-modal-genz-h-chip cursor-default customers-modal-genz-h-chip--risk-${headerChipsData.riskKind}`}
+                >
+                  {t("customer360ChipRisk", "Risk")}
+                  {": "}
+                  {headerChipsData.riskKind === "blocked"
+                    ? t("customer360RiskBlocked", "Blocked account")
+                    : headerChipsData.riskKind === "payment"
+                      ? t("customer360RiskPayment", "Payment blocked")
+                      : headerChipsData.riskKind === "billing"
+                        ? t("customer360RiskBilling", "Billing incomplete")
+                        : t("customer360RiskLow", "No flags")}
+                </span>
+                {onScrollToDocumentExpiry ? (
+                  <button
+                    type="button"
+                    data-dema-chip={
+                      customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
+                        ? "doc-alert"
+                        : "doc-calm"
+                    }
+                    onClick={onScrollToDocumentExpiry}
+                    className={`customers-modal-genz-h-chip customers-modal-genz-h-chip--interactive max-w-full ${
+                      customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
+                        ? "customers-modal-genz-h-chip--doc-alert"
+                        : "customers-modal-genz-h-chip--doc-calm"
+                    }`}
+                    title={t("customer360DocExpiryLinkTitle", "Jump to document dates in Risk analysis")}
+                  >
+                    {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
+                      <ShieldAlert className="h-3 w-3 shrink-0 text-current sm:h-3.5 sm:w-3.5" aria-hidden />
+                    ) : (
+                      <Clock className="h-3 w-3 shrink-0 text-current opacity-90 sm:h-3.5 sm:w-3.5" aria-hidden />
+                    )}
+                    {customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0 ? (
+                      <>
+                        {customer360DocExpiryAlertCount}{" "}
+                        {t("riskAlertBannerTitle", "Document Expiry Warning")}
+                      </>
+                    ) : (
+                      t("customerCompactDocDeadlines", "Document deadlines")
+                    )}
+                  </button>
+                ) : null}
+                {headerChipsData.lastEditedLine ? (
+                  <span
+                    data-dema-chip="audit"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,26rem)]"
+                  >
+                    <span className="customers-modal-genz-h-chip-strong">
+                      {t("customer360ChipLastEdited", "Last saved")}
+                    </span>
+                    <span className="truncate tabular-nums">{headerChipsData.lastEditedLine}</span>
+                  </span>
+                ) : null}
+                </div>
+              </div>
+            </div>
+            <div className="customers-modal-genz-header-meta flex shrink-0 flex-col items-start gap-3 border-t border-white/10 pt-2 sm:flex-row sm:gap-6 lg:border-t-0 lg:pt-0 lg:pl-2 lg:text-right xl:items-end">
+              <div className="lg:text-right">
+                <p className="customers-modal-genz-header-meta-label text-[10px] font-medium uppercase tracking-wider">
+                  {t("newCustomerModalAufnahme", "Entry date")}
+                </p>
+                <p className="customers-modal-genz-header-meta-value text-sm font-semibold tabular-nums">{aufnahmePreview}</p>
+              </div>
+              <div className="lg:text-right">
+                <p className="customers-modal-genz-header-meta-label text-[10px] font-medium uppercase tracking-wider">
+                  {t("newCustomerModalKdNrLabel", "Cust. no.")}
+                </p>
+                <div className="mt-0.5 flex items-center gap-1 lg:justify-end">
+                  <p className="customers-modal-genz-header-meta-value text-base font-bold tabular-nums">{headerChipsData.kuNr}</p>
+                  <button
+                    type="button"
+                    onClick={() => void copyPlainText(headerChipsData.kuNr)}
+                    className="customers-modal-genz-icon-btn shrink-0 rounded-md p-1 transition"
+                    aria-label={t("newCustomerCopyKuNrAria", "Copy customer number")}
+                  >
+                    <Copy className="h-3.5 w-3.5" aria-hidden />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        ) : null}
-
-        {/* Tabs */}
-        <div className="flex shrink-0 flex-wrap gap-0 border-b border-slate-200 bg-slate-50/90 px-4 pt-2 sm:px-5">
-          {tabOrder.map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`relative -mb-px flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-semibold transition sm:px-4 ${
-                tab === id
-                  ? id === "waschanlage"
-                    ? "border-cyan-600 text-cyan-800"
-                    : "border-blue-600 text-blue-700"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {id === "waschanlage" ? (
-                <Droplets className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-              ) : id === "vat" ? (
-                <BadgeCheck className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-              ) : null}
-              {tabLabels[id]}
-            </button>
-          ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/40 px-4 py-3 sm:px-5">
+        {/* Tabs + optional documents action (edit) */}
+        <div
+          className={`customers-modal-genz-tabs flex shrink-0 flex-col gap-1 border-b sm:flex-row sm:items-end sm:justify-between sm:gap-2 sm:px-3 sm:pt-1 md:px-4 ${
+            hasEditKundeSideContent
+              ? "has-edit-side border-slate-200/80"
+              : "border-slate-200"
+          }`}
+        >
+          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] px-2 sm:px-0">
+            <div className="flex w-max min-w-0 flex-nowrap gap-0.5 sm:gap-1">
+              {tabOrder.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`relative -mb-px flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-2.5 py-2 text-base font-semibold leading-snug transition sm:min-h-0 sm:px-3.5 sm:py-2.5 ${
+                    tab === id
+                      ? "border-neutral-800 text-slate-900"
+                      : "border-transparent text-slate-500 hover:border-neutral-200 hover:text-slate-800"
+                  }`}
+                >
+                  {id === "vat" ? (
+                    <BadgeCheck className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "kunde" ? (
+                    <Building2 className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "art" ? (
+                    <Landmark className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "waschanlage" ? (
+                    <Droplets className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "history" ? (
+                    <Clock className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "beziehungenFzg" ? (
+                    <Car className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : null}
+                  <span className="max-w-[11rem] truncate sm:max-w-none">{tabLabels[id]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {isEditMode && editHeaderDocumentsAction ? (
+            <div className="shrink-0 px-2 pb-1.5 sm:px-0 sm:pb-1">{editHeaderDocumentsAction}</div>
+          ) : null}
+        </div>
+
+        <div
+          className={`customers-modal-genz-body min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 ${
+            hasEditKundeSideContent ? "has-edit-side overflow-x-hidden" : ""
+          }`}
+        >
           {tab === "vat" && (
             <div className="space-y-5">
-              <div className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="customers-modal-genz-frost-card rounded-2xl border border-white/60 p-5 sm:p-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className={labelClass}>{t("newCustomerVatMemberState", "Member state / scheme")}</label>
@@ -3121,7 +3126,7 @@ export function NewCustomerModal({
                     type="button"
                     disabled={vatCheckLoading}
                     onClick={() => void runVatCheck()}
-                    className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="customers-modal-genz-vat-check rounded border border-neutral-800 bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {vatCheckLoading ? t("newCustomerVatChecking", "Checking…") : t("newCustomerVatCheck", "Check with VIES")}
                   </button>
@@ -3129,7 +3134,7 @@ export function NewCustomerModal({
                     <button
                       type="button"
                       onClick={applyViesResultToForm}
-                      className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
+                      className="rounded border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-neutral-50"
                     >
                       {t("newCustomerVatApply", "Apply to form")}
                     </button>
@@ -3272,11 +3277,9 @@ export function NewCustomerModal({
           )}
 
           {tab === "kunde" && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
 
-              {isEditMode ? (
-                editKundeTopContent ?? null
-              ) : (
+              {!isEditMode ? (
                 <DocExtractBanner
                   scanState={docScanState}
                   fileName={docFileName}
@@ -3284,29 +3287,18 @@ export function NewCustomerModal({
                   onFileSelect={handleDocUpload}
                   onClear={clearDocExtraction}
                 />
-              )}
+              ) : null}
 
               {/* ── Main grid: Firmendaten | Adresse & Steuer | Kontakt | (optional edit-side, xl: 3+3+3+3) ── */}
-              <div
-                className={`grid gap-4 md:gap-5 ${
-                  hasEditKundeSideContent
-                    ? "grid-cols-1 xl:grid-cols-12"
-                    : "grid-cols-1 md:grid-cols-3 lg:grid-cols-12"
-                }`}
-              >
+              <div className={`grid gap-5 md:gap-6 ${editKundeGridClass}`}>
 
-                {/* ── Col 1: Firmendaten ── */}
+                {/* ── Col 1: Kundenart ── */}
                 <div
-                  className={`min-w-0 space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
-                    hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-4"
-                  }`}
+                  className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--1 min-w-0 space-y-4 p-5 sm:p-6 ${kundePanelSurface} ${editKundeCol1}`}
                 >
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                      {t("customer360SectionMaster", "Master data")}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-slate-400">
-                      {t("customer360SectionMasterHint", "Company identity, type, and profile")}
+                    <p className={`${kundeSectionTitleClass} customers-modal-genz-kunde-col-title--1`}>
+                      {t("customerModalColKundenart", "Customer classification")}
                     </p>
                   </div>
 
@@ -3379,17 +3371,17 @@ export function NewCustomerModal({
                     </ExtractedFieldWrapper>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-end">
                     <div>
                       <span className={labelClass}>{t("newCustomerLabelFzgHandel", "Vehicle trader")}</span>
                       <div className="mt-1 flex flex-wrap gap-2">
                         {(["ja", "nein"] as const).map((v) => (
                           <label
                             key={v}
-                            className={`flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                            className={`flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded border px-3 py-2 text-xs font-medium transition ${
                               form.fzgHandel === v
-                                ? "border-blue-500 bg-blue-50 text-blue-800"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                                ? "border-neutral-500 bg-neutral-100 text-slate-900"
+                                : "border-neutral-200 bg-white text-slate-600 hover:border-neutral-300"
                             }`}
                           >
                             <input
@@ -3397,7 +3389,7 @@ export function NewCustomerModal({
                               name="fzg"
                               checked={form.fzgHandel === v}
                               onChange={() => set("fzgHandel", v)}
-                              className="border-slate-300 text-blue-600"
+                              className="border-neutral-300 text-neutral-700"
                             />
                             {v.toUpperCase()}
                           </label>
@@ -3405,7 +3397,10 @@ export function NewCustomerModal({
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>{t("newCustomerLabelGesellschaftsform", "Legal form")}{isExtracted("gesellschaftsform") && <KiBadge />}</label>
+                      <label className={labelClass}>
+                        {t("newCustomerLabelGesellschaftsform", "Legal form")}
+                        {isExtracted("gesellschaftsform") && <KiBadge />}
+                      </label>
                       <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
                         <SuggestTextInput
                           type="text"
@@ -3428,58 +3423,6 @@ export function NewCustomerModal({
                         />
                       </ExtractedFieldWrapper>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>{t("newCustomerLabelFirmenvorsatz", "Company prefix")}{isExtracted("firmenvorsatz") && <KiBadge />}</label>
-                    <ExtractedFieldWrapper extracted={isExtracted("firmenvorsatz")}>
-                      <SuggestTextInput
-                        type="text"
-                        value={form.firmenvorsatz}
-                        onChange={(e) => set("firmenvorsatz", e.target.value)}
-                        onBlur={(e) =>
-                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
-                            set("firmenvorsatz", v)
-                          )
-                        }
-                        onCompositionEnd={(e) =>
-                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                            set("firmenvorsatz", v)
-                          )
-                        }
-                        className={`${inputClass} min-h-[44px]`}
-                        suggestions={fieldSuggestions.firmenvorsatz}
-                        title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
-                      />
-                    </ExtractedFieldWrapper>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>
-                      {t("newCustomerLabelFirmenname", "Company name")} <span className="text-red-500">*</span>
-                      {isExtracted("firmenname") && <KiBadge />}
-                    </label>
-                    <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
-                      <SuggestTextInput
-                        id={FOCUS_ID_FIRMENNAME}
-                        type="text"
-                        value={form.firmenname}
-                        onChange={(e) => set("firmenname", e.target.value)}
-                        onBlur={(e) =>
-                          commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
-                            set("firmenname", v)
-                          )
-                        }
-                        onCompositionEnd={(e) =>
-                          commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
-                            set("firmenname", v)
-                          )
-                        }
-                        className={`${inputClass} min-h-[44px]`}
-                        suggestions={fieldSuggestions.firmenname}
-                        title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
-                      />
-                    </ExtractedFieldWrapper>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -3574,9 +3517,13 @@ export function NewCustomerModal({
                       className={`${inputClass} min-h-[120px] resize-y py-2`}
                     />
                   </div>
+
+                  {isEditMode && editAfterOperationalNotesContent ? (
+                    <div className="mt-3 border-t border-slate-100 pt-3">{editAfterOperationalNotesContent}</div>
+                  ) : null}
                 </div>
 
-                {/* ── Col 2: Adresse & Steuer ── */}
+                {/* ── Col 2: Stammdaten (company + address & tax) ── */}
                 {(() => {
                   const safeAdresseIdx = Math.min(activeAdresseIdx, form.adressen.length - 1);
                   const a = form.adressen[safeAdresseIdx] ?? form.adressen[0]!;
@@ -3593,37 +3540,68 @@ export function NewCustomerModal({
 
                   return (
                     <div
-                      className={`flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
-                        hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-5"
-                      }`}
+                      className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--2 flex min-w-0 flex-col gap-3 p-5 sm:p-6 ${kundePanelSurface} ${editKundeCol2}`}
                     >
-
-                      {/* Header row */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                            {t("customer360SectionAddressTax", "Addresses & tax")}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-slate-400">
-                            {t("customer360SectionAddressTaxHint", "Locations, VAT ID, and identifiers")}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const nextTyp = ADRESSE_TYPEN[form.adressen.length] ?? "Sonstiges";
-                            setForm((f) => ({ ...f, adressen: [...f.adressen, emptyAdresse(nextTyp)] }));
-                            setActiveAdresseIdx(form.adressen.length);
-                          }}
-                          className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-600 transition-all"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          {t("newCustomerAdresseNewBtn", "New")}
-                        </button>
+                      <div>
+                        <p className={`${kundeSectionTitleClass} customers-modal-genz-kunde-col-title--2`}>
+                          {t("customerModalColStammdaten", "Master data")}
+                        </p>
                       </div>
 
-                      {/* Pill tabs */}
-                      <div className="flex flex-wrap gap-1.5">
+                      <div>
+                        <label className={labelClass}>{t("newCustomerLabelFirmenvorsatz", "Company prefix")}{isExtracted("firmenvorsatz") && <KiBadge />}</label>
+                        <ExtractedFieldWrapper extracted={isExtracted("firmenvorsatz")}>
+                          <SuggestTextInput
+                            type="text"
+                            value={form.firmenvorsatz}
+                            onChange={(e) => set("firmenvorsatz", e.target.value)}
+                            onBlur={(e) =>
+                              commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                                set("firmenvorsatz", v)
+                              )
+                            }
+                            onCompositionEnd={(e) =>
+                              commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                                set("firmenvorsatz", v)
+                              )
+                            }
+                            className={`${inputClass} min-h-[44px]`}
+                            suggestions={fieldSuggestions.firmenvorsatz}
+                            title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                          />
+                        </ExtractedFieldWrapper>
+                      </div>
+
+                      <div>
+                        <label className={labelClass}>
+                          {t("newCustomerLabelFirmenname", "Company name")} <span className="text-red-500">*</span>
+                          {isExtracted("firmenname") && <KiBadge />}
+                        </label>
+                        <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
+                          <SuggestTextInput
+                            id={FOCUS_ID_FIRMENNAME}
+                            type="text"
+                            value={form.firmenname}
+                            onChange={(e) => set("firmenname", e.target.value)}
+                            onBlur={(e) =>
+                              commitAsciiNormalized(e.target, transliterateToAscii, (v) =>
+                                set("firmenname", v)
+                              )
+                            }
+                            onCompositionEnd={(e) =>
+                              commitAsciiNormalized(e.currentTarget, transliterateToAscii, (v) =>
+                                set("firmenname", v)
+                              )
+                            }
+                            className={`${inputClass} min-h-[44px]`}
+                            suggestions={fieldSuggestions.firmenname}
+                            title={t("newCustomerSuggestionsHint", "Suggestions from saved customers")}
+                          />
+                        </ExtractedFieldWrapper>
+                      </div>
+
+                      {/* Address type pills + compact + Neu on one wrap row (pill-sized control) */}
+                      <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
                         {form.adressen.map((ad, i) => {
                           const dc = ADRESSE_COLORS[i % ADRESSE_COLORS.length]!;
                           const isActive = i === safeAdresseIdx;
@@ -3643,10 +3621,22 @@ export function NewCustomerModal({
                             </button>
                           );
                         })}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextTyp = ADRESSE_TYPEN[form.adressen.length] ?? "Sonstiges";
+                            setForm((f) => ({ ...f, adressen: [...f.adressen, emptyAdresse(nextTyp)] }));
+                            setActiveAdresseIdx(form.adressen.length);
+                          }}
+                          className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          <Plus className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+                          {t("newCustomerAdresseNewBtn", "New")}
+                        </button>
                       </div>
 
                       {/* Active address card */}
-                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <div className="customers-modal-genz-frost-card overflow-hidden rounded-2xl border border-white/60">
                         {/* Card header */}
                         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
                           <div className="flex items-center gap-2.5">
@@ -3682,12 +3672,6 @@ export function NewCustomerModal({
                         <div className="space-y-2 p-3">
                           <div>
                             <label className={labelClass}>{t("globalAddrSearchLabel", "Address search (worldwide)")}</label>
-                            <p className="mb-1.5 text-[11px] text-slate-500">
-                              {t(
-                                "newCustomerGlobalAddrHint",
-                                "Type a street or place name, then choose a suggestion to fill street, ZIP, city and country."
-                              )}
-                            </p>
                             <GlobalAddressSearch
                               onSelect={(r: GlobalAddressResult) => {
                                 const road = r.strasse?.trim();
@@ -3892,7 +3876,7 @@ export function NewCustomerModal({
                                     href={href}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex max-w-full items-center gap-1 font-medium text-blue-600 underline decoration-blue-600/30 underline-offset-2 hover:text-blue-800"
+                                    className="inline-flex max-w-full items-center gap-1 font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                     <span className="truncate">{t("customersWebsiteOpenLink", "Open website")}</span>
@@ -3903,13 +3887,11 @@ export function NewCustomerModal({
                           </div>
                         </div>
                       </div>
-
-                      {isEditMode && editAdresseExtraContent ? <div className="pt-2">{editAdresseExtraContent}</div> : null}
                     </div>
                   );
                 })()}
 
-                {/* ── Col 3: Kontakt ── */}
+                {/* ── Col 3: Kontaktperson ── */}
                 {(() => {
                   const k = form.kontakte[activeKontaktIdx] ?? form.kontakte[0]!;
                   const safeIdx = Math.min(activeKontaktIdx, form.kontakte.length - 1);
@@ -3918,19 +3900,14 @@ export function NewCustomerModal({
 
                   return (
                     <div
-                      className={`flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm ${
-                        hasEditKundeSideContent ? "xl:col-span-3" : "lg:col-span-3"
-                      }`}
+                      className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 flex min-w-0 flex-col gap-3 p-5 sm:p-6 ${kundePanelSurface} ${editKundeCol3}`}
                     >
 
                       {/* ── Header ── */}
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                            {t("customer360SectionContacts", "Contacts")}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-slate-400">
-                            {t("customer360SectionContactsHint", "People and communication")}
+                          <p className={`${kundeSectionTitleClass} customers-modal-genz-kunde-col-title--3`}>
+                            {t("customerModalColKontakt", "Contact person")}
                           </p>
                         </div>
                         <button
@@ -3939,7 +3916,7 @@ export function NewCustomerModal({
                             setForm((f) => ({ ...f, kontakte: [...f.kontakte, emptyKontakt()] }));
                             setActiveKontaktIdx(form.kontakte.length);
                           }}
-                          className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition-all"
+                          className="flex w-full shrink-0 items-center justify-center gap-1 rounded border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:bg-neutral-50 sm:w-auto"
                         >
                           <Plus className="h-3.5 w-3.5" />
                           {t("newCustomerKontaktNewBtn", "New")}
@@ -3971,7 +3948,7 @@ export function NewCustomerModal({
                       </div>
 
                       {/* ── Active card ── */}
-                      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <div className="customers-modal-genz-kontakt-nested-card overflow-hidden rounded-2xl border border-white/60">
                         {/* Clean card header */}
                         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
                           <div className="flex items-center gap-2.5">
@@ -4002,7 +3979,10 @@ export function NewCustomerModal({
                         {/* Card body */}
                         <div className="space-y-2 p-3">
                           <div>
-                            <label className={labelClass}>{t("newCustomerLabelName", "Name")}</label>
+                            <label className={labelClass}>
+                              {t("newCustomerLabelName", "Name")}
+                              {safeIdx === 0 ? <span className="text-red-500"> *</span> : null}
+                            </label>
                             <input
                               type="text"
                               value={k.name}
@@ -4052,7 +4032,7 @@ export function NewCustomerModal({
                                   ),
                                 }))
                               }
-                              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              className="h-9 w-full rounded border border-neutral-300 bg-white px-2.5 text-sm text-slate-700 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
                             >
                               <option value="">{t("newCustomerRolleDefault", "— Select role —")}</option>
                               <option value="Geschäftsführer">Geschäftsführer / Geschäftsführerin</option>
@@ -4153,25 +4133,6 @@ export function NewCustomerModal({
                           </div>
 
                           <div>
-                            <label className={labelClass}>{t("newCustomerLabelContactWebsite", "Contact website")}</label>
-                            <input
-                              type="text"
-                              value={k.website}
-                              onChange={(e) =>
-                                setForm((f) => ({
-                                  ...f,
-                                  kontakte: f.kontakte.map((c, i) =>
-                                    i === safeIdx ? { ...c, website: e.target.value } : c
-                                  ),
-                                }))
-                              }
-                              className={inputClass}
-                              placeholder={t("newCustomerContactWebsitePh", "Optional URL for this contact")}
-                              inputMode="url"
-                            />
-                          </div>
-
-                          <div>
                             <label className={labelClass}>{t("newCustomerLabelKontaktBemerkung", "Note")}</label>
                             <textarea
                               value={k.bemerkung}
@@ -4203,28 +4164,30 @@ export function NewCustomerModal({
                                   }))
                                 )
                               }
-                              rows={4}
-                              className={`${inputClass} min-h-[96px] resize-y py-2`}
+                              rows={2}
+                              className={`${inputClass} min-h-[60px] resize-y py-2`}
                             />
                           </div>
                         </div>
                       </div>
 
+                      {isEditMode && editKundeAppointmentsContent ? (
+                        <div className="mt-2 min-w-0 space-y-2">{editKundeAppointmentsContent}</div>
+                      ) : null}
                     </div>
                   );
                 })()}
 
                 {hasEditKundeSideContent ? (
-                  <div className="min-w-0 space-y-3 xl:col-span-3">
+                  <div
+                    className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 min-w-0 space-y-4 p-5 sm:p-6 ${kundePanelSurface} ${editKundeCol4}`}
+                  >
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                        {t("customer360OperationalContext", "Related & operational")}
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-slate-400">
-                        {t("customer360OperationalContextHint", "Relationships, appointments, and risk (edit mode)")}
+                      <p className={`${kundeSectionTitleClass} customers-modal-genz-kunde-col-title--4`}>
+                        {t("customerModalColBeziehungenRisiko", "Relationships & risk")}
                       </p>
                     </div>
-                    <div className="space-y-4">{editKundeSideContent}</div>
+                    <div className="min-w-0 space-y-4">{editKundeSideContent}</div>
                   </div>
                 ) : null}
               </div>
@@ -4237,8 +4200,8 @@ export function NewCustomerModal({
 
           {tab === "art" && (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <div className="customers-modal-genz-frost-card space-y-4 rounded-2xl border border-white/60 p-4">
+                  <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
                     {t("newCustomerArtTitle", "Type / account")}
                   </p>
                   <p className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
@@ -4323,8 +4286,8 @@ export function NewCustomerModal({
                   </div>
                 </div>
 
-                <div className="space-y-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm">
-                  <p className="pt-0 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <div className="customers-modal-genz-frost-card space-y-4 rounded-2xl border border-white/60 p-4">
+                  <p className="pt-0 text-sm font-bold uppercase tracking-wide text-slate-500">
                     {t("newCustomerFinanceBillingTitle", "Billing profile")}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -4411,7 +4374,7 @@ export function NewCustomerModal({
                           type="checkbox"
                           checked={form.direct_debit_enabled}
                           onChange={(e) => set("direct_debit_enabled", e.target.checked)}
-                          className="rounded border-slate-300 text-blue-600"
+                          className="rounded border-neutral-300 text-neutral-700"
                         />
                         {t("newCustomerLabelEnabled", "Enabled")}
                       </label>
@@ -4424,13 +4387,13 @@ export function NewCustomerModal({
                         type="checkbox"
                         checked={form.payment_blocked}
                         onChange={(e) => set("payment_blocked", e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-neutral-300 text-neutral-700"
                       />
                       {t("commonYes", "Yes")}
                     </label>
                   </div>
 
-                  <p className="pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                  <p className="pt-1 text-sm font-bold uppercase tracking-wide text-slate-400">
                     {t("newCustomerMarketingTitle", "Marketing profile")}
                   </p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -4506,7 +4469,7 @@ export function NewCustomerModal({
                         type="checkbox"
                         checked={form.consent_email}
                         onChange={(e) => set("consent_email", e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-neutral-300 text-neutral-700"
                       />
                       Email
                     </label>
@@ -4515,7 +4478,7 @@ export function NewCustomerModal({
                         type="checkbox"
                         checked={form.consent_sms}
                         onChange={(e) => set("consent_sms", e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-neutral-300 text-neutral-700"
                       />
                       SMS
                     </label>
@@ -4524,7 +4487,7 @@ export function NewCustomerModal({
                         type="checkbox"
                         checked={form.consent_phone}
                         onChange={(e) => set("consent_phone", e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600"
+                        className="rounded border-neutral-300 text-neutral-700"
                       />
                       Phone
                     </label>
@@ -4553,15 +4516,15 @@ export function NewCustomerModal({
 
           {tab === "waschanlage" && (
             <div className="space-y-5">
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-cyan-200/80 bg-cyan-50/50 p-4 text-sm text-slate-800 shadow-sm">
+              <label className="customers-modal-genz-frost-card flex cursor-pointer items-start gap-3 rounded-2xl border border-white/60 p-4 text-sm text-slate-800">
                 <input
                   type="checkbox"
                   checked={form.includeWashProfile}
                   onChange={(e) => set("includeWashProfile", e.target.checked)}
-                  className="mt-0.5 rounded border-slate-300 text-cyan-600"
+                  className="mt-0.5 rounded border-neutral-300 text-neutral-700"
                 />
                 <span>
-                  <span className="font-semibold text-cyan-900">{t("newCustomerWashProfileCreate", "Create wash profile")}</span>
+                  <span className="font-semibold text-slate-900">{t("newCustomerWashProfileCreate", "Create wash profile")}</span>
                   <span className="mt-1 block text-xs font-normal text-slate-600">
                     {t("newCustomerWashProfileDesc", "Saves additional car wash data for this customer. Active by default in the Car wash area.")}
                   </span>
@@ -4569,15 +4532,15 @@ export function NewCustomerModal({
               </label>
 
               {!form.includeWashProfile ? (
-                <p className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                <p className="customers-modal-genz-frost-card rounded-2xl border border-dashed border-white/50 px-4 py-8 text-center text-sm text-slate-500">
                   {t("newCustomerWashDisabledHint", 'Enable "Create wash profile" to save BUKto, limit, bank and wash info.')}
                 </p>
               ) : (
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,1.15fr)_minmax(0,1fr)]">
                   <div className="space-y-6 xl:col-span-1">
                     {/* ── Bank & Zahlung ────────────────────────────── */}
-                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                      <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                    <div className="customers-modal-genz-frost-card space-y-4 rounded-2xl border border-white/60 p-4">
+                      <p className="text-sm font-bold uppercase tracking-wide text-slate-700">
                         {t("newCustomerWashBankTitle", "Bank & Payment")}
                       </p>
                       <div>
@@ -4630,14 +4593,14 @@ export function NewCustomerModal({
                           type="checkbox"
                           checked={form.wash_lastschrift}
                           onChange={(e) => set("wash_lastschrift", e.target.checked)}
-                          className="rounded border-slate-300 text-cyan-600"
+                          className="rounded border-neutral-300 text-neutral-700"
                         />
                         {t("newCustomerLabelLastschrift", "Direct debit")}
                       </label>
                     </div>
 
-                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                    <div className="customers-modal-genz-frost-card space-y-4 rounded-2xl border border-white/60 p-4">
+                    <p className="text-sm font-bold uppercase tracking-wide text-slate-700">
                       {t("newCustomerWashKontoTitle", "Account")}
                     </p>
                     <div>
@@ -4680,7 +4643,7 @@ export function NewCustomerModal({
                         type="checkbox"
                         checked={form.wash_kunde_gesperrt}
                         onChange={(e) => set("wash_kunde_gesperrt", e.target.checked)}
-                        className="rounded border-slate-300 text-cyan-600"
+                        className="rounded border-neutral-300 text-neutral-700"
                       />
                       {t("newCustomerLabelGesperrt", "Customer blocked")}
                     </label>
@@ -4688,23 +4651,23 @@ export function NewCustomerModal({
                   </div>
 
                   <div className="space-y-6 xl:col-span-1">
-                    <div className="rounded-xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 to-white p-4 shadow-sm">
+                    <div className="customers-modal-genz-frost-card rounded-2xl border border-white/60 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                          <p className="text-sm font-bold uppercase tracking-wide text-slate-700">
                             {t("newCustomerWashPreislisteTitle", "Price list reference")}
                           </p>
                           <p className="mt-1 text-sm text-slate-700">
                             {t("newCustomerWashPreislisteDesc", "Official DEMA car wash price list (PDF) for quick reference.")}
                           </p>
                         </div>
-                        <FileText className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
+                        <FileText className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" />
                       </div>
                       <a
                         href={WASH_PRICE_LIST_PDF_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-semibold text-cyan-900 transition hover:border-cyan-400 hover:bg-cyan-50"
+                        className="mt-3 inline-flex items-center gap-2 rounded border border-neutral-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-neutral-50"
                       >
                         {t("newCustomerWashPreislisteOpen", "Open price list as PDF")}
                         <ExternalLink className="h-4 w-4" />
@@ -4712,10 +4675,10 @@ export function NewCustomerModal({
                     </div>
 
                     {/* ── Fuhrpark / Kennzeichen ────────────────────── */}
-                    <div className="space-y-3 self-start rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                    <div className="customers-modal-genz-frost-card space-y-3 self-start rounded-2xl border border-white/60 p-4">
                     <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4 text-cyan-600" />
-                      <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                      <Car className="h-4 w-4 text-slate-600" />
+                      <p className="text-sm font-bold uppercase tracking-wide text-slate-700">
                         {t("newCustomerWashFuhrparkTitle", "Fleet / License plates")}
                       </p>
                     </div>
@@ -4786,8 +4749,8 @@ export function NewCustomerModal({
 
                   <div className="space-y-6 xl:col-span-1">
                     {/* ── Wasch-Infos ───────────────────────────────── */}
-                    <div className="space-y-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-800">
+                    <div className="customers-modal-genz-frost-card space-y-4 rounded-2xl border border-white/60 p-4">
+                    <p className="text-sm font-bold uppercase tracking-wide text-slate-700">
                       {t("newCustomerWashInfosTitle", "Wash info")}
                     </p>
                     <div>
@@ -4936,10 +4899,35 @@ export function NewCustomerModal({
             />
           )}
 
+          {tab === "beziehungenFzg" && (
+            <div className="customers-modal-genz-frost-card rounded-2xl border border-white/60 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/50 bg-white/80 text-slate-700 shadow-sm">
+                  <Car className="h-6 w-6" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-slate-900">
+                    {t("newCustomerTabBeziehungenFzgPlaceholderTitle", "Vehicle relationships")}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {t(
+                      "newCustomerTabBeziehungenFzgPlaceholderBody",
+                      "This tab will connect the customer to vehicles and fleets (FZG). Business logic is not implemented yet; saving, VAT, documents, and existing data are unchanged."
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+        <div
+          className={`customers-modal-genz-footer shrink-0 border-t px-4 py-3 sm:px-6 ${
+            isEditMode ? "is-edit-footer border-slate-200/80" : "border-slate-200"
+          }`}
+        >
           {isFormDirty ? (
             <div
               className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
@@ -4965,42 +4953,48 @@ export function NewCustomerModal({
               ) : null}
             </div>
           ) : null}
-          <p
-            id="new-kunde-shortcuts-hint"
-            className="mb-2 text-center text-[10px] leading-snug text-slate-400 sm:text-left"
-          >
-            {t(
-              "newCustomerKeyboardShortcutsHint",
-              "Alt+1–9: switch tab · Ctrl+S: save · Esc: close (confirm if unsaved)"
-            )}
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-              <label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+              <label className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-600">
                 {t("newCustomerZustaendige", "Responsible person")}
               </label>
-              <select
-                value={form.zustaendige_person_name}
-                onChange={(e) => set("zustaendige_person_name", e.target.value)}
-                className="h-11 min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:h-9 sm:min-h-0 sm:max-w-xs"
-              >
-                {ZUSTAENDIGE_OPTIONS.map((z) => (
-                  <option key={z} value={z}>{z}</option>
-                ))}
-              </select>
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-4">
+                <select
+                  value={form.zustaendige_person_name}
+                  onChange={(e) => set("zustaendige_person_name", e.target.value)}
+                  className="h-11 min-h-[44px] w-full rounded border border-neutral-300 bg-white px-3 text-sm leading-normal text-slate-800 transition-[border-color,box-shadow] focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600 sm:h-9 sm:min-h-0 sm:w-auto sm:max-w-xs"
+                >
+                  {ZUSTAENDIGE_OPTIONS.map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
+                  ))}
+                </select>
+                <p
+                  id="new-kunde-shortcuts-hint"
+                  className="text-[10px] leading-relaxed text-slate-500 sm:max-w-[min(100%,24rem)] sm:pb-px"
+                >
+                  {t(
+                    "newCustomerKeyboardShortcutsHint",
+                    "Alt+1–9: switch tab · Ctrl+S: save · Esc: close (confirm if unsaved)"
+                  )}
+                </p>
+              </div>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
                 onClick={requestClose}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                className="customers-modal-genz-btn-cancel rounded px-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/50 focus-visible:ring-offset-2"
               >
                 {t("commonCancel", "Cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
+                className={`customers-modal-genz-save rounded px-5 py-2.5 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 focus-visible:ring-offset-2 ${
+                  isEditMode ? "is-edit-save" : ""
+                }`}
               >
                 {isEditMode ? t("newCustomerSaveEdit", "Save changes") : t("commonSave", "Save")}
               </button>
@@ -5010,12 +5004,12 @@ export function NewCustomerModal({
 
         {showDiscardConfirm && (
           <div
-            className="absolute inset-0 z-[30] flex items-center justify-center bg-slate-900/50 p-4"
+            className="customers-modal-genz-inner-overlay customers-modal-genz-subbackdrop absolute inset-0 z-[30] flex items-center justify-center bg-slate-900/50 p-4"
             onClick={() => setShowDiscardConfirm(false)}
             role="presentation"
           >
             <div
-              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl"
+              className="customers-modal-genz-subcard w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl"
               onClick={(e) => e.stopPropagation()}
               role="alertdialog"
               aria-modal="true"
@@ -5057,8 +5051,8 @@ export function NewCustomerModal({
         )}
 
         {showDuplicateWarning && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white shadow-2xl">
+          <div className="customers-modal-genz-inner-overlay customers-modal-genz-subbackdrop absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white shadow-2xl shadow-amber-900/10">
               <div className="border-b border-amber-100 bg-amber-50 px-5 py-4">
                 <h3 className="flex items-center gap-2 text-base font-semibold text-amber-800">
                   <svg className="h-5 w-5 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -5116,8 +5110,8 @@ export function NewCustomerModal({
         )}
 
         {showAttachPrompt && scannedAttachment ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div className="customers-modal-genz-inner-overlay customers-modal-genz-subbackdrop absolute inset-0 z-20 flex items-center justify-center bg-slate-900/45 p-4">
+            <div className="customers-modal-genz-subcard w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
               <div className="border-b border-slate-100 px-5 py-4">
                 <h3 className="text-base font-semibold text-slate-900">Attach scanned file</h3>
               </div>
@@ -5140,7 +5134,7 @@ export function NewCustomerModal({
                 <button
                   type="button"
                   onClick={() => submitCustomer(true)}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="rounded border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
                 >
                   Attach file
                 </button>
@@ -5151,5 +5145,7 @@ export function NewCustomerModal({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalUi, document.body) : null;
 }
 

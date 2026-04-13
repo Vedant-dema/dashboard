@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { FileText, MapPin, Package, Truck, UserRound, Users } from 'lucide-react';
 import type {
   TimetableContactProfile,
@@ -11,7 +11,6 @@ import { CONTACT_DRAWER_SECTION_IDS } from '../contactDrawerSectionIds';
 import {
   emptyAppointmentRow,
   emptyAssignment,
-  emptyContactPerson,
   ensureProfile,
   formatEur,
   fromDatetimeLocalValue,
@@ -30,6 +29,7 @@ import {
   textareaClass,
 } from '../contactDrawerFormClasses';
 import { ContactCard } from './contactDrawerCards';
+import { TimetableExtraKontakteBlock } from './TimetableExtraKontakteBlock';
 
 export type TimetableContactDrawerFormBodyProps = {
   draft: TimetableEntry;
@@ -298,98 +298,12 @@ export function TimetableContactDrawerFormBody({
         >
           <div className="grid gap-4 2xl:grid-cols-2">
             <div>
-              <div className="mb-3 flex flex-col gap-2 border-b border-slate-200/50 pb-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">
-                  {t('timetableContactMoreContacts', 'Contact persons')}
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    patchDraft((prev) => {
-                      const pr = ensureProfile(prev);
-                      pr.contacts = [...(pr.contacts ?? []), emptyContactPerson()];
-                      return { ...prev, contact_profile: { ...pr } };
-                    })
-                  }
-                  className={overviewAddBtnClass}
-                >
-                  {t('timetableContactAddRow', 'Add')}
-                </button>
-              </div>
-              <div className="space-y-3">
-                {(p.contacts ?? []).length === 0 ? (
-                  <p className="text-xs leading-relaxed text-slate-500">
-                    {t('timetableContactNoExtraContacts', 'None')}
-                  </p>
-                ) : null}
-                {(p.contacts ?? []).map((c, idx) => (
-                  <div key={idx} className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3">
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          patchDraft((prev) => {
-                            const pr = ensureProfile(prev);
-                            pr.contacts = (pr.contacts ?? []).filter((_, i) => i !== idx);
-                            return { ...prev, contact_profile: { ...pr } };
-                          })
-                        }
-                        className="text-xs font-semibold text-rose-600 hover:underline"
-                      >
-                        {t('timetableContactRemoveRow', 'Remove')}
-                      </button>
-                    </div>
-                    <label className={overviewFieldClass}>
-                      <span className={overviewLabelClass}>{t('timetableColContact', 'Contact')}</span>
-                      <input
-                        value={c.name}
-                        onChange={(e) =>
-                          patchDraft((prev) => {
-                            const pr = ensureProfile(prev);
-                            const list = [...(pr.contacts ?? [])];
-                            list[idx] = { ...list[idx], name: e.target.value };
-                            pr.contacts = list;
-                            return { ...prev, contact_profile: { ...pr } };
-                          })
-                        }
-                        className={overviewInputClass}
-                      />
-                    </label>
-                    <label className={overviewFieldClass}>
-                      <span className={overviewLabelClass}>{t('timetableColPhone', 'Phone')}</span>
-                      <input
-                        value={c.phone ?? ''}
-                        onChange={(e) =>
-                          patchDraft((prev) => {
-                            const pr = ensureProfile(prev);
-                            const list = [...(pr.contacts ?? [])];
-                            list[idx] = { ...list[idx], phone: e.target.value || undefined };
-                            pr.contacts = list;
-                            return { ...prev, contact_profile: { ...pr } };
-                          })
-                        }
-                        className={overviewInputClass}
-                      />
-                    </label>
-                    <label className={overviewFieldClass}>
-                      <span className={overviewLabelClass}>{t('timetableContactFax', 'Fax')}</span>
-                      <input
-                        value={c.fax ?? ''}
-                        onChange={(e) =>
-                          patchDraft((prev) => {
-                            const pr = ensureProfile(prev);
-                            const list = [...(pr.contacts ?? [])];
-                            list[idx] = { ...list[idx], fax: e.target.value || undefined };
-                            pr.contacts = list;
-                            return { ...prev, contact_profile: { ...pr } };
-                          })
-                        }
-                        className={overviewInputClass}
-                      />
-                    </label>
-                  </div>
-                ))}
-              </div>
+              <TimetableExtraKontakteBlock
+                contacts={p.contacts}
+                patchDraft={patchDraft}
+                t={t}
+                fieldIdPrefix="tt-form-extra"
+              />
             </div>
 
             <div>

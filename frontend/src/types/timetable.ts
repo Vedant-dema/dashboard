@@ -1,3 +1,5 @@
+import type { KontaktEntry } from '../features/customers/mappers/customerFormMapper';
+
 export type TimetableOutcome = 'pending' | 'no_trucks' | 'follow_up' | 'has_trucks';
 
 export type TimetableFilterMode =
@@ -11,6 +13,9 @@ export type TimetableFilterMode =
   | 'completed_no_followup'
   | 'parked';
 
+/** Same fields as customer modal `KontaktEntry` / `KundenKontakt` for future CRM sync. */
+export type TimetableContactPerson = KontaktEntry;
+
 export interface TimetableTruckOffer {
   captured_at: string;
   vehicle_type: string;
@@ -22,13 +27,6 @@ export interface TimetableTruckOffer {
   expected_price_eur: number | null;
   location: string;
   notes: string;
-}
-
-/** Extra person lines in the legacy Kundenkontakt header. */
-export interface TimetableContactPerson {
-  name: string;
-  phone?: string;
-  fax?: string;
 }
 
 /** One row in “weitere Termine Kunde”. */
@@ -62,6 +60,41 @@ export interface TimetableVehicleDisplayExtra {
   processor_negotiated?: string;
 }
 
+/** One address row inside timetable overview “Stammdaten” (mirrors customer modal address card). */
+export interface TimetableOverviewAdresseDraft {
+  id: string;
+  typ: string;
+  strasse: string;
+  plz: string;
+  ort: string;
+  land_code: string;
+  art_land_code: string;
+  ust_id_nr: string;
+  steuer_nr: string;
+}
+
+/** Customer & Address–style fields for the timetable contact drawer overview (frontend draft; persists on row). */
+export interface TimetableOverviewKundeDraft {
+  kunden_nr: string;
+  customer_type: '' | 'legal_entity' | 'natural_person';
+  customer_status: 'active' | 'inactive' | 'blocked';
+  branche: string;
+  fzgHandel: '' | 'ja' | 'nein';
+  gesellschaftsform: string;
+  acquisition_source: '' | 'referral' | 'website' | 'email' | 'call';
+  acquisition_source_entity: string;
+  profile_notes: string;
+  operative_notes: string;
+  firmenvorsatz: string;
+  firmenname: string;
+  website: string;
+  /** UI-only worldwide address search (no external API in timetable drawer). */
+  addr_search_query: string;
+  /** Index into `adressen` for the nested address card. */
+  active_adresse_idx: number;
+  adressen: TimetableOverviewAdresseDraft[];
+}
+
 /** Rich CRM-style context for the customer-contact drawer (optional per row). */
 export interface TimetableContactProfile {
   industry?: string;
@@ -76,6 +109,10 @@ export interface TimetableContactProfile {
   vehicle_extra?: TimetableVehicleDisplayExtra;
   /** Purchase confirmation tick (legacy Kaufbestätigung). */
   purchase_confirmed?: boolean;
+  /** Extended “Customer & Address” overview (Kalender drawer). */
+  overview_kunde?: TimetableOverviewKundeDraft;
+  /** Responsible person (Zuständige) — UI draft on timetable row, no backend. */
+  zustaendige_person?: string;
 }
 
 /** Frontend timetable row for purchase outbound calls. */

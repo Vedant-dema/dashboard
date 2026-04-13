@@ -8,6 +8,7 @@ import type {
   TimetableTruckOffer,
   TimetableVehicleDisplayExtra,
 } from '../../types/timetable'
+import { emptyKontakt } from '../../features/customers/mappers/customerFormMapper'
 
 export const OUTCOME_ORDER: TimetableOutcome[] = ['pending', 'follow_up', 'has_trucks', 'no_trucks']
 
@@ -52,7 +53,7 @@ export function emptyAppointmentRow(): TimetableAppointmentHistoryRow {
 }
 
 export function emptyContactPerson(): TimetableContactPerson {
-  return { name: '', phone: '', fax: '' }
+  return emptyKontakt()
 }
 
 export function emptyAssignment(): TimetableAssignmentRow {

@@ -22,7 +22,7 @@
 | 2026-04-08 | [2026-04-08.md](feature-logs/2026-04-08.md) | FEATURE-137 … FEATURE-142 |
 | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
 | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
-| 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-204 |
+| 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
 
 ---
 
@@ -233,6 +233,43 @@
 | FEATURE-202 | Timetable contact drawer — two-pane desktop (A–E + correspondence column) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 | FEATURE-203 | Timetable contact drawer — legacy-style split + hidden scrollbars | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 | FEATURE-204 | Kunden list — unified filter label typography | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-205 | Kunden list — filter label typography (re-applied after main sync) | Extended | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-206 | New customer modal — remove header tab-instruction line | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-207 | New customer modal — header address typography matches company name | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-208 | New customer modal — slightly larger audit line (created / last edited) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-209 | New customer modal — tab icons for Kunde, Art, Verlauf | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-210 | Customer modal header chips — Gen Z glass + animated conic border | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-211 | Customer modal chips — per-tag ring colours + sparkle orbit fix | Extended | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-212 | Customer modal chips — semantic fills, slow orbit, golden sparkle | Extended | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-213 | Customer modal chips — unique tag palettes, silver sparkle, slower orbit | Extended | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-214 | Timetable contact drawer — extra contacts UI aligned with customer edit modal | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-215 | Customer modal header chips — data-scoped palettes + faster orbit | Extended | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-216 | Customer modal chips — profile & billing hues + faster orbit | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-217 | Customer modal chips — distinct hue map + faster orbit | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-218 | Timetable `contact_profile.contacts` — `KontaktEntry` parity + shared pill editor | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-219 | Timetable contact drawer — kontakt header matches customer modal (accent bar + row) | Extended | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-220 | Timetable contact drawer overview — three customer columns (Kundenart · Stammdaten · Kontakt) | Added | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-221 | Timetable Kundenkontakt UI parity — invoices strip, multi-address, globe search, footer | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-222 | Remove Kalender three-column Kundenkontakt form from contact drawer | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-223 | Timetable Kundenkontakt drawer — shell size matches edit customer modal | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-224 | Timetable Kundenkontakt drawer — remove tab bar, single scroll for all sections | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-225 | Timetable Kundenkontakt drawer — remove “Weitere Kundentermine” block | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-226 | Timetable Kundenkontakt drawer — strip all form fields (empty body) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-227 | Timetable Kundenkontakt — customer-modal 4-column layout (light/dark) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-228 | Timetable Kundenkontakt drawer — remove inline “Anruf protokollieren” column | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-229 | Timetable Kundenkontakt column 2 — edit-customer parity (kontakt card + Termine) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-230 | Timetable Kundenkontakt Angebot column — wireframe field styling + CTA | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-231 | Timetable Angebot actions — always enabled (drawer + table) | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-232 | Timetable Angebot column — underline form + offer generator | Added | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-233 | Timetable Angebot column — LKW-modal field parity + reference styling | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-234 | Timetable contact drawer — workspace tabs (call vs offer); generator only on Angebot | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-235 | Timetable contact drawer — Bemerkungen column (row notes) on call workspace | Added | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-236 | Timetable contact drawer — Offer generator as sibling column outside Angebot card | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-237 | Timetable Angebot tab — vehicle extra fields on minimal offer form | Added | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-238 | Timetable Angebot tab — minimal offer form reduced to seven fields | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-239 | Timetable contact drawer — icons on Call / Offer workspace tabs | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-240 | Timetable contact drawer — Offer workspace tab uses truck icon | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-241 | Angebots-Generator — workflow copy, tooltips, Ausstattung extraction | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

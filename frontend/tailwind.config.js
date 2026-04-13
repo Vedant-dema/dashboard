@@ -41,40 +41,10 @@ export default {
       colors: {
         dema: {
           blue: "#2563eb",
+          navy: "#0c1e3d",
+          ice: "#e8f2ff",
           teal: "#0d9488",
         },
-      },
-      keyframes: {
-        timetableFadeUp: {
-          "0%": { opacity: "0", transform: "translate3d(0,16px,0) scale(0.985)" },
-          "100%": { opacity: "1", transform: "translate3d(0,0,0) scale(1)" },
-        },
-        timetableFadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        timetableStat: {
-          "0%": { opacity: "0", transform: "translate3d(0,12px,0)" },
-          "100%": { opacity: "1", transform: "translate3d(0,0,0)" },
-        },
-        timetableBlob: {
-          "0%, 100%": { transform: "translate3d(0,0,0) scale(1)" },
-          "40%": { transform: "translate3d(3%,-4%,0) scale(1.06)" },
-          "70%": { transform: "translate3d(-4%,3%,0) scale(0.94)" },
-        },
-        /** Staggered overview cards / smart-summary lines in contact drawer */
-        contactCardIn: {
-          "0%": { opacity: "0", transform: "translate3d(0,18px,0)" },
-          "100%": { opacity: "1", transform: "translate3d(0,0,0)" },
-        },
-      },
-      animation: {
-        "timetable-fade-up": "timetableFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "timetable-fade-in": "timetableFadeIn 0.7s ease-out both",
-        "timetable-stat": "timetableStat 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "timetable-blob": "timetableBlob 22s ease-in-out infinite",
-        "contact-card-in":
-          "contactCardIn 0.52s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },

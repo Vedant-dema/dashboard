@@ -996,32 +996,39 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   // (listed explicitly above to satisfy exhaustive-deps)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-6 pb-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("customersTitle", "Customers")}</h1>
+    <div className="dema-canvas-root customers-page-genz flex min-h-full min-h-0 flex-1 flex-col overflow-x-hidden">
+      <div className="dema-canvas-ambient" aria-hidden>
+        <div className="dema-canvas-base" />
+        <div className="dema-canvas-orb dema-canvas-orb-a" />
+        <div className="dema-canvas-orb dema-canvas-orb-b" />
+        <div className="dema-canvas-orb dema-canvas-orb-c" />
+        <div className="dema-canvas-orb dema-canvas-orb-d" />
+        <div className="dema-canvas-shine" />
+        <div className="dema-canvas-grid" />
+        <div className="dema-canvas-noise" />
+        <div className="dema-canvas-vignette" />
+      </div>
+      <div className="dema-canvas-content customers-page-content flex min-h-0 flex-1 flex-col px-3 py-4 pb-6 sm:px-6 sm:py-6 sm:pb-8">
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div className="min-w-0">
+          <h1 className="customers-genz-title text-xl font-extrabold tracking-tight sm:text-2xl">{t("customersTitle", "Customers")}</h1>
           {department ? (
-            <p className="mt-0.5 text-sm text-slate-500">
-              {t("customersArea", "Area")}:{" "}
-              <span className="font-medium text-slate-600">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="customers-genz-pill-area inline-flex items-center rounded-full border border-blue-200/80 bg-gradient-to-r from-slate-50/95 to-blue-50/88 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-950 shadow-sm shadow-blue-200/30 backdrop-blur-sm">
+                {t("customersArea", "Area")}
+              </span>
+              <span className="customers-genz-pill-dept inline-flex items-center rounded-full border border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-slate-50/90 to-blue-50/75 px-3 py-1 text-sm font-semibold text-slate-800 shadow-md shadow-sky-200/20 ring-1 ring-sky-200/45 backdrop-blur-sm">
                 {t(DEPARTMENT_I18N_KEY[department], department)}
               </span>
-              {" · "}
-              <span className="text-slate-400">
-                {t(
-                  "customersDeptHint",
-                  "One screen for all areas: kunden; optional kunden_wash in the Car wash tab when editing."
-                )}
-              </span>
-            </p>
+            </div>
           ) : null}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-stretch gap-2 sm:w-auto sm:justify-end">
           {!showDeleted && (
             <button
               type="button"
               onClick={() => setShowAddCustomer(true)}
-              className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
+              className="customers-genz-btn-primary flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm transition sm:min-h-0 sm:flex-initial"
             >
               <UserPlus className="h-4 w-4" />
               {t("customersNewCustomer", "Add customer")}
@@ -1030,10 +1037,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           <button
             type="button"
             onClick={() => setShowDeleted((v) => !v)}
-            className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+            className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm transition sm:min-h-0 sm:flex-initial ${
               showDeleted
-                ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                ? "border border-red-300 bg-red-50 font-semibold text-red-700 hover:bg-red-100"
+                : "customers-genz-btn-archive customers-genz-btn-secondary"
             }`}
           >
             <Archive className="h-4 w-4" />
@@ -1041,7 +1048,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               ? t("customersHideDeleted", "Back to customer list")
               : t("customersShowDeleted", "Show deleted customers")}
             {!showDeleted && deletedSource.length > 0 && (
-              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="customers-genz-inline-badge ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
                 {deletedSource.length}
               </span>
             )}
@@ -1061,9 +1068,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         </div>
       ) : null}
 
-      <div className="glass-card mb-4 space-y-4 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-slate-600">{t("customersQuickCompanySearch", "Company quick search:")}</span>
+      <div className="glass-card customers-genz-glass mb-4 space-y-4 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <span className="shrink-0 text-sm font-medium text-slate-600">{t("customersQuickCompanySearch", "Company quick search:")}</span>
           <SuggestTextInput
             type="text"
             value={quickSearch}
@@ -1071,12 +1078,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             placeholder={t("customersSearchPlaceholder", "Search…")}
             suggestions={quickSearchSuggestions}
             title={t("customersSuggestionsDb", "Suggestions from database")}
-            className="h-10 w-64 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="h-10 min-w-0 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:max-w-md sm:flex-1"
           />
           <button
             type="button"
             onClick={applyFilters}
-            className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200 sm:min-h-0"
           >
             <Search className="h-4 w-4" />
             {t("customersShow", "Show")}
@@ -1084,7 +1091,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           <button
             type="button"
             onClick={showAll}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:min-h-0"
           >
             {t("customersAll", "all")}
           </button>
@@ -1221,16 +1228,16 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
       </div>
 
       {showDeleted ? (
-        <div className="glass-card min-h-0 flex-1 overflow-hidden">
-          <div className="border-b border-red-100 bg-red-50 px-4 py-3">
+        <div className="glass-card customers-genz-glass min-h-0 flex-1 overflow-hidden">
+          <div className="customers-genz-deleted-banner border-b border-red-200/80 bg-gradient-to-r from-red-50 to-rose-50/90 px-4 py-3">
             <h2 className="flex items-center gap-2 text-sm font-bold text-red-700">
               <Archive className="h-4 w-4" />
               {t("customersDeletedTitle", "Recycle Bin — Deleted Customers")}
             </h2>
           </div>
-          <div className="overflow-auto">
+          <div className="customers-genz-table-scroll overflow-x-auto overflow-y-auto overscroll-x-contain">
             <table className="w-full min-w-[800px] text-left text-sm">
-              <thead className="sticky top-0 z-10 bg-slate-50 font-semibold text-slate-600">
+              <thead className="customers-genz-thead sticky top-0 z-10 bg-gradient-to-r from-slate-50/95 via-blue-50/40 to-sky-50/45 font-semibold text-slate-800 backdrop-blur-sm">
                 <tr>
                   <th className="whitespace-nowrap px-4 py-3">{t("customersThKuNr", "KU-NR")}</th>
                   <th className="whitespace-nowrap px-4 py-3">{t("customersThCompany", "Company")}</th>
@@ -1295,10 +1302,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           </div>
         </div>
       ) : (
-      <div className="glass-card min-h-0 flex-1 overflow-hidden">
-        <div className="overflow-auto">
+      <div className="glass-card customers-genz-glass min-h-[12rem] flex-1 overflow-hidden sm:min-h-0">
+        <div className="customers-genz-table-scroll max-h-[min(70vh,720px)] overflow-x-auto overflow-y-auto overscroll-x-contain sm:max-h-none">
           <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50 font-semibold text-slate-600">
+            <thead className="customers-genz-thead sticky top-0 z-10 bg-gradient-to-r from-slate-50/95 via-blue-50/40 to-sky-50/45 font-semibold text-slate-800 backdrop-blur-sm">
               <tr>
                 <th className="whitespace-nowrap px-4 py-3">{t("customersThKuNr", "KU-NR")}</th>
                 <th className="whitespace-nowrap px-4 py-3">{t("customersThCompany", "Company")}</th>
@@ -1327,8 +1334,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       onClick={() => openCustomerRow(row.kuNr)}
                       className={`cursor-pointer transition ${
                         selectedRowId === row.kuNr
-                          ? "bg-slate-800 text-white"
-                          : "hover:bg-slate-50 text-slate-800"
+                          ? "customers-genz-row-selected bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 text-white shadow-inner shadow-black/15 ring-1 ring-sky-400/20"
+                          : "customers-genz-row-default text-slate-800 hover:bg-gradient-to-r hover:from-slate-50/95 hover:via-blue-50/50 hover:to-sky-50/38"
                       }`}
                     >
                       <td className="px-4 py-2.5 font-medium tabular-nums">{row.kuNr}</td>
@@ -1382,265 +1389,31 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           onScrollToDocumentExpiry={() => {
             risikoSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
           }}
-          editKundeTopContent={
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    {t("customersDocsSectionTitle", "Customer documents")}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t(
-                      "customersDocsHint",
-                      "View, upload, open, and remove files linked to this customer."
-                    )}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setUnterlagenOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  {t("customersDocsOpen", "Open documents")}
-                  {unterlagenForCustomer.length > 0 ? (
-                    <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {unterlagenForCustomer.length}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-            </section>
+          editHeaderDocumentsAction={
+            <button
+              type="button"
+              onClick={() => setUnterlagenOpen(true)}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-neutral-50 sm:min-h-0 sm:py-1.5 sm:text-[13px]"
+            >
+              <FolderOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+              {t("customersDocsOpen", "Open documents")}
+              {unterlagenForCustomer.length > 0 ? (
+                <span className="rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {unterlagenForCustomer.length}
+                </span>
+              ) : null}
+            </button>
           }
-          editAdresseExtraContent={
-            <>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t("customersInvoicesTitle", "Invoices")}
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={openRechnungenForCustomer}
-                  disabled={!draftKunde?.kunden_nr?.trim()}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-800 shadow-sm hover:bg-blue-100 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <Pencil className="h-4 w-4 shrink-0" aria-hidden />
-                  {t("customersInvoicesEditBtn", "Edit invoices")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCustomerInvoicesOpen(true)}
-                  disabled={!draftKunde?.kunden_nr?.trim()}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                  {t("customersInvoicesFolderBtn", "Invoice files")}
-                  {rechnungenRowsForCustomer.length > 0 ? (
-                    <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {rechnungenRowsForCustomer.length}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-            </>
-          }
-          editKundeSideContent={
-            <>
-              {/* ── Kundenbeziehungen ─────────────────────────────── */}
-              <section className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+          editKundeAppointmentsContent={
+              <section className="customers-modal-genz-frost-card flex min-h-0 flex-col rounded-2xl border border-white/60 p-4">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                    {t("customersRelationsTitle", "Customer relationships")}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { setBeziehungFormOpen((v) => !v); setBeziehungNr(""); setBeziehungArt(""); }}
-                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    {t("customersRelationsNew", "New")}
-                  </button>
-                </div>
-
-                {beziehungFormOpen && (
-                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
-
-                    {/* ── Customer search combobox ── */}
-                    <div ref={beziehungSearchRef} className="relative">
-                      <input
-                        type="text"
-                        value={beziehungNr}
-                        onChange={(e) => { setBeziehungNr(e.target.value); setBeziehungSearchOpen(true); }}
-                        onFocus={() => setBeziehungSearchOpen(true)}
-                        placeholder={t("customersRelationsNrPh", "Search by customer no. or company name")}
-                        className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
-                        autoComplete="off"
-                      />
-                      {/* Selected customer chip */}
-                      {beziehungNr && (() => {
-                        const matched = db.kunden.find((k) => k.kunden_nr === beziehungNr.trim());
-                        return matched ? (
-                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
-                            {matched.firmenname}
-                          </span>
-                        ) : null;
-                      })()}
-                      {/* Dropdown list */}
-                      {beziehungSearchOpen && beziehungSearchResults.length > 0 && (
-                        <ul className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-                          {beziehungSearchResults.map((k) => (
-                            <li key={k.id}>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setBeziehungNr(k.kunden_nr);
-                                  setBeziehungSearchOpen(false);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-blue-50"
-                              >
-                                <span className="w-14 shrink-0 font-mono font-semibold text-slate-500">{k.kunden_nr}</span>
-                                <span className="truncate font-medium text-slate-800">{k.firmenname}</span>
-                                {k.ort && <span className="ml-auto shrink-0 text-slate-400">{k.ort}</span>}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {beziehungSearchOpen && beziehungNr.trim() && beziehungSearchResults.length === 0 && (
-                        <div className="absolute left-0 right-0 top-full z-[200] mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 shadow-xl">
-                          {t("customersEmptyList", "No customers found")}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ── Relationship type combobox ── */}
-                    <div ref={beziehungArtRef} className="relative">
-                      <input
-                        type="text"
-                        value={beziehungArt}
-                        onChange={(e) => { setBeziehungArt(e.target.value); setBeziehungArtOpen(true); }}
-                        onFocus={() => setBeziehungArtOpen(true)}
-                        placeholder={t("customersRelationsArtPh", "Type (e.g. Parent company)")}
-                        className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
-                        autoComplete="off"
-                      />
-                      {beziehungArtOpen && (
-                        <ul className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-                          {BEZIEHUNG_ART_OPTIONS
-                            .filter((opt) => !beziehungArt.trim() || opt.toLowerCase().includes(beziehungArt.toLowerCase()))
-                            .map((opt) => (
-                              <li key={opt}>
-                                <button
-                                  type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    setBeziehungArt(opt);
-                                    setBeziehungArtOpen(false);
-                                  }}
-                                  className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-blue-50"
-                                >
-                                  {opt}
-                                </button>
-                              </li>
-                            ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleAddBeziehung}
-                        disabled={!beziehungNr.trim() || !beziehungArt.trim()}
-                        className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40"
-                      >
-                        {t("commonSave", "Save")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setBeziehungFormOpen(false); setBeziehungNr(""); setBeziehungArt(""); }}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                      >
-                        {t("commonCancel", "Cancel")}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="max-h-64 overflow-auto rounded-xl border border-slate-100">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 font-semibold text-slate-600">
-                      <tr>
-                        <th className="px-3 py-2">{t("customersRelationsLinked", "Linked customer")}</th>
-                        <th className="px-3 py-2">{t("customersRelationsArt", "Type")}</th>
-                        <th className="w-8 px-3 py-2" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
-                      {beziehungenForCustomer.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-3 py-8 text-center text-slate-400">
-                            {t("customersRelationsEmpty", "No entries")}
-                          </td>
-                        </tr>
-                      ) : (
-                        beziehungenForCustomer.map((b) => {
-                          const linked = db.kunden.find((k) => k.id === b.verknuepfter_kunden_id);
-                          return (
-                            <tr key={b.id} className="group">
-                              <td className="px-3 py-2">
-                                {linked ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => openCustomerRow(linked.kunden_nr)}
-                                    className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-left transition hover:bg-blue-50"
-                                    title={t("customersRelationsOpenHint", "Open this customer")}
-                                  >
-                                    <span className="font-medium text-blue-700 group-hover:underline">
-                                      {linked.firmenname}
-                                    </span>
-                                    <span className="font-mono text-[10px] text-slate-400">
-                                      #{linked.kunden_nr}
-                                    </span>
-                                    {linked.ort && (
-                                      <span className="text-[10px] text-slate-400">· {linked.ort}</span>
-                                    )}
-                                  </button>
-                                ) : (
-                                  <span className="text-slate-400">#{b.verknuepfter_kunden_id}</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2 text-slate-500">{b.art}</td>
-                              <td className="px-3 py-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveBeziehung(b.id)}
-                                  className="rounded p-0.5 text-slate-300 hover:text-red-500"
-                                  aria-label={t("commonRemove", "Remove")}
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              {/* ── Termine ───────────────────────────────────────── */}
-              <section className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                     {t("customersAppointmentsTitle", "Appointments")}
                   </p>
                   <button
                     type="button"
                     onClick={() => { setTerminFormOpen((v) => !v); setTerminDatum(""); setTerminZeit(""); setTerminZweck(""); }}
-                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700"
+                    className="flex items-center gap-1 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-neutral-50"
                   >
                     <CalendarPlus className="h-3.5 w-3.5" />
                     {t("customersNewAppointment", "New appointment")}
@@ -1648,19 +1421,19 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 </div>
 
                 {terminFormOpen && (
-                  <div className="mb-3 flex flex-col gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+                  <div className="mb-3 flex flex-col gap-2 rounded border border-neutral-200 bg-neutral-50 p-3">
                     <div className="flex gap-2">
                       <input
                         type="date"
                         value={terminDatum}
                         onChange={(e) => setTerminDatum(e.target.value)}
-                        className="h-8 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                        className="h-8 flex-1 rounded border border-neutral-300 bg-white px-2.5 text-xs focus:border-neutral-600 focus:outline-none"
                       />
                       <input
                         type="time"
                         value={terminZeit}
                         onChange={(e) => setTerminZeit(e.target.value)}
-                        className="h-8 w-28 rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                        className="h-8 w-28 rounded border border-neutral-300 bg-white px-2.5 text-xs focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <input
@@ -1668,21 +1441,21 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       value={terminZweck}
                       onChange={(e) => setTerminZweck(e.target.value)}
                       placeholder={t("customersTerminZweckPh", "Purpose / subject")}
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs focus:border-blue-400 focus:outline-none"
+                      className="h-8 w-full rounded border border-neutral-300 bg-white px-2.5 text-xs focus:border-neutral-600 focus:outline-none"
                     />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={handleAddTermin}
                         disabled={!terminDatum || !terminZweck.trim()}
-                        className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40"
+                        className="flex-1 rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-40"
                       >
                         {t("commonSave", "Save")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setTerminFormOpen(false)}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-neutral-50"
                       >
                         {t("commonCancel", "Cancel")}
                       </button>
@@ -1690,8 +1463,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   </div>
                 )}
 
-                <div className="max-h-56 overflow-auto rounded-xl border border-slate-100">
-                  <table className="w-full text-left text-xs">
+                <div className="max-h-56 overflow-x-auto overflow-y-auto rounded border border-neutral-200">
+                  <table className="w-full min-w-[280px] text-left text-xs">
                     <thead className="bg-slate-50 font-semibold text-slate-600">
                       <tr>
                         <th className="px-3 py-2">{t("customersApptDate", "Date")}</th>
@@ -1721,7 +1494,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                                 type="checkbox"
                                 checked={termin.erledigt}
                                 onChange={() => handleToggleTermin(termin.id)}
-                                className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                                className="h-3.5 w-3.5 rounded border-neutral-300 accent-neutral-700"
                               />
                             </td>
                             <td className="px-3 py-2">
@@ -1736,6 +1509,225 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                             </td>
                           </tr>
                         ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+          }
+          editAfterOperationalNotesContent={
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t("customersInvoicesTitle", "Invoices")}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={openRechnungenForCustomer}
+                  disabled={!draftKunde?.kunden_nr?.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 hover:bg-neutral-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Pencil className="h-4 w-4 shrink-0" aria-hidden />
+                  {t("customersInvoicesEditBtn", "Edit invoices")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomerInvoicesOpen(true)}
+                  disabled={!draftKunde?.kunden_nr?.trim()}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-neutral-50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                  {t("customersInvoicesFolderBtn", "Invoice files")}
+                  {rechnungenRowsForCustomer.length > 0 ? (
+                    <span className="rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {rechnungenRowsForCustomer.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </>
+          }
+          editKundeSideContent={
+            <>
+              {/* ── Kundenbeziehungen ─────────────────────────────── */}
+              <section className="customers-modal-genz-frost-card flex min-h-0 flex-col rounded-2xl border border-white/60 p-4">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    {t("customersRelationsTitle", "Customer relationships")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setBeziehungFormOpen((v) => !v); setBeziehungNr(""); setBeziehungArt(""); }}
+                    className="flex items-center gap-1 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-neutral-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("customersRelationsNew", "New")}
+                  </button>
+                </div>
+
+                {beziehungFormOpen && (
+                  <div className="mb-3 flex flex-col gap-2 rounded border border-neutral-200 bg-neutral-50 p-3">
+
+                    {/* ── Customer search combobox ── */}
+                    <div ref={beziehungSearchRef} className="relative">
+                      <input
+                        type="text"
+                        value={beziehungNr}
+                        onChange={(e) => { setBeziehungNr(e.target.value); setBeziehungSearchOpen(true); }}
+                        onFocus={() => setBeziehungSearchOpen(true)}
+                        placeholder={t("customersRelationsNrPh", "Search by customer no. or company name")}
+                        className="h-8 w-full rounded border border-neutral-300 bg-white px-2.5 text-xs focus:border-neutral-600 focus:outline-none"
+                        autoComplete="off"
+                      />
+                      {/* Selected customer chip */}
+                      {beziehungNr && (() => {
+                        const matched = db.kunden.find((k) => k.kunden_nr === beziehungNr.trim());
+                        return matched ? (
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
+                            {matched.firmenname}
+                          </span>
+                        ) : null;
+                      })()}
+                      {/* Dropdown list */}
+                      {beziehungSearchOpen && beziehungSearchResults.length > 0 && (
+                        <ul className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                          {beziehungSearchResults.map((k) => (
+                            <li key={k.id}>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setBeziehungNr(k.kunden_nr);
+                                  setBeziehungSearchOpen(false);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-neutral-50"
+                              >
+                                <span className="w-14 shrink-0 font-mono font-semibold text-slate-500">{k.kunden_nr}</span>
+                                <span className="truncate font-medium text-slate-800">{k.firmenname}</span>
+                                {k.ort && <span className="ml-auto shrink-0 text-slate-400">{k.ort}</span>}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {beziehungSearchOpen && beziehungNr.trim() && beziehungSearchResults.length === 0 && (
+                        <div className="absolute left-0 right-0 top-full z-[200] mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-400 shadow-xl">
+                          {t("customersEmptyList", "No customers found")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Relationship type combobox ── */}
+                    <div ref={beziehungArtRef} className="relative">
+                      <input
+                        type="text"
+                        value={beziehungArt}
+                        onChange={(e) => { setBeziehungArt(e.target.value); setBeziehungArtOpen(true); }}
+                        onFocus={() => setBeziehungArtOpen(true)}
+                        placeholder={t("customersRelationsArtPh", "Type (e.g. Parent company)")}
+                        className="h-8 w-full rounded border border-neutral-300 bg-white px-2.5 text-xs focus:border-neutral-600 focus:outline-none"
+                        autoComplete="off"
+                      />
+                      {beziehungArtOpen && (
+                        <ul className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                          {BEZIEHUNG_ART_OPTIONS
+                            .filter((opt) => !beziehungArt.trim() || opt.toLowerCase().includes(beziehungArt.toLowerCase()))
+                            .map((opt) => (
+                              <li key={opt}>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setBeziehungArt(opt);
+                                    setBeziehungArtOpen(false);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-neutral-50"
+                                >
+                                  {opt}
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddBeziehung}
+                        disabled={!beziehungNr.trim() || !beziehungArt.trim()}
+                        className="flex-1 rounded border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800 disabled:opacity-40"
+                      >
+                        {t("commonSave", "Save")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setBeziehungFormOpen(false); setBeziehungNr(""); setBeziehungArt(""); }}
+                        className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-neutral-50"
+                      >
+                        {t("commonCancel", "Cancel")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="max-h-64 overflow-auto rounded border border-neutral-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 font-semibold text-slate-600">
+                      <tr>
+                        <th className="px-3 py-2">{t("customersRelationsLinked", "Linked customer")}</th>
+                        <th className="px-3 py-2">{t("customersRelationsArt", "Type")}</th>
+                        <th className="w-8 px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white text-slate-600">
+                      {beziehungenForCustomer.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-8 text-center text-slate-400">
+                            {t("customersRelationsEmpty", "No entries")}
+                          </td>
+                        </tr>
+                      ) : (
+                        beziehungenForCustomer.map((b) => {
+                          const linked = db.kunden.find((k) => k.id === b.verknuepfter_kunden_id);
+                          return (
+                            <tr key={b.id} className="group">
+                              <td className="px-3 py-2">
+                                {linked ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openCustomerRow(linked.kunden_nr)}
+                                    className="flex items-center gap-1.5 rounded px-1 py-0.5 text-left transition hover:bg-neutral-50"
+                                    title={t("customersRelationsOpenHint", "Open this customer")}
+                                  >
+                                    <span className="font-medium text-slate-800 group-hover:underline">
+                                      {linked.firmenname}
+                                    </span>
+                                    <span className="font-mono text-[10px] text-slate-400">
+                                      #{linked.kunden_nr}
+                                    </span>
+                                    {linked.ort && (
+                                      <span className="text-[10px] text-slate-400">· {linked.ort}</span>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-400">#{b.verknuepfter_kunden_id}</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-slate-500">{b.art}</td>
+                              <td className="px-3 py-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveBeziehung(b.id)}
+                                  className="rounded p-0.5 text-slate-300 hover:text-red-500"
+                                  aria-label={t("commonRemove", "Remove")}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1809,11 +1801,11 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               <section
                 id="customer-edit-risiko-doc-expiry"
                 ref={risikoSectionRef}
-                className="min-w-0 scroll-mt-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                className="customers-modal-genz-frost-card min-w-0 scroll-mt-4 rounded-2xl border border-white/60 p-4"
               >
                 {/* Header row — matches Contacts / Firmendaten section title scale */}
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                     {t("riskTitle", "Risk Analysis")}
                   </p>
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -1826,7 +1818,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                     <button
                       type="button"
                       onClick={risikoEditOpen ? () => setRisikoEditOpen(false) : handleRisikoEdit}
-                      className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700"
+                      className="flex items-center gap-1 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-neutral-50"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       {t("riskEdit", "Edit dates")}
@@ -1836,14 +1828,14 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
                 {/* Edit form — single column so it works in the narrow sidebar grid column */}
                 {risikoEditOpen && (
-                  <div className="mb-3 min-w-0 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                  <div className="mb-3 min-w-0 rounded border border-neutral-200 bg-neutral-50 p-4">
                     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                       <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
                         <input
                           type="checkbox"
                           checked={risikoDraft.allg_dok_bogen ?? false}
                           onChange={(e) => setRisikoDraft((d) => ({ ...d, allg_dok_bogen: e.target.checked }))}
-                          className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                          className="h-3.5 w-3.5 rounded border-neutral-300 accent-neutral-700"
                         />
                         {t("riskDocAllgDokBogen", "General Doc Form")}
                       </label>
@@ -1852,7 +1844,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                           type="checkbox"
                           checked={risikoDraft.verst_dok_bogen ?? false}
                           onChange={(e) => setRisikoDraft((d) => ({ ...d, verst_dok_bogen: e.target.checked }))}
-                          className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                          className="h-3.5 w-3.5 rounded border-neutral-300 accent-neutral-700"
                         />
                         {t("riskDocVerstDokBogen", "Understanding Form")}
                       </label>
@@ -1863,7 +1855,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                           value={risikoDraft.bearbeiter ?? ""}
                           onChange={(e) => setRisikoDraft((d) => ({ ...d, bearbeiter: e.target.value }))}
                           maxLength={20}
-                          className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:border-blue-400 focus:outline-none sm:h-7 sm:w-40"
+                          className="h-9 w-full min-w-0 rounded border border-neutral-300 bg-white px-2 text-xs focus:border-neutral-600 focus:outline-none sm:h-7 sm:w-40"
                         />
                       </div>
                     </div>
@@ -1897,7 +1889,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                                   }))
                                 }
                                 maxLength={120}
-                                className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:border-blue-400 focus:outline-none"
+                                className="h-9 w-full min-w-0 rounded border border-neutral-300 bg-white px-2 text-xs text-slate-800 focus:border-neutral-600 focus:outline-none"
                                 placeholder={t("riskAusweisOwnerNamePh", "Owner name on ID")}
                               />
                             </div>
@@ -1909,14 +1901,14 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <button
                         type="button"
                         onClick={handleRisikoSave}
-                        className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        className="rounded border border-neutral-800 bg-neutral-900 px-4 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800"
                       >
                         {t("commonSave", "Save")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRisikoEditOpen(false)}
-                        className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        className="rounded border border-neutral-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-neutral-50"
                       >
                         {t("commonCancel", "Cancel")}
                       </button>
@@ -2006,25 +1998,25 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         />
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex w-full flex-wrap items-stretch gap-3 sm:w-auto">
           <button
             type="button"
             onClick={() => setShowAddCustomer(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-blue-700"
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 sm:min-h-0 sm:flex-initial"
           >
             <Plus className="h-4 w-4" />
             {t("customersNewCustomer", "Add customer")}
           </button>
           <button
             type="button"
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:min-h-0 sm:flex-initial"
           >
             <List className="h-4 w-4" />
             {t("customersLists", "Lists")}
           </button>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-center text-sm text-slate-500 sm:text-left">
           {t("customersSelectionCount", "Selection count:")}{" "}
           <span className="font-semibold text-slate-700">{filtered.length}</span>
         </p>
@@ -2080,12 +2072,12 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
       {unterlagenOpen && draftKunde ? (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+          className="customers-unterlagen-genz-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4"
           onClick={() => setUnterlagenOpen(false)}
           role="presentation"
         >
           <div
-            className="flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            className="customers-modal-genz-panel flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded border border-neutral-200 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
             onDragEnter={onUnterlagenDragEnter}
             onDragOver={onUnterlagenDragOver}
@@ -2101,7 +2093,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   id="unterlagen-dialog-title"
                   className="flex items-center gap-2 text-lg font-bold text-slate-800"
                 >
-                  <FolderOpen className="h-5 w-5 shrink-0 text-blue-600" />
+                  <FolderOpen className="h-5 w-5 shrink-0 text-slate-600" />
                   <span className="truncate">{t("customersUnterlageTitle", "Customer documents")}</span>
                 </h2>
                 <p className="mt-0.5 truncate text-sm text-slate-500">{draftKunde.firmenname}</p>
@@ -2112,7 +2104,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
               <button
                 type="button"
                 onClick={() => setUnterlagenOpen(false)}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="customers-modal-genz-icon-btn rounded p-2 text-slate-500"
                 aria-label={t("customersClose", "Close")}
               >
                 <X className="h-5 w-5" />
@@ -2147,7 +2139,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                           type="button"
                           title={t("customersUnterlageOpenTitle", "View / download file")}
                           onClick={() => window.open(u.data_url, "_blank", "noopener,noreferrer")}
-                          className="rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                          className="rounded px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-neutral-50"
                         >
                           {t("customersUnterlageOpenBtn", "Open")}
                         </button>
@@ -2212,7 +2204,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           role="presentation"
         >
           <div
-            className="flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            className="customers-genz-invoices-dialog flex max-h-[min(85vh,640px)] w-full max-w-lg flex-col overflow-hidden rounded border border-neutral-200 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -2224,7 +2216,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                   id="customer-invoices-dialog-title"
                   className="flex items-center gap-2 text-lg font-bold text-slate-800"
                 >
-                  <FolderOpen className="h-5 w-5 shrink-0 text-blue-600" />
+                  <FolderOpen className="h-5 w-5 shrink-0 text-slate-600" />
                   <span className="truncate">{t("customersInvoicesFolderTitle", "Invoice files")}</span>
                 </h2>
                 <p className="mt-0.5 truncate text-sm text-slate-500">{draftKunde.firmenname}</p>
@@ -2277,7 +2269,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                       <button
                         type="button"
                         onClick={() => openInvoicePdfInBrowser(r)}
-                        className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                        className="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-neutral-50"
                       >
                         {t("customersInvoicesViewPdf", "Open PDF")}
                       </button>
@@ -2289,6 +2281,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

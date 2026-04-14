@@ -1529,6 +1529,54 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .customers-modal-genz-header-meta-value {
     color: rgb(248 250 252) !important;
   }
+  /* Customer number — compact glass badge (stays in header meta column, not chip strip) */
+  .customers-modal-genz-header .customers-modal-genz-ku-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 0;
+    padding: 0.5rem 0.625rem 0.5rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    background: linear-gradient(
+      168deg,
+      rgb(255 255 255 / 0.11) 0%,
+      rgb(255 255 255 / 0.045) 42%,
+      rgb(15 23 42 / 0.48) 100%
+    );
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.12),
+      0 10px 30px -14px rgb(0 0 0 / 0.5);
+  }
+  .customers-modal-genz-header .customers-modal-genz-ku-block-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.125rem;
+    min-width: 0;
+    width: 100%;
+  }
+  .customers-modal-genz-header .customers-modal-genz-ku-block-value {
+    min-width: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: rgb(248 250 252) !important;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (min-width: 640px) {
+    .customers-modal-genz-header .customers-modal-genz-ku-block-value {
+      font-size: 1.3rem;
+    }
+  }
+  .customers-modal-genz-header .customers-modal-genz-ku-block-copy:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(56 189 248 / 0.55);
+  }
   .customers-modal-genz-header .customers-modal-genz-icon-btn {
     color: rgb(148 163 184);
   }
@@ -1624,8 +1672,8 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     cursor: pointer;
     text-align: left;
     transition:
-      filter 0.2s ease,
-      box-shadow 0.2s ease;
+      filter 0.12s ease,
+      box-shadow 0.12s ease;
   }
   .customers-modal-genz-h-chip--interactive:hover {
     filter: brightness(1.08) saturate(1.06);
@@ -1843,6 +1891,60 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     font-weight: 600;
     color: rgb(248 250 252) !important;
   }
+  /* Creation trail — blue-slate ledger (distinct from status-inactive neutral + doc violet) */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='audit-created'] {
+    --genz-h-chip-fill-angle: 128deg;
+    --genz-h-chip-fill-1: 71 105 134;
+    --genz-h-chip-fill-mid: 44 74 107;
+    --genz-h-chip-fill-2: 21 48 72;
+    --genz-h-chip-fill-op: 0.93;
+    --genz-h-chip-fill-op-mid: 0.89;
+    --genz-h-chip-fill-op-2: 0.82;
+    --genz-h-chip-text: 224 242 254;
+    --genz-h-chip-ring-a: 125 211 252;
+    --genz-h-chip-ring-b: 56 189 248;
+    --genz-h-chip-ring-c: 148 163 184;
+    font-weight: 500;
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='audit-created'] .customers-modal-genz-h-chip-strong {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: rgb(248 250 252) !important;
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='audit-muted'] {
+    --genz-h-chip-fill-angle: 125deg;
+    --genz-h-chip-fill-1: 120 113 108;
+    --genz-h-chip-fill-mid: 87 83 78;
+    --genz-h-chip-fill-2: 41 37 36;
+    --genz-h-chip-fill-op: 0.88;
+    --genz-h-chip-fill-op-mid: 0.84;
+    --genz-h-chip-fill-op-2: 0.78;
+    --genz-h-chip-text: 212 212 216;
+    --genz-h-chip-ring-a: 161 161 170;
+    --genz-h-chip-ring-b: 113 113 122;
+    --genz-h-chip-ring-c: 212 212 216;
+    font-weight: 500;
+  }
+  /* Entry date (Aufnahme) — bright sky / cyan, distinct from profile royal blue + VAT-valid teal */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='aufnahme'] {
+    --genz-h-chip-fill-angle: 142deg;
+    --genz-h-chip-fill-1: 56 189 248;
+    --genz-h-chip-fill-mid: 2 132 199;
+    --genz-h-chip-fill-2: 12 74 110;
+    --genz-h-chip-fill-op: 0.94;
+    --genz-h-chip-fill-op-mid: 0.91;
+    --genz-h-chip-fill-op-2: 0.84;
+    --genz-h-chip-text: 240 249 255;
+    --genz-h-chip-ring-a: 125 211 252;
+    --genz-h-chip-ring-b: 14 165 233;
+    --genz-h-chip-ring-c: 186 230 253;
+    font-weight: 500;
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='aufnahme'] .customers-modal-genz-h-chip-strong {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: rgb(255 255 255) !important;
+  }
   .customers-modal-genz-h-chip time,
   .customers-modal-genz-h-chip .opacity-70 {
     color: inherit;
@@ -1972,6 +2074,18 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     padding-left: 0.625rem !important;
     border-left-color: rgb(96 94 92) !important;
     color: rgb(32 31 30) !important;
+  }
+
+  /* Long column title — balanced wrap + slightly tighter tracking on narrow grids */
+  .customers-modal-genz-kunde-col-title--beziehungen {
+    text-wrap: balance;
+    max-width: 100%;
+  }
+  @media (max-width: 1419.98px) {
+    .customers-modal-genz-kunde-col-title--beziehungen {
+      letter-spacing: 0.04em;
+      line-height: 1.35;
+    }
   }
 
   .customers-modal-genz-kunde-col--3 .customers-modal-genz-kontakt-nested-card {
@@ -2817,33 +2931,42 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
 
 .customer360-strip-chips > * {
   animation:
-    dema-customer360-chip-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1) backwards,
-    customers-modal-genz-h-chip-orbit 10s linear infinite;
+    dema-customer360-chip-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards,
+    customers-modal-genz-h-chip-orbit 4s linear infinite;
 }
 
 .customer360-strip-chips > :nth-child(1) {
-  animation-delay: 0.03s, 0s;
+  animation-delay: 0.01s, 0s;
 }
 .customer360-strip-chips > :nth-child(2) {
-  animation-delay: 0.07s, -1.25s;
+  animation-delay: 0.02s, -0.5s;
 }
 .customer360-strip-chips > :nth-child(3) {
-  animation-delay: 0.11s, -2.5s;
+  animation-delay: 0.03s, -1s;
 }
 .customer360-strip-chips > :nth-child(4) {
-  animation-delay: 0.15s, -3.75s;
+  animation-delay: 0.04s, -1.5s;
 }
 .customer360-strip-chips > :nth-child(5) {
-  animation-delay: 0.19s, -5s;
+  animation-delay: 0.05s, -2s;
 }
 .customer360-strip-chips > :nth-child(6) {
-  animation-delay: 0.23s, -6.25s;
+  animation-delay: 0.06s, -2.5s;
 }
 .customer360-strip-chips > :nth-child(7) {
-  animation-delay: 0.27s, -7.5s;
+  animation-delay: 0.07s, -3s;
 }
 .customer360-strip-chips > :nth-child(8) {
-  animation-delay: 0.31s, -8.75s;
+  animation-delay: 0.08s, -3.5s;
+}
+.customer360-strip-chips > :nth-child(9) {
+  animation-delay: 0.09s, -4s;
+}
+.customer360-strip-chips > :nth-child(10) {
+  animation-delay: 0.1s, -4.5s;
+}
+.customer360-strip-chips > :nth-child(11) {
+  animation-delay: 0.11s, -5s;
 }
 
 @media (prefers-reduced-motion: reduce) {

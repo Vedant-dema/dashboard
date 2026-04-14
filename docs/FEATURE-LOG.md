@@ -23,6 +23,7 @@
 | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
 | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
+| 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-247 |
 
 ---
 
@@ -270,6 +271,12 @@
 | FEATURE-239 | Timetable contact drawer — icons on Call / Offer workspace tabs | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 | FEATURE-240 | Timetable contact drawer — Offer workspace tab uses truck icon | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
 | FEATURE-241 | Angebots-Generator — workflow copy, tooltips, Ausstattung extraction | Modified | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) |
+| FEATURE-242 | New customer modal — remove header eyeline (Kundenkontakt label) | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-243 | Customer modal header — audit trail as animated status chips | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-244 | Customer modal — Aufnahme as first header chip + faster chip animations | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-245 | Customer modal header — Kundennummer glass badge in meta column | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-246 | New customer modal — compact footer (padding, select, actions, hints) | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-247 | Customer modal — responsive Beziehungen & Risiko column title | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

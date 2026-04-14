@@ -18,6 +18,10 @@ import {
   Clock,
   Building2,
   Landmark,
+  UserRound,
+  PencilLine,
+  Save,
+  CalendarDays,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -2688,13 +2692,26 @@ export function NewCustomerModal({
     else if (!form.iban.trim() && !form.bic.trim()) riskKind = "billing";
 
     const k = editInitial?.kunde;
+    const fmtAudit = (iso?: string | null) =>
+      iso && String(iso).trim() !== ""
+        ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
+        : "—";
+    const createdAuditLine =
+      isEditMode && k && k.created_by_name?.trim() && k.created_at != null && String(k.created_at).trim() !== ""
+        ? `${k.created_by_name.trim()} · ${fmtAudit(k.created_at)}`
+        : null;
     const lastEditedLine =
       isEditMode && k && k.updated_at != null && String(k.updated_at).trim() !== ""
-        ? `${k.last_edited_by_name ?? t("auditUnknownEditor", "Unknown")} · ${new Date(k.updated_at).toLocaleString(localeTag, {
-            dateStyle: "short",
-            timeStyle: "short",
-          })}`
+        ? `${k.last_edited_by_name?.trim() ? k.last_edited_by_name.trim() : t("auditUnknownEditor", "Unknown")} · ${fmtAudit(k.updated_at)}`
         : null;
+    const auditHeaderShowsEditedLabel = Boolean(
+      k &&
+        k.last_edited_by_name?.trim() &&
+        k.created_at != null &&
+        k.updated_at != null &&
+        String(k.updated_at) !== String(k.created_at),
+    );
+    const auditMutedChip = Boolean(isEditMode && k && !createdAuditLine && !lastEditedLine);
     const vatRequestRaw =
       (vatCheckResult?.request_date && String(vatCheckResult.request_date).trim()) ||
       (isEditMode && k?.vies_snapshot?.request_date && String(k.vies_snapshot.request_date).trim()) ||
@@ -2714,18 +2731,24 @@ export function NewCustomerModal({
     const addressLine = addrParts.length > 0 ? addrParts.join(", ") : "";
     const companyLine = (form.firmenname ?? "").trim();
     const kuNr = isEditMode && k?.kunden_nr ? k.kunden_nr : nextKundenNrPreview;
+    const aufnahmeDisplay =
+      (form.aufnahme || "").trim() || (aufnahmePreview || "").trim() || null;
     return {
       pct,
       vatKind,
       riskKind,
+      aufnahmeDisplay,
+      createdAuditLine,
       lastEditedLine,
+      auditHeaderShowsEditedLabel,
+      auditMutedChip,
       kuNr,
       vatRequestDateDisplay,
       vatRequestDateIso,
       companyLine,
       addressLine,
     };
-  }, [isEditMode, editInitial, form, vatCheckResult, localeTag, t, nextKundenNrPreview]);
+  }, [isEditMode, editInitial, form, vatCheckResult, localeTag, t, nextKundenNrPreview, aufnahmePreview]);
 
   const customer360DocExpiryAlertCount = useMemo(() => {
     if (!isEditMode || editRisikoProfile === undefined) return null;
@@ -2774,10 +2797,7 @@ export function NewCustomerModal({
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
             <div className="min-w-0 flex-1 space-y-2">
               <div className="customers-modal-genz-header-summary space-y-2">
-              <p className="customers-modal-genz-header-eyeline">
-                {t("newCustomerHeaderEyeline", "Customer record")}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                 <h2
                   id="new-kunde-title"
                   className="min-w-0 max-w-full text-lg font-bold tracking-tight sm:text-xl"
@@ -2828,34 +2848,7 @@ export function NewCustomerModal({
                   </span>
                 </span>
               </div>
-              {isEditMode && editInitial?.kunde ? (() => {
-                const k = editInitial.kunde;
-                const fmt = (iso?: string) =>
-                  iso
-                    ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
-                    : "—";
-                return (
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                    {k.created_by_name ? (
-                      <span className="flex flex-wrap items-center gap-1">
-                        <span className="text-slate-400">{t("auditCreatedBy", "Created by")}</span>
-                        <span className="font-medium text-slate-600">{k.created_by_name}</span>
-                        <span className="tabular-nums text-slate-400">{fmt(k.created_at)}</span>
-                      </span>
-                    ) : null}
-                    {k.last_edited_by_name && k.updated_at !== k.created_at ? (
-                      <span className="flex flex-wrap items-center gap-1">
-                        <span className="text-slate-400">{t("auditLastEditedBy", "Last edited by")}</span>
-                        <span className="font-medium text-slate-600">{k.last_edited_by_name}</span>
-                        <span className="tabular-nums text-slate-400">{fmt(k.updated_at)}</span>
-                      </span>
-                    ) : null}
-                    {!k.created_by_name && !k.last_edited_by_name ? (
-                      <span className="italic text-slate-400">{t("auditNoTrail", "No edit history available")}</span>
-                    ) : null}
-                  </div>
-                );
-              })(              ) : !isEditMode ? (
+              {!isEditMode ? (
                 <p className="text-xs text-slate-400">{t("newCustomerModalBrandSubtitle", "DEMA Management")}</p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
@@ -2876,6 +2869,19 @@ export function NewCustomerModal({
               </div>
               <div className="customers-modal-genz-header-chips-scroll -mx-1 max-w-full overflow-x-auto overflow-y-hidden pb-1">
                 <div className="customer360-strip-chips flex min-w-min flex-nowrap items-center gap-2 pr-2">
+                {headerChipsData.aufnahmeDisplay ? (
+                  <span
+                    data-dema-chip="aufnahme"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,20rem)]"
+                    title={t("newCustomerModalAufnahme", "Entry date")}
+                  >
+                    <CalendarDays className="h-3 w-3 shrink-0 opacity-95 sm:h-3.5 sm:w-3.5" aria-hidden />
+                    <span className="customers-modal-genz-h-chip-strong">
+                      {t("newCustomerModalAufnahme", "Entry date")}
+                    </span>
+                    <span className="truncate tabular-nums">{headerChipsData.aufnahmeDisplay}</span>
+                  </span>
+                ) : null}
                 <span
                   data-dema-chip={`status-${form.customer_status}`}
                   className={`customers-modal-genz-h-chip cursor-default customers-modal-genz-h-chip--status-${form.customer_status}`}
@@ -2985,40 +2991,64 @@ export function NewCustomerModal({
                     )}
                   </button>
                 ) : null}
+                {headerChipsData.createdAuditLine ? (
+                  <span
+                    data-dema-chip="audit-created"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,26rem)]"
+                  >
+                    <UserRound className="h-3 w-3 shrink-0 opacity-95 sm:h-3.5 sm:w-3.5" aria-hidden />
+                    <span className="customers-modal-genz-h-chip-strong">
+                      {t("auditCreatedBy", "Created by")}
+                    </span>
+                    <span className="truncate tabular-nums">{headerChipsData.createdAuditLine}</span>
+                  </span>
+                ) : null}
                 {headerChipsData.lastEditedLine ? (
                   <span
                     data-dema-chip="audit"
                     className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,26rem)]"
                   >
+                    {headerChipsData.auditHeaderShowsEditedLabel ? (
+                      <PencilLine
+                        className="h-3 w-3 shrink-0 text-current opacity-95 sm:h-3.5 sm:w-3.5"
+                        aria-hidden
+                      />
+                    ) : (
+                      <Save className="h-3 w-3 shrink-0 text-current opacity-95 sm:h-3.5 sm:w-3.5" aria-hidden />
+                    )}
                     <span className="customers-modal-genz-h-chip-strong">
-                      {t("customer360ChipLastEdited", "Last saved")}
+                      {headerChipsData.auditHeaderShowsEditedLabel
+                        ? t("auditLastEditedBy", "Last edited by")
+                        : t("customer360ChipLastEdited", "Last saved")}
                     </span>
                     <span className="truncate tabular-nums">{headerChipsData.lastEditedLine}</span>
+                  </span>
+                ) : null}
+                {headerChipsData.auditMutedChip ? (
+                  <span
+                    data-dema-chip="audit-muted"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta max-w-full cursor-default"
+                  >
+                    <span className="italic opacity-95">{t("auditNoTrail", "No edit history available")}</span>
                   </span>
                 ) : null}
                 </div>
               </div>
             </div>
-            <div className="customers-modal-genz-header-meta flex shrink-0 flex-col items-start gap-3 border-t border-white/10 pt-2 sm:flex-row sm:gap-6 lg:border-t-0 lg:pt-0 lg:pl-2 lg:text-right xl:items-end">
-              <div className="lg:text-right">
-                <p className="customers-modal-genz-header-meta-label text-[10px] font-medium uppercase tracking-wider">
-                  {t("newCustomerModalAufnahme", "Entry date")}
-                </p>
-                <p className="customers-modal-genz-header-meta-value text-sm font-semibold tabular-nums">{aufnahmePreview}</p>
-              </div>
-              <div className="lg:text-right">
-                <p className="customers-modal-genz-header-meta-label text-[10px] font-medium uppercase tracking-wider">
+            <div className="customers-modal-genz-header-meta flex w-full min-w-0 shrink-0 flex-col items-stretch gap-3 border-t border-white/10 pt-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4 sm:pt-2 lg:border-t-0 lg:pt-0 lg:pl-2 xl:items-end">
+              <div className="customers-modal-genz-ku-block min-w-0 sm:max-w-[min(100%,15rem)]">
+                <p className="customers-modal-genz-header-meta-label m-0 text-[10px] font-semibold uppercase tracking-[0.12em]">
                   {t("newCustomerModalKdNrLabel", "Cust. no.")}
                 </p>
-                <div className="mt-0.5 flex items-center gap-1 lg:justify-end">
-                  <p className="customers-modal-genz-header-meta-value text-base font-bold tabular-nums">{headerChipsData.kuNr}</p>
+                <div className="customers-modal-genz-ku-block-row mt-1">
+                  <span className="customers-modal-genz-ku-block-value tabular-nums">{headerChipsData.kuNr}</span>
                   <button
                     type="button"
                     onClick={() => void copyPlainText(headerChipsData.kuNr)}
-                    className="customers-modal-genz-icon-btn shrink-0 rounded-md p-1 transition"
+                    className="customers-modal-genz-icon-btn customers-modal-genz-ku-block-copy shrink-0 rounded-lg p-1.5 transition"
                     aria-label={t("newCustomerCopyKuNrAria", "Copy customer number")}
                   >
-                    <Copy className="h-3.5 w-3.5" aria-hidden />
+                    <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -4183,8 +4213,22 @@ export function NewCustomerModal({
                     className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 min-w-0 space-y-4 p-5 sm:p-6 ${kundePanelSurface} ${editKundeCol4}`}
                   >
                     <div>
-                      <p className={`${kundeSectionTitleClass} customers-modal-genz-kunde-col-title--4`}>
-                        {t("customerModalColBeziehungenRisiko", "Relationships & risk")}
+                      <p
+                        className={`${kundeSectionTitleClass} customers-modal-genz-kunde-col-title--4 customers-modal-genz-kunde-col-title--beziehungen max-[1419px]:text-[11px]`}
+                        title={t(
+                          "customerModalColBeziehungenRisiko",
+                          "Relationships & risk analysis",
+                        )}
+                      >
+                        <span className="inline min-[1420px]:hidden">
+                          {t("customerModalColBeziehungenRisikoShort", "Relations & risk")}
+                        </span>
+                        <span className="hidden min-[1420px]:inline">
+                          {t(
+                            "customerModalColBeziehungenRisiko",
+                            "Relationships & risk analysis",
+                          )}
+                        </span>
                       </p>
                     </div>
                     <div className="min-w-0 space-y-4">{editKundeSideContent}</div>
@@ -4924,22 +4968,22 @@ export function NewCustomerModal({
 
         {/* Footer */}
         <div
-          className={`customers-modal-genz-footer shrink-0 border-t px-4 py-3 sm:px-6 ${
+          className={`customers-modal-genz-footer shrink-0 border-t px-3 py-2 sm:px-5 sm:py-2.5 ${
             isEditMode ? "is-edit-footer border-slate-200/80" : "border-slate-200"
           }`}
         >
           {isFormDirty ? (
             <div
-              className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+              className="mb-2 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-950 sm:text-sm"
               role="status"
             >
-              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600 sm:h-4 sm:w-4" aria-hidden />
               {t("customer360UnsavedChanges", "You have unsaved changes.")}
             </div>
           ) : null}
           {footerMessage?.type === "error" ? (
             <div
-              className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+              className="mb-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800 sm:text-sm"
               role="alert"
             >
               <span>{footerMessage.text}</span>
@@ -4953,16 +4997,16 @@ export function NewCustomerModal({
               ) : null}
             </div>
           ) : null}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-              <label className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-600">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
+              <label className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.05em] text-slate-600 sm:pt-px">
                 {t("newCustomerZustaendige", "Responsible person")}
               </label>
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-4">
+              <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5 md:gap-3">
                 <select
                   value={form.zustaendige_person_name}
                   onChange={(e) => set("zustaendige_person_name", e.target.value)}
-                  className="h-11 min-h-[44px] w-full rounded border border-neutral-300 bg-white px-3 text-sm leading-normal text-slate-800 transition-[border-color,box-shadow] focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600 sm:h-9 sm:min-h-0 sm:w-auto sm:max-w-xs"
+                  className="h-11 min-h-[44px] w-full rounded-md border border-neutral-300 bg-white px-2.5 text-sm leading-tight text-slate-800 transition-[border-color,box-shadow] focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600 sm:h-8 sm:min-h-0 sm:w-auto sm:max-w-[11.5rem] sm:px-2 sm:text-xs"
                 >
                   {ZUSTAENDIGE_OPTIONS.map((z) => (
                     <option key={z} value={z}>
@@ -4972,7 +5016,7 @@ export function NewCustomerModal({
                 </select>
                 <p
                   id="new-kunde-shortcuts-hint"
-                  className="text-[10px] leading-relaxed text-slate-500 sm:max-w-[min(100%,24rem)] sm:pb-px"
+                  className="text-[9px] leading-snug text-slate-500 sm:max-w-[min(100%,22rem)] sm:text-[10px] sm:leading-tight"
                 >
                   {t(
                     "newCustomerKeyboardShortcutsHint",
@@ -4981,18 +5025,18 @@ export function NewCustomerModal({
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={requestClose}
-                className="customers-modal-genz-btn-cancel rounded px-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/50 focus-visible:ring-offset-2"
+                className="customers-modal-genz-btn-cancel inline-flex min-h-[44px] items-center justify-center rounded-md px-3.5 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/50 focus-visible:ring-offset-1 sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs"
               >
                 {t("commonCancel", "Cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className={`customers-modal-genz-save rounded px-5 py-2.5 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 focus-visible:ring-offset-2 ${
+                className={`customers-modal-genz-save inline-flex min-h-[44px] items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 focus-visible:ring-offset-1 sm:min-h-0 sm:px-3.5 sm:py-1.5 sm:text-xs ${
                   isEditMode ? "is-edit-save" : ""
                 }`}
               >

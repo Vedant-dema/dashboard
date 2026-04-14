@@ -1,4 +1,4 @@
-import type { TimetableTruckOffer, TimetableVehicleDisplayExtra } from '../../types/timetable'
+﻿import type { TimetableTruckOffer, TimetableVehicleDisplayExtra } from '../../types/timetable'
 
 const BRANDS_RAW = [
   'MERCEDES-BENZ',
@@ -11,96 +11,181 @@ const BRANDS_RAW = [
   'RENAULT',
   'SCHMITZ',
   'KRONE',
-  'KÖGEL',
+  'KOGEL',
   'KOEGEL',
   'FLIEGL',
 ]
 
 const BRANDS = [...BRANDS_RAW].sort((a, b) => b.length - a.length)
 
+const BRAND_DISPLAY: Record<string, string> = {
+  'MERCEDES-BENZ': 'Mercedes-Benz',
+  MERCEDES: 'Mercedes',
+  SCANIA: 'Scania',
+  MAN: 'MAN',
+  VOLVO: 'Volvo',
+  IVECO: 'IVECO',
+  DAF: 'DAF',
+  RENAULT: 'Renault',
+  SCHMITZ: 'Schmitz',
+  KRONE: 'Krone',
+  KOGEL: 'Kogel',
+  KOEGEL: 'Koegel',
+  FLIEGL: 'Fliegl',
+}
+
 const BODY_HINTS: Array<{ re: RegExp; value: string }> = [
-  { re: /\bkühlkoffer\b/i, value: 'Kühlkoffer' },
-  { re: /\bpritsche\b/i, value: 'Pritsche / Plane' },
+  { re: /\bk(?:u|ue|u\u0308)hlkoffer\b/i, value: 'Kuehlkoffer' },
+  { re: /\bpritsche\b|\bplane\b/i, value: 'Pritsche / Plane' },
   { re: /\bkipper\b/i, value: 'Kipper' },
-  { re: /\bsattelzug\b|\bSZM\b/i, value: 'Sattelzug' },
+  { re: /\bsattelzug\b|\bszm\b/i, value: 'Sattelzug' },
   { re: /\bkoffer\b/i, value: 'Koffer' },
-  { re: /\bplane\b/i, value: 'Plane' },
+  { re: /\bcontainer\b/i, value: 'Container' },
+  { re: /\btank\b/i, value: 'Tank' },
 ]
 
 const TYPE_HINTS: Array<{ re: RegExp; value: string }> = [
-  { re: /\blkw\b|\bsattelzug\b|\blastzug\b/i, value: 'LKW' },
+  { re: /\blkw\b|\blastzug\b|\bsattelzug\b/i, value: 'LKW' },
   { re: /\btransporter\b|\bsprinter\b/i, value: 'Transporter' },
-  { re: /\bauflieger\b|\banhänger\b|\banhaenger\b/i, value: 'Auflieger / Anhänger' },
+  { re: /\bauflieger\b|\banh(?:a|ae)nger\b|\btrailer\b/i, value: 'Auflieger / Anhaenger' },
 ]
 
+const EQUIPMENT_RE =
+  /\b(retarder|intarder|standklima(?:anlage)?|klimaanlage|klima|navigation|navi|tempomat|voll-?luft|luftfederung|adr|hydraulik|hebeb(?:u|ue)hne|liftachse|alufelgen|alcoa|sitzheizung|zusatztank|spoiler|schiebeplane|lenkachse|standheizung)\b/gi
+
+export type OfferFreeTextParse = {
+  offerPatch: Partial<TimetableTruckOffer>
+  vehicleExtraPatch: Partial<TimetableVehicleDisplayExtra>
+  summaryLines: string[]
+}
+
+function normalizeInput(raw: string): string {
+  return raw.replace(/\u00A0/g, ' ').replace(/\r/g, '\n').trim()
+}
+
+function compactDigits(raw: string): string {
+  return raw.replace(/[^\d]/g, '')
+}
+
+function toSafeInt(raw: string): number | null {
+  const n = Number(raw)
+  return Number.isFinite(n) ? Math.round(n) : null
+}
+
+function titleCaseBrand(brand: string): string {
+  return BRAND_DISPLAY[brand] ?? (brand.charAt(0) + brand.slice(1).toLowerCase())
+}
+
 function parseKm(text: string): number | null {
-  const tkmTight = text.match(/\b(\d+)tkm\b/i)
-  if (tkmTight) {
-    const n = Number(tkmTight[1])
-    if (Number.isFinite(n)) return n * 1000
+  const compact = text.replace(/\s/g, '')
+  const tkmCompact = compact.match(/\b(\d{2,4})tkm\b/i)
+  if (tkmCompact) {
+    const n = toSafeInt(tkmCompact[1] ?? '')
+    if (n != null) return n * 1000
   }
-  const tkm = text.match(/\b(\d{1,3}(?:\.\d{3})*|\d+)\s*tkm\b/i)
+
+  const tkm = text.match(/\b(\d{1,3}(?:[.\s]\d{3})+|\d{2,4})\s*tkm\b/i)
   if (tkm) {
-    const n = Number(tkm[1]!.replace(/\./g, '').replace(/\s/g, ''))
-    if (Number.isFinite(n)) return n * 1000
+    const n = toSafeInt(compactDigits(tkm[1] ?? ''))
+    if (n != null) return n * 1000
   }
-  const km = text.match(/\b(\d{1,3}(?:\.\d{3})+|\d{2,})\s*km\b/i)
+
+  const kmLabeled = text.match(
+    /\b(?:km-?stand|laufleistung|mileage)\s*[:\-]?\s*(\d{1,3}(?:[.,\s]\d{3})+|\d{4,7})\b/i
+  )
+  if (kmLabeled) {
+    const n = toSafeInt(compactDigits(kmLabeled[1] ?? ''))
+    if (n != null && n > 100) return n
+  }
+
+  const km = text.match(/\b(\d{1,3}(?:[.,\s]\d{3})+|\d{4,7})\s*(?:km|kilometer)\b/i)
   if (km) {
-    const raw = km[1]!.replace(/\./g, '').replace(/\s/g, '')
-    const n = Number(raw)
-    if (Number.isFinite(n) && n > 100) return n
+    const n = toSafeInt(compactDigits(km[1] ?? ''))
+    if (n != null && n > 100) return n
   }
   return null
 }
 
 function parsePriceEur(text: string): number | null {
-  const m = text.match(
-    /\b(\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)\s*(€|eur|euro)\b/i
+  const explicit = text.match(
+    /\b(\d{1,3}(?:[.\s]\d{3})+|\d{4,7}|\d{1,3}(?:,\d{1,2})?)\s*(?:\u20AC|eur|euro|netto|brutto)\b/i
   )
-  if (m) {
-    const num = m[1]!.replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
-    const n = Number(num)
-    return Number.isFinite(n) ? Math.round(n) : null
+  if (explicit) {
+    const digits = compactDigits(explicit[1] ?? '')
+    const n = toSafeInt(digits)
+    if (n != null && n >= 500) return n
   }
-  const tail = text.match(/\b(\d{4,})\s*€?\b/)
-  if (tail) {
-    const n = Number(tail[1])
-    if (Number.isFinite(n) && n >= 1000) return n
+
+  const byLabel = text.match(
+    /\b(?:preis|price|vb|verhandlungsbasis)\s*[:\-]?\s*(\d{1,3}(?:[.\s]\d{3})+|\d{4,7}|\d{1,3}(?:,\d{1,2})?)\b/i
+  )
+  if (byLabel) {
+    const digits = compactDigits(byLabel[1] ?? '')
+    const n = toSafeInt(digits)
+    if (n != null && n >= 500) return n
+  }
+
+  const kPrice = text.match(/\b(\d{2,3})(?:[.,]\d+)?\s*k\b/i)
+  if (kPrice) {
+    const n = toSafeInt(kPrice[1] ?? '')
+    if (n != null && n >= 10) return n * 1000
   }
   return null
 }
 
 function parseRegistration(text: string): string | null {
-  const m = text.match(/\b(0[1-9]|1[0-2])[./\\-]((?:19|20)\d{2})\b/)
-  return m ? `${m[1]}/${m[2]}` : null
+  const labeled = text.match(
+    /\b(?:ez|erstzulassung|first\s+registration|registration|zulassung|reg)\s*[:\-]?\s*(0?[1-9]|1[0-2])[./\\-]((?:19|20)\d{2})\b/i
+  )
+  if (labeled) {
+    return `${String(labeled[1]).padStart(2, '0')}/${labeled[2]}`
+  }
+
+  const fallback = text.match(/\b(0?[1-9]|1[0-2])[./\\-]((?:19|20)\d{2})\b/)
+  if (fallback) {
+    return `${String(fallback[1]).padStart(2, '0')}/${fallback[2]}`
+  }
+  return null
 }
 
-function titleCaseBrand(b: string): string {
-  if (b === 'MERCEDES-BENZ') return 'Mercedes-Benz'
-  return b.charAt(0) + b.slice(1).toLowerCase()
+function parseYear(text: string): number | null {
+  const labeled = text.match(/\b(?:baujahr|bj|year|yr)\s*[:\-]?\s*((?:19|20)\d{2})\b/i)
+  if (labeled) {
+    const n = toSafeInt(labeled[1] ?? '')
+    if (n != null && n >= 1980 && n <= 2060) return n
+  }
+
+  const any = text.match(/\b((?:19|20)\d{2})\b/)
+  if (any) {
+    const n = toSafeInt(any[1] ?? '')
+    if (n != null && n >= 1980 && n <= 2060) return n
+  }
+  return null
 }
 
-function parseBrandModel(upper: string, raw: string): { brand: string; model: string } {
-  let brand = ''
-  let model = ''
-  for (const b of BRANDS) {
-    const idx = upper.indexOf(b)
-    if (idx !== -1) {
-      brand = titleCaseBrand(b)
-      const after = raw.slice(idx + b.length).trim()
-      const words = after.split(/[,\n]|km|tkm|€|eur|\d{2}\/\d{2,4}/i)[0]?.trim() ?? ''
-      model = words.replace(/^[-–—]\s*/, '').slice(0, 80)
-      break
-    }
+function parseQuantity(text: string): number | null {
+  const q = text.match(/\b(\d{1,2})\s*(?:x|stk|st(?:u|ue)ck|fahrzeuge?|trucks?|units?)\b/i)
+  if (q) {
+    const n = toSafeInt(q[1] ?? '')
+    if (n != null && n >= 1 && n <= 99) return n
   }
-  if (!brand && raw.trim()) {
-    const parts = raw.trim().split(/\s+/)
-    if (parts.length >= 2 && parts[0] && parts[0].length <= 24) {
-      brand = parts[0]!
-      model = parts.slice(1, 5).join(' ')
-    }
+
+  const xPrefix = text.match(/\bx\s*(\d{1,2})\b/i)
+  if (xPrefix) {
+    const n = toSafeInt(xPrefix[1] ?? '')
+    if (n != null && n >= 1 && n <= 99) return n
   }
-  return { brand, model }
+  return null
+}
+
+function parseLocation(text: string): string | null {
+  const labeled = text.match(
+    /\b(?:standort|ort|location)\s*(?:ist\s+)?[:\-]?\s*([a-z0-9 .,/()-]{2,60}?)(?=,|;|\.|\n|$)/i
+  )
+  if (!labeled) return null
+  const value = (labeled[1] ?? '').trim().replace(/[.,;]+$/, '')
+  if (value.length < 2) return null
+  return value
 }
 
 function pickBody(text: string): string {
@@ -117,103 +202,194 @@ function pickVehicleType(text: string): string {
   return ''
 }
 
-/** Ausstattung / equipment lines — complements structured fields (no network). */
-function extractEquipmentNotes(raw: string): string | null {
-  const parts: string[] = []
-  const seen = new Set<string>()
-  const add = (s: string) => {
-    const t = s.trim().replace(/\s+/g, ' ')
-    if (t.length < 2 || t.length > 120) return
-    const k = t.toLowerCase()
-    if (seen.has(k)) return
-    seen.add(k)
-    parts.push(t)
+function parseBrandModel(raw: string): { brand: string; model: string } {
+  const stopRe =
+    /\b(?:zu\s+verkauf(?:en)?|verkauf(?:en)?|ez|erstzulassung|first\s+registration|registration|zulassung|bj|baujahr|year|km(?:-?stand)?|tkm|laufleistung|mileage|preis|price|vb|standort|ort|location|ausstattung|extras?)\b/i
+
+  const trimByChars = (value: string, side: 'start' | 'end') => {
+    const chars = '-:/.,; '
+    let s = value
+    if (side === 'start') {
+      while (s.length > 0 && chars.includes(s[0] ?? '')) s = s.slice(1)
+      return s
+    }
+    while (s.length > 0 && chars.includes(s[s.length - 1] ?? '')) s = s.slice(0, -1)
+    return s
   }
 
-  for (const m of raw.matchAll(/\(([^)]{3,200})\)/g)) {
-    for (const bit of m[1]!.split(/[,;/]| und /i)) add(bit)
+  const cleanModel = (source: string): string => {
+    let s = trimByChars(source, 'start').replace(/\s+/g, ' ').trim()
+    const stop = s.match(stopRe)
+    if (stop && typeof stop.index === 'number') {
+      s = s.slice(0, stop.index).trim()
+    }
+    s = trimByChars(s, 'end').trim()
+    return s.slice(0, 80)
   }
 
-  const eqRe =
-    /\b(Retarder|Intarder|Standklima(?:anlage)?|Klimaanlage|Klima|Navigation|Navi|Tempomat|Voll-Luft|Vollluft|Luftfederung|ADR|Hydraulik|Hebebühne|Hebebuehne|Liftachse|Alufelgen|Alcoa|Sitzheizung|Zusatztank|Spoiler|Schiebeplane|Lenkachse|Standheizung)\b/gi
-  for (const m of raw.matchAll(eqRe)) add(m[1]!)
+  const upper = raw.toUpperCase()
+  for (const knownBrand of BRANDS) {
+    const idx = upper.indexOf(knownBrand)
+    if (idx === -1) continue
 
-  if (parts.length === 0) return null
-  return parts.join(', ')
-}
+    const brand = titleCaseBrand(knownBrand)
+    const after = raw.slice(idx + knownBrand.length).trim()
+    const firstSegment = after.split(/[\n,;|]/)[0]?.trim() ?? ''
+    const cleaned = cleanModel(firstSegment)
 
-export type OfferFreeTextParse = {
-  offerPatch: Partial<TimetableTruckOffer>
-  vehicleExtraPatch: Partial<TimetableVehicleDisplayExtra>
-  summaryLines: string[]
-}
-
-/** On-device heuristic — no network; best-effort structured fields from pasted notes. */
-export function parseOfferFreeText(raw: string): OfferFreeTextParse {
-  const trimmed = raw.trim()
-  if (!trimmed) {
-    return { offerPatch: {}, vehicleExtraPatch: {}, summaryLines: [] }
-  }
-  const upper = trimmed.toUpperCase()
-  const offerPatch: Partial<TimetableTruckOffer> = {}
-  const vehicleExtraPatch: Partial<TimetableVehicleDisplayExtra> = {}
-  const lines: string[] = []
-
-  const km = parseKm(upper)
-  if (km != null) {
-    offerPatch.mileage_km = km
-    lines.push(`KM: ${km.toLocaleString('de-DE')}`)
-  }
-
-  const price = parsePriceEur(trimmed)
-  if (price != null) {
-    offerPatch.expected_price_eur = price
-    lines.push(`Preis: ${price.toLocaleString('de-DE')} €`)
-  }
-
-  const reg = parseRegistration(trimmed)
-  if (reg) {
-    vehicleExtraPatch.registration_mm_yyyy = reg
-    lines.push(`Erstzulassung: ${reg}`)
-    const yPart = reg.split('/')[1]
-    if (yPart && /^\d{4}$/.test(yPart)) {
-      const yr = Number(yPart)
-      if (yr >= 1980 && yr <= 2060) offerPatch.year = yr
+    return {
+      brand,
+      model: cleaned,
     }
   }
 
-  const body = pickBody(trimmed)
-  if (body) {
-    vehicleExtraPatch.body_type = body
-    lines.push(`Aufbau: ${body}`)
+  const fallback = raw.match(/\b([a-z]{2,20})\s+([a-z0-9-]{1,20}(?:\s+[a-z0-9-]{1,20})?)\b/i)
+  if (fallback) {
+    const brand = (fallback[1] ?? '').trim()
+    const model = cleanModel((fallback[2] ?? '').trim())
+    if (brand && model && /\d/.test(model)) {
+      return { brand, model }
+    }
+  }
+  return { brand: '', model: '' }
+}
+
+function extractEquipmentNotes(raw: string): string | null {
+  const found: string[] = []
+  const seen = new Set<string>()
+
+  const push = (value: string) => {
+    const clean = value.trim().replace(/\s+/g, ' ').replace(/[.,;:]+$/, '')
+    if (clean.length < 2 || clean.length > 120) return
+    const key = clean.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    found.push(clean)
   }
 
-  const vt = pickVehicleType(trimmed)
-  if (vt) {
-    offerPatch.vehicle_type = vt
-    lines.push(`Fahrzeugart: ${vt}`)
+  for (const line of raw.split('\n')) {
+    const l = line.trim()
+    if (!l) continue
+    if (/^(ausstattung|extras?)\s*:/i.test(l)) {
+      const rest = l.replace(/^(ausstattung|extras?)\s*:/i, '')
+      for (const part of rest.split(/[,;/]| und /i)) push(part)
+      continue
+    }
+    if (/^[-*]\s+/.test(l)) {
+      push(l.replace(/^[-*]\s+/, ''))
+    }
   }
 
-  const { brand, model } = parseBrandModel(upper, trimmed)
+  for (const m of raw.matchAll(/\(([^)]{3,140})\)/g)) {
+    for (const part of (m[1] ?? '').split(/[,;/]| und /i)) push(part)
+  }
+
+  for (const m of raw.matchAll(EQUIPMENT_RE)) {
+    push(m[1] ?? '')
+  }
+
+  if (found.length === 0) return null
+  return found.join(', ')
+}
+
+function addLine(lines: string[], seen: Set<string>, label: string, value: string | number) {
+  const line = `${label}: ${value}`
+  const key = line.toLowerCase()
+  if (seen.has(key)) return
+  seen.add(key)
+  lines.push(line)
+}
+
+/** On-device heuristic parser - no network; best-effort structured fields from pasted notes. */
+export function parseOfferFreeText(raw: string): OfferFreeTextParse {
+  const normalized = normalizeInput(raw)
+  if (!normalized) {
+    return { offerPatch: {}, vehicleExtraPatch: {}, summaryLines: [] }
+  }
+
+  const offerPatch: Partial<TimetableTruckOffer> = {}
+  const vehicleExtraPatch: Partial<TimetableVehicleDisplayExtra> = {}
+  const summaryLines: string[] = []
+  const summarySeen = new Set<string>()
+
+  const vehicleType = pickVehicleType(normalized)
+  if (vehicleType) {
+    offerPatch.vehicle_type = vehicleType
+    addLine(summaryLines, summarySeen, 'Vehicle type', vehicleType)
+  }
+
+  const { brand, model } = parseBrandModel(normalized)
   if (brand) {
     offerPatch.brand = brand
-    lines.push(`Hersteller: ${brand}`)
+    addLine(summaryLines, summarySeen, 'Brand', brand)
   }
   if (model) {
     offerPatch.model = model
-    lines.push(`Modell: ${model}`)
+    addLine(summaryLines, summarySeen, 'Model', model)
   }
 
-  const equipment = extractEquipmentNotes(trimmed)
+  const body = pickBody(normalized)
+  if (body) {
+    vehicleExtraPatch.body_type = body
+    addLine(summaryLines, summarySeen, 'Body', body)
+  }
+
+  const registration = parseRegistration(normalized)
+  if (registration) {
+    vehicleExtraPatch.registration_mm_yyyy = registration
+    addLine(summaryLines, summarySeen, 'First reg', registration)
+
+    const yearFromReg = registration.split('/')[1]
+    if (yearFromReg && /^\d{4}$/.test(yearFromReg)) {
+      const n = Number(yearFromReg)
+      if (Number.isFinite(n) && n >= 1980 && n <= 2060) {
+        offerPatch.year = n
+      }
+    }
+  }
+
+  if (offerPatch.year == null) {
+    const year = parseYear(normalized)
+    if (year != null) {
+      offerPatch.year = year
+      addLine(summaryLines, summarySeen, 'Year', year)
+    }
+  }
+
+  const mileage = parseKm(normalized)
+  if (mileage != null) {
+    offerPatch.mileage_km = mileage
+    addLine(summaryLines, summarySeen, 'Mileage', mileage.toLocaleString('de-DE'))
+  }
+
+  const price = parsePriceEur(normalized)
+  if (price != null) {
+    offerPatch.expected_price_eur = price
+    addLine(summaryLines, summarySeen, 'Price EUR', price.toLocaleString('de-DE'))
+  }
+
+  const quantity = parseQuantity(normalized)
+  if (quantity != null) {
+    offerPatch.quantity = quantity
+    addLine(summaryLines, summarySeen, 'Quantity', quantity)
+  }
+
+  const location = parseLocation(normalized)
+  if (location) {
+    offerPatch.location = location
+    addLine(summaryLines, summarySeen, 'Location', location)
+  }
+
+  const equipment = extractEquipmentNotes(normalized)
   if (equipment) {
     offerPatch.notes = equipment
-    lines.push(`Ausstattung: ${equipment}`)
+    addLine(summaryLines, summarySeen, 'Equipment', equipment)
   }
 
-  return { offerPatch, vehicleExtraPatch, summaryLines: lines }
+  return { offerPatch, vehicleExtraPatch, summaryLines }
 }
 
 export function buildGeneratorSummary(p: OfferFreeTextParse): string {
   if (p.summaryLines.length === 0) return ''
-  return p.summaryLines.join('\n')
+  return p.summaryLines.map((line) => `- ${line}`).join('\n')
 }

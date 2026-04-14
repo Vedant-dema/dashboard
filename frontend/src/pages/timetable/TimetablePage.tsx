@@ -41,6 +41,12 @@ import { TimetableTable } from './TimetableTable';
 import { TimetableCallModal } from './TimetableCallModal';
 import { TimetableContactDrawer } from './TimetableContactDrawer';
 import { TimetableOfferModal } from './TimetableOfferModal';
+import {
+  appendTimetableCallNoteToEntry,
+  entryAnyOfferHasContent,
+  getActivityNotesPlainText,
+  mergeTimetableOfferInputIntoEntry,
+} from './contactDrawerFormUtils';
 
 type CreateFormState = {
   date: string;
@@ -203,7 +209,13 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
       })
       .filter((row) => {
         if (!q) return true;
-        const haystack = `${row.company_name} ${row.contact_name} ${row.phone} ${row.notes} ${row.purpose}`.toLowerCase();
+        const noteHaystack = getActivityNotesPlainText(
+          row.contact_profile ?? {},
+          row.notes,
+          row.scheduled_at,
+        );
+        const haystack =
+          `${row.company_name} ${row.contact_name} ${row.phone} ${noteHaystack} ${row.purpose}`.toLowerCase();
         return haystack.includes(q);
       })
       .filter((row) => {
@@ -227,7 +239,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
       })
       .filter((row) => {
         if (!showOffersOnly) return true;
-        return row.outcome === 'has_trucks' || Boolean(row.offer);
+        return row.outcome === 'has_trucks' || entryAnyOfferHasContent(row);
       })
       .slice()
       .sort((a, b) => parseDateForSort(a.scheduled_at) - parseDateForSort(b.scheduled_at));
@@ -344,9 +356,8 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const applyCallLog = useCallback(
     (payload: TimetableCallLogInput) => {
       if (!callModalEntry) return;
-      const updated: TimetableEntry = {
+      const base: TimetableEntry = {
         ...callModalEntry,
-        notes: joinNotes(callModalEntry.notes, payload.note_append),
         outcome: payload.outcome,
         follow_up_at:
           payload.outcome === 'follow_up' || payload.outcome === 'has_trucks'
@@ -355,32 +366,39 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         is_completed: payload.outcome === 'no_trucks',
         last_called_at: nowIsoDateTime(),
       };
+      const noteAuthor = (user?.name ?? user?.email ?? '').trim();
+      const updated =
+        payload.note_append.trim() !== ''
+          ? appendTimetableCallNoteToEntry(base, payload.note_append, noteAuthor || undefined)
+          : { ...base, notes: joinNotes(callModalEntry.notes, payload.note_append) };
       setDb((prev) => upsertTimetableEntry(prev, updated));
       setCallModalEntry(null);
       if (updated.outcome === 'has_trucks') {
         setOfferModalEntry(updated);
       }
     },
-    [callModalEntry]
+    [callModalEntry, user?.email, user?.name]
   );
 
   const applyOffer = useCallback(
     (payload: TimetableOfferInput) => {
       if (!offerModalEntry) return;
       const nowIso = nowIsoDateTime();
+      const offerAuthor = (user?.name ?? user?.email ?? '').trim();
       const updated: TimetableEntry = {
-        ...offerModalEntry,
+        ...mergeTimetableOfferInputIntoEntry(
+          offerModalEntry,
+          payload,
+          nowIso,
+          offerAuthor || undefined
+        ),
         outcome: 'has_trucks',
         is_completed: false,
-        offer: {
-          captured_at: nowIso,
-          ...payload,
-        },
       };
       setDb((prev) => upsertTimetableEntry(prev, updated));
       setOfferModalEntry(null);
     },
-    [offerModalEntry]
+    [offerModalEntry, user?.email, user?.name]
   );
 
   const persistContactEntry = useCallback(
@@ -435,25 +453,31 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                     'Your personal queue for outbound calls — fast logging, follow-ups, and offer capture.'
                   )}
                 </p>
-                <div className="mt-5 flex flex-wrap items-center gap-3 text-xs">
-                  <span className="inline-flex items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 ring-1 ring-white/10">
-                    <UserRound className="h-4 w-4 text-slate-400" strokeWidth={2} />
-                    <span className="font-medium text-slate-200">{user?.name || t('commonUser', 'User')}</span>
-                  </span>
-                  <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold uppercase tracking-tight text-white shadow-lg shadow-violet-950/40 ring-2 ring-white/10"
-                    title={t('timetableOwnerCode', 'Owner code')}
-                  >
-                    {viewerBuyerCode}
-                  </span>
-                  {department ? (
-                    <span className="text-slate-500">
-                      {t('customersArea', 'Area')}:{' '}
-                      <span className="font-semibold text-slate-200">
-                        {t(DEPARTMENT_I18N_KEY[department], department)}
+                <div className="customers-modal-genz-header timetable-kalender-header-chip-shell mt-5">
+                  <div className="customers-modal-genz-header-chips-scroll -mx-1 max-w-full overflow-x-auto overflow-y-hidden pb-1">
+                    <div className="customer360-strip-chips flex min-w-min flex-nowrap items-center gap-2 pr-2">
+                      <span
+                        data-dema-chip="aufnahme"
+                        className="customers-modal-genz-h-chip cursor-default min-w-0 max-w-[min(100%,18rem)] sm:max-w-[min(100%,22rem)]"
+                        title={t('commonUser', 'User')}
+                      >
+                        <UserRound className="h-3 w-3 shrink-0 opacity-95 sm:h-3.5 sm:w-3.5" aria-hidden />
+                        <span className="min-w-0 truncate font-medium">
+                          {user?.name || t('commonUser', 'User')}
+                        </span>
                       </span>
-                    </span>
-                  ) : null}
+                      {department ? (
+                        <span
+                          data-dema-chip="vat-unknown"
+                          className="customers-modal-genz-h-chip cursor-default max-w-[min(100%,20rem)]"
+                        >
+                          <span className="min-w-0 truncate">
+                            {t('customersArea', 'Area')}: {t(DEPARTMENT_I18N_KEY[department], department)}
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div
@@ -868,12 +892,12 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
 
       <TimetableContactDrawer
         entry={contactDrawerEntry}
+        allEntries={db.entries}
         localeTag={localeTag}
         t={t}
         onClose={() => setContactDrawerEntryId(null)}
         onPersist={persistContactEntry}
         onLogCall={(row) => setCallModalEntry(row)}
-        onEditOffer={(row) => setOfferModalEntry(row)}
       />
 
       <TimetableCallModal
@@ -885,6 +909,8 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
 
       <TimetableOfferModal
         entry={offerModalEntry}
+        allEntries={db.entries}
+        localeTag={localeTag}
         t={t}
         onClose={() => setOfferModalEntry(null)}
         onSave={applyOffer}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FileText, MapPin, Package, Truck, UserRound, Users } from 'lucide-react';
 import type {
   TimetableContactProfile,
@@ -14,6 +14,7 @@ import {
   ensureProfile,
   formatEur,
   fromDatetimeLocalValue,
+  entryAnyOfferHasContent,
   offerHasContent,
   OUTCOME_ORDER,
   toDatetimeLocalValue,
@@ -29,6 +30,7 @@ import {
   textareaClass,
 } from '../contactDrawerFormClasses';
 import { ContactCard } from './contactDrawerCards';
+import { TimetableActivityNotesThread } from './TimetableActivityNotesThread';
 import { TimetableExtraKontakteBlock } from './TimetableExtraKontakteBlock';
 
 export type TimetableContactDrawerFormBodyProps = {
@@ -226,10 +228,10 @@ export function TimetableContactDrawerFormBody({
         <ContactCard
           icon={MapPin}
           titleId="timetable-contact-heading-location"
-          title={t('timetableContactSectionLocationTitle', 'Location & quick notes')}
+          title={t('timetableContactSectionLocationTitle', 'Location & overview')}
           subtitle={t(
             'timetableContactSectionLocationSubtitle',
-            'Address, fleet summary, and row-visible call notes.'
+            'Address and fleet summary; dated call notes are under Correspondence & notes or Customer → Remarks.'
           )}
         >
           <div className="flex w-full flex-col gap-4">
@@ -261,19 +263,6 @@ export function TimetableContactDrawerFormBody({
                 }
                 rows={5}
                 className={`${overviewNotesTextareaClass} min-h-[6.75rem] w-full`}
-              />
-            </label>
-            <label className={`${overviewFieldClass} w-full`}>
-              <span className={overviewLabelClass}>{t('timetableContactTableNotes', 'Call / list notes')}</span>
-              <textarea
-                value={draft.notes}
-                onChange={(e) => patchDraft((prev) => ({ ...prev, notes: e.target.value }))}
-                rows={5}
-                className={`${overviewNotesTextareaClass} min-h-[6.75rem] w-full`}
-                placeholder={t(
-                  'timetableContactTableNotesPh',
-                  'Short notes visible in the timetable row.'
-                )}
               />
             </label>
           </div>
@@ -686,7 +675,7 @@ export function TimetableContactDrawerFormBody({
                 />
               </label>
             </div>
-            {!offerHasContent(draft.offer) ? (
+            {!entryAnyOfferHasContent(draft) ? (
               <p className="mt-5 text-sm leading-relaxed text-slate-500">
                 {t(
                   'timetableContactEmptyVehicle',
@@ -829,21 +818,13 @@ export function TimetableContactDrawerFormBody({
             'Letters, e-mail drafts, and free-form history'
           )}
         >
-          <textarea
-            value={p.activity_notes ?? ''}
-            onChange={(e) =>
-              patchDraft((prev) => {
-                const pr = ensureProfile(prev);
-                pr.activity_notes = e.target.value || undefined;
-                return { ...prev, contact_profile: { ...pr } };
-              })
-            }
-            rows={12}
-            className={`${textareaClass} min-h-[18rem] resize-none font-sans text-[14px] leading-relaxed xl:min-h-[22rem]`}
-            placeholder={t(
-              'timetableContactActivityPlaceholder',
-              'Correspondence, e-mail text, and call history...'
-            )}
+          <TimetableActivityNotesThread
+            draft={draft}
+            profile={p}
+            patchDraft={patchDraft}
+            localeTag={localeTag}
+            t={t}
+            layout="formSection"
           />
         </ContactCard>
       </section>

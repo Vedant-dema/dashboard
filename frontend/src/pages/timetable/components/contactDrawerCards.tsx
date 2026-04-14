@@ -48,7 +48,7 @@ export function ContactSmartSummaryCard({
             >
               {t('timetableContactAiTitle', 'Smart summary')}
             </h3>
-            <span className="rounded-full bg-blue-600/12 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-900 ring-1 ring-blue-500/25">
+            <span className="tt-drawer-ai-live-tag rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]">
               {t('timetableContactAiBadge', 'Live')}
             </span>
           </div>

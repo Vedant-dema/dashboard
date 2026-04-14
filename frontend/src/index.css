@@ -1457,6 +1457,19 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .customers-modal-genz-header::before {
     display: none;
   }
+  /* Kalender / timetable page — reuse customer header chip themes + orbit; strip only (no modal header chrome) */
+  .customers-modal-genz-header.timetable-kalender-header-chip-shell {
+    border-bottom: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    overflow: visible !important;
+    isolation: auto;
+  }
+  .customers-modal-genz-header.timetable-kalender-header-chip-shell::after {
+    display: none !important;
+  }
   .customers-modal-genz-header::after {
     display: block;
     content: "";
@@ -1953,6 +1966,66 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .customers-modal-genz-header-meta.border-t {
     border-top-color: rgb(255 255 255 / 0.12) !important;
   }
+
+  /* Timetable contact drawer — copy icon inside genz header chips (Kalender / customer edit–same orbit ring) */
+  .customers-modal-genz-header .customers-modal-genz-h-chip button.tt-drawer-chip-copy {
+    margin-left: 0.05rem;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    padding: 0.15rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.88;
+    transition:
+      opacity 0.12s ease,
+      background-color 0.12s ease;
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip button.tt-drawer-chip-copy:hover:not(:disabled) {
+    opacity: 1;
+    background-color: rgb(255 255 255 / 0.12);
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip button.tt-drawer-chip-copy:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(56 189 248 / 0.55);
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip button.tt-drawer-chip-copy:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  /* (Edit) mode badge — steel / indigo */
+  .customers-modal-genz-header .tt-drawer-mode-badge {
+    border-color: rgb(129 140 248 / 0.45) !important;
+    background: linear-gradient(
+      145deg,
+      rgb(49 46 129 / 0.88) 0%,
+      rgb(30 27 75 / 0.9) 100%
+    ) !important;
+    color: rgb(224 231 255) !important;
+    box-shadow:
+      inset 0 1px 0 0 rgb(199 210 254 / 0.15),
+      0 2px 12px -3px rgb(67 56 202 / 0.35);
+  }
+
+  /* KD.-NR. glass tile — distinct from strip tags (sapphire) */
+  .customers-modal-genz-header .customers-modal-genz-ku-block.tt-drawer-header-kd-block {
+    border-color: rgb(56 189 248 / 0.38);
+    background: linear-gradient(
+      168deg,
+      rgb(12 74 110 / 0.72) 0%,
+      rgb(15 23 42 / 0.82) 52%,
+      rgb(30 58 138 / 0.55) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 0 rgb(186 230 253 / 0.14),
+      0 10px 28px -12px rgb(8 47 73 / 0.55);
+  }
+
   .customers-modal-genz-header-chips-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -2977,4 +3050,14 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     animation: none !important;
     --customers-modal-genz-h-chip-orbit: 42deg;
   }
+}
+
+/* Timetable contact drawer — smart summary “Live” tag (light card surfaces) */
+.tt-drawer-ai-live-tag {
+  border: 1px solid rgb(192 132 252 / 0.42);
+  background: linear-gradient(128deg, rgb(253 244 255 / 0.98) 0%, rgb(224 231 255 / 0.94) 100%);
+  color: rgb(91 33 182);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.88),
+    0 1px 6px -1px rgb(147 51 234 / 0.18);
 }

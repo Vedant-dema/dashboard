@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Phone, PhoneCall, Truck } from 'lucide-react';
 import type { TimetableEntry } from '../../types/timetable';
+import { entryAnyOfferHasContent, getActivityNotesLastSnippet } from './contactDrawerFormUtils';
 
 type Props = {
   rows: TimetableEntry[];
@@ -33,7 +34,7 @@ function formatRowTime(raw: string, localeTag: string): string {
 const EM_DASH = '\u2014';
 
 function kaArtFromRow(row: TimetableEntry): string {
-  if (row.outcome === 'has_trucks' || row.offer) return 'KA';
+  if (row.outcome === 'has_trucks' || entryAnyOfferHasContent(row)) return 'KA';
   return 'A';
 }
 
@@ -165,7 +166,10 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                     {row.purpose || emptyMark}
                   </td>
                   <td className="max-w-md px-3 py-3.5 text-sm leading-relaxed text-slate-600">
-                    <p className="line-clamp-3 print:line-clamp-none">{row.notes || emptyMark}</p>
+                    <p className="line-clamp-3 print:line-clamp-none">
+                      {getActivityNotesLastSnippet(row.contact_profile ?? {}, row.notes, row.scheduled_at) ||
+                        emptyMark}
+                    </p>
                   </td>
                   <td className="px-3 py-3.5">
                     <span
@@ -200,7 +204,7 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                         className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 text-[10px] font-bold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]"
                       >
                         <PhoneCall className="h-3 w-3" strokeWidth={2} />
-                        {t('timetableActionLogCall', 'Log call')}
+                        {t('timetableActionLogCall', 'Appointment')}
                       </button>
                       <button
                         type="button"
@@ -208,7 +212,7 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                         className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-2.5 text-[10px] font-bold text-white shadow-md shadow-orange-900/20 transition hover:brightness-105 active:scale-[0.98]"
                       >
                         <Truck className="h-3 w-3" strokeWidth={2} />
-                        {row.offer
+                        {entryAnyOfferHasContent(row)
                           ? t('timetableActionEditOffer', 'Edit offer')
                           : t('timetableActionAddOffer', 'Add offer')}
                       </button>

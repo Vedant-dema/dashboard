@@ -40,6 +40,28 @@ const STEP: Record<(typeof SECTION_KEYS)[number], string> = {
   activity: '06',
 };
 
+/** Inactive section pills — each hue unique for quick scanning. */
+const SECTION_INACTIVE_SHELL: Record<(typeof SECTION_KEYS)[number], string> = {
+  contact:
+    'bg-violet-50/95 text-violet-950 ring-violet-200/90 hover:bg-violet-100/90 hover:ring-violet-300/80',
+  location: 'bg-sky-50/95 text-sky-950 ring-sky-200/90 hover:bg-sky-100/90 hover:ring-sky-300/80',
+  people:
+    'bg-emerald-50/95 text-emerald-950 ring-emerald-200/90 hover:bg-emerald-100/90 hover:ring-emerald-300/80',
+  history:
+    'bg-amber-50/95 text-amber-950 ring-amber-200/90 hover:bg-amber-100/90 hover:ring-amber-300/80',
+  vehicle: 'bg-rose-50/95 text-rose-950 ring-rose-200/90 hover:bg-rose-100/90 hover:ring-rose-300/80',
+  activity: 'bg-cyan-50/95 text-cyan-950 ring-cyan-200/90 hover:bg-cyan-100/90 hover:ring-cyan-300/80',
+};
+
+const SECTION_INACTIVE_STEP: Record<(typeof SECTION_KEYS)[number], string> = {
+  contact: 'bg-violet-100 text-violet-700 ring-violet-200/90',
+  location: 'bg-sky-100 text-sky-700 ring-sky-200/90',
+  people: 'bg-emerald-100 text-emerald-700 ring-emerald-200/90',
+  history: 'bg-amber-100 text-amber-800 ring-amber-200/90',
+  vehicle: 'bg-rose-100 text-rose-800 ring-rose-200/90',
+  activity: 'bg-cyan-100 text-cyan-800 ring-cyan-200/90',
+};
+
 type Props = {
   t: (key: string, fallback: string) => string;
   children: ReactNode;
@@ -123,17 +145,17 @@ export const TimetableContactDrawerSectionNav = forwardRef<HTMLDivElement, Props
                   e.preventDefault();
                   scrollSectionIntoView(item.id);
                 }}
-                className={`flex min-h-[2.45rem] min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 py-1.5 text-left text-[10px] font-semibold leading-snug transition motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.99] motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs ${
+                className={`flex min-h-[2.45rem] min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 py-1.5 text-left text-[10px] font-semibold leading-snug ring-1 transition motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.99] motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs ${
                   activeId === item.id
-                    ? 'bg-slate-900 text-white shadow-sm ring-1 ring-slate-900/20'
-                    : 'bg-white/95 text-slate-700 ring-1 ring-slate-200/80 hover:bg-sky-50/70'
+                    ? 'bg-slate-900 text-white shadow-sm ring-slate-900/20'
+                    : SECTION_INACTIVE_SHELL[item.key]
                 }`}
               >
                 <span
-                  className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold tabular-nums ${
+                  className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold tabular-nums ring-1 ${
                     activeId === item.id
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                      ? 'bg-white/20 text-white ring-white/25'
+                      : SECTION_INACTIVE_STEP[item.key]
                   }`}
                   aria-hidden
                 >

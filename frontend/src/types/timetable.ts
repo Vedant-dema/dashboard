@@ -16,7 +16,23 @@ export type TimetableFilterMode =
 /** Same fields as customer modal `KontaktEntry` / `KundenKontakt` for future CRM sync. */
 export type TimetableContactPerson = KontaktEntry;
 
+/** One saved price pair from a call/visit (purchasing bid vs seller asking). */
+export interface TimetableNegotiationPriceRound {
+  id: string;
+  /** ISO 8601 when this round was recorded. */
+  at: string;
+  /** Who saved the round (display only). */
+  author_name?: string;
+  /** Seller/customer asking price (EUR). */
+  seller_asking_eur: number | null;
+  /** Purchasing (DEMA) bid (EUR). */
+  purchase_bid_eur: number | null;
+  note?: string;
+}
+
 export interface TimetableTruckOffer {
+  /** Stable id for multi-offer rows (per vehicle / offer slot). */
+  id: string;
   captured_at: string;
   vehicle_type: string;
   brand: string;
@@ -25,8 +41,12 @@ export interface TimetableTruckOffer {
   mileage_km: number | null;
   quantity: number | null;
   expected_price_eur: number | null;
+  /** Latest purchasing bid (EUR); snapshotted into `negotiation_rounds` when recording. */
+  purchase_bid_eur?: number | null;
   location: string;
   notes: string;
+  /** Chronological record of quoted prices for follow-up calls on the same vehicle. */
+  negotiation_rounds?: TimetableNegotiationPriceRound[];
 }
 
 /** One row in “weitere Termine Kunde”. */
@@ -95,6 +115,16 @@ export interface TimetableOverviewKundeDraft {
   adressen: TimetableOverviewAdresseDraft[];
 }
 
+/** One dated remark in the correspondence / Bemerkungen thread (chat-style log). */
+export interface TimetableActivityNoteEntry {
+  id: string;
+  /** ISO 8601 (e.g. from `Date.toISOString()`). */
+  at: string;
+  text: string;
+  /** Display name of the user who added the line (optional for legacy/imported rows). */
+  author_name?: string;
+}
+
 /** Rich CRM-style context for the customer-contact drawer (optional per row). */
 export interface TimetableContactProfile {
   industry?: string;
@@ -104,9 +134,13 @@ export interface TimetableContactProfile {
   contacts?: TimetableContactPerson[];
   assignment_history?: TimetableAssignmentRow[];
   appointment_history?: TimetableAppointmentHistoryRow[];
-  /** Long-form correspondence (legacy right-hand Bemerkung pane). */
+  /** Long-form correspondence (legacy single block — migrated to `activity_notes_log` in UI). */
   activity_notes?: string;
+  /** Dated correspondence lines (preferred; shown as chat bubbles with timestamps). */
+  activity_notes_log?: TimetableActivityNoteEntry[];
   vehicle_extra?: TimetableVehicleDisplayExtra;
+  /** Per-offer vehicle display fields (key = `TimetableTruckOffer.id`). */
+  vehicle_extras?: Record<string, TimetableVehicleDisplayExtra>;
   /** Purchase confirmation tick (legacy Kaufbestätigung). */
   purchase_confirmed?: boolean;
   /** Extended “Customer & Address” overview (Kalender drawer). */
@@ -134,7 +168,10 @@ export interface TimetableEntry {
   is_completed: boolean;
   is_parked: boolean;
   last_called_at: string | null;
-  offer: TimetableTruckOffer | null;
+  /** One or more vehicle / offer slots for this row. */
+  offers: TimetableTruckOffer[];
+  /** Which offer slot the drawer generator and minimal form edit (`offers` id). */
+  selected_offer_id: string | null;
   contact_profile?: TimetableContactProfile;
 }
 
@@ -157,6 +194,7 @@ export interface TimetableOfferInput {
   mileage_km: number | null;
   quantity: number | null;
   expected_price_eur: number | null;
+  purchase_bid_eur: number | null;
   location: string;
   notes: string;
 }

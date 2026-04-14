@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Copy, ExternalLink, MapPin, Phone, Plus, Sparkles, Trash2, Truck, X } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  Copy,
+  ExternalLink,
+  MapPin,
+  Phone,
+  Plus,
+  Sparkles,
+  Trash2,
+  Truck,
+  X,
+} from 'lucide-react';
 import type {
   TimetableContactProfile,
   TimetableEntry,
@@ -18,9 +30,22 @@ import {
   ADRESSE_TYPEN,
   landCodeToArtLand,
 } from '../../features/customers/mappers/customerFormConstants';
-import { emptyContactPerson, ensureProfile, EMPTY_OFFER, offerHasContent } from './contactDrawerFormUtils';
+import {
+  createEmptyTruckOffer,
+  emptyContactPerson,
+  ensureOfferIdsAndSelection,
+  ensureProfile,
+  finalizeOffersForPersist,
+  getActivityNotesLastSnippet,
+  offerHasContent,
+  withAutoNegotiationRoundsForEntry,
+} from './contactDrawerFormUtils';
 import { inputClass, labelClass, textareaClass } from './contactDrawerFormClasses';
+import { TimetableActivityNotesThread } from './components/TimetableActivityNotesThread';
 import { TimetableOfferGeneratorBlock } from './components/TimetableOfferGeneratorBlock';
+import { TimetableOfferNegotiationHistory } from './components/TimetableOfferNegotiationHistory';
+import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel';
+import { TimetableOfferVehicleStrip } from './components/TimetableOfferVehicleStrip';
 import { TimetableOfferMinimalBlock } from './components/TimetableOfferMinimalBlock';
 import {
   emptyOverviewAdresse,
@@ -29,15 +54,21 @@ import {
   timetableOverviewFromEntry,
 } from './timetableOverviewKunde';
 import { TimetableExtraKontakteBlock } from './components/TimetableExtraKontakteBlock';
+import {
+  collectTimetableOfferMemory,
+  offerHasVehicleIdentity,
+  type TimetableOfferMemoryItem,
+} from './timetableOfferMemory';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Props = {
   entry: TimetableEntry | null;
+  allEntries: TimetableEntry[];
   localeTag: string;
   t: (key: string, fallback: string) => string;
   onClose: () => void;
   onPersist: (entry: TimetableEntry) => void;
   onLogCall: (entry: TimetableEntry) => void;
-  onEditOffer: (entry: TimetableEntry) => void;
 };
 
 function cloneEntry(e: TimetableEntry): TimetableEntry {
@@ -54,9 +85,12 @@ function formatRowDateTime(raw: string, localeTag: string): { date: string; time
   };
 }
 
-function kaArtFromRow(row: TimetableEntry): string {
-  if (row.outcome === 'has_trucks' || row.offer) return 'KA';
-  return 'A';
+/** Map row outcome to existing `data-dema-chip` palettes (same orbit ring as customer / Kalender chips). */
+function timetableOutcomeToDemaChip(outcome: TimetableEntry['outcome']): string {
+  if (outcome === 'has_trucks') return 'status-active';
+  if (outcome === 'follow_up') return 'doc-calm';
+  if (outcome === 'no_trucks') return 'vat-invalid';
+  return 'vat-unknown';
 }
 
 function outcomeLabel(entry: TimetableEntry, t: (key: string, fallback: string) => string): string {
@@ -92,8 +126,9 @@ function getContactSmartBullets(
       .replace('{outcome}', outcomeLabel(draft, t))
       .replace('{slot}', slot)
   );
-  if (offerHasContent(draft.offer)) {
-    const o = draft.offer!;
+  const offerLine = (draft.offers ?? []).find((o) => offerHasContent(o));
+  if (offerLine) {
+    const o = offerLine;
     const detailRaw =
       [o.brand, o.model].filter(Boolean).join(' ').trim() ||
       o.vehicle_type.trim() ||
@@ -108,7 +143,7 @@ function getContactSmartBullets(
       )
     );
   }
-  const act = (profile.activity_notes || '').trim();
+  const act = getActivityNotesLastSnippet(profile, draft.notes, draft.scheduled_at);
   if (act) {
     const snippet = act.length > 64 ? `${act.slice(0, 61)}…` : act;
     bullets.push(
@@ -191,16 +226,6 @@ function mergeMasterOverview(base: TimetableOverviewKundeDraft, mk: KundenStamm)
   });
 }
 
-async function copyTextToClipboard(text: string): Promise<void> {
-  const v = text.trim();
-  if (!v) return;
-  try {
-    await navigator.clipboard.writeText(v);
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Staggered entrance for smart summary card (motion-safe). */
 function overviewStaggerClass(ms: number): string {
   return `motion-safe:animate-contact-card-in motion-reduce:animate-none [animation-delay:${ms}ms]`;
@@ -248,7 +273,7 @@ function ContactSmartSummaryCard({
             >
               {t('timetableContactAiTitle', 'Smart summary')}
             </h3>
-            <span className="rounded-full bg-blue-600/12 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-900 ring-1 ring-blue-500/25">
+            <span className="tt-drawer-ai-live-tag rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ring-1">
               {t('timetableContactAiBadge', 'Live')}
             </span>
           </div>
@@ -282,21 +307,58 @@ function ContactSmartSummaryCard({
 
 export function TimetableContactDrawer({
   entry,
+  allEntries,
   localeTag,
   t,
   onClose,
   onPersist,
   onLogCall,
-  onEditOffer,
 }: Props) {
+  const { user } = useAuth();
   const [draft, setDraft] = useState<TimetableEntry | null>(null);
   const [dirty, setDirty] = useState(false);
   const [smartSummaryOpen, setSmartSummaryOpen] = useState(false);
   const [kundenDbTick, setKundenDbTick] = useState(0);
   /** Split master/contact vs. offer so the offer generator is not shown on the call workspace. */
   const [drawerWorkspaceTab, setDrawerWorkspaceTab] = useState<'call' | 'offer'>('call');
+  const [copyFlash, setCopyFlash] = useState<'ok' | 'err' | null>(null);
   const smartSummaryRef = useRef<HTMLDivElement>(null);
   const prevEntryIdRef = useRef<number | null>(null);
+  const copyFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const companyFieldAnchorRef = useRef<HTMLDivElement>(null);
+  const addressBlockAnchorRef = useRef<HTMLDivElement>(null);
+
+  const copyWithFlash = useCallback(async (text: string) => {
+    const v = text.trim();
+    if (!v) return;
+    try {
+      await navigator.clipboard.writeText(v);
+      setCopyFlash('ok');
+    } catch {
+      setCopyFlash('err');
+    }
+    if (copyFlashTimerRef.current) clearTimeout(copyFlashTimerRef.current);
+    copyFlashTimerRef.current = setTimeout(() => setCopyFlash(null), 2000);
+  }, []);
+
+  const goToCompanyFromSummary = useCallback(() => {
+    companyFieldAnchorRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, []);
+
+  const goToAddressFromSummary = useCallback(() => {
+    addressBlockAnchorRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    setCopyFlash(null);
+  }, [entry?.id]);
+
+  useEffect(
+    () => () => {
+      if (copyFlashTimerRef.current) clearTimeout(copyFlashTimerRef.current);
+    },
+    []
+  );
 
   useEffect(() => {
     const onKunden = () => setKundenDbTick((n) => n + 1);
@@ -337,7 +399,7 @@ export function TimetableContactDrawer({
         ];
       }
       next.contact_profile = pr;
-      setDraft(next);
+      setDraft(ensureOfferIdsAndSelection(next));
       setDirty(false);
     }
     prevEntryIdRef.current = entry.id;
@@ -355,7 +417,7 @@ export function TimetableContactDrawer({
     }
     setDraft((current) => {
       if (!current || current.id !== parsed.id) return current;
-      return cloneEntry(parsed);
+      return ensureOfferIdsAndSelection(cloneEntry(parsed));
     });
   }, [entryFingerprint, dirty]);
 
@@ -432,6 +494,58 @@ export function TimetableContactDrawer({
     setDirty(true);
   }, []);
 
+  useEffect(() => {
+    if (drawerWorkspaceTab !== 'offer' || !draft) return;
+    if ((draft.offers ?? []).length > 0) return;
+    patchDraft((prev) => {
+      if (!prev || (prev.offers ?? []).length > 0) return prev;
+      const nu = createEmptyTruckOffer();
+      return { ...prev, offers: [nu], selected_offer_id: nu.id };
+    });
+  }, [drawerWorkspaceTab, draft, patchDraft]);
+
+  const selectOfferId = useCallback(
+    (id: string) => {
+      patchDraft((prev) => ({ ...prev, selected_offer_id: id }));
+    },
+    [patchDraft]
+  );
+
+  const addVehicleOffer = useCallback(() => {
+    patchDraft((prev) => {
+      const nu = createEmptyTruckOffer();
+      return {
+        ...prev,
+        offers: [...(prev.offers ?? []), nu],
+        selected_offer_id: nu.id,
+      };
+    });
+  }, [patchDraft]);
+
+  const removeVehicleOffer = useCallback(
+    (id: string) => {
+      patchDraft((prev) => {
+        const e0 = ensureOfferIdsAndSelection(prev);
+        const nextOffers = e0.offers.filter((o) => o.id !== id);
+        let selected_offer_id = e0.selected_offer_id;
+        if (selected_offer_id === id) selected_offer_id = nextOffers[0]?.id ?? null;
+        const pr = ensureProfile(e0);
+        const vex = { ...(pr.vehicle_extras ?? {}) };
+        delete vex[id];
+        const nextPr: TimetableContactProfile = { ...pr };
+        if (Object.keys(vex).length > 0) nextPr.vehicle_extras = vex;
+        else delete nextPr.vehicle_extras;
+        return {
+          ...e0,
+          offers: nextOffers,
+          selected_offer_id,
+          contact_profile: nextPr,
+        };
+      });
+    },
+    [patchDraft]
+  );
+
   const patchOverviewKunde = useCallback(
     (fn: (k: TimetableOverviewKundeDraft) => TimetableOverviewKundeDraft) => {
       patchDraft((prev) => {
@@ -452,8 +566,17 @@ export function TimetableContactDrawer({
   const setOfferField = useCallback(
     (patch: Partial<TimetableTruckOffer>) => {
       patchDraft((prev) => {
-        const cur = prev.offer ?? { ...EMPTY_OFFER };
-        return { ...prev, offer: { ...cur, ...patch } };
+        const e0 = ensureOfferIdsAndSelection(prev);
+        const sid = e0.selected_offer_id ?? e0.offers[0]?.id;
+        let offers = [...e0.offers];
+        if (!sid && offers.length === 0) {
+          const nu = createEmptyTruckOffer();
+          return { ...prev, offers: [{ ...nu, ...patch }], selected_offer_id: nu.id };
+        }
+        const idx = sid ? offers.findIndex((o) => o.id === sid) : -1;
+        if (idx < 0 || !offers[idx]) return e0;
+        offers[idx] = { ...offers[idx]!, ...patch };
+        return { ...e0, offers, selected_offer_id: sid };
       });
     },
     [patchDraft]
@@ -462,23 +585,47 @@ export function TimetableContactDrawer({
   const setVehicleExtra = useCallback(
     (patch: Partial<TimetableVehicleDisplayExtra>) => {
       patchDraft((prev) => {
-        const pr = ensureProfile(prev);
+        const e0 = ensureOfferIdsAndSelection(prev);
+        const sid = e0.selected_offer_id ?? e0.offers[0]?.id;
+        if (!sid) {
+          const nu = createEmptyTruckOffer();
+          return {
+            ...prev,
+            offers: [nu],
+            selected_offer_id: nu.id,
+            contact_profile: {
+              ...ensureProfile(prev),
+              vehicle_extras: { [nu.id]: { ...patch } },
+            },
+          };
+        }
+        const pr = ensureProfile(e0);
+        const vex = { ...(pr.vehicle_extras ?? {}) };
+        vex[sid] = { ...(vex[sid] ?? {}), ...patch };
         return {
-          ...prev,
-          contact_profile: {
-            ...pr,
-            vehicle_extra: { ...(pr.vehicle_extra ?? {}), ...patch },
-          },
+          ...e0,
+          contact_profile: { ...pr, vehicle_extras: vex },
         };
       });
     },
     [patchDraft]
   );
 
+  const applyOfferMemoryPrices = useCallback(
+    (item: TimetableOfferMemoryItem) => {
+      setOfferField({
+        expected_price_eur: item.latestSellerAskingEur,
+        purchase_bid_eur: item.latestPurchaseBidEur,
+      });
+    },
+    [setOfferField]
+  );
+
   const handleSave = useCallback(() => {
     if (!draft || !entry) return;
-    const next = cloneEntry(draft);
+    let next = cloneEntry(draft);
     const nowIso = new Date().toISOString();
+    const author = (user?.name ?? user?.email ?? '').trim();
 
     const prSave = next.contact_profile ? { ...next.contact_profile } : undefined;
     const ov = prSave?.overview_kunde;
@@ -487,44 +634,61 @@ export function TimetableContactDrawer({
     if (c0?.name?.trim()) next.contact_name = c0.name.trim();
     if (c0?.telefon?.trim()) next.phone = c0.telefon.trim();
     if (prSave) next.contact_profile = prSave;
+    next = withAutoNegotiationRoundsForEntry(next, nowIso, author || undefined);
 
-    if (offerHasContent(next.offer)) {
-      const o = next.offer!;
-      next.offer = {
-        ...o,
-        captured_at: o.captured_at?.trim() ? o.captured_at : nowIso,
-      };
-    } else {
-      next.offer = null;
+    const fin = finalizeOffersForPersist(next, nowIso);
+    next = fin.entry;
+    const p = next.contact_profile ? { ...next.contact_profile } : undefined;
+    if (p?.vehicle_extras && fin.prunedOfferIds.length > 0) {
+      const vx = { ...p.vehicle_extras };
+      for (const rid of fin.prunedOfferIds) delete vx[rid];
+      if (Object.keys(vx).length > 0) p.vehicle_extras = vx;
+      else delete p.vehicle_extras;
     }
-
-    const p = next.contact_profile;
+    if (p?.vehicle_extras && Object.keys(p.vehicle_extras).length > 0) {
+      delete p.vehicle_extra;
+    }
     if (p?.vehicle_extra && !vehicleExtraHasContent(p.vehicle_extra)) {
       delete p.vehicle_extra;
     }
     if (p && !p.purchase_confirmed) {
       delete p.purchase_confirmed;
     }
+    if (p) next.contact_profile = p;
 
     onPersist(next);
     setDirty(false);
-  }, [draft, entry, onPersist]);
+  }, [draft, entry, onPersist, user?.email, user?.name]);
 
   const handleDiscard = useCallback(() => {
     if (!entry) return;
-    setDraft(cloneEntry(entry));
+    setDraft(ensureOfferIdsAndSelection(cloneEntry(entry)));
     setDirty(false);
   }, [entry]);
 
   if (!entry || !draft) return null;
 
   const p = ensureProfile(draft);
+  const eOffer = ensureOfferIdsAndSelection(draft);
   const { date: slotDate, time: slotTime } = formatRowDateTime(draft.scheduled_at, localeTag);
   const overview = normalizeTimetableOverviewKunde(
     draft.contact_profile?.overview_kunde ?? timetableOverviewFromEntry(draft)
   );
-  const offer = draft.offer ?? EMPTY_OFFER;
-  const ve = p.vehicle_extra ?? {};
+  const selectedOfferId = eOffer.selected_offer_id ?? eOffer.offers[0]?.id ?? '';
+  const offer =
+    eOffer.offers.find((o) => o.id === selectedOfferId) ?? eOffer.offers[0] ?? createEmptyTruckOffer();
+  const ve =
+    (selectedOfferId ? p.vehicle_extras?.[selectedOfferId] : undefined) ??
+    (eOffer.offers.length === 1 && selectedOfferId === eOffer.offers[0]?.id ? p.vehicle_extra : undefined) ??
+    {};
+  const offerMemoryItems = collectTimetableOfferMemory({
+    entries: allEntries,
+    targetEntry: draft,
+    targetOffer: offer,
+    currentOfferId: selectedOfferId || null,
+    limit: 7,
+  });
+  const hasVehicleIdentity = offerHasVehicleIdentity(offer);
   const companyTitle =
     (overview.firmenname || draft.company_name).trim() || t('commonPlaceholderDash', '—');
   const addressLine = formatOverviewAddressLine(overview);
@@ -544,6 +708,9 @@ export function TimetableContactDrawer({
       : overview.customer_status === 'inactive'
         ? t('newCustomerStatusInactive', 'Inactive')
         : t('newCustomerStatusBlocked', 'Blocked');
+
+  const slotLine = [slotDate, slotTime].filter(Boolean).join(' · ');
+  const brancheMeta = headerCrmDisplay.branche.trim();
 
   const patchAdresseIdx = (idx: number, patch: Partial<(typeof overview.adressen)[0]>) => {
     patchOverviewKunde((k0) => {
@@ -589,18 +756,25 @@ export function TimetableContactDrawer({
                     id="timetable-contact-drawer-title"
                     className="min-w-0 max-w-full text-lg font-bold tracking-tight sm:text-xl"
                   >
-                    <span className="customers-modal-genz-header-link truncate">{companyTitle}</span>
+                    <button
+                      type="button"
+                      onClick={goToCompanyFromSummary}
+                      title={t('newCustomerGoToFieldCompany', 'Open Customer & Address — company name')}
+                      className="customers-modal-genz-header-link truncate text-left focus:outline-none rounded-sm"
+                    >
+                      {companyTitle}
+                    </button>
                   </h2>
                   <button
                     type="button"
-                    onClick={() => void copyTextToClipboard(companyTitle)}
+                    onClick={() => void copyWithFlash(companyTitle)}
                     disabled={!companyTitle.trim()}
                     className="customers-modal-genz-icon-btn shrink-0 rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30"
                     aria-label={t('newCustomerCopyCompanyNameAria', 'Copy company name')}
                   >
                     <Copy className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                  <span className="customers-modal-genz-mode-badge shrink-0 rounded-md px-2 py-0.5 text-xs">
+                  <span className="customers-modal-genz-mode-badge tt-drawer-mode-badge shrink-0 rounded-md px-2 py-0.5 text-xs">
                     {t('timetableContactCalendarEditBadge', '(Edit)')}
                   </span>
                 </div>
@@ -608,12 +782,17 @@ export function TimetableContactDrawer({
                   <MapPin className="mt-1 h-5 w-5 shrink-0 sm:mt-1.5 sm:h-6 sm:w-6" aria-hidden />
                   <span className="block min-w-0 flex-1">
                     <span className="inline-block max-w-full align-top leading-snug">
-                      <span className="customers-modal-genz-header-link inline align-top break-words">
-                        {addressLine.trim() ? addressLine : t('commonPlaceholderDash', '—')}
-                      </span>
                       <button
                         type="button"
-                        onClick={() => void copyTextToClipboard(addressLine)}
+                        onClick={goToAddressFromSummary}
+                        title={t('newCustomerGoToFieldAddress', 'Open Customer & Address — street / ZIP / city')}
+                        className="customers-modal-genz-header-link inline border-0 bg-transparent p-0 text-left align-top break-words text-inherit focus:outline-none rounded-sm"
+                      >
+                        {addressLine.trim() ? addressLine : t('commonPlaceholderDash', '—')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void copyWithFlash(addressLine)}
                         disabled={!addressLine.trim()}
                         className="customers-modal-genz-icon-btn ml-1 inline-flex shrink-0 align-top rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30 sm:ml-1.5"
                         aria-label={t('newCustomerCopyAddressAria', 'Copy address')}
@@ -623,75 +802,115 @@ export function TimetableContactDrawer({
                     </span>
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default text-[11px]">
-                    {outcomeLabel(draft, t)}
-                  </span>
-                  <span
-                    data-dema-chip="tt-status"
-                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default"
-                  >
-                    {t('newCustomerLabelStatus', 'Status')}: {statusChipLabel}
-                  </span>
-                  <span
-                    data-dema-chip="tt-slot"
-                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default tabular-nums"
-                  >
-                    {slotDate} · {slotTime}
-                  </span>
-                  {draft.is_parked ? (
-                    <span className="customers-modal-genz-h-chip">{t('timetableFilterParked', 'Parked')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {copyFlash === 'ok' ? (
+                    <span
+                      className="customers-modal-genz-header-copy-flash--ok flex items-center gap-1 text-[10px] font-semibold"
+                      role="status"
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                      {t('newCustomerCopiedToClipboard', 'Copied')}
+                    </span>
+                  ) : copyFlash === 'err' ? (
+                    <span
+                      className="customers-modal-genz-header-copy-flash--err text-[10px] font-semibold"
+                      role="status"
+                    >
+                      {t('newCustomerCopyFailed', 'Copy failed')}
+                    </span>
                   ) : null}
-                  {p.purchase_confirmed ? (
-                    <span className="customers-modal-genz-h-chip">{t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}</span>
-                  ) : null}
-                  <div
-                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white/80 px-1.5 py-0.5"
-                    title={t('timetableContactCardClassification', 'Codes & profile')}
-                  >
-                    <input
-                      type="text"
-                      inputMode="text"
-                      autoComplete="off"
-                      aria-label={t('timetableColKa', 'Ka')}
-                      placeholder={t('timetableColKaPh', 'A')}
-                      value={draft.legacy_ka ?? ''}
-                      onChange={(e) =>
-                        patchDraft((prev) => ({ ...prev, legacy_ka: e.target.value || undefined }))
-                      }
-                      className="h-7 w-7 border-0 bg-transparent text-center text-xs font-semibold text-slate-800 outline-none ring-0"
-                    />
-                    <span className="text-[10px] text-slate-400">/</span>
-                    <input
-                      type="text"
-                      inputMode="text"
-                      autoComplete="off"
-                      aria-label={t('timetableColArte', 'Subtype')}
-                      placeholder={kaArtFromRow(draft)}
-                      value={draft.legacy_arte ?? ''}
-                      onChange={(e) =>
-                        patchDraft((prev) => ({ ...prev, legacy_arte: e.target.value || undefined }))
-                      }
-                      className="h-7 w-9 border-0 bg-transparent text-center text-xs font-semibold text-slate-800 outline-none ring-0"
-                    />
+                </div>
+                <div className="customers-modal-genz-header-chips-scroll -mx-1 max-w-full overflow-x-auto overflow-y-hidden pb-1">
+                  <div className="customer360-strip-chips flex min-w-min flex-nowrap items-center gap-2 pr-2">
+                    <span
+                      data-dema-chip="aufnahme"
+                      className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,22rem)]"
+                    >
+                      <CalendarDays className="h-3 w-3 shrink-0 opacity-95 sm:h-3.5 sm:w-3.5" aria-hidden />
+                      <span className="customers-modal-genz-h-chip-strong">
+                        {t('timetableContactAufnahmeMeta', 'Appointment')}
+                      </span>
+                      <span className="min-w-0 truncate font-mono tabular-nums">
+                        {slotLine || t('commonPlaceholderDash', '—')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void copyWithFlash(slotLine)}
+                        disabled={!slotLine.trim()}
+                        className="tt-drawer-chip-copy"
+                        aria-label={t('timetableContactCopySlotAria', 'Copy appointment date and time')}
+                      >
+                        <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
+                      </button>
+                    </span>
+                    <span
+                      data-dema-chip={timetableOutcomeToDemaChip(draft.outcome)}
+                      className="customers-modal-genz-h-chip cursor-default max-w-[min(100%,16rem)] sm:max-w-none"
+                    >
+                      <span className="min-w-0 truncate">{outcomeLabel(draft, t)}</span>
+                    </span>
+                    <span
+                      data-dema-chip={`status-${overview.customer_status}`}
+                      className={`customers-modal-genz-h-chip cursor-default customers-modal-genz-h-chip--status-${overview.customer_status}`}
+                    >
+                      {t('customer360ChipStatus', 'Status')}: {statusChipLabel}
+                    </span>
+                    {brancheMeta ? (
+                      <span
+                        data-dema-chip="risk-billing"
+                        className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full sm:max-w-[min(100%,24rem)]"
+                      >
+                        <span className="customers-modal-genz-h-chip-strong">
+                          {t('newCustomerLabelBranche', 'Industry')}
+                        </span>
+                        <span className="min-w-0 truncate">{brancheMeta}</span>
+                        <button
+                          type="button"
+                          onClick={() => void copyWithFlash(brancheMeta)}
+                          className="tt-drawer-chip-copy"
+                          aria-label={t('timetableContactCopyBrancheAria', 'Copy industry')}
+                        >
+                          <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
+                        </button>
+                      </span>
+                    ) : null}
+                    {draft.is_parked ? (
+                      <span
+                        data-dema-chip="doc-calm"
+                        className="customers-modal-genz-h-chip cursor-default shrink-0"
+                      >
+                        {t('timetableFilterParked', 'Parked')}
+                      </span>
+                    ) : null}
+                    {p.purchase_confirmed ? (
+                      <span
+                        data-dema-chip="vat-valid"
+                        className="customers-modal-genz-h-chip cursor-default shrink-0"
+                      >
+                        {t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="customers-modal-genz-header-meta flex shrink-0 flex-col gap-2 text-right text-sm sm:text-base">
-              <div>
-                <p className="customers-modal-genz-header-meta-label">
-                  {t('timetableContactAufnahmeMeta', 'Appointment')}
+            <div className="customers-modal-genz-header-meta flex w-full min-w-0 shrink-0 flex-col items-stretch gap-3 border-t border-white/10 pt-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4 sm:pt-2 lg:border-t-0 lg:pt-0 lg:pl-2 xl:items-end">
+              <div className="customers-modal-genz-ku-block tt-drawer-header-kd-block min-w-0 sm:max-w-[min(100%,15rem)]">
+                <p className="customers-modal-genz-header-meta-label m-0 text-[10px] font-semibold uppercase tracking-[0.12em]">
+                  {t('newCustomerModalKdNrLabel', 'Cust. no.')}
                 </p>
-                <p className="customers-modal-genz-header-meta-value tabular-nums">
-                  {slotDate} · {slotTime}
-                </p>
-              </div>
-              <div>
-                <p className="customers-modal-genz-header-meta-label">{t('customersLabelCustomerNr', 'Customer no.')}</p>
-                <p className="customers-modal-genz-header-meta-value font-mono tabular-nums">
-                  {headerCrmDisplay.kuNr}
-                </p>
+                <div className="customers-modal-genz-ku-block-row mt-1">
+                  <span className="customers-modal-genz-ku-block-value tabular-nums">{headerCrmDisplay.kuNr}</span>
+                  <button
+                    type="button"
+                    onClick={() => void copyWithFlash(headerCrmDisplay.kuNr)}
+                    disabled={!headerCrmDisplay.kuNr.trim()}
+                    className="customers-modal-genz-icon-btn customers-modal-genz-ku-block-copy shrink-0 rounded-lg p-1.5 transition disabled:pointer-events-none disabled:opacity-30"
+                    aria-label={t('newCustomerCopyKuNrAria', 'Copy customer number')}
+                  >
+                    <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -712,10 +931,10 @@ export function TimetableContactDrawer({
                 aria-selected={drawerWorkspaceTab === 'call'}
                 aria-controls="tt-drawer-panel-call"
                 onClick={() => setDrawerWorkspaceTab('call')}
-                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
                   drawerWorkspaceTab === 'call'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25 ring-1 ring-white/10 hover:brightness-105'
-                    : 'border border-blue-200/90 bg-white text-blue-950 shadow-sm ring-1 ring-blue-900/5 hover:border-blue-300 hover:bg-blue-50/80'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25 ring-white/10 hover:brightness-105'
+                    : 'border border-teal-200/90 bg-teal-50/90 text-teal-950 shadow-sm ring-teal-900/10 hover:border-teal-300 hover:bg-teal-100/85'
                 }`}
               >
                 <Phone className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
@@ -728,10 +947,10 @@ export function TimetableContactDrawer({
                 aria-selected={drawerWorkspaceTab === 'offer'}
                 aria-controls="tt-drawer-panel-offer"
                 onClick={() => setDrawerWorkspaceTab('offer')}
-                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
                   drawerWorkspaceTab === 'offer'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-900/20 ring-1 ring-white/15 hover:brightness-105'
-                    : 'border border-slate-200/90 bg-white text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-amber-200 hover:bg-amber-50/60'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-900/20 ring-white/15 hover:brightness-105'
+                    : 'border border-fuchsia-200/85 bg-fuchsia-50/85 text-fuchsia-950 shadow-sm ring-fuchsia-900/10 hover:border-fuchsia-300 hover:bg-fuchsia-100/80'
                 }`}
               >
                 <Truck className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
@@ -797,27 +1016,29 @@ export function TimetableContactDrawer({
                 <p className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--1`}>
                   {t('customerModalColStammdaten', 'Master data')}
                 </p>
-                <div>
-                  <label className={labelClass}>{t('newCustomerLabelFirmenvorsatz', 'Company prefix')}</label>
-                  <input
-                    type="text"
-                    value={overview.firmenvorsatz}
-                    onChange={(e) =>
-                      patchOverviewKunde((k) => ({ ...k, firmenvorsatz: e.target.value }))
-                    }
-                    className={`${inputClass} min-h-[44px]`}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t('newCustomerLabelFirmenname', 'Company name')}</label>
-                  <input
-                    type="text"
-                    value={overview.firmenname}
-                    onChange={(e) =>
-                      patchOverviewKunde((k) => ({ ...k, firmenname: e.target.value }))
-                    }
-                    className={`${inputClass} min-h-[44px]`}
-                  />
+                <div ref={companyFieldAnchorRef} className="scroll-mt-6 space-y-4">
+                  <div>
+                    <label className={labelClass}>{t('newCustomerLabelFirmenvorsatz', 'Company prefix')}</label>
+                    <input
+                      type="text"
+                      value={overview.firmenvorsatz}
+                      onChange={(e) =>
+                        patchOverviewKunde((k) => ({ ...k, firmenvorsatz: e.target.value }))
+                      }
+                      className={`${inputClass} min-h-[44px]`}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>{t('newCustomerLabelFirmenname', 'Company name')}</label>
+                    <input
+                      type="text"
+                      value={overview.firmenname}
+                      onChange={(e) =>
+                        patchOverviewKunde((k) => ({ ...k, firmenname: e.target.value }))
+                      }
+                      className={`${inputClass} min-h-[44px]`}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
                   {overview.adressen.map((ad, i) => {
@@ -860,7 +1081,10 @@ export function TimetableContactDrawer({
                     {t('newCustomerAdresseNewBtn', 'New')}
                   </button>
                 </div>
-                <div className="customers-modal-genz-frost-card overflow-hidden rounded-2xl border border-white/60">
+                <div
+                  ref={addressBlockAnchorRef}
+                  className="customers-modal-genz-frost-card scroll-mt-6 overflow-hidden rounded-2xl border border-white/60"
+                >
                   <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
                     <div className="flex items-center gap-2.5">
                       <div
@@ -1056,7 +1280,7 @@ export function TimetableContactDrawer({
               </div>
 
               <div
-                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 flex min-h-[min(70dvh,22rem)] min-w-0 flex-col border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-1 lg:min-h-[min(78dvh,28rem)]`}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 flex min-h-[min(70dvh,22rem)] min-w-0 flex-col overflow-hidden border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-1 lg:min-h-[min(78dvh,28rem)]`}
               >
                 <p
                   id="tt-drawer-bemerkungen-heading"
@@ -1064,18 +1288,20 @@ export function TimetableContactDrawer({
                 >
                   {t('timetableContactBemerkungen', 'Remarks')}
                 </p>
-                <textarea
+                <div
                   id="tt-drawer-bemerkungen"
                   aria-labelledby="tt-drawer-bemerkungen-heading"
-                  value={draft.notes}
-                  onChange={(e) => patchDraft((prev) => ({ ...prev, notes: e.target.value }))}
-                  placeholder={t(
-                    'timetableContactTableNotesPh',
-                    'Short notes visible in the timetable row.'
-                  )}
-                  className={`${textareaClass} mt-2 min-h-[min(58dvh,18rem)] flex-1 resize-y lg:min-h-0`}
-                  spellCheck
-                />
+                  className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden"
+                >
+                  <TimetableActivityNotesThread
+                    draft={draft}
+                    profile={p}
+                    patchDraft={patchDraft}
+                    localeTag={localeTag}
+                    t={t}
+                    layout="drawerBemerkungen"
+                  />
+                </div>
               </div>
                 </div>
               ) : (
@@ -1083,31 +1309,76 @@ export function TimetableContactDrawer({
                 id="tt-drawer-panel-offer"
                 role="tabpanel"
                 aria-labelledby="tt-drawer-tab-offer"
-                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 min-w-0 w-full space-y-4 border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6`}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 flex min-w-0 w-full flex-col gap-6 border border-slate-200/60 bg-white p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE}`}
               >
-                <div className="min-w-0">
-                  <TimetableOfferGeneratorBlock
-                    rowKey={String(draft.id)}
-                    setOfferField={setOfferField}
-                    setVehicleExtra={setVehicleExtra}
-                    onGeneratorApplied={() => setDirty(true)}
-                    t={t}
-                  />
-                </div>
-                <div className="min-w-0 space-y-4">
-                  <p className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3`}>
-                    {t('timetableContactColOffer', 'Offer')}
+                <TimetableOfferVehicleStrip
+                  offers={eOffer.offers}
+                  selectedId={eOffer.selected_offer_id}
+                  onSelect={selectOfferId}
+                  onAdd={addVehicleOffer}
+                  onRemove={removeVehicleOffer}
+                  t={t}
+                />
+                <div className="flex min-w-0 w-full flex-col gap-8 lg:flex-row lg:items-stretch lg:gap-0">
+                <section
+                  className="flex min-w-0 flex-1 flex-col gap-3 lg:basis-1/2 lg:pr-8"
+                  aria-labelledby="tt-drawer-offer-gen-heading"
+                >
+                  <p
+                    id="tt-drawer-offer-gen-heading"
+                    className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                  >
+                    {t('timetableOfferGenTitle', 'Offer generator')}
                   </p>
-                  <div className="customers-modal-genz-frost-card rounded-2xl border border-white/60 p-4">
-                    <TimetableOfferMinimalBlock
-                      offer={offer}
-                      vehicleExtra={ve}
+                  <div className="min-w-0 flex-1">
+                    <TimetableOfferGeneratorBlock
+                      rowKey={`${draft.id}-${selectedOfferId}`}
                       setOfferField={setOfferField}
                       setVehicleExtra={setVehicleExtra}
-                      onOpenFullOfferModal={() => onEditOffer(draft)}
+                      onGeneratorApplied={() => setDirty(true)}
                       t={t}
                     />
                   </div>
+                </section>
+                <div
+                  className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-slate-200/90 to-transparent lg:hidden"
+                  aria-hidden
+                />
+                <div
+                  className="hidden w-px shrink-0 self-stretch bg-gradient-to-b from-transparent via-slate-200/85 to-transparent lg:block"
+                  aria-hidden
+                />
+                <section
+                  className="flex min-w-0 flex-1 flex-col gap-4 lg:basis-1/2 lg:pl-8"
+                  aria-labelledby="tt-drawer-offer-form-heading"
+                >
+                  <p
+                    id="tt-drawer-offer-form-heading"
+                    className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                  >
+                    {t('timetableContactColOffer', 'Offer')}
+                  </p>
+                  <TimetableOfferMinimalBlock
+                    offer={offer}
+                    vehicleExtra={ve}
+                    setOfferField={setOfferField}
+                    setVehicleExtra={setVehicleExtra}
+                    t={t}
+                  />
+                  <TimetableOfferMemoryPanel
+                    items={offerMemoryItems}
+                    offerHasVehicleIdentity={hasVehicleIdentity}
+                    localeTag={localeTag}
+                    t={t}
+                    onApplyPrices={applyOfferMemoryPrices}
+                  />
+                  <TimetableOfferNegotiationHistory
+                    offer={offer}
+                    setOfferField={setOfferField}
+                    localeTag={localeTag}
+                    t={t}
+                  />
+                </section>
                 </div>
               </div>
               )}

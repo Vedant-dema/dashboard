@@ -1,25 +1,35 @@
-import { useEffect, useState } from 'react';
-import { Truck, X } from 'lucide-react';
-import type { TimetableEntry, TimetableOfferInput } from '../../types/timetable';
+import { useEffect, useMemo, useState } from 'react'
+import { Truck, X } from 'lucide-react'
+import type { TimetableEntry, TimetableOfferInput, TimetableTruckOffer } from '../../types/timetable'
+import { ensureOfferIdsAndSelection } from './contactDrawerFormUtils'
+import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel'
+import {
+  collectTimetableOfferMemory,
+  offerHasVehicleIdentity,
+  type TimetableOfferMemoryItem,
+} from './timetableOfferMemory'
 
 type Props = {
-  entry: TimetableEntry | null;
-  t: (key: string, fallback: string) => string;
-  onClose: () => void;
-  onSave: (payload: TimetableOfferInput) => void;
-};
+  entry: TimetableEntry | null
+  allEntries: TimetableEntry[]
+  localeTag: string
+  t: (key: string, fallback: string) => string
+  onClose: () => void
+  onSave: (payload: TimetableOfferInput) => void
+}
 
 type OfferFormState = {
-  vehicle_type: string;
-  brand: string;
-  model: string;
-  year: string;
-  mileage_km: string;
-  quantity: string;
-  expected_price_eur: string;
-  location: string;
-  notes: string;
-};
+  vehicle_type: string
+  brand: string
+  model: string
+  year: string
+  mileage_km: string
+  quantity: string
+  expected_price_eur: string
+  purchase_bid_eur: string
+  location: string
+  notes: string
+}
 
 function initialState(): OfferFormState {
   return {
@@ -30,38 +40,93 @@ function initialState(): OfferFormState {
     mileage_km: '',
     quantity: '',
     expected_price_eur: '',
+    purchase_bid_eur: '',
     location: '',
     notes: '',
-  };
+  }
 }
 
 function toNumberOrNull(value: string): number | null {
-  const cleaned = value.trim();
-  if (!cleaned) return null;
-  const parsed = Number(cleaned.replace(',', '.'));
-  return Number.isFinite(parsed) ? parsed : null;
+  const cleaned = value.trim()
+  if (!cleaned) return null
+  const parsed = Number(cleaned.replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : null
 }
 
-export function TimetableOfferModal({ entry, t, onClose, onSave }: Props) {
-  const [form, setForm] = useState<OfferFormState>(() => initialState());
+function toFieldValue(value: number | null): string {
+  return value == null ? '' : String(value)
+}
+
+export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, onSave }: Props) {
+  const [form, setForm] = useState<OfferFormState>(() => initialState())
 
   useEffect(() => {
-    if (!entry) return;
+    if (!entry) return
+    const e0 = ensureOfferIdsAndSelection(entry)
+    const sid = e0.selected_offer_id ?? e0.offers[0]?.id
+    const o = (sid ? e0.offers.find((x) => x.id === sid) : e0.offers[0]) ?? null
     setForm({
-      vehicle_type: entry.offer?.vehicle_type ?? '',
-      brand: entry.offer?.brand ?? '',
-      model: entry.offer?.model ?? '',
-      year: entry.offer?.year != null ? String(entry.offer.year) : '',
-      mileage_km: entry.offer?.mileage_km != null ? String(entry.offer.mileage_km) : '',
-      quantity: entry.offer?.quantity != null ? String(entry.offer.quantity) : '',
-      expected_price_eur:
-        entry.offer?.expected_price_eur != null ? String(entry.offer.expected_price_eur) : '',
-      location: entry.offer?.location ?? '',
-      notes: entry.offer?.notes ?? '',
-    });
-  }, [entry]);
+      vehicle_type: o?.vehicle_type ?? '',
+      brand: o?.brand ?? '',
+      model: o?.model ?? '',
+      year: o?.year != null ? String(o.year) : '',
+      mileage_km: o?.mileage_km != null ? String(o.mileage_km) : '',
+      quantity: o?.quantity != null ? String(o.quantity) : '',
+      expected_price_eur: o?.expected_price_eur != null ? String(o.expected_price_eur) : '',
+      purchase_bid_eur: o?.purchase_bid_eur != null ? String(o.purchase_bid_eur) : '',
+      location: o?.location ?? '',
+      notes: o?.notes ?? '',
+    })
+  }, [entry])
 
-  if (!entry) return null;
+  const activeOfferId = useMemo(() => {
+    if (!entry) return null
+    const e0 = ensureOfferIdsAndSelection(entry)
+    return e0.selected_offer_id ?? e0.offers[0]?.id ?? null
+  }, [entry])
+
+  const draftOfferForMemory = useMemo<TimetableTruckOffer>(
+    () => ({
+      id: activeOfferId ?? '__draft__',
+      captured_at: entry?.scheduled_at ?? new Date().toISOString(),
+      vehicle_type: form.vehicle_type.trim(),
+      brand: form.brand.trim(),
+      model: form.model.trim(),
+      year: toNumberOrNull(form.year),
+      mileage_km: toNumberOrNull(form.mileage_km),
+      quantity: toNumberOrNull(form.quantity),
+      expected_price_eur: toNumberOrNull(form.expected_price_eur),
+      purchase_bid_eur: toNumberOrNull(form.purchase_bid_eur),
+      location: form.location.trim(),
+      notes: form.notes.trim(),
+    }),
+    [activeOfferId, entry?.scheduled_at, form]
+  )
+
+  const offerMemoryItems = useMemo(
+    () =>
+      entry
+        ? collectTimetableOfferMemory({
+            entries: allEntries,
+            targetEntry: entry,
+            targetOffer: draftOfferForMemory,
+            currentOfferId: activeOfferId,
+            limit: 6,
+          })
+        : [],
+    [activeOfferId, allEntries, draftOfferForMemory, entry]
+  )
+  const hasVehicleIdentity = offerHasVehicleIdentity(draftOfferForMemory)
+
+  const applyOfferMemoryPrices = (item: TimetableOfferMemoryItem) => {
+    setForm((prev) => ({
+      ...prev,
+      expected_price_eur: toFieldValue(item.latestSellerAskingEur),
+      purchase_bid_eur: toFieldValue(item.latestPurchaseBidEur),
+    }))
+  }
+
+  if (!entry) return null
 
   return (
     <div
@@ -151,10 +216,18 @@ export function TimetableOfferModal({ entry, t, onClose, onSave }: Props) {
             />
           </label>
           <label className="text-sm font-medium text-slate-700">
-            {t('timetableOfferExpectedPrice', 'Expected price (EUR)')}
+            {t('timetableOfferSellerAskingShort', 'Seller asking (EUR)')}
             <input
               value={form.expected_price_eur}
               onChange={(e) => setForm((prev) => ({ ...prev, expected_price_eur: e.target.value }))}
+              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            />
+          </label>
+          <label className="text-sm font-medium text-slate-700">
+            {t('timetableOfferPurchaseBidShort', 'Purchasing bid (EUR)')}
+            <input
+              value={form.purchase_bid_eur}
+              onChange={(e) => setForm((prev) => ({ ...prev, purchase_bid_eur: e.target.value }))}
               className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
           </label>
@@ -167,6 +240,16 @@ export function TimetableOfferModal({ entry, t, onClose, onSave }: Props) {
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
           </label>
+        </div>
+
+        <div className="border-t border-amber-100/90 px-5 py-4">
+          <TimetableOfferMemoryPanel
+            items={offerMemoryItems}
+            offerHasVehicleIdentity={hasVehicleIdentity}
+            localeTag={localeTag}
+            t={t}
+            onApplyPrices={applyOfferMemoryPrices}
+          />
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-amber-200 px-5 py-4 sm:flex-row sm:justify-end">
@@ -188,6 +271,7 @@ export function TimetableOfferModal({ entry, t, onClose, onSave }: Props) {
                 mileage_km: toNumberOrNull(form.mileage_km),
                 quantity: toNumberOrNull(form.quantity),
                 expected_price_eur: toNumberOrNull(form.expected_price_eur),
+                purchase_bid_eur: toNumberOrNull(form.purchase_bid_eur),
                 location: form.location.trim(),
                 notes: form.notes.trim(),
               })
@@ -199,5 +283,5 @@ export function TimetableOfferModal({ entry, t, onClose, onSave }: Props) {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -4,6 +4,10 @@ export const inputClass =
 export const textareaClass =
   'mt-2 w-full rounded-xl border border-slate-200/90 bg-white/95 px-3.5 py-2.5 text-[14px] leading-relaxed text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-sky-400/80 focus:outline-none focus:ring-4 focus:ring-sky-100/70 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden';
 
+/** Same surface as `textareaClass`, with a visible thin scrollbar when content overflows (e.g. Bemerkungen composer). */
+export const textareaClassScrollable =
+  'mt-2 w-full rounded-xl border border-slate-200/90 bg-white/95 px-3.5 py-2.5 text-[14px] leading-relaxed text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-sky-400/80 focus:outline-none focus:ring-4 focus:ring-sky-100/70 overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/90 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-100/80';
+
 export const labelClass = 'block text-sm font-medium text-slate-600';
 
 export const overviewLabelClass =

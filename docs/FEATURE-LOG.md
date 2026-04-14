@@ -23,7 +23,7 @@
 | 2026-04-09 | [2026-04-09.md](feature-logs/2026-04-09.md) | FEATURE-143 … FEATURE-147 |
 | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
-| 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-247 |
+| 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-257 |
 
 ---
 
@@ -277,6 +277,16 @@
 | FEATURE-245 | Customer modal header — Kundennummer glass badge in meta column | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
 | FEATURE-246 | New customer modal — compact footer (padding, select, actions, hints) | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
 | FEATURE-247 | Customer modal — responsive Beziehungen & Risiko column title | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-248 | Timetable contact drawer header aligned with customer edit modal | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-249 | Timetable contact drawer — remove Ka/Arte header editors | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-250 | Timetable drawer — Termin/Branche tags + unique tag colors | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-251 | Timetable contact drawer — Bemerkungen dated chat-style note thread | Added | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-252 | Timetable — Kunde Bemerkungen + row notes merged into dated thread | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-253 | Timetable activity notes — edit icon + visible scrollbar | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-254 | Timetable offer tab — separate generator vs offer columns + structured form | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-255 | Kalender (timetable) header meta — customer-style animated chips | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-256 | Timetable multi-offer (vehicles) per row | Added | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-257 | Activity notes — author name tag with timestamp | Added | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

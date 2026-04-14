@@ -1,15 +1,18 @@
 import type {
+  TimetableActivityNoteEntry,
   TimetableAppointmentHistoryRow,
   TimetableAssignmentRow,
   TimetableContactPerson,
   TimetableContactProfile,
   TimetableDbState,
   TimetableEntry,
+  TimetableNegotiationPriceRound,
   TimetableOutcome,
   TimetableTruckOffer,
   TimetableVehicleDisplayExtra,
 } from '../types/timetable';
 import { splitStoredPhone } from '../features/customers/mappers/customerFormMapper';
+import { newTruckOfferId, offerHasContent } from '../pages/timetable/contactDrawerFormUtils';
 import { normalizeTimetableOverviewKunde } from '../pages/timetable/timetableOverviewKunde';
 
 const STORAGE_KEY = 'dema-purchase-timetable-v6';
@@ -53,18 +56,15 @@ function remapSeedDay(entries: TimetableEntry[], realIso: string): TimetableEntr
       e.follow_up_at != null
         ? toScheduledAt(realIso, timeFrom(e.follow_up_at, '15:00'))
         : null;
-    const offer =
-      e.offer == null
-        ? null
-        : {
-            ...e.offer,
-            captured_at: toScheduledAt(realIso, timeFrom(e.offer.captured_at, '09:00')),
-          };
+    const offers = (e.offers ?? []).map((o) => ({
+      ...o,
+      captured_at: toScheduledAt(realIso, timeFrom(o.captured_at, '09:00')),
+    }));
     return {
       ...e,
       scheduled_at: toScheduledAt(realIso, hm),
       follow_up_at: follow,
-      offer,
+      offers,
     };
   });
 }
@@ -120,18 +120,22 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: {
-      captured_at: toScheduledAt(SEED_PLACEHOLDER_DAY, '08:30'),
-      vehicle_type: 'LKW',
-      brand: 'MB',
-      model: 'Atego 818',
-      year: 2007,
-      mileage_km: 782000,
-      quantity: 1,
-      expected_price_eur: 6000,
-      location: 'Prüm',
-      notes: 'Kühlkoffer · Ersatzmotor-Laufleistung ca. 500000 km',
-    },
+    offers: [
+      {
+        id: 'seed-tt-o-dahm',
+        captured_at: toScheduledAt(SEED_PLACEHOLDER_DAY, '08:30'),
+        vehicle_type: 'LKW',
+        brand: 'MB',
+        model: 'Atego 818',
+        year: 2007,
+        mileage_km: 782000,
+        quantity: 1,
+        expected_price_eur: 6000,
+        location: 'Prüm',
+        notes: 'Kühlkoffer · Ersatzmotor-Laufleistung ca. 500000 km',
+      },
+    ],
+    selected_offer_id: 'seed-tt-o-dahm',
     contact_profile: {
       industry: 'Kühltransporte',
       address: '54595 Prüm, Rudolf-Diesel-Str. 5',
@@ -199,31 +203,46 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
           initials: 'MD',
         },
       ],
-      activity_notes: [
-        'Sehr geehrter Herr Valergas,',
-        '',
-        'vielen Dank für die Rückmeldung. Die Batterien des MAN TGL wurden heute erneuert; Fahrzeug steht wieder zur Besichtigung.',
-        '',
-        'Preisstand (netto, Stand 09.04.2026):',
-        '— Mercedes Atego 818 je Fahrzeug 6.000 €',
-        '— MAN TGL 12.250 14.000 €',
-        '— SZM MAN TGA 18.430 nach Absprache / Bestand prüfen',
-        '',
-        'Wir melden uns nach Rücklauf aus der Werkstatt bzgl. Probefahrt-Termin.',
-        '',
-        'Mit freundlichen Grüßen',
-      ].join('\n'),
-      vehicle_extra: {
-        body_type: 'Kühlkoffer',
-        registration_mm_yyyy: '09/2007',
-        mileage_replacement_km: 500000,
-        sold: false,
-        deregistered: false,
-        customer_price_eur: 6000,
-        processor_name: 'Valergas Panagiotis',
-        processor_entered: 'Valergas Panagiotis',
-        processor_fetched: 'Valergas Panagiotis',
-        processor_negotiated: 'Valergas Panagiotis',
+      activity_notes_log: [
+        {
+          id: 'demo-act-1',
+          at: '2026-04-08T12:00:00.000Z',
+          author_name: 'Valergas Panagiotis',
+          text: [
+            'Sehr geehrter Herr Valergas,',
+            '',
+            'vielen Dank für die Rückmeldung. Die Batterien des MAN TGL wurden heute erneuert; Fahrzeug steht wieder zur Besichtigung.',
+          ].join('\n'),
+        },
+        {
+          id: 'demo-act-2',
+          at: '2026-04-09T07:30:00.000Z',
+          author_name: 'Valergas Panagiotis',
+          text: [
+            'Preisstand (netto, Stand 09.04.2026):',
+            '— Mercedes Atego 818 je Fahrzeug 6.000 €',
+            '— MAN TGL 12.250 14.000 €',
+            '— SZM MAN TGA 18.430 nach Absprache / Bestand prüfen',
+            '',
+            'Wir melden uns nach Rücklauf aus der Werkstatt bzgl. Probefahrt-Termin.',
+            '',
+            'Mit freundlichen Grüßen',
+          ].join('\n'),
+        },
+      ],
+      vehicle_extras: {
+        'seed-tt-o-dahm': {
+          body_type: 'Kühlkoffer',
+          registration_mm_yyyy: '09/2007',
+          mileage_replacement_km: 500000,
+          sold: false,
+          deregistered: false,
+          customer_price_eur: 6000,
+          processor_name: 'Valergas Panagiotis',
+          processor_entered: 'Valergas Panagiotis',
+          processor_fetched: 'Valergas Panagiotis',
+          processor_negotiated: 'Valergas Panagiotis',
+        },
       },
     },
   },
@@ -244,7 +263,8 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   },
   {
     id: 3,
@@ -262,18 +282,22 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: {
-      captured_at: toScheduledAt(SEED_PLACEHOLDER_DAY, '09:00'),
-      vehicle_type: 'Angebot',
-      brand: '—',
-      model: '—',
-      year: null,
-      mileage_km: null,
-      quantity: null,
-      expected_price_eur: null,
-      location: 'Ettelbruck',
-      notes: 'Gebot per E-Mail; Rückmeldung offen.',
-    },
+    offers: [
+      {
+        id: 'seed-tt-o-abat',
+        captured_at: toScheduledAt(SEED_PLACEHOLDER_DAY, '09:00'),
+        vehicle_type: 'Angebot',
+        brand: '—',
+        model: '—',
+        year: null,
+        mileage_km: null,
+        quantity: null,
+        expected_price_eur: null,
+        location: 'Ettelbruck',
+        notes: 'Gebot per E-Mail; Rückmeldung offen.',
+      },
+    ],
+    selected_offer_id: 'seed-tt-o-abat',
   },
   {
     id: 4,
@@ -291,18 +315,22 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: {
-      captured_at: toScheduledAt(SEED_PLACEHOLDER_DAY, '09:05'),
-      vehicle_type: '2× Transit, 1× 18 t',
-      brand: '—',
-      model: '—',
-      year: null,
-      mileage_km: null,
-      quantity: 3,
-      expected_price_eur: null,
-      location: 'DE',
-      notes: 'Lieferfenster 3–4/26',
-    },
+    offers: [
+      {
+        id: 'seed-tt-o-beck',
+        captured_at: toScheduledAt(SEED_PLACEHOLDER_DAY, '09:05'),
+        vehicle_type: '2× Transit, 1× 18 t',
+        brand: '—',
+        model: '—',
+        year: null,
+        mileage_km: null,
+        quantity: 3,
+        expected_price_eur: null,
+        location: 'DE',
+        notes: 'Lieferfenster 3–4/26',
+      },
+    ],
+    selected_offer_id: 'seed-tt-o-beck',
   },
   {
     id: 5,
@@ -320,7 +348,8 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   },
   {
     id: 6,
@@ -339,7 +368,8 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   },
   {
     id: 7,
@@ -358,7 +388,8 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   },
   {
     id: 8,
@@ -377,7 +408,8 @@ const SEED_ENTRIES_RAW: TimetableEntry[] = [
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   },
 ];
 
@@ -423,26 +455,101 @@ function normalizeScheduledAt(raw: unknown): string {
   return toScheduledAt(localIsoDate(), '09:00');
 }
 
+function normalizeNegotiationRound(raw: unknown): TimetableNegotiationPriceRound | null {
+  const r = asRecord(raw);
+  if (!r) return null;
+  const seller = asNumberOrNull(r.seller_asking_eur);
+  const purchase = asNumberOrNull(r.purchase_bid_eur);
+  const note = asText(r.note);
+  if (seller == null && purchase == null && !note) return null;
+  const id = asText(r.id) || newTruckOfferId();
+  let at = asText(r.at);
+  if (!at || Number.isNaN(Date.parse(at))) at = new Date().toISOString();
+  const author_name = asText(r.author_name);
+  return {
+    id,
+    at,
+    seller_asking_eur: seller,
+    purchase_bid_eur: purchase,
+    ...(note ? { note } : {}),
+    ...(author_name ? { author_name } : {}),
+  };
+}
+
 function normalizeOffer(raw: unknown): TimetableTruckOffer | null {
   const r = asRecord(raw);
   if (!r) return null;
-  const vehicleType = asText(r.vehicle_type);
+  const id = asText(r.id) || newTruckOfferId();
+  const vehicle_type = asText(r.vehicle_type);
   const brand = asText(r.brand);
   const model = asText(r.model);
   const location = asText(r.location);
-  if (!vehicleType && !brand && !model && !location) return null;
-  return {
+  const notes = asText(r.notes);
+  const purchase_bid_eur = asNumberOrNull(r.purchase_bid_eur);
+  const roundsRaw = r.negotiation_rounds;
+  const negotiation_rounds = Array.isArray(roundsRaw)
+    ? roundsRaw
+        .map((item) => normalizeNegotiationRound(item))
+        .filter((x): x is TimetableNegotiationPriceRound => x != null)
+        .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+    : [];
+  const o: TimetableTruckOffer = {
+    id,
     captured_at: normalizeScheduledAt(r.captured_at),
-    vehicle_type: vehicleType,
+    vehicle_type,
     brand,
     model,
     year: asNumberOrNull(r.year),
     mileage_km: asNumberOrNull(r.mileage_km),
     quantity: asNumberOrNull(r.quantity),
     expected_price_eur: asNumberOrNull(r.expected_price_eur),
+    ...(purchase_bid_eur != null ? { purchase_bid_eur } : {}),
     location,
-    notes: asText(r.notes),
+    notes,
+    ...(negotiation_rounds.length > 0 ? { negotiation_rounds } : {}),
   };
+  return offerHasContent(o) ? o : null;
+}
+
+function normalizeVehicleExtrasRecord(
+  raw: unknown
+): Record<string, TimetableVehicleDisplayExtra> | undefined {
+  const r = asRecord(raw);
+  if (!r) return undefined;
+  const out: Record<string, TimetableVehicleDisplayExtra> = {};
+  for (const [k, v] of Object.entries(r)) {
+    const ex = normalizeVehicleExtra(v);
+    if (ex) out[k] = ex;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function normalizeOffersFromRaw(r: Record<string, unknown>): {
+  offers: TimetableTruckOffer[];
+  selected_offer_id: string | null;
+} {
+  const selectedRaw = asText(r.selected_offer_id);
+  const arrRaw = r.offers;
+  let offers: TimetableTruckOffer[] = [];
+  if (Array.isArray(arrRaw)) {
+    for (const item of arrRaw) {
+      const o = normalizeOffer(item);
+      if (o) offers.push(o);
+    }
+  }
+  const legacyOffer = r.offer;
+  if (offers.length === 0 && legacyOffer !== undefined && legacyOffer !== null) {
+    const o = normalizeOffer(legacyOffer);
+    if (o) offers = [o];
+  }
+  offers = offers.map((o) => ({ ...o, id: o.id?.trim() ? o.id : newTruckOfferId() }));
+  const selected_offer_id =
+    offers.length === 0
+      ? null
+      : selectedRaw && offers.some((x) => x.id === selectedRaw)
+        ? selectedRaw
+        : offers[0]!.id;
+  return { offers, selected_offer_id };
 }
 
 function normalizeContactPerson(raw: unknown): TimetableContactPerson | null {
@@ -515,6 +622,30 @@ function normalizeAssignmentRow(raw: unknown): TimetableAssignmentRow | null {
   return { name, ...(since ? { since } : {}) };
 }
 
+function normalizeActivityNoteEntry(raw: unknown, fallbackIdx: number): TimetableActivityNoteEntry | null {
+  const r = asRecord(raw);
+  if (!r) return null;
+  const text = asText(r.text);
+  if (!text) return null;
+  const id =
+    asText(r.id) ||
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `note-${fallbackIdx}-${Math.random().toString(36).slice(2)}`);
+  let at = asText(r.at);
+  if (!at || Number.isNaN(Date.parse(at))) {
+    const norm = normalizeScheduledAt(r.at);
+    at = Number.isNaN(Date.parse(norm)) ? toScheduledAt(localIsoDate(), '09:00') : norm;
+  }
+  const author_name = asText(r.author_name);
+  return {
+    id,
+    at,
+    text,
+    ...(author_name ? { author_name } : {}),
+  };
+}
+
 function normalizeVehicleExtra(raw: unknown): TimetableVehicleDisplayExtra | undefined {
   const r = asRecord(raw);
   if (!r) return undefined;
@@ -581,7 +712,15 @@ function normalizeContactProfile(raw: unknown): TimetableContactProfile | undefi
     ? asgRaw.map(normalizeAssignmentRow).filter((x): x is TimetableAssignmentRow => x != null)
     : [];
 
+  const logRaw = r.activity_notes_log;
+  const activity_notes_log = Array.isArray(logRaw)
+    ? logRaw
+        .map((item, i) => normalizeActivityNoteEntry(item, i))
+        .filter((x): x is TimetableActivityNoteEntry => x != null)
+    : [];
+
   const vehicle_extra = normalizeVehicleExtra(r.vehicle_extra);
+  const vehicle_extras = normalizeVehicleExtrasRecord(r.vehicle_extras);
 
   const overview_kunde =
     r.overview_kunde !== undefined && r.overview_kunde !== null
@@ -599,7 +738,9 @@ function normalizeContactProfile(raw: unknown): TimetableContactProfile | undefi
     ...(assignment_history.length ? { assignment_history } : {}),
     ...(appointment_history.length ? { appointment_history } : {}),
     ...(activity_notes ? { activity_notes } : {}),
+    ...(activity_notes_log.length ? { activity_notes_log } : {}),
     ...(vehicle_extra ? { vehicle_extra } : {}),
+    ...(vehicle_extras ? { vehicle_extras } : {}),
     ...(purchase_confirmed ? { purchase_confirmed: true } : {}),
     ...(overview_kunde ? { overview_kunde } : {}),
     ...(zustaendige_person ? { zustaendige_person } : {}),
@@ -639,7 +780,8 @@ function normalizeLegacyEntry(raw: Record<string, unknown>, fallbackId: number):
       erledigt || hasFollowUp
         ? normalizeScheduledAt(raw.last_called_at || toScheduledAt(legacyDate, legacyTime))
         : null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   };
 }
 
@@ -655,12 +797,20 @@ function normalizeEntry(raw: unknown, fallbackId: number): TimetableEntry | null
   const outcome = normalizeOutcome(r.outcome);
   const legacyKa = asText(r.legacy_ka);
   const legacyArte = asText(r.legacy_arte);
-  const contact_profile = normalizeContactProfile(r.contact_profile);
+  const { offers, selected_offer_id } = normalizeOffersFromRaw(r);
+  let contact_profile = normalizeContactProfile(r.contact_profile);
+  const vexEmpty =
+    !contact_profile?.vehicle_extras || Object.keys(contact_profile.vehicle_extras).length === 0;
+  if (contact_profile?.vehicle_extra && vexEmpty && offers[0]) {
+    const firstId = offers[0].id;
+    const { vehicle_extra, ...rest } = contact_profile;
+    contact_profile = { ...rest, vehicle_extras: { [firstId]: vehicle_extra } };
+  }
   return {
     id,
     ...(legacyKa ? { legacy_ka: legacyKa } : {}),
     ...(legacyArte ? { legacy_arte: legacyArte } : {}),
-    ...(contact_profile ? { contact_profile } : {}),
+    ...(contact_profile && Object.keys(contact_profile).length ? { contact_profile } : {}),
     buyer_name: asText(r.buyer_name || 'ES').toUpperCase(),
     scheduled_at: normalizeScheduledAt(r.scheduled_at),
     company_name: asText(r.company_name || 'Unknown company'),
@@ -673,7 +823,8 @@ function normalizeEntry(raw: unknown, fallbackId: number): TimetableEntry | null
     is_completed: asBool(r.is_completed, outcome === 'no_trucks'),
     is_parked: asBool(r.is_parked, false),
     last_called_at: asText(r.last_called_at) ? normalizeScheduledAt(r.last_called_at) : null,
-    offer: normalizeOffer(r.offer),
+    offers,
+    selected_offer_id,
   };
 }
 
@@ -753,7 +904,8 @@ export function createDraftTimetableEntry(buyerName: string): Omit<TimetableEntr
     is_completed: false,
     is_parked: false,
     last_called_at: null,
-    offer: null,
+    offers: [],
+    selected_offer_id: null,
   };
 }
 

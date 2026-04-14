@@ -1,30 +1,34 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import {
-  Building2,
-  Car,
-  FileText,
-  History,
-  LayoutDashboard,
-  Package,
-  PhoneCall,
-  Sparkles,
-  Truck,
-  X,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Copy, ExternalLink, MapPin, Phone, Plus, Sparkles, Trash2, Truck, X } from 'lucide-react';
 import type {
-  TimetableAppointmentHistoryRow,
-  TimetableAssignmentRow,
-  TimetableContactPerson,
   TimetableContactProfile,
   TimetableEntry,
-  TimetableOutcome,
+  TimetableOverviewKundeDraft,
   TimetableTruckOffer,
   TimetableVehicleDisplayExtra,
 } from '../../types/timetable';
+import type { KundenStamm } from '../../types/kunden';
 import { loadKundenDb, resolveKundeForTimetableRow } from '../../store/kundenStore';
-
-type TabId = 'overview' | 'history' | 'vehicle' | 'activity';
+import { GlobalAddressSearch, type GlobalAddressResult } from '../../components/GlobalAddressSearch';
+import { safeWebsiteHref } from '../../common/utils/websiteHref';
+import {
+  ADRESSE_COLORS,
+  ADRESSE_TYP_I18N,
+  ADRESSE_TYPEN,
+  landCodeToArtLand,
+} from '../../features/customers/mappers/customerFormConstants';
+import { emptyContactPerson, ensureProfile, EMPTY_OFFER, offerHasContent } from './contactDrawerFormUtils';
+import { inputClass, labelClass, textareaClass } from './contactDrawerFormClasses';
+import { TimetableOfferGeneratorBlock } from './components/TimetableOfferGeneratorBlock';
+import { TimetableOfferMinimalBlock } from './components/TimetableOfferMinimalBlock';
+import {
+  emptyOverviewAdresse,
+  formatOverviewAddressLine,
+  normalizeTimetableOverviewKunde,
+  timetableOverviewFromEntry,
+} from './timetableOverviewKunde';
+import { TimetableExtraKontakteBlock } from './components/TimetableExtraKontakteBlock';
 
 type Props = {
   entry: TimetableEntry | null;
@@ -34,19 +38,6 @@ type Props = {
   onPersist: (entry: TimetableEntry) => void;
   onLogCall: (entry: TimetableEntry) => void;
   onEditOffer: (entry: TimetableEntry) => void;
-};
-
-const EMPTY_OFFER: TimetableTruckOffer = {
-  captured_at: '',
-  vehicle_type: '',
-  brand: '',
-  model: '',
-  year: null,
-  mileage_km: null,
-  quantity: null,
-  expected_price_eur: null,
-  location: '',
-  notes: '',
 };
 
 function cloneEntry(e: TimetableEntry): TimetableEntry {
@@ -61,11 +52,6 @@ function formatRowDateTime(raw: string, localeTag: string): { date: string; time
     date: d.toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' }),
     time: d.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' }),
   };
-}
-
-function formatEur(value: number | null | undefined, localeTag: string): string {
-  if (value == null || Number.isNaN(value)) return '—';
-  return new Intl.NumberFormat(localeTag, { style: 'currency', currency: 'EUR' }).format(value);
 }
 
 function kaArtFromRow(row: TimetableEntry): string {
@@ -118,7 +104,7 @@ function getContactSmartBullets(
     bullets.push(
       t(
         'timetableContactAiBulletOfferGap',
-        'Trucks signal — capture the vehicle in the Vehicle tab.'
+        'Trucks signal — vehicle offer is not edited in this view.'
       )
     );
   }
@@ -132,73 +118,11 @@ function getContactSmartBullets(
     bullets.push(
       t(
         'timetableContactAiBulletActivityEmpty',
-        'No correspondence text yet — use the Correspondence tab.'
+        'No correspondence text on file for this row in the current view.'
       )
     );
   }
   return bullets.slice(0, 5);
-}
-
-function outcomePillClass(outcome: TimetableEntry['outcome']): string {
-  switch (outcome) {
-    case 'has_trucks':
-      return 'bg-blue-500/20 text-blue-100 ring-blue-400/35';
-    case 'follow_up':
-      return 'bg-sky-500/20 text-sky-100 ring-sky-400/35';
-    case 'no_trucks':
-      return 'bg-slate-500/25 text-slate-200 ring-slate-400/25';
-    default:
-      return 'bg-indigo-500/20 text-indigo-100 ring-indigo-400/30';
-  }
-}
-
-function toDatetimeLocalValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const trimmed = iso.trim();
-  if (!trimmed) return '';
-  const d = new Date(trimmed);
-  if (Number.isNaN(d.getTime())) return trimmed.length >= 16 ? trimmed.slice(0, 16) : '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromDatetimeLocalValue(local: string): string | null {
-  const v = local.trim();
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
-function offerHasContent(o: TimetableTruckOffer | null | undefined): boolean {
-  if (!o) return false;
-  if (o.vehicle_type.trim()) return true;
-  if (o.brand.trim()) return true;
-  if (o.model.trim()) return true;
-  if (o.location.trim()) return true;
-  if (o.notes.trim()) return true;
-  if (o.year != null) return true;
-  if (o.mileage_km != null) return true;
-  if (o.quantity != null) return true;
-  if (o.expected_price_eur != null) return true;
-  return false;
-}
-
-function emptyAppointmentRow(): TimetableAppointmentHistoryRow {
-  return { date: '', time: '', purpose: '', remark: '', done: false, initials: '' };
-}
-
-function emptyContactPerson(): TimetableContactPerson {
-  return { name: '', phone: '', fax: '' };
-}
-
-function emptyAssignment(): TimetableAssignmentRow {
-  return { name: '', since: '' };
-}
-
-/** Shallow clone — never mutate `entry.contact_profile` in place. */
-function ensureProfile(entry: TimetableEntry): TimetableContactProfile {
-  return { ...(entry.contact_profile ?? {}) };
 }
 
 function vehicleExtraHasContent(v: TimetableVehicleDisplayExtra | undefined): boolean {
@@ -216,42 +140,71 @@ function vehicleExtraHasContent(v: TimetableVehicleDisplayExtra | undefined): bo
   return false;
 }
 
-const OUTCOME_ORDER: TimetableOutcome[] = ['pending', 'follow_up', 'has_trucks', 'no_trucks'];
+const ART_LAND_OPTIONS = ['IL', 'EU', 'Drittland'] as const;
 
-const inputClass =
-  'mt-2 h-11 w-full rounded-xl border border-slate-200/90 bg-white px-4 text-[15px] leading-snug text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-200/60';
-const textareaClass =
-  'mt-2 w-full rounded-xl border border-slate-200/90 bg-white px-4 py-3 text-[15px] leading-relaxed text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-200/60';
-const labelClass = 'block text-sm font-medium text-slate-600';
-/** Label line inside overview fields (paired with `overviewFieldClass` on `<label>`). */
-const overviewLabelClass =
-  'text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500';
-/** Match NewCustomerModal `inputClass` (+ touch-friendly min height). */
-const overviewInputClass =
-  'min-h-[44px] w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm shadow-slate-900/[0.03] outline-none ring-0 transition placeholder:text-slate-400 focus:border-blue-400/80 focus:shadow-md focus:shadow-blue-900/[0.06] focus:ring-2 focus:ring-blue-500/20 sm:min-h-[2.75rem] sm:px-3.5';
-/** Long-form row — same chrome as overview inputs, taller + resize. */
-const overviewNotesTextareaClass =
-  'min-h-[6rem] w-full resize-y rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 text-sm leading-relaxed text-slate-800 shadow-sm shadow-slate-900/[0.03] outline-none transition placeholder:text-slate-400 focus:border-blue-400/80 focus:ring-2 focus:ring-blue-500/20 sm:min-h-[7rem]';
-const overviewFieldClass = 'flex flex-col gap-2';
-const overviewAddBtnClass =
-  'rounded-xl border border-blue-200/60 bg-gradient-to-r from-white to-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300/80 hover:from-blue-50/80 hover:shadow-md active:scale-[0.98]';
+const ZUSTAENDIGE_OPTIONS = [
+  'nicht zugeordnet',
+  'Liciu Ana-Maria',
+  'Mitsos Deligiannis',
+  'Anna Schmidt',
+  'Team Verkauf',
+];
 
-/** Staggered entrance for overview column stacks (motion-safe). */
+const TT_KUNDE_PANEL_SURFACE = 'overflow-hidden rounded-2xl';
+const TT_KUNDE_SECTION_TITLE = 'text-sm font-bold uppercase tracking-[0.08em] text-slate-700';
+
+function mergeMasterOverview(base: TimetableOverviewKundeDraft, mk: KundenStamm): TimetableOverviewKundeDraft {
+  const first = base.adressen[0] ?? emptyOverviewAdresse('addr-0');
+  const land = (mk.land_code ?? first.land_code).trim() || first.land_code;
+  return normalizeTimetableOverviewKunde({
+    ...base,
+    kunden_nr: mk.kunden_nr?.trim() || base.kunden_nr,
+    branche: (mk.branche ?? base.branche).trim(),
+    firmenvorsatz: (mk.firmenvorsatz ?? base.firmenvorsatz).trim(),
+    firmenname: (mk.firmenname ?? base.firmenname).trim(),
+    website: (mk.internet_adr ?? base.website).trim(),
+    customer_type:
+      mk.customer_type === 'legal_entity'
+        ? 'legal_entity'
+        : mk.customer_type === 'natural_person'
+          ? 'natural_person'
+          : base.customer_type,
+    customer_status:
+      mk.status === 'inactive' || mk.status === 'blocked' || mk.status === 'active'
+        ? mk.status
+        : base.customer_status,
+    adressen: [
+      {
+        ...first,
+        strasse: (mk.strasse ?? first.strasse).trim(),
+        plz: (mk.plz ?? first.plz).trim(),
+        ort: (mk.ort ?? first.ort).trim(),
+        land_code: land,
+        art_land_code: (
+          (mk.art_land_code || mk.tax_country_type_code || '').trim() || landCodeToArtLand(land)
+        ).slice(0, 32),
+        ust_id_nr: (mk.ust_id_nr ?? first.ust_id_nr).trim(),
+        steuer_nr: (mk.steuer_nr ?? first.steuer_nr).trim(),
+      },
+      ...base.adressen.slice(1),
+    ],
+  });
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  const v = text.trim();
+  if (!v) return;
+  try {
+    await navigator.clipboard.writeText(v);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Staggered entrance for smart summary card (motion-safe). */
 function overviewStaggerClass(ms: number): string {
   return `motion-safe:animate-contact-card-in motion-reduce:animate-none [animation-delay:${ms}ms]`;
 }
-
-/** One card column in the overview horizontal scroll strip */
-const overviewHScrollColClass =
-  'w-[min(calc(100vw-2.75rem),19.25rem)] shrink-0 snap-start sm:w-80 md:min-w-[20.5rem] md:max-w-[22rem]';
-
-/** Same strip, wider for address / fleet / notes (long-form fields). */
-const overviewHScrollColLocationClass =
-  'w-[min(calc(100vw-2.75rem),24rem)] shrink-0 snap-start sm:w-[25rem] md:min-w-[27rem] md:max-w-[31rem]';
-
-/** Compact inputs in the dark drawer header (Ka / Arte only — CRM fields come from Kundenstamm). */
-const headerCodesInputClass =
-  'min-h-7 min-w-0 border-0 bg-transparent py-0 text-xs font-semibold text-white outline-none ring-0 placeholder:text-slate-500 focus:ring-0 sm:text-[13px]';
 
 function ContactSmartSummaryCard({
   bullets,
@@ -327,109 +280,6 @@ function ContactSmartSummaryCard({
   );
 }
 
-/** Section shell — elevated card, clear separation (overview grid must not overlap rows). */
-function OverviewPanel({
-  title,
-  titleLines,
-  sectionAriaLabel,
-  hint,
-  actions,
-  children,
-  className = '',
-}: {
-  title?: string;
-  /** When set, renders a vertical stack of section labels instead of a single `title` line. */
-  titleLines?: string[];
-  /** Optional accessible name for the whole panel (e.g. when using `titleLines`). */
-  sectionAriaLabel?: string;
-  hint?: string;
-  actions?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  const headingBlock =
-    titleLines && titleLines.length > 0 ? (
-      <div className="flex flex-col gap-1" role="presentation">
-        {titleLines.map((line, i) => (
-          <span
-            key={`${i}-${line}`}
-            className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600"
-          >
-            {line}
-          </span>
-        ))}
-      </div>
-    ) : (
-      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-600">{title}</p>
-    );
-
-  return (
-    <section
-      className={`group min-w-0 rounded-3xl border border-white/60 bg-white/55 p-4 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] shadow-blue-900/[0.04] ring-1 ring-slate-900/[0.04] backdrop-blur-xl transition duration-300 hover:border-white/80 hover:bg-white/65 hover:shadow-[0_20px_50px_-16px_rgba(15,23,42,0.14)] sm:p-5 ${className}`}
-      aria-label={sectionAriaLabel}
-    >
-      <div
-        className={`flex border-b border-slate-200/40 pb-3 ${
-          actions
-            ? 'min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3'
-            : 'flex-col gap-2'
-        }`}
-      >
-        <header className="min-w-0 flex-1">
-          {headingBlock}
-          {hint ? (
-            <p
-              className={`line-clamp-3 text-xs leading-relaxed text-slate-500 sm:line-clamp-3 ${titleLines?.length ? 'mt-2' : 'mt-1.5'}`}
-            >
-              {hint}
-            </p>
-          ) : null}
-        </header>
-        {actions ? <div className="shrink-0 self-end pt-0.5 sm:self-start sm:pt-0.5">{actions}</div> : null}
-      </div>
-      <div className="mt-4 flex w-full flex-col space-y-1">{children}</div>
-    </section>
-  );
-}
-
-function ContactCard({
-  title,
-  subtitle,
-  icon: Icon,
-  children,
-  className = '',
-}: {
-  title: string;
-  subtitle?: string;
-  icon?: LucideIcon;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={`rounded-3xl border border-white/55 bg-white/70 p-6 shadow-[0_16px_48px_-20px_rgba(15,23,42,0.12)] ring-1 ring-blue-500/[0.06] backdrop-blur-xl md:p-7 ${className}`}
-    >
-      <div className="flex gap-4">
-        {Icon ? (
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-sky-500/15 text-blue-800 ring-1 ring-blue-300/45"
-            aria-hidden
-          >
-            <Icon className="h-5 w-5" strokeWidth={2} />
-          </div>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold tracking-tight text-slate-900">{title}</h3>
-          {subtitle ? (
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{subtitle}</p>
-          ) : null}
-          <div className={subtitle ? 'mt-6' : 'mt-5'}>{children}</div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export function TimetableContactDrawer({
   entry,
   localeTag,
@@ -439,11 +289,12 @@ export function TimetableContactDrawer({
   onLogCall,
   onEditOffer,
 }: Props) {
-  const [tab, setTab] = useState<TabId>('overview');
   const [draft, setDraft] = useState<TimetableEntry | null>(null);
   const [dirty, setDirty] = useState(false);
   const [smartSummaryOpen, setSmartSummaryOpen] = useState(false);
   const [kundenDbTick, setKundenDbTick] = useState(0);
+  /** Split master/contact vs. offer so the offer generator is not shown on the call workspace. */
+  const [drawerWorkspaceTab, setDrawerWorkspaceTab] = useState<'call' | 'offer'>('call');
   const smartSummaryRef = useRef<HTMLDivElement>(null);
   const prevEntryIdRef = useRef<number | null>(null);
 
@@ -452,6 +303,10 @@ export function TimetableContactDrawer({
     window.addEventListener('dema-kunden-db-changed', onKunden);
     return () => window.removeEventListener('dema-kunden-db-changed', onKunden);
   }, []);
+
+  useEffect(() => {
+    setDrawerWorkspaceTab('call');
+  }, [entry?.id]);
 
   useLayoutEffect(() => {
     if (!entry) {
@@ -462,7 +317,27 @@ export function TimetableContactDrawer({
     const needReset =
       prevEntryIdRef.current === null || prevEntryIdRef.current !== entry.id;
     if (needReset) {
-      setDraft(cloneEntry(entry));
+      const next = cloneEntry(entry);
+      const pr = { ...(next.contact_profile ?? {}) };
+      if (!pr.overview_kunde) {
+        let o = timetableOverviewFromEntry(next);
+        const mk = resolveKundeForTimetableRow(loadKundenDb(), next.company_name, pr.customer_number);
+        if (mk) o = mergeMasterOverview(o, mk);
+        pr.overview_kunde = normalizeTimetableOverviewKunde(o);
+      }
+      const contacts = pr.contacts ?? [];
+      if (contacts.length === 0 && (next.contact_name.trim() || next.phone.trim())) {
+        const ec = emptyContactPerson();
+        pr.contacts = [
+          {
+            ...ec,
+            name: next.contact_name.trim() || ec.name,
+            telefon: next.phone.trim() || ec.telefon,
+          },
+        ];
+      }
+      next.contact_profile = pr;
+      setDraft(next);
       setDirty(false);
     }
     prevEntryIdRef.current = entry.id;
@@ -485,12 +360,8 @@ export function TimetableContactDrawer({
   }, [entryFingerprint, dirty]);
 
   useEffect(() => {
-    if (entry) setTab('overview');
-  }, [entry?.id]);
-
-  useEffect(() => {
     setSmartSummaryOpen(false);
-  }, [tab]);
+  }, [entry?.id]);
 
   useEffect(() => {
     if (!smartSummaryOpen) return;
@@ -518,27 +389,6 @@ export function TimetableContactDrawer({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [entry, onClose, smartSummaryOpen]);
-
-  const tabs = useMemo(
-    () =>
-      [
-        { id: 'overview' as const, label: t('timetableContactTabOverview', 'Overview'), icon: LayoutDashboard },
-        { id: 'history' as const, label: t('timetableContactTabHistory', 'Appointments'), icon: History },
-        { id: 'vehicle' as const, label: t('timetableContactTabVehicle', 'Vehicle'), icon: Car },
-        { id: 'activity' as const, label: t('timetableContactTabActivity', 'Correspondence'), icon: FileText },
-      ] as const,
-    [t]
-  );
-
-  const outcomeLabels = useMemo(
-    () => ({
-      pending: t('timetableOutcomePending', 'Pending'),
-      follow_up: t('timetableOutcomeFollowUp', 'Follow-up'),
-      has_trucks: t('timetableOutcomeHasTrucks', 'Has trucks'),
-      no_trucks: t('timetableOutcomeNoTrucks', 'No trucks'),
-    }),
-    [t]
-  );
 
   const smartBullets = useMemo(() => {
     if (!draft) return [] as string[];
@@ -582,10 +432,61 @@ export function TimetableContactDrawer({
     setDirty(true);
   }, []);
 
+  const patchOverviewKunde = useCallback(
+    (fn: (k: TimetableOverviewKundeDraft) => TimetableOverviewKundeDraft) => {
+      patchDraft((prev) => {
+        const pr = ensureProfile(prev);
+        const cur = pr.overview_kunde ?? timetableOverviewFromEntry(prev);
+        return {
+          ...prev,
+          contact_profile: {
+            ...pr,
+            overview_kunde: normalizeTimetableOverviewKunde(fn(cur)),
+          },
+        };
+      });
+    },
+    [patchDraft]
+  );
+
+  const setOfferField = useCallback(
+    (patch: Partial<TimetableTruckOffer>) => {
+      patchDraft((prev) => {
+        const cur = prev.offer ?? { ...EMPTY_OFFER };
+        return { ...prev, offer: { ...cur, ...patch } };
+      });
+    },
+    [patchDraft]
+  );
+
+  const setVehicleExtra = useCallback(
+    (patch: Partial<TimetableVehicleDisplayExtra>) => {
+      patchDraft((prev) => {
+        const pr = ensureProfile(prev);
+        return {
+          ...prev,
+          contact_profile: {
+            ...pr,
+            vehicle_extra: { ...(pr.vehicle_extra ?? {}), ...patch },
+          },
+        };
+      });
+    },
+    [patchDraft]
+  );
+
   const handleSave = useCallback(() => {
     if (!draft || !entry) return;
     const next = cloneEntry(draft);
     const nowIso = new Date().toISOString();
+
+    const prSave = next.contact_profile ? { ...next.contact_profile } : undefined;
+    const ov = prSave?.overview_kunde;
+    if (ov?.firmenname?.trim()) next.company_name = ov.firmenname.trim();
+    const c0 = prSave?.contacts?.[0];
+    if (c0?.name?.trim()) next.contact_name = c0.name.trim();
+    if (c0?.telefon?.trim()) next.phone = c0.telefon.trim();
+    if (prSave) next.contact_profile = prSave;
 
     if (offerHasContent(next.offer)) {
       const o = next.offer!;
@@ -619,215 +520,222 @@ export function TimetableContactDrawer({
 
   const p = ensureProfile(draft);
   const { date: slotDate, time: slotTime } = formatRowDateTime(draft.scheduled_at, localeTag);
+  const overview = normalizeTimetableOverviewKunde(
+    draft.contact_profile?.overview_kunde ?? timetableOverviewFromEntry(draft)
+  );
   const offer = draft.offer ?? EMPTY_OFFER;
+  const ve = p.vehicle_extra ?? {};
+  const companyTitle =
+    (overview.firmenname || draft.company_name).trim() || t('commonPlaceholderDash', '—');
+  const addressLine = formatOverviewAddressLine(overview);
+  const safeAdresseIdx = Math.min(
+    Math.max(0, overview.active_adresse_idx ?? 0),
+    Math.max(0, overview.adressen.length - 1)
+  );
+  const activeAddr = overview.adressen[safeAdresseIdx] ?? overview.adressen[0]!;
+  const adCol = ADRESSE_COLORS[safeAdresseIdx % ADRESSE_COLORS.length]!;
+  const adInitials = activeAddr.ort
+    ? activeAddr.ort.slice(0, 2).toUpperCase()
+    : String(safeAdresseIdx + 1);
 
-  const setOfferField = (patch: Partial<TimetableTruckOffer>) => {
-    patchDraft((prev) => {
-      const base = prev.offer ? { ...prev.offer } : { ...EMPTY_OFFER };
-      return { ...prev, offer: { ...base, ...patch } };
+  const statusChipLabel =
+    overview.customer_status === 'active'
+      ? t('newCustomerStatusActive', 'Active')
+      : overview.customer_status === 'inactive'
+        ? t('newCustomerStatusInactive', 'Inactive')
+        : t('newCustomerStatusBlocked', 'Blocked');
+
+  const patchAdresseIdx = (idx: number, patch: Partial<(typeof overview.adressen)[0]>) => {
+    patchOverviewKunde((k0) => {
+      const list = [...k0.adressen];
+      const cur = list[idx];
+      if (!cur) return k0;
+      list[idx] = { ...cur, ...patch };
+      return { ...k0, adressen: list };
     });
   };
 
-  const ve: TimetableVehicleDisplayExtra = p.vehicle_extra ?? {};
-
-  const setVehicleExtra = (patch: Partial<TimetableVehicleDisplayExtra>) => {
-    patchDraft((prev) => {
-      const pr = ensureProfile(prev);
-      const cur = { ...(pr.vehicle_extra ?? {}), ...patch };
-      pr.vehicle_extra = cur;
-      return { ...prev, contact_profile: { ...pr } };
-    });
-  };
-
-  return (
+  const modalUi = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950/55 via-slate-900/50 to-blue-950/40 p-1.5 backdrop-blur-[6px] sm:p-2"
+      className="customers-modal-genz-backdrop dema-modal-backdrop-vibe fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-5"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative flex h-[min(78dvh,calc(100dvh-12px))] max-h-[min(78dvh,calc(100dvh-12px))] w-[min(96rem,calc(100vw-10px))] max-w-[min(96rem,calc(100vw-10px))] flex-col overflow-hidden rounded-3xl border border-white/25 bg-gradient-to-b from-slate-50/98 via-blue-50/[0.2] to-slate-100/[0.35] shadow-[0_32px_64px_-16px_rgba(15,23,42,0.45)] shadow-blue-900/12 ring-1 ring-slate-900/10 motion-safe:animate-timetable-fade-up motion-reduce:animate-none sm:h-[min(78dvh,calc(100dvh-16px))] sm:max-h-[min(78dvh,calc(100dvh-16px))] sm:w-[min(96rem,calc(100vw-14px))] sm:max-w-[min(96rem,calc(100vw-14px))] lg:w-[min(96rem,calc(100vw-20px))] lg:max-w-[min(96rem,calc(100vw-20px))]"
+        className="customers-modal-genz-panel relative flex w-full min-w-0 max-h-[92vh] max-w-[min(118rem,99vw)] flex-col overflow-hidden rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="timetable-contact-drawer-title"
       >
-        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0b1428] via-slate-900 to-[#0a1628] px-3.5 py-3 pr-12 text-white sm:px-5 sm:py-3.5 sm:pr-14 md:pr-[4.25rem]">
-          <div
-            className="pointer-events-none absolute -right-24 -top-32 h-72 w-72 rounded-full bg-blue-600/18 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-600/16 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-9s]"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute right-1/4 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-sky-500/14 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-5s]"
-            aria-hidden
-          />
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 via-sky-400/25 to-transparent" />
-          <p className="relative text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300/95">
-            {t('timetableContactTitle', 'Customer contact')}
-          </p>
-          <h2
-            id="timetable-contact-drawer-title"
-            className="relative mt-1.5 text-balance bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent sm:mt-2 sm:text-xl sm:leading-snug"
-          >
-            {draft.company_name || t('commonPlaceholderDash', '—')}
-          </h2>
-          <div className="relative mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:mt-3 sm:gap-x-2">
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold leading-none ring-1 ${outcomePillClass(draft.outcome)}`}
-            >
-              {outcomeLabel(draft, t)}
-            </span>
-            <div
-              className="flex items-center gap-0.5 rounded-md border border-white/[0.18] bg-white/[0.08] px-1.5 py-0.5 ring-1 ring-white/[0.05] focus-within:border-blue-400/55 focus-within:ring-2 focus-within:ring-blue-400/25"
-              title={t('timetableContactCardClassification', 'Codes & profile')}
-            >
-              <input
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                aria-label={t('timetableColKa', 'Ka')}
-                placeholder={t('timetableColKaPh', 'A')}
-                value={draft.legacy_ka ?? ''}
-                onChange={(e) =>
-                  patchDraft((prev) => ({ ...prev, legacy_ka: e.target.value || undefined }))
-                }
-                className={`${headerCodesInputClass} w-7 text-center font-mono sm:w-8`}
-              />
-              <span className="select-none px-0.5 text-[10px] text-slate-500" aria-hidden>
-                /
-              </span>
-              <input
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                aria-label={t('timetableColArte', 'Subtype')}
-                placeholder={kaArtFromRow(draft)}
-                value={draft.legacy_arte ?? ''}
-                onChange={(e) =>
-                  patchDraft((prev) => ({ ...prev, legacy_arte: e.target.value || undefined }))
-                }
-                className={`${headerCodesInputClass} w-9 text-center font-mono sm:w-10`}
-              />
-            </div>
-            <span className="select-none text-[10px] text-slate-600" aria-hidden>
-              ·
-            </span>
-            <div
-              role="group"
-              aria-label={t(
-                'timetableContactCrmSnapshotAria',
-                'Customer master: customer number and industry'
-              )}
-              className="flex min-w-0 max-w-[min(100%,19rem)] items-center gap-2 rounded-lg border border-blue-500/40 bg-gradient-to-r from-blue-600/[0.12] via-slate-900/35 to-sky-500/[0.08] px-2 py-1 shadow-inner shadow-black/15 ring-1 ring-inset ring-white/[0.06] sm:max-w-md sm:flex-1 sm:gap-2.5 sm:px-2.5 sm:py-1.5"
-            >
-              <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/28 text-sky-200/95 shadow-sm shadow-black/20"
-                aria-hidden
-              >
-                <Building2 className="h-3.5 w-3.5" strokeWidth={2} />
-              </div>
-              <div className="flex min-w-0 flex-1 items-end gap-2 sm:gap-3">
-                <div className="min-w-0 shrink-0">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                    {t('customersLabelCustomerNr', 'Customer no.')}
-                  </p>
-                  <p className="font-mono text-sm font-bold leading-none tabular-nums tracking-tight text-white sm:text-[0.95rem]">
-                    {headerCrmDisplay.kuNr}
-                  </p>
-                </div>
-                <span className="pb-0.5 text-[10px] text-slate-600" aria-hidden>
-                  ·
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                    {t('newCustomerLabelBranche', 'Industry')}
-                  </p>
-                  <p className="truncate text-xs font-semibold leading-tight text-slate-100">
-                    {headerCrmDisplay.branche}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <span className="select-none text-[10px] text-slate-600" aria-hidden>
-              ·
-            </span>
-            <span className="text-xs tabular-nums text-slate-200 sm:text-[13px]">
-              {slotDate} · {slotTime}
-            </span>
-            {draft.is_parked ? (
-              <span className="rounded-md bg-sky-500/20 px-2 py-0.5 text-[11px] font-semibold leading-none text-sky-100 ring-1 ring-sky-400/35">
-                {t('timetableFilterParked', 'Parked')}
-              </span>
-            ) : null}
-            {p.purchase_confirmed ? (
-              <span className="rounded-md bg-blue-500/22 px-2 py-0.5 text-[11px] font-semibold leading-none text-blue-100 ring-1 ring-blue-400/35">
-                {t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}
-              </span>
-            ) : null}
-          </div>
+        <div className="customers-modal-genz-topline pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px]" aria-hidden />
+        <div className="customers-modal-genz-header relative shrink-0 border-b border-transparent px-4 py-2.5 pr-14 sm:pl-5 sm:pr-16 md:pr-20">
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-2 top-2 rounded-lg p-1.5 text-slate-400 ring-1 ring-white/0 transition hover:bg-white/10 hover:text-white hover:ring-white/15 sm:right-2.5 sm:top-2.5 sm:p-2 md:right-3 md:top-3"
+            className="customers-modal-genz-icon-btn absolute right-2 top-2 rounded p-2"
             aria-label={t('commonClose', 'Close')}
           >
-            <X className="h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]" strokeWidth={2} />
+            <X className="h-5 w-5" />
           </button>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="customers-modal-genz-header-summary space-y-2">
+                <p className="customers-modal-genz-header-eyeline">
+                  {t('timetableContactHeaderEyeline', 'Calendar · customer contact')}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2
+                    id="timetable-contact-drawer-title"
+                    className="min-w-0 max-w-full text-lg font-bold tracking-tight sm:text-xl"
+                  >
+                    <span className="customers-modal-genz-header-link truncate">{companyTitle}</span>
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => void copyTextToClipboard(companyTitle)}
+                    disabled={!companyTitle.trim()}
+                    className="customers-modal-genz-icon-btn shrink-0 rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30"
+                    aria-label={t('newCustomerCopyCompanyNameAria', 'Copy company name')}
+                  >
+                    <Copy className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <span className="customers-modal-genz-mode-badge shrink-0 rounded-md px-2 py-0.5 text-xs">
+                    {t('timetableContactCalendarEditBadge', '(Edit)')}
+                  </span>
+                </div>
+                <div className="customers-modal-genz-header-address-row flex items-start gap-2.5 text-lg font-bold leading-snug tracking-tight sm:gap-3 sm:text-xl">
+                  <MapPin className="mt-1 h-5 w-5 shrink-0 sm:mt-1.5 sm:h-6 sm:w-6" aria-hidden />
+                  <span className="block min-w-0 flex-1">
+                    <span className="inline-block max-w-full align-top leading-snug">
+                      <span className="customers-modal-genz-header-link inline align-top break-words">
+                        {addressLine.trim() ? addressLine : t('commonPlaceholderDash', '—')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void copyTextToClipboard(addressLine)}
+                        disabled={!addressLine.trim()}
+                        className="customers-modal-genz-icon-btn ml-1 inline-flex shrink-0 align-top rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30 sm:ml-1.5"
+                        aria-label={t('newCustomerCopyAddressAria', 'Copy address')}
+                      >
+                        <Copy className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
+                      </button>
+                    </span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default text-[11px]">
+                    {outcomeLabel(draft, t)}
+                  </span>
+                  <span
+                    data-dema-chip="tt-status"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default"
+                  >
+                    {t('newCustomerLabelStatus', 'Status')}: {statusChipLabel}
+                  </span>
+                  <span
+                    data-dema-chip="tt-slot"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default tabular-nums"
+                  >
+                    {slotDate} · {slotTime}
+                  </span>
+                  {draft.is_parked ? (
+                    <span className="customers-modal-genz-h-chip">{t('timetableFilterParked', 'Parked')}</span>
+                  ) : null}
+                  {p.purchase_confirmed ? (
+                    <span className="customers-modal-genz-h-chip">{t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}</span>
+                  ) : null}
+                  <div
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white/80 px-1.5 py-0.5"
+                    title={t('timetableContactCardClassification', 'Codes & profile')}
+                  >
+                    <input
+                      type="text"
+                      inputMode="text"
+                      autoComplete="off"
+                      aria-label={t('timetableColKa', 'Ka')}
+                      placeholder={t('timetableColKaPh', 'A')}
+                      value={draft.legacy_ka ?? ''}
+                      onChange={(e) =>
+                        patchDraft((prev) => ({ ...prev, legacy_ka: e.target.value || undefined }))
+                      }
+                      className="h-7 w-7 border-0 bg-transparent text-center text-xs font-semibold text-slate-800 outline-none ring-0"
+                    />
+                    <span className="text-[10px] text-slate-400">/</span>
+                    <input
+                      type="text"
+                      inputMode="text"
+                      autoComplete="off"
+                      aria-label={t('timetableColArte', 'Subtype')}
+                      placeholder={kaArtFromRow(draft)}
+                      value={draft.legacy_arte ?? ''}
+                      onChange={(e) =>
+                        patchDraft((prev) => ({ ...prev, legacy_arte: e.target.value || undefined }))
+                      }
+                      className="h-7 w-9 border-0 bg-transparent text-center text-xs font-semibold text-slate-800 outline-none ring-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="customers-modal-genz-header-meta flex shrink-0 flex-col gap-2 text-right text-sm sm:text-base">
+              <div>
+                <p className="customers-modal-genz-header-meta-label">
+                  {t('timetableContactAufnahmeMeta', 'Appointment')}
+                </p>
+                <p className="customers-modal-genz-header-meta-value tabular-nums">
+                  {slotDate} · {slotTime}
+                </p>
+              </div>
+              <div>
+                <p className="customers-modal-genz-header-meta-label">{t('customersLabelCustomerNr', 'Customer no.')}</p>
+                <p className="customers-modal-genz-header-meta-value font-mono tabular-nums">
+                  {headerCrmDisplay.kuNr}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/90 px-3 pb-2 pt-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:pb-2 sm:pt-2 md:px-5">
-            <nav
-              className="grid w-full grid-cols-4 gap-0.5 rounded-xl bg-slate-100/90 p-0.5 shadow-inner shadow-slate-900/[0.04] ring-1 ring-slate-200/70 sm:gap-1 sm:rounded-2xl sm:p-1"
-              aria-label={t('timetableContactTabsAria', 'Contact sections')}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/90 px-3 pb-2 pt-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:pb-2 sm:pt-2.5 md:px-5">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
+            <div
               role="tablist"
+              aria-label={t('timetableContactDrawerTabsAria', 'Contact workspace')}
+              className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 sm:flex-nowrap sm:gap-2"
             >
-              {tabs.map(({ id, label, icon: Icon }, idx) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === id}
-                  onClick={() => setTab(id)}
-                  className={`flex min-h-[2.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-center text-[10px] font-semibold leading-tight transition-all duration-200 motion-safe:animate-contact-card-in motion-reduce:animate-none sm:min-h-0 sm:flex-row sm:gap-1 sm:rounded-xl sm:px-2 sm:py-1.5 sm:text-xs md:text-[13px] [animation-delay:calc(35ms*var(--tw-contact-tab-i))] ${
-                    tab === id
-                      ? 'bg-white text-slate-900 shadow-sm shadow-slate-900/8 ring-1 ring-blue-300/55'
-                      : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
-                  }`}
-                  style={{ '--tw-contact-tab-i': idx } as React.CSSProperties}
-                >
-                  <Icon
-                    className={`h-3.5 w-3.5 shrink-0 sm:h-[0.95rem] sm:w-[0.95rem] ${tab === id ? 'text-blue-600' : 'opacity-80'}`}
-                    strokeWidth={2}
-                  />
-                  <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{label}</span>
-                </button>
-              ))}
-            </nav>
-            <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-2 sm:mt-2 sm:flex-nowrap sm:pt-2">
-            <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 sm:flex-nowrap sm:gap-2">
               <button
                 type="button"
-                onClick={() => onLogCall(draft)}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 text-[11px] font-semibold text-white shadow-md shadow-blue-900/25 ring-1 ring-white/10 transition duration-200 hover:brightness-105 active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
+                role="tab"
+                id="tt-drawer-tab-call"
+                aria-selected={drawerWorkspaceTab === 'call'}
+                aria-controls="tt-drawer-panel-call"
+                onClick={() => setDrawerWorkspaceTab('call')}
+                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                  drawerWorkspaceTab === 'call'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25 ring-1 ring-white/10 hover:brightness-105'
+                    : 'border border-blue-200/90 bg-white text-blue-950 shadow-sm ring-1 ring-blue-900/5 hover:border-blue-300 hover:bg-blue-50/80'
+                }`}
               >
-                <PhoneCall className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                {t('timetableContactLogCall', 'Log call')}
+                <Phone className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
+                <span>{t('timetableContactDrawerTabCall', 'Call & contact')}</span>
               </button>
               <button
                 type="button"
-                onClick={() => onEditOffer(draft)}
-                disabled={draft.outcome !== 'has_trucks'}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border border-blue-200/90 bg-white px-3 text-[11px] font-semibold text-blue-950 shadow-sm ring-1 ring-blue-900/5 transition hover:border-blue-300 hover:bg-blue-50/80 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3.5 sm:text-xs"
+                role="tab"
+                id="tt-drawer-tab-offer"
+                aria-selected={drawerWorkspaceTab === 'offer'}
+                aria-controls="tt-drawer-panel-offer"
+                onClick={() => setDrawerWorkspaceTab('offer')}
+                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                  drawerWorkspaceTab === 'offer'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-900/20 ring-1 ring-white/15 hover:brightness-105'
+                    : 'border border-slate-200/90 bg-white text-slate-800 shadow-sm ring-1 ring-slate-900/5 hover:border-amber-200 hover:bg-amber-50/60'
+                }`}
               >
-                <Truck className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                {draft.offer
-                  ? t('timetableContactEditOffer', 'Edit offer')
-                  : t('timetableContactAddOffer', 'Add offer')}
+                <Truck className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
+                <span>{t('timetableContactColOffer', 'Offer')}</span>
               </button>
             </div>
 
@@ -865,937 +773,404 @@ export function TimetableContactDrawer({
           </div>
 
           <div
-            className={
-              tab === 'overview'
-                ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-slate-200/40 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(59,130,246,0.1),transparent_50%),linear-gradient(180deg,rgba(250,251,255,0.98)_0%,rgba(241,245,249,0.65)_55%,rgba(239,246,255,0.45)_100%)] p-2 sm:p-3'
-                : 'min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200/40 bg-[linear-gradient(180deg,rgba(250,251,255,0.95)_0%,#f1f5f9_100%)] px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-8'
-            }
+            className="customers-modal-genz-body min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 has-edit-side sm:px-6 sm:py-5"
+            role="region"
+            aria-label={t('timetableContactDrawerBodyAria', 'Customer contact — main area')}
           >
-          {tab === 'overview' ? (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div
+              className={`grid items-stretch gap-5 md:gap-6 ${
+                drawerWorkspaceTab === 'call'
+                  ? 'grid-cols-1 lg:grid-cols-3 min-[1420px]:grid-cols-3'
+                  : 'grid-cols-1'
+              }`}
+            >
+              {drawerWorkspaceTab === 'call' ? (
+                <div
+                  id="tt-drawer-panel-call"
+                  role="tabpanel"
+                  aria-labelledby="tt-drawer-tab-call"
+                  className="contents"
+                >
               <div
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-0.5 [scrollbar-gutter:stable] [scrollbar-width:auto] [scrollbar-color:rgb(71_85_105)_rgb(226_232_240)] sm:px-0 [-ms-overflow-style:scrollbar] [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-200/90 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-slate-200/90 [&::-webkit-scrollbar-thumb]:bg-slate-500 [&::-webkit-scrollbar-thumb]:hover:bg-slate-600"
-                role="region"
-                aria-label={t(
-                  'timetableContactOverviewVerticalScrollAria',
-                  'Overview — scroll sideways for columns; scroll down if needed'
-                )}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--1 min-w-0 space-y-4 border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-1`}
               >
-                <div className="flex flex-col gap-4 pb-6 md:gap-5 md:pb-8 lg:pb-10">
-                  <div
-                    className="-mx-0.5 overflow-x-auto overflow-y-visible pb-2 pt-0.5 [-ms-overflow-style:auto] [scrollbar-width:thin] [scrollbar-color:rgb(100_116_139)_rgb(241_245_249)] sm:mx-0 [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-500/90 [&::-webkit-scrollbar-thumb]:hover:bg-slate-600 [&::-webkit-scrollbar-track]:mx-1 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-200/80"
-                    role="region"
-                    aria-label={t('timetableContactOverviewScrollAria', 'Overview columns — scroll sideways')}
-                  >
-                    <div className="flex w-max min-h-0 flex-nowrap gap-3 px-1 pb-1 pr-4 snap-x snap-mandatory sm:gap-4 sm:px-0 sm:pr-5 md:gap-5 md:pr-6">
-                  <div className={`${overviewHScrollColClass} ${overviewStaggerClass(40)}`}>
-                  <OverviewPanel title={t('timetableContactCardIdentity', 'Who you are calling')}>
-                    <div className="flex flex-col gap-2">
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableColCompany', 'Company')}
-                        </span>
-                        <input
-                          value={draft.company_name}
-                          onChange={(e) =>
-                            patchDraft((prev) => ({ ...prev, company_name: e.target.value }))
-                          }
-                          className={overviewInputClass}
-                        />
-                      </label>
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableColContact', 'Contact')}
-                        </span>
-                        <input
-                          value={draft.contact_name}
-                          onChange={(e) =>
-                            patchDraft((prev) => ({ ...prev, contact_name: e.target.value }))
-                          }
-                          className={overviewInputClass}
-                        />
-                      </label>
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>{t('timetableColPhone', 'Phone')}</span>
-                        <input
-                          value={draft.phone}
-                          onChange={(e) => patchDraft((prev) => ({ ...prev, phone: e.target.value }))}
-                          className={overviewInputClass}
-                          inputMode="tel"
-                        />
-                      </label>
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>{t('timetableColPurpose', 'Purpose')}</span>
-                        <input
-                          value={draft.purpose}
-                          onChange={(e) =>
-                            patchDraft((prev) => ({ ...prev, purpose: e.target.value }))
-                          }
-                          className={overviewInputClass}
-                        />
-                      </label>
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>{t('timetableColVp', 'Buyer')}</span>
-                        <input
-                          value={draft.buyer_name}
-                          onChange={(e) =>
-                            patchDraft((prev) => ({ ...prev, buyer_name: e.target.value }))
-                          }
-                          className={overviewInputClass}
-                        />
-                      </label>
-                    </div>
-                  </OverviewPanel>
+                <p className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--1`}>
+                  {t('customerModalColStammdaten', 'Master data')}
+                </p>
+                <div>
+                  <label className={labelClass}>{t('newCustomerLabelFirmenvorsatz', 'Company prefix')}</label>
+                  <input
+                    type="text"
+                    value={overview.firmenvorsatz}
+                    onChange={(e) =>
+                      patchOverviewKunde((k) => ({ ...k, firmenvorsatz: e.target.value }))
+                    }
+                    className={`${inputClass} min-h-[44px]`}
+                  />
                 </div>
-
-                <div className={`${overviewHScrollColClass} ${overviewStaggerClass(95)}`}>
-                  <OverviewPanel title={t('timetableContactCardAppointment', 'Appointment & outcome')}>
-                    <div className="flex flex-col gap-2">
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableContactSlotDateTime', 'Appointment date & time')}
-                        </span>
+                <div>
+                  <label className={labelClass}>{t('newCustomerLabelFirmenname', 'Company name')}</label>
+                  <input
+                    type="text"
+                    value={overview.firmenname}
+                    onChange={(e) =>
+                      patchOverviewKunde((k) => ({ ...k, firmenname: e.target.value }))
+                    }
+                    className={`${inputClass} min-h-[44px]`}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
+                  {overview.adressen.map((ad, i) => {
+                    const dc = ADRESSE_COLORS[i % ADRESSE_COLORS.length]!;
+                    const isActive = i === safeAdresseIdx;
+                    return (
+                      <button
+                        key={ad.id}
+                        type="button"
+                        onClick={() => patchOverviewKunde((k) => ({ ...k, active_adresse_idx: i }))}
+                        className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                          isActive
+                            ? `${dc.activePill} text-white shadow-sm`
+                            : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-white/60' : dc.dotActive}`} />
+                        {t(...(ADRESSE_TYP_I18N[ad.typ] ?? [ad.typ, ad.typ]))}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patchOverviewKunde((k) => {
+                        const nextTyp = ADRESSE_TYPEN[k.adressen.length] ?? 'Sonstiges';
+                        return {
+                          ...k,
+                          adressen: [
+                            ...k.adressen,
+                            { ...emptyOverviewAdresse(`addr-${k.adressen.length}-${Date.now()}`), typ: nextTyp },
+                          ],
+                          active_adresse_idx: k.adressen.length,
+                        };
+                      })
+                    }
+                    className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Plus className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+                    {t('newCustomerAdresseNewBtn', 'New')}
+                  </button>
+                </div>
+                <div className="customers-modal-genz-frost-card overflow-hidden rounded-2xl border border-white/60">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${adCol.activePill}`}
+                      >
+                        {adInitials}
+                      </div>
+                      <select
+                        value={activeAddr.typ}
+                        onChange={(e) => patchAdresseIdx(safeAdresseIdx, { typ: e.target.value })}
+                        className="cursor-pointer border-0 bg-transparent text-sm font-semibold text-slate-700 focus:outline-none"
+                      >
+                        {ADRESSE_TYPEN.map((typ) => (
+                          <option key={typ} value={typ}>
+                            {t(...(ADRESSE_TYP_I18N[typ] ?? [typ, typ]))}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {overview.adressen.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          patchOverviewKunde((k) => {
+                            const list = k.adressen.filter((_, i) => i !== safeAdresseIdx);
+                            return {
+                              ...k,
+                              adressen: list.length ? list : [emptyOverviewAdresse('addr-0')],
+                              active_adresse_idx: Math.max(0, safeAdresseIdx - 1),
+                            };
+                          })
+                        }
+                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        title={t('newCustomerAdresseRemove', 'Remove address')}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2 p-3">
+                    <div>
+                      <label className={labelClass}>{t('globalAddrSearchLabel', 'Address search (worldwide)')}</label>
+                      <GlobalAddressSearch
+                        onSelect={(r: GlobalAddressResult) => {
+                          const road = r.strasse?.trim();
+                          const line1 =
+                            road && road.length > 0
+                              ? road
+                              : (r.label.split(',')[0]?.trim() ?? '');
+                          const code = (r.land_code ?? '').toUpperCase();
+                          const landOk = /^[A-Z]{2}$/.test(code);
+                          patchAdresseIdx(safeAdresseIdx, {
+                            strasse: line1,
+                            plz: r.plz ?? '',
+                            ort: r.ort ?? '',
+                            ...(landOk
+                              ? { land_code: code, art_land_code: landCodeToArtLand(code) }
+                              : {}),
+                          });
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t('newCustomerLabelStrasse', 'Street')}</label>
+                      <input
+                        type="text"
+                        value={activeAddr.strasse}
+                        onChange={(e) => patchAdresseIdx(safeAdresseIdx, { strasse: e.target.value })}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <label className={labelClass}>{t('newCustomerLabelPLZ', 'ZIP')}</label>
                         <input
-                          type="datetime-local"
-                          value={toDatetimeLocalValue(draft.scheduled_at)}
-                          onChange={(e) => {
-                            const iso = fromDatetimeLocalValue(e.target.value);
-                            if (iso) patchDraft((prev) => ({ ...prev, scheduled_at: iso }));
-                          }}
-                          className={overviewInputClass}
+                          type="text"
+                          value={activeAddr.plz}
+                          onChange={(e) => patchAdresseIdx(safeAdresseIdx, { plz: e.target.value })}
+                          className={inputClass}
                         />
-                      </label>
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableFieldFollowUpAt', 'Follow-up date & time')}
-                        </span>
+                      </div>
+                      <div>
+                        <label className={labelClass}>{t('newCustomerLabelOrt', 'City')}</label>
                         <input
-                          type="datetime-local"
-                          value={toDatetimeLocalValue(draft.follow_up_at)}
-                          onChange={(e) => {
-                            const iso = fromDatetimeLocalValue(e.target.value);
-                            patchDraft((prev) => ({ ...prev, follow_up_at: iso }));
-                          }}
-                          className={overviewInputClass}
+                          type="text"
+                          value={activeAddr.ort}
+                          onChange={(e) => patchAdresseIdx(safeAdresseIdx, { ort: e.target.value })}
+                          className={inputClass}
                         />
-                      </label>
-                      <label className={overviewFieldClass}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableFieldOutcome', 'Call outcome')}
-                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <label className={labelClass}>{t('newCustomerLabelLand', 'Country')}</label>
+                        <input
+                          type="text"
+                          value={activeAddr.land_code}
+                          onChange={(e) => {
+                            const code = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+                            patchAdresseIdx(safeAdresseIdx, {
+                              land_code: code,
+                              art_land_code: landCodeToArtLand(code || 'DE'),
+                            });
+                          }}
+                          className={inputClass}
+                          maxLength={2}
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>{t('newCustomerLabelArtLand', 'Country type')}</label>
                         <select
-                          value={draft.outcome}
-                          onChange={(e) => {
-                            const o = e.target.value as TimetableOutcome;
-                            patchDraft((prev) => ({
-                              ...prev,
-                              outcome: o,
-                              is_completed: o === 'no_trucks',
-                              follow_up_at:
-                                o === 'follow_up' || o === 'has_trucks' ? prev.follow_up_at : null,
-                            }));
-                          }}
-                          className={overviewInputClass}
+                          value={activeAddr.art_land_code}
+                          onChange={(e) =>
+                            patchAdresseIdx(safeAdresseIdx, { art_land_code: e.target.value })
+                          }
+                          className={inputClass}
                         >
-                          {OUTCOME_ORDER.map((o) => (
-                            <option key={o} value={o}>
-                              {outcomeLabels[o]}
+                          {ART_LAND_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
                             </option>
                           ))}
                         </select>
-                      </label>
-                      <div className="flex flex-col gap-3 rounded-2xl border border-blue-200/40 bg-white/45 p-3 shadow-inner shadow-blue-900/[0.03] backdrop-blur-sm">
-                        <label className="flex cursor-pointer items-center gap-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:text-slate-900">
-                          <input
-                            type="checkbox"
-                            checked={draft.is_completed}
-                            onChange={(e) =>
-                              patchDraft((prev) => ({ ...prev, is_completed: e.target.checked }))
-                            }
-                            className="h-4 w-4 rounded-md border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-400/40"
-                          />
-                          {t('timetableColDone', 'Done')}
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:text-slate-900">
-                          <input
-                            type="checkbox"
-                            checked={draft.is_parked}
-                            onChange={(e) =>
-                              patchDraft((prev) => ({ ...prev, is_parked: e.target.checked }))
-                            }
-                            className="h-4 w-4 rounded-md border-slate-300 text-sky-600 transition focus:ring-2 focus:ring-blue-400/40"
-                          />
-                          {t('timetableContactParkedLabel', 'Parked')}
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:text-slate-900">
-                          <input
-                            type="checkbox"
-                            checked={!!p.purchase_confirmed}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                pr.purchase_confirmed = e.target.checked;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            className="h-4 w-4 rounded-md border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-400/40"
-                          />
-                          {t('timetableContactPurchaseConfirmed', 'Purchase confirmed')}
-                        </label>
                       </div>
                     </div>
-                  </OverviewPanel>
-                </div>
-
-                <div className={`${overviewHScrollColLocationClass} ${overviewStaggerClass(110)}`}>
-                  <OverviewPanel
-                    sectionAriaLabel={t(
-                      'timetableContactCardLocation',
-                      'Address, fleet & quick notes'
-                    )}
-                    title={t('timetableContactCardLocation', 'Address, fleet & quick notes')}
-                  >
-                    <div className="flex w-full flex-col gap-4">
-                      <label className={`${overviewFieldClass} w-full`}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableContactAddress', 'Address')}
-                        </span>
-                        <textarea
-                          value={p.address ?? ''}
-                          onChange={(e) =>
-                            patchDraft((prev) => {
-                              const pr = ensureProfile(prev);
-                              pr.address = e.target.value || undefined;
-                              return { ...prev, contact_profile: { ...pr } };
-                            })
-                          }
-                          rows={5}
-                          className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <label className={labelClass}>{t('newCustomerLabelUstIdNr', 'VAT ID no.')}</label>
+                        <input
+                          type="text"
+                          value={activeAddr.ust_id_nr}
+                          onChange={(e) => patchAdresseIdx(safeAdresseIdx, { ust_id_nr: e.target.value })}
+                          className={inputClass}
                         />
-                      </label>
-                      <label className={`${overviewFieldClass} w-full`}>
-                        <span className={overviewLabelClass}>{t('timetableContactFleet', 'Fleet')}</span>
-                        <textarea
-                          value={p.fleet_summary ?? ''}
-                          onChange={(e) =>
-                            patchDraft((prev) => {
-                              const pr = ensureProfile(prev);
-                              pr.fleet_summary = e.target.value || undefined;
-                              return { ...prev, contact_profile: { ...pr } };
-                            })
-                          }
-                          rows={5}
-                          className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
+                      </div>
+                      <div>
+                        <label className={labelClass}>{t('newCustomerLabelSteuerNr', 'Tax no.')}</label>
+                        <input
+                          type="text"
+                          value={activeAddr.steuer_nr}
+                          onChange={(e) => patchAdresseIdx(safeAdresseIdx, { steuer_nr: e.target.value })}
+                          className={inputClass}
                         />
-                      </label>
-                      <label className={`${overviewFieldClass} w-full`}>
-                        <span className={overviewLabelClass}>
-                          {t('timetableContactTableNotes', 'Call / list notes')}
-                        </span>
-                        <textarea
-                          value={draft.notes}
-                          onChange={(e) => patchDraft((prev) => ({ ...prev, notes: e.target.value }))}
-                          rows={5}
-                          className={`${overviewNotesTextareaClass} min-h-[8.5rem] w-full`}
-                          placeholder={t(
-                            'timetableContactTableNotesPh',
-                            'Short notes visible in the timetable row.'
-                          )}
-                        />
-                      </label>
+                      </div>
                     </div>
-                  </OverviewPanel>
-                </div>
-
-                <div
-                  className={`${overviewHScrollColClass} flex flex-col gap-3 sm:gap-4 ${overviewStaggerClass(120)}`}
-                >
-                  <OverviewPanel
-                    title={t('timetableContactMoreContacts', 'Contact persons')}
-                    actions={
-                      <button
-                        type="button"
-                        onClick={() =>
-                          patchDraft((prev) => {
-                            const pr = ensureProfile(prev);
-                            pr.contacts = [...(pr.contacts ?? []), emptyContactPerson()];
-                            return { ...prev, contact_profile: { ...pr } };
-                          })
-                        }
-                        className={overviewAddBtnClass}
-                      >
-                        {t('timetableContactAddRow', 'Add')}
-                      </button>
-                    }
-                  >
-                    <div className="space-y-3">
-                      {(p.contacts ?? []).length === 0 ? (
-                        <p className="text-xs leading-relaxed text-slate-500">
-                          {t('timetableContactNoExtraContacts', 'None')}
-                        </p>
-                      ) : null}
-                      {(p.contacts ?? []).map((c, idx) => (
-                        <div
-                          key={idx}
-                          className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3"
-                        >
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  pr.contacts = (pr.contacts ?? []).filter((_, i) => i !== idx);
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className="text-xs font-semibold text-rose-600 hover:underline"
+                    <div>
+                      <label className={labelClass}>{t('customersLabelWebsite', 'Website')}</label>
+                      <input
+                        type="text"
+                        value={overview.website}
+                        onChange={(e) => patchOverviewKunde((k) => ({ ...k, website: e.target.value }))}
+                        className={inputClass}
+                        placeholder={t('newCustomerPhWebsite', 'www.example.com')}
+                        inputMode="url"
+                        autoComplete="url"
+                      />
+                      {(() => {
+                        const href = safeWebsiteHref(overview.website);
+                        if (!href) return null;
+                        return (
+                          <p className="mt-1.5 min-w-0 text-xs">
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex max-w-full items-center gap-1 font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
                             >
-                              {t('timetableContactRemoveRow', 'Remove')}
-                            </button>
-                          </div>
-                          <label className={overviewFieldClass}>
-                            <span className={overviewLabelClass}>
-                              {t('timetableColContact', 'Contact')}
-                            </span>
-                            <input
-                              value={c.name}
-                              onChange={(e) =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  const list = [...(pr.contacts ?? [])];
-                                  list[idx] = { ...list[idx], name: e.target.value };
-                                  pr.contacts = list;
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className={overviewInputClass}
-                            />
-                          </label>
-                          <label className={overviewFieldClass}>
-                            <span className={overviewLabelClass}>
-                              {t('timetableColPhone', 'Phone')}
-                            </span>
-                            <input
-                              value={c.phone ?? ''}
-                              onChange={(e) =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  const list = [...(pr.contacts ?? [])];
-                                  list[idx] = { ...list[idx], phone: e.target.value || undefined };
-                                  pr.contacts = list;
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className={overviewInputClass}
-                            />
-                          </label>
-                          <label className={overviewFieldClass}>
-                            <span className={overviewLabelClass}>{t('timetableContactFax', 'Fax')}</span>
-                            <input
-                              value={c.fax ?? ''}
-                              onChange={(e) =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  const list = [...(pr.contacts ?? [])];
-                                  list[idx] = { ...list[idx], fax: e.target.value || undefined };
-                                  pr.contacts = list;
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className={overviewInputClass}
-                            />
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </OverviewPanel>
-
-                  <OverviewPanel
-                    title={t('timetableContactAssignments', 'Assignment')}
-                    actions={
-                      <button
-                        type="button"
-                        onClick={() =>
-                          patchDraft((prev) => {
-                            const pr = ensureProfile(prev);
-                            pr.assignment_history = [
-                              ...(pr.assignment_history ?? []),
-                              emptyAssignment(),
-                            ];
-                            return { ...prev, contact_profile: { ...pr } };
-                          })
-                        }
-                        className={overviewAddBtnClass}
-                      >
-                        {t('timetableContactAddRow', 'Add')}
-                      </button>
-                    }
-                  >
-                    <div className="space-y-3">
-                      {(p.assignment_history ?? []).length === 0 ? (
-                        <p className="text-xs leading-relaxed text-slate-500">
-                          {t('timetableContactNoAssignments', 'None')}
-                        </p>
-                      ) : null}
-                      {(p.assignment_history ?? []).map((a, idx) => (
-                        <div
-                          key={idx}
-                          className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3"
-                        >
-                          <label className={overviewFieldClass}>
-                            <span className={overviewLabelClass}>
-                              {t('timetableContactProcessor', 'Processor')}
-                            </span>
-                            <input
-                              value={a.name}
-                              onChange={(e) =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  const list = [...(pr.assignment_history ?? [])];
-                                  list[idx] = { ...list[idx], name: e.target.value };
-                                  pr.assignment_history = list;
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className={overviewInputClass}
-                            />
-                          </label>
-                          <label className={overviewFieldClass}>
-                            <span className={overviewLabelClass}>
-                              {t('timetableContactSince', 'Since')}
-                            </span>
-                            <input
-                              value={a.since ?? ''}
-                              onChange={(e) =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  const list = [...(pr.assignment_history ?? [])];
-                                  list[idx] = { ...list[idx], since: e.target.value || undefined };
-                                  pr.assignment_history = list;
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className={overviewInputClass}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                pr.assignment_history = (pr.assignment_history ?? []).filter(
-                                  (_, i) => i !== idx
-                                );
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            className="text-xs font-semibold text-rose-600 hover:underline"
-                          >
-                            {t('timetableContactRemoveRow', 'Remove')}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </OverviewPanel>
-                </div>
+                              <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              <span className="truncate">{t('customersWebsiteOpenLink', 'Open website')}</span>
+                            </a>
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div
-              key={tab}
-              className="motion-safe:animate-timetable-fade-in motion-reduce:animate-none"
-            >
-          {tab === 'history' ? (
-            <div className="w-full space-y-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {t('timetableContactSectionHistory', 'Further customer appointments')}
-                  </h3>
-                  <p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-500">
-                    {t('timetableContactSectionHistoryHint', 'Chronological log — same customer')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    patchDraft((prev) => {
-                      const pr = ensureProfile(prev);
-                      pr.appointment_history = [...(pr.appointment_history ?? []), emptyAppointmentRow()];
-                      return { ...prev, contact_profile: { ...pr } };
-                    })
-                  }
-                  className="h-12 shrink-0 rounded-xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800"
-                >
-                  {t('timetableContactAddAppointment', 'Add appointment')}
-                </button>
+
+              <div
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--2 flex min-w-0 flex-col gap-3 border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-1`}
+              >
+                <TimetableExtraKontakteBlock
+                  contacts={p.contacts}
+                  patchDraft={patchDraft}
+                  t={t}
+                  fieldIdPrefix="tt-drawer-kontakt"
+                  sectionTitleClassName={TT_KUNDE_SECTION_TITLE}
+                  sectionTitleColSuffix="--2"
+                  showCustomersStyleAppointments
+                  appointmentHistory={p.appointment_history}
+                />
               </div>
-              {(p.appointment_history ?? []).length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 py-16 text-center">
-                  <p className="text-sm text-slate-500">
-                    {t('timetableContactEmptyHistory', 'No additional appointments on file.')}
-                  </p>
+
+              <div
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 flex min-h-[min(70dvh,22rem)] min-w-0 flex-col border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-1 lg:min-h-[min(78dvh,28rem)]`}
+              >
+                <p
+                  id="tt-drawer-bemerkungen-heading"
+                  className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--4 shrink-0`}
+                >
+                  {t('timetableContactBemerkungen', 'Remarks')}
+                </p>
+                <textarea
+                  id="tt-drawer-bemerkungen"
+                  aria-labelledby="tt-drawer-bemerkungen-heading"
+                  value={draft.notes}
+                  onChange={(e) => patchDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder={t(
+                    'timetableContactTableNotesPh',
+                    'Short notes visible in the timetable row.'
+                  )}
+                  className={`${textareaClass} mt-2 min-h-[min(58dvh,18rem)] flex-1 resize-y lg:min-h-0`}
+                  spellCheck
+                />
+              </div>
                 </div>
               ) : (
-                <ul className="space-y-5">
-                  {(p.appointment_history ?? []).map((row, idx) => (
-                    <li
-                      key={idx}
-                      className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"
-                    >
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                          {t('timetableContactAppointmentCardLabel', 'Appointment')} {idx + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            patchDraft((prev) => {
-                              const pr = ensureProfile(prev);
-                              pr.appointment_history = (pr.appointment_history ?? []).filter(
-                                (_, i) => i !== idx
-                              );
-                              return { ...prev, contact_profile: { ...pr } };
-                            })
-                          }
-                          className="text-sm font-semibold text-rose-600 hover:underline"
-                        >
-                          {t('timetableContactRemoveRow', 'Remove')}
-                        </button>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label className={labelClass}>
-                          {t('timetableColDate', 'Date')}
-                          <input
-                            value={row.date}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                const list = [...(pr.appointment_history ?? [])];
-                                list[idx] = { ...list[idx], date: e.target.value };
-                                pr.appointment_history = list;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            className={inputClass}
-                          />
-                        </label>
-                        <label className={labelClass}>
-                          {t('timetableColTime', 'Time')}
-                          <input
-                            value={row.time}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                const list = [...(pr.appointment_history ?? [])];
-                                list[idx] = { ...list[idx], time: e.target.value };
-                                pr.appointment_history = list;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            className={inputClass}
-                          />
-                        </label>
-                        <label className={`${labelClass} sm:col-span-2`}>
-                          {t('timetableColPurpose', 'Purpose')}
-                          <input
-                            value={row.purpose}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                const list = [...(pr.appointment_history ?? [])];
-                                list[idx] = { ...list[idx], purpose: e.target.value };
-                                pr.appointment_history = list;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            className={inputClass}
-                          />
-                        </label>
-                        <label className={`${labelClass} sm:col-span-2`}>
-                          {t('timetableColRemark', 'Notes')}
-                          <textarea
-                            value={row.remark}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                const list = [...(pr.appointment_history ?? [])];
-                                list[idx] = { ...list[idx], remark: e.target.value };
-                                pr.appointment_history = list;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            rows={2}
-                            className={textareaClass}
-                          />
-                        </label>
-                        <div className="flex items-center sm:col-span-2">
-                          <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-slate-700">
-                            <input
-                              type="checkbox"
-                              checked={row.done}
-                              onChange={(e) =>
-                                patchDraft((prev) => {
-                                  const pr = ensureProfile(prev);
-                                  const list = [...(pr.appointment_history ?? [])];
-                                  list[idx] = { ...list[idx], done: e.target.checked };
-                                  pr.appointment_history = list;
-                                  return { ...prev, contact_profile: { ...pr } };
-                                })
-                              }
-                              className="h-5 w-5 rounded border-slate-300 text-slate-900"
-                            />
-                            {t('timetableColDone', 'Done')}
-                          </label>
-                        </div>
-                        <label className={labelClass}>
-                          {t('timetableContactVpShort', 'By')}
-                          <input
-                            value={row.initials}
-                            onChange={(e) =>
-                              patchDraft((prev) => {
-                                const pr = ensureProfile(prev);
-                                const list = [...(pr.appointment_history ?? [])];
-                                list[idx] = { ...list[idx], initials: e.target.value };
-                                pr.appointment_history = list;
-                                return { ...prev, contact_profile: { ...pr } };
-                              })
-                            }
-                            className={`${inputClass} font-mono`}
-                          />
-                        </label>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+              <div
+                id="tt-drawer-panel-offer"
+                role="tabpanel"
+                aria-labelledby="tt-drawer-tab-offer"
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 min-w-0 w-full space-y-4 border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6`}
+              >
+                <div className="min-w-0">
+                  <TimetableOfferGeneratorBlock
+                    rowKey={String(draft.id)}
+                    setOfferField={setOfferField}
+                    setVehicleExtra={setVehicleExtra}
+                    onGeneratorApplied={() => setDirty(true)}
+                    t={t}
+                  />
+                </div>
+                <div className="min-w-0 space-y-4">
+                  <p className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3`}>
+                    {t('timetableContactColOffer', 'Offer')}
+                  </p>
+                  <div className="customers-modal-genz-frost-card rounded-2xl border border-white/60 p-4">
+                    <TimetableOfferMinimalBlock
+                      offer={offer}
+                      vehicleExtra={ve}
+                      setOfferField={setOfferField}
+                      setVehicleExtra={setVehicleExtra}
+                      onOpenFullOfferModal={() => onEditOffer(draft)}
+                      t={t}
+                    />
+                  </div>
+                </div>
+              </div>
               )}
             </div>
-          ) : null}
+          </div>
 
-          {tab === 'vehicle' ? (
-            <div className="w-full space-y-8">
-              <ContactCard
-                icon={Truck}
-                title={t('timetableContactSectionVehicle', 'Vehicle offer')}
-                subtitle={t(
-                  'timetableContactVehicleInlineHint',
-                  'Edit here or use the full offer dialog — both stay on this row after Save.'
-                )}
+          <div
+            className={`customers-modal-genz-footer shrink-0 border-t px-4 py-3 is-edit-footer border-slate-200/80 sm:px-6`}
+          >
+            {dirty ? (
+              <div
+                className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                role="status"
               >
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  <label className={labelClass}>
-                    {t('timetableOfferVehicleType', 'Vehicle type')}
-                    <input
-                      value={offer.vehicle_type}
-                      onChange={(e) => setOfferField({ vehicle_type: e.target.value })}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferBrand', 'Brand')}
-                    <input
-                      value={offer.brand}
-                      onChange={(e) => setOfferField({ brand: e.target.value })}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferModel', 'Model')}
-                    <input
-                      value={offer.model}
-                      onChange={(e) => setOfferField({ model: e.target.value })}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferLocation', 'Location')}
-                    <input
-                      value={offer.location}
-                      onChange={(e) => setOfferField({ location: e.target.value })}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferYear', 'Year')}
-                    <input
-                      value={offer.year != null ? String(offer.year) : ''}
-                      onChange={(e) => {
-                        const v = e.target.value.trim();
-                        setOfferField({ year: v ? Number(v) : null });
-                      }}
-                      className={inputClass}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferMileage', 'Mileage (km)')}
-                    <input
-                      value={offer.mileage_km != null ? String(offer.mileage_km) : ''}
-                      onChange={(e) => {
-                        const v = e.target.value.trim().replace(',', '.');
-                        setOfferField({
-                          mileage_km: v ? (Number.isFinite(Number(v)) ? Number(v) : null) : null,
-                        });
-                      }}
-                      className={inputClass}
-                      inputMode="decimal"
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferQuantity', 'Quantity')}
-                    <input
-                      value={offer.quantity != null ? String(offer.quantity) : ''}
-                      onChange={(e) => {
-                        const v = e.target.value.trim();
-                        setOfferField({
-                          quantity: v ? (Number.isFinite(Number(v)) ? Number(v) : null) : null,
-                        });
-                      }}
-                      className={inputClass}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableOfferExpectedPrice', 'Expected price (EUR)')}
-                    <input
-                      value={offer.expected_price_eur != null ? String(offer.expected_price_eur) : ''}
-                      onChange={(e) => {
-                        const v = e.target.value.trim().replace(',', '.');
-                        setOfferField({
-                          expected_price_eur: v
-                            ? Number.isFinite(Number(v))
-                              ? Number(v)
-                              : null
-                            : null,
-                        });
-                      }}
-                      className={inputClass}
-                      inputMode="decimal"
-                    />
-                  </label>
-                  <label className={`sm:col-span-2 xl:col-span-3 ${labelClass}`}>
-                    {t('timetableOfferNotes', 'Offer notes')}
-                    <textarea
-                      value={offer.notes}
-                      onChange={(e) => setOfferField({ notes: e.target.value })}
-                      rows={3}
-                      className={textareaClass}
-                    />
-                  </label>
-                </div>
-                {!offerHasContent(draft.offer) ? (
-                  <p className="mt-5 text-sm leading-relaxed text-slate-500">
-                    {t('timetableContactEmptyVehicle', 'No offer captured — use Add offer when the customer has stock.')}
-                  </p>
-                ) : (
-                  <p className="mt-5 text-sm text-slate-600">
-                    {t('timetableOfferExpectedPrice', 'Expected price (EUR)')}:{' '}
-                    <span className="font-semibold text-blue-900">
-                      {formatEur(offer.expected_price_eur, localeTag)}
-                    </span>
-                  </p>
-                )}
-              </ContactCard>
-
-              <ContactCard
-                icon={Package}
-                className="border-blue-100/90 bg-gradient-to-br from-blue-50/80 via-white to-white ring-blue-100/50"
-                title={t('timetableContactVehicleExtra', 'Registration & status')}
-                subtitle={t(
-                  'timetableContactVehicleExtraHint',
-                  'Registration, pricing context, and who touched the offer.'
-                )}
-              >
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  <label className={labelClass}>
-                    {t('timetableContactBodyType', 'Body')}
-                    <input
-                      value={ve.body_type ?? ''}
-                      onChange={(e) => setVehicleExtra({ body_type: e.target.value || undefined })}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableContactRegistration', 'Registration')}
-                    <input
-                      value={ve.registration_mm_yyyy ?? ''}
-                      onChange={(e) =>
-                        setVehicleExtra({ registration_mm_yyyy: e.target.value || undefined })
-                      }
-                      className={inputClass}
-                      placeholder={t('timetableContactRegistrationPh', 'MM/YYYY')}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableContactMileageReplacement', 'Replacement engine km')}
-                    <input
-                      value={ve.mileage_replacement_km != null ? String(ve.mileage_replacement_km) : ''}
-                      onChange={(e) => {
-                        const v = e.target.value.trim().replace(',', '.');
-                        setVehicleExtra({
-                          mileage_replacement_km: v
-                            ? Number.isFinite(Number(v))
-                              ? Number(v)
-                              : null
-                            : null,
-                        });
-                      }}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className="text-sm font-medium text-slate-800">
-                    {t('timetableContactPriceCustomer', 'Customer price')}
-                    <input
-                      value={ve.customer_price_eur != null ? String(ve.customer_price_eur) : ''}
-                      onChange={(e) => {
-                        const v = e.target.value.trim().replace(',', '.');
-                        setVehicleExtra({
-                          customer_price_eur: v
-                            ? Number.isFinite(Number(v))
-                              ? Number(v)
-                              : null
-                            : null,
-                        });
-                      }}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={`${labelClass} sm:col-span-2 xl:col-span-3`}>
-                    {t('timetableContactProcessor', 'Processor')}
-                    <input
-                      value={ve.processor_name ?? ''}
-                      onChange={(e) => setVehicleExtra({ processor_name: e.target.value || undefined })}
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableContactProcessorEntered', 'Entered by')}
-                    <input
-                      value={ve.processor_entered ?? ''}
-                      onChange={(e) =>
-                        setVehicleExtra({ processor_entered: e.target.value || undefined })
-                      }
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableContactProcessorFetched', 'Fetched by')}
-                    <input
-                      value={ve.processor_fetched ?? ''}
-                      onChange={(e) =>
-                        setVehicleExtra({ processor_fetched: e.target.value || undefined })
-                      }
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className={labelClass}>
-                    {t('timetableContactProcessorNegotiated', 'Negotiated by')}
-                    <input
-                      value={ve.processor_negotiated ?? ''}
-                      onChange={(e) =>
-                        setVehicleExtra({ processor_negotiated: e.target.value || undefined })
-                      }
-                      className={inputClass}
-                    />
-                  </label>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-8 rounded-xl border border-blue-100/70 bg-white/60 p-4">
-                  <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={!!ve.sold}
-                      onChange={(e) => setVehicleExtra({ sold: e.target.checked })}
-                      className="h-5 w-5 rounded border-slate-300 text-slate-900"
-                    />
-                    {t('timetableContactSold', 'Sold')}
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={!!ve.deregistered}
-                      onChange={(e) => setVehicleExtra({ deregistered: e.target.checked })}
-                      className="h-5 w-5 rounded border-slate-300 text-slate-900"
-                    />
-                    {t('timetableContactDeregistered', 'Deregistered')}
-                  </label>
-                </div>
-              </ContactCard>
-            </div>
-          ) : null}
-
-          {tab === 'activity' ? (
-            <div className="w-full">
-              <ContactCard
-                icon={FileText}
-                title={t('timetableContactSectionActivity', 'Correspondence & notes')}
-                subtitle={t(
-                  'timetableContactSectionActivityHint',
-                  'Letters, e-mail drafts, and free-form history'
-                )}
-              >
-                <textarea
-                  value={p.activity_notes ?? ''}
+                {t('customer360UnsavedChanges', 'You have unsaved changes.')}
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+                <label className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-600">
+                  {t('newCustomerZustaendige', 'Responsible person')}
+                </label>
+                <select
+                  value={p.zustaendige_person ?? 'nicht zugeordnet'}
                   onChange={(e) =>
                     patchDraft((prev) => {
                       const pr = ensureProfile(prev);
-                      pr.activity_notes = e.target.value || undefined;
+                      pr.zustaendige_person = e.target.value;
                       return { ...prev, contact_profile: { ...pr } };
                     })
                   }
-                  rows={18}
-                  className={`${textareaClass} min-h-[12rem] font-sans text-[15px] leading-relaxed sm:min-h-[14rem]`}
-                  placeholder={t(
-                    'timetableContactActivityPlaceholder',
-                    'Correspondence, e-mail text, and call history…'
-                  )}
-                />
-              </ContactCard>
+                  className="h-11 min-h-[44px] w-full rounded border border-neutral-300 bg-white px-3 text-sm text-slate-800 sm:h-9 sm:min-h-0 sm:w-auto sm:max-w-xs"
+                >
+                  {ZUSTAENDIGE_OPTIONS.map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleDiscard}
+                  disabled={!dirty}
+                  className="customers-modal-genz-btn-cancel rounded px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {t('timetableContactDiscard', 'Discard')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="rounded bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                >
+                  {t('timetableContactSave', 'Save contact')}
+                </button>
+              </div>
             </div>
-          ) : null}
-            </div>
-          )}
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-col gap-2 border-t border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-blue-50/45 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-            <span
-              className={`h-2 w-2 shrink-0 rounded-full ring-2 ring-white ${
-                dirty
-                  ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.55)] motion-safe:animate-pulse motion-reduce:animate-none'
-                  : 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.45)]'
-              }`}
-              aria-hidden
-            />
-            <p className="min-w-0 text-xs font-medium text-slate-600 sm:text-[13px]">
-              {dirty
-                ? t('timetableContactUnsaved', 'You have unsaved changes.')
-                : t('timetableContactSavedState', 'All changes saved to this device.')}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            <button
-              type="button"
-              onClick={handleDiscard}
-              disabled={!dirty}
-              className="h-9 min-w-[6.5rem] rounded-lg border border-slate-200/90 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:rounded-xl sm:px-5 sm:text-sm"
-            >
-              {t('timetableContactDiscard', 'Discard')}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="h-9 min-w-[8.5rem] rounded-lg bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 text-xs font-semibold text-white shadow-md shadow-slate-900/20 ring-1 ring-white/10 transition duration-200 hover:brightness-110 active:scale-[0.98] sm:rounded-xl sm:px-6 sm:text-sm"
-            >
-              {t('timetableContactSave', 'Save contact')}
-            </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalUi, document.body) : null;
 }

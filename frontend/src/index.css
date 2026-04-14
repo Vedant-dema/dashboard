@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Customer modal header chips — animated conic border (see `.customers-modal-genz-h-chip`) */
+@property --customers-modal-genz-h-chip-orbit {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes customers-modal-genz-h-chip-orbit {
+  from {
+    --customers-modal-genz-h-chip-orbit: 0deg;
+  }
+  to {
+    --customers-modal-genz-h-chip-orbit: 360deg;
+  }
+}
+
+/* Sparkle ring: tight white peaks chase around the pill edge (per-chip hues via --genz-h-chip-ring-*) */
+
 /* Typography — see `appFontScale.ts`, `appFontFamily.ts`, Settings (Display). */
 html {
   --dema-font-scale: 1;
@@ -575,6 +593,19 @@ html[data-dema-theme="dark"] .customers-modal-genz-header-summary .text-slate-90
 html[data-dema-theme="dark"] .customers-modal-genz-header-meta .text-slate-900,
 html[data-dema-theme="dark"] .customers-modal-genz-header-meta-value {
   color: rgb(248 250 252) !important;
+}
+html[data-dema-theme="dark"] .customers-modal-genz-header-summary .customers-modal-genz-header-address-row,
+html[data-dema-theme="dark"]
+  .customers-modal-genz-header-summary
+  .customers-modal-genz-header-address-row
+  .customers-modal-genz-header-link.text-inherit {
+  color: rgb(248 250 252) !important;
+}
+html[data-dema-theme="dark"]
+  .customers-modal-genz-header-summary
+  .customers-modal-genz-header-address-row
+  .customers-modal-genz-header-link.text-inherit:hover {
+  color: rgb(125 211 252) !important;
 }
 html[data-dema-theme="dark"] .customers-modal-genz-header-summary .text-slate-600,
 html[data-dema-theme="dark"] .customers-modal-genz-header-meta .text-slate-600 {
@@ -1453,19 +1484,19 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     text-transform: uppercase;
     color: rgb(125 211 252) !important;
   }
-  .customers-modal-genz-header-hint {
-    margin: 0;
-    max-width: 42rem;
-    font-size: 12px;
-    line-height: 1.45;
-    color: rgb(148 163 184) !important;
-  }
   .customers-modal-genz-header-address-row {
-    color: rgb(203 213 225);
+    color: rgb(248 250 252) !important;
   }
   .customers-modal-genz-header-address-row svg {
     color: rgb(125 211 252);
     opacity: 0.88;
+  }
+  /* Address line — same headline weight/color as company name (overrides .text-inherit slate) */
+  .customers-modal-genz-header-summary .customers-modal-genz-header-address-row .customers-modal-genz-header-link.text-inherit {
+    color: rgb(248 250 252) !important;
+  }
+  .customers-modal-genz-header-summary .customers-modal-genz-header-address-row .customers-modal-genz-header-link.text-inherit:hover {
+    color: rgb(125 211 252) !important;
   }
   .customers-modal-genz-header-summary h2,
   .customers-modal-genz-header-summary h2 .customers-modal-genz-header-link,
@@ -1526,25 +1557,62 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .customers-modal-genz-header-copy-flash--err {
     color: rgb(252 165 165) !important;
   }
-  /* Header metric chips — high-contrast on dark */
+  /* Header metric chips — unique hue per tag + slow orbit + silver sparkle ring */
   .customers-modal-genz-h-chip {
+    --genz-h-chip-fill-angle: 152deg;
+    --genz-h-chip-fill-1: 67 56 202;
+    --genz-h-chip-fill-mid: 48 42 138;
+    --genz-h-chip-fill-2: 30 27 75;
+    --genz-h-chip-fill-op: 0.85;
+    --genz-h-chip-fill-op-mid: 0.88;
+    --genz-h-chip-fill-op-2: 0.76;
+    --genz-h-chip-text: 237 233 254;
+    --genz-h-chip-ring-a: 129 140 248;
+    --genz-h-chip-ring-b: 99 102 241;
+    --genz-h-chip-ring-c: 192 132 252;
+    --customers-modal-genz-h-chip-orbit: 0deg;
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
     max-width: 100%;
     border-radius: 9999px;
-    border: 1px solid rgb(56 189 248 / 0.35);
-    background: rgb(15 23 42 / 0.72);
+    border: 1.5px solid transparent;
     padding: 0.25rem 0.625rem;
     font-size: 11px;
     font-weight: 600;
     line-height: 1.3;
-    color: rgb(224 242 254);
-    backdrop-filter: blur(10px) saturate(1.15);
-    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+    color: rgb(var(--genz-h-chip-text));
+    background-image:
+      linear-gradient(
+        var(--genz-h-chip-fill-angle),
+        rgb(var(--genz-h-chip-fill-1) / var(--genz-h-chip-fill-op)),
+        rgb(var(--genz-h-chip-fill-mid) / var(--genz-h-chip-fill-op-mid)) 50%,
+        rgb(var(--genz-h-chip-fill-2) / var(--genz-h-chip-fill-op-2))
+      ),
+      conic-gradient(
+        from var(--customers-modal-genz-h-chip-orbit),
+        rgb(var(--genz-h-chip-ring-a) / 0.52),
+        rgb(248 250 252 / 0.92),
+        rgb(var(--genz-h-chip-ring-b) / 1),
+        rgb(226 232 240 / 0.48),
+        rgb(var(--genz-h-chip-ring-c) / 0.98),
+        rgb(241 245 249 / 0.88),
+        rgb(var(--genz-h-chip-ring-a) / 1),
+        rgb(203 213 225 / 0.52),
+        rgb(var(--genz-h-chip-ring-b) / 0.92),
+        rgb(248 250 252 / 0.72),
+        rgb(var(--genz-h-chip-ring-c) / 0.84),
+        rgb(148 163 184 / 0.58),
+        rgb(var(--genz-h-chip-ring-a) / 0.52)
+      );
+    background-origin: padding-box, border-box;
+    background-clip: padding-box, border-box;
+    backdrop-filter: blur(6px) saturate(1.35);
+    -webkit-backdrop-filter: blur(6px) saturate(1.35);
     box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
-      0 1px 2px rgb(0 0 0 / 0.25);
+      inset 0 1px 0 0 rgb(248 250 252 / 0.11),
+      0 2px 18px -4px rgb(var(--genz-h-chip-ring-b) / 0.38),
+      0 1px 3px rgb(0 0 0 / 0.22);
   }
   @media (min-width: 640px) {
     .customers-modal-genz-h-chip {
@@ -1556,96 +1624,224 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     cursor: pointer;
     text-align: left;
     transition:
-      border-color 0.15s ease,
-      background-color 0.15s ease,
-      color 0.15s ease;
+      filter 0.2s ease,
+      box-shadow 0.2s ease;
   }
   .customers-modal-genz-h-chip--interactive:hover {
-    border-color: rgb(125 211 252 / 0.55);
-    background: rgb(30 41 59 / 0.88);
-    color: rgb(240 249 255);
+    filter: brightness(1.08) saturate(1.06);
+    box-shadow:
+      inset 0 1px 0 0 rgb(248 250 252 / 0.14),
+      0 4px 22px -3px rgb(var(--genz-h-chip-ring-b) / 0.48),
+      0 0 22px -6px rgb(226 232 240 / 0.2),
+      0 1px 3px rgb(0 0 0 / 0.22);
   }
   .customers-modal-genz-h-chip--interactive:focus-visible {
     outline: none;
     box-shadow:
-      0 0 0 2px rgb(56 189 248 / 0.5),
-      inset 0 1px 0 0 rgb(255 255 255 / 0.07);
+      0 0 0 2px rgb(56 189 248 / 0.55),
+      inset 0 1px 0 0 rgb(241 245 249 / 0.14),
+      0 2px 14px -4px rgb(99 102 241 / 0.35);
   }
-  .customers-modal-genz-h-chip--status-active {
-    border-color: rgb(52 211 153 / 0.55);
-    background: rgb(6 78 59 / 0.58);
-    color: rgb(167 243 208);
+  /* Per-chip palettes — `data-dema-chip` + header scope so fills win over backdrop wash */
+  /* Forest emerald — warmer than VAT-valid teal */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='status-active'] {
+    --genz-h-chip-fill-angle: 148deg;
+    --genz-h-chip-fill-1: 22 163 74;
+    --genz-h-chip-fill-mid: 21 128 61;
+    --genz-h-chip-fill-2: 20 83 45;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 209 250 229;
+    --genz-h-chip-ring-a: 52 211 153;
+    --genz-h-chip-ring-b: 34 197 94;
+    --genz-h-chip-ring-c: 167 243 208;
   }
-  .customers-modal-genz-h-chip--status-inactive {
-    border-color: rgb(148 163 184 / 0.45);
-    background: rgb(30 41 59 / 0.85);
-    color: rgb(226 232 240);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='status-inactive'] {
+    --genz-h-chip-fill-angle: 118deg;
+    --genz-h-chip-fill-1: 100 116 139;
+    --genz-h-chip-fill-mid: 71 85 105;
+    --genz-h-chip-fill-2: 30 41 59;
+    --genz-h-chip-fill-op: 0.94;
+    --genz-h-chip-fill-op-mid: 0.9;
+    --genz-h-chip-fill-op-2: 0.85;
+    --genz-h-chip-text: 241 245 249;
+    --genz-h-chip-ring-a: 148 163 184;
+    --genz-h-chip-ring-b: 100 116 139;
+    --genz-h-chip-ring-c: 203 213 225;
   }
-  .customers-modal-genz-h-chip--status-blocked {
-    border-color: rgb(248 113 113 / 0.55);
-    background: rgb(127 29 29 / 0.52);
-    color: rgb(254 202 202);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='status-blocked'] {
+    --genz-h-chip-fill-angle: 135deg;
+    --genz-h-chip-fill-1: 220 38 38;
+    --genz-h-chip-fill-mid: 153 27 27;
+    --genz-h-chip-fill-2: 88 28 28;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 254 226 226;
+    --genz-h-chip-ring-a: 248 113 113;
+    --genz-h-chip-ring-b: 239 68 68;
+    --genz-h-chip-ring-c: 252 165 165;
   }
-  .customers-modal-genz-h-chip--vat-valid {
-    border-color: rgb(52 211 153 / 0.5);
-    background: rgb(6 78 59 / 0.48);
-    color: rgb(209 250 229);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='vat-valid'] {
+    --genz-h-chip-fill-angle: 162deg;
+    --genz-h-chip-fill-1: 13 148 136;
+    --genz-h-chip-fill-mid: 15 118 110;
+    --genz-h-chip-fill-2: 17 94 89;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.91;
+    --genz-h-chip-fill-op-2: 0.85;
+    --genz-h-chip-text: 204 251 241;
+    --genz-h-chip-ring-a: 45 212 191;
+    --genz-h-chip-ring-b: 20 184 166;
+    --genz-h-chip-ring-c: 94 234 212;
   }
-  .customers-modal-genz-h-chip--vat-invalid {
-    border-color: rgb(251 191 36 / 0.55);
-    background: rgb(120 53 15 / 0.48);
-    color: rgb(254 243 199);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='vat-invalid'] {
+    --genz-h-chip-fill-angle: 128deg;
+    --genz-h-chip-fill-1: 253 164 175;
+    --genz-h-chip-fill-mid: 244 63 94;
+    --genz-h-chip-fill-2: 159 18 57;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 255 241 242;
+    --genz-h-chip-ring-a: 253 164 175;
+    --genz-h-chip-ring-b: 251 113 133;
+    --genz-h-chip-ring-c: 244 63 94;
   }
-  .customers-modal-genz-h-chip--vat-unknown {
-    border-color: rgb(56 189 248 / 0.42);
-    background: rgb(12 74 110 / 0.48);
-    color: rgb(186 230 253);
+  /* Warm neutral — not teal/cyan (keeps clear separation from profile blue + VAT valid teal) */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='vat-unknown'] {
+    --genz-h-chip-fill-angle: 155deg;
+    --genz-h-chip-fill-1: 191 176 163;
+    --genz-h-chip-fill-mid: 135 120 109;
+    --genz-h-chip-fill-2: 72 64 58;
+    --genz-h-chip-fill-op: 0.94;
+    --genz-h-chip-fill-op-mid: 0.9;
+    --genz-h-chip-fill-op-2: 0.84;
+    --genz-h-chip-text: 255 251 247;
+    --genz-h-chip-ring-a: 233 228 224;
+    --genz-h-chip-ring-b: 196 181 253;
+    --genz-h-chip-ring-c: 168 162 158;
   }
-  .customers-modal-genz-h-chip--metric {
-    border-color: rgb(129 140 248 / 0.45);
-    background: rgb(49 46 129 / 0.48);
-    color: rgb(224 231 255);
+  /* Pure royal blue — no cyan sky mix (reads distinct from VAT unknown + doc-calm violet) */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='profile'] {
+    --genz-h-chip-fill-angle: 128deg;
+    --genz-h-chip-fill-1: 96 165 250;
+    --genz-h-chip-fill-mid: 37 99 235;
+    --genz-h-chip-fill-2: 23 37 84;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 239 246 255;
+    --genz-h-chip-ring-a: 147 197 253;
+    --genz-h-chip-ring-b: 59 130 246;
+    --genz-h-chip-ring-c: 99 102 241;
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='profile'] .customers-modal-genz-h-chip-accent {
+    color: rgb(191 219 254) !important;
   }
   .customers-modal-genz-h-chip-accent {
     font-weight: 700;
-    color: rgb(199 210 254) !important;
+    color: rgb(251 207 232) !important;
   }
-  .customers-modal-genz-h-chip--risk-blocked,
-  .customers-modal-genz-h-chip--risk-payment {
-    border-color: rgb(248 113 113 / 0.55);
-    background: rgb(127 29 29 / 0.5);
-    color: rgb(254 202 202);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='risk-blocked'] {
+    --genz-h-chip-fill-angle: 122deg;
+    --genz-h-chip-fill-1: 225 29 72;
+    --genz-h-chip-fill-mid: 190 18 60;
+    --genz-h-chip-fill-2: 136 19 55;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 255 228 230;
+    --genz-h-chip-ring-a: 251 113 133;
+    --genz-h-chip-ring-b: 244 63 94;
+    --genz-h-chip-ring-c: 251 113 133;
   }
-  .customers-modal-genz-h-chip--risk-billing {
-    border-color: rgb(251 191 36 / 0.55);
-    background: rgb(120 53 15 / 0.45);
-    color: rgb(254 243 199);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='risk-payment'] {
+    --genz-h-chip-fill-angle: 118deg;
+    --genz-h-chip-fill-1: 253 186 116;
+    --genz-h-chip-fill-mid: 249 115 22;
+    --genz-h-chip-fill-2: 194 65 12;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 255 247 237;
+    --genz-h-chip-ring-a: 253 186 116;
+    --genz-h-chip-ring-b: 249 115 22;
+    --genz-h-chip-ring-c: 251 146 60;
   }
-  .customers-modal-genz-h-chip--risk-low {
-    border-color: rgb(34 211 238 / 0.42);
-    background: rgb(22 78 99 / 0.42);
-    color: rgb(207 250 254);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='risk-billing'] {
+    --genz-h-chip-fill-angle: 118deg;
+    --genz-h-chip-fill-1: 217 119 6;
+    --genz-h-chip-fill-mid: 180 83 9;
+    --genz-h-chip-fill-2: 92 46 16;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 255 247 237;
+    --genz-h-chip-ring-a: 251 191 36;
+    --genz-h-chip-ring-b: 245 158 11;
+    --genz-h-chip-ring-c: 217 119 6;
   }
-  .customers-modal-genz-h-chip--doc-alert {
-    border-color: rgb(251 113 133 / 0.55);
-    background: rgb(136 19 55 / 0.48);
-    color: rgb(255 228 230);
+  /* Sage / lime “clear” — avoids duplicating profile royal blue */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='risk-low'] {
+    --genz-h-chip-fill-angle: 108deg;
+    --genz-h-chip-fill-1: 217 249 157;
+    --genz-h-chip-fill-mid: 132 204 22;
+    --genz-h-chip-fill-2: 63 98 18;
+    --genz-h-chip-fill-op: 0.94;
+    --genz-h-chip-fill-op-mid: 0.9;
+    --genz-h-chip-fill-op-2: 0.84;
+    --genz-h-chip-text: 247 254 231;
+    --genz-h-chip-ring-a: 236 252 203;
+    --genz-h-chip-ring-b: 190 242 100;
+    --genz-h-chip-ring-c: 101 163 13;
   }
-  .customers-modal-genz-h-chip--doc-calm {
-    border-color: rgb(56 189 248 / 0.38);
-    background: rgb(12 74 110 / 0.4);
-    color: rgb(186 230 253);
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='doc-alert'] {
+    --genz-h-chip-fill-angle: 138deg;
+    --genz-h-chip-fill-1: 244 114 182;
+    --genz-h-chip-fill-mid: 219 39 119;
+    --genz-h-chip-fill-2: 131 24 67;
+    --genz-h-chip-fill-op: 0.95;
+    --genz-h-chip-fill-op-mid: 0.92;
+    --genz-h-chip-fill-op-2: 0.86;
+    --genz-h-chip-text: 255 228 230;
+    --genz-h-chip-ring-a: 251 207 232;
+    --genz-h-chip-ring-b: 236 72 153;
+    --genz-h-chip-ring-c: 244 114 182;
   }
-  .customers-modal-genz-h-chip--meta {
-    border-color: rgb(148 163 184 / 0.38);
-    background: rgb(15 23 42 / 0.62);
-    color: rgb(203 213 225);
+  /* Deeper violet-indigo — not the same hue as profile pure blue */
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='doc-calm'] {
+    --genz-h-chip-fill-angle: 148deg;
+    --genz-h-chip-fill-1: 196 181 253;
+    --genz-h-chip-fill-mid: 139 92 246;
+    --genz-h-chip-fill-2: 76 29 149;
+    --genz-h-chip-fill-op: 0.94;
+    --genz-h-chip-fill-op-mid: 0.9;
+    --genz-h-chip-fill-op-2: 0.84;
+    --genz-h-chip-text: 245 243 255;
+    --genz-h-chip-ring-a: 221 214 254;
+    --genz-h-chip-ring-b: 167 139 250;
+    --genz-h-chip-ring-c: 124 58 237;
+  }
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='audit'] {
+    --genz-h-chip-fill-angle: 108deg;
+    --genz-h-chip-fill-1: 63 63 70;
+    --genz-h-chip-fill-mid: 39 39 42;
+    --genz-h-chip-fill-2: 24 24 27;
+    --genz-h-chip-fill-op: 0.93;
+    --genz-h-chip-fill-op-mid: 0.88;
+    --genz-h-chip-fill-op-2: 0.82;
+    --genz-h-chip-text: 228 228 231;
+    --genz-h-chip-ring-a: 167 139 250;
+    --genz-h-chip-ring-b: 139 92 246;
+    --genz-h-chip-ring-c: 212 212 216;
     font-weight: 500;
   }
-  .customers-modal-genz-h-chip--meta .customers-modal-genz-h-chip-strong {
+  .customers-modal-genz-header .customers-modal-genz-h-chip[data-dema-chip='audit'] .customers-modal-genz-h-chip-strong {
     flex-shrink: 0;
     font-weight: 600;
-    color: rgb(226 232 240) !important;
+    color: rgb(248 250 252) !important;
   }
   .customers-modal-genz-h-chip time,
   .customers-modal-genz-h-chip .opacity-70 {
@@ -2620,36 +2816,42 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
 }
 
 .customer360-strip-chips > * {
-  animation: dema-customer360-chip-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation:
+    dema-customer360-chip-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1) backwards,
+    customers-modal-genz-h-chip-orbit 10s linear infinite;
 }
 
 .customer360-strip-chips > :nth-child(1) {
-  animation-delay: 0.03s;
+  animation-delay: 0.03s, 0s;
 }
 .customer360-strip-chips > :nth-child(2) {
-  animation-delay: 0.07s;
+  animation-delay: 0.07s, -1.25s;
 }
 .customer360-strip-chips > :nth-child(3) {
-  animation-delay: 0.11s;
+  animation-delay: 0.11s, -2.5s;
 }
 .customer360-strip-chips > :nth-child(4) {
-  animation-delay: 0.15s;
+  animation-delay: 0.15s, -3.75s;
 }
 .customer360-strip-chips > :nth-child(5) {
-  animation-delay: 0.19s;
+  animation-delay: 0.19s, -5s;
 }
 .customer360-strip-chips > :nth-child(6) {
-  animation-delay: 0.23s;
+  animation-delay: 0.23s, -6.25s;
 }
 .customer360-strip-chips > :nth-child(7) {
-  animation-delay: 0.27s;
+  animation-delay: 0.27s, -7.5s;
 }
 .customer360-strip-chips > :nth-child(8) {
-  animation-delay: 0.31s;
+  animation-delay: 0.31s, -8.75s;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .customer360-strip-chips > * {
     animation: none !important;
+  }
+  .customers-modal-genz-h-chip {
+    animation: none !important;
+    --customers-modal-genz-h-chip-orbit: 42deg;
   }
 }

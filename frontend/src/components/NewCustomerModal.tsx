@@ -16,6 +16,8 @@ import {
   Copy,
   Check,
   Clock,
+  Building2,
+  Landmark,
 } from "lucide-react";
 import {
   DocExtractBanner,
@@ -59,6 +61,7 @@ import {
 import { commitAsciiNormalized } from "../common/utils/commitAsciiNormalized";
 import { isViesProxyHttpErrorGarbage } from "../common/utils/viesProxyErrorText";
 import { useLanguage } from "../contexts/LanguageContext";
+import { normalizePhoneValue } from "../features/customers/mappers/customerFormMapper";
 
 type TabId =
   | "vat"
@@ -146,10 +149,6 @@ function splitStoredPhone(
     }
   }
   return { code: "+49", number: s };
-}
-
-function normalizePhoneValue(raw: string | undefined): string {
-  return (raw ?? "").replace(/\s+/g, " ").trim();
 }
 
 function ensurePhoneIncludesCode(rawValue: string | undefined, code: string | undefined): string {
@@ -2805,11 +2804,8 @@ export function NewCustomerModal({
                   {isEditMode ? t("newCustomerModalEdit", "(Edit)") : t("newCustomerModalNew", "(New)")}
                 </span>
               </div>
-              <p className="customers-modal-genz-header-hint">
-                {t("newCustomerHeaderHint", "Work through the tabs below — save when you're done.")}
-              </p>
-              <div className="customers-modal-genz-header-address-row flex items-start gap-2 text-sm">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div className="customers-modal-genz-header-address-row flex items-start gap-2.5 text-lg font-bold tracking-tight leading-snug sm:gap-3 sm:text-xl">
+                <MapPin className="mt-1 h-5 w-5 shrink-0 sm:mt-1.5 sm:h-6 sm:w-6" aria-hidden />
                 <span className="block min-w-0 flex-1">
                   <span className="inline-block max-w-full align-top leading-snug">
                     <button
@@ -2824,10 +2820,10 @@ export function NewCustomerModal({
                       type="button"
                       onClick={() => void copyPlainText(headerChipsData.addressLine)}
                       disabled={!headerChipsData.addressLine.trim()}
-                      className="customers-modal-genz-icon-btn ml-1 inline-flex shrink-0 align-top rounded-md p-0.5 transition disabled:pointer-events-none disabled:opacity-30"
+                      className="customers-modal-genz-icon-btn ml-1 inline-flex shrink-0 align-top rounded-md p-1 transition disabled:pointer-events-none disabled:opacity-30 sm:ml-1.5"
                       aria-label={t("newCustomerCopyAddressAria", "Copy address")}
                     >
-                      <Copy className="h-3.5 w-3.5" aria-hidden />
+                      <Copy className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
                     </button>
                   </span>
                 </span>
@@ -2839,7 +2835,7 @@ export function NewCustomerModal({
                     ? new Date(iso).toLocaleString(localeTag, { dateStyle: "short", timeStyle: "short" })
                     : "—";
                 return (
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                     {k.created_by_name ? (
                       <span className="flex flex-wrap items-center gap-1">
                         <span className="text-slate-400">{t("auditCreatedBy", "Created by")}</span>
@@ -2881,6 +2877,7 @@ export function NewCustomerModal({
               <div className="customers-modal-genz-header-chips-scroll -mx-1 max-w-full overflow-x-auto overflow-y-hidden pb-1">
                 <div className="customer360-strip-chips flex min-w-min flex-nowrap items-center gap-2 pr-2">
                 <span
+                  data-dema-chip={`status-${form.customer_status}`}
                   className={`customers-modal-genz-h-chip cursor-default customers-modal-genz-h-chip--status-${form.customer_status}`}
                 >
                   {t("customer360ChipStatus", "Status")}:{" "}
@@ -2892,6 +2889,7 @@ export function NewCustomerModal({
                 </span>
                 <button
                   type="button"
+                  data-dema-chip={`vat-${headerChipsData.vatKind}`}
                   onClick={goToVatFieldFromSummary}
                   title={t("newCustomerGoToFieldVat", "Open Customer & Address — VAT ID")}
                   className={`customers-modal-genz-h-chip customers-modal-genz-h-chip--interactive max-w-[min(100%,14rem)] sm:max-w-none customers-modal-genz-h-chip--vat-${headerChipsData.vatKind}`}
@@ -2935,11 +2933,15 @@ export function NewCustomerModal({
                     ) : null}
                   </span>
                 </button>
-                <span className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default">
+                <span
+                  data-dema-chip="profile"
+                  className="customers-modal-genz-h-chip customers-modal-genz-h-chip--metric cursor-default"
+                >
                   {t("customer360ChipCompletion", "Profile")}
                   <span className="customers-modal-genz-h-chip-accent tabular-nums">{headerChipsData.pct}%</span>
                 </span>
                 <span
+                  data-dema-chip={`risk-${headerChipsData.riskKind}`}
                   className={`customers-modal-genz-h-chip cursor-default customers-modal-genz-h-chip--risk-${headerChipsData.riskKind}`}
                 >
                   {t("customer360ChipRisk", "Risk")}
@@ -2955,6 +2957,11 @@ export function NewCustomerModal({
                 {onScrollToDocumentExpiry ? (
                   <button
                     type="button"
+                    data-dema-chip={
+                      customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
+                        ? "doc-alert"
+                        : "doc-calm"
+                    }
                     onClick={onScrollToDocumentExpiry}
                     className={`customers-modal-genz-h-chip customers-modal-genz-h-chip--interactive max-w-full ${
                       customer360DocExpiryAlertCount !== null && customer360DocExpiryAlertCount > 0
@@ -2979,7 +2986,10 @@ export function NewCustomerModal({
                   </button>
                 ) : null}
                 {headerChipsData.lastEditedLine ? (
-                  <span className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,26rem)]">
+                  <span
+                    data-dema-chip="audit"
+                    className="customers-modal-genz-h-chip customers-modal-genz-h-chip--meta min-w-0 max-w-full cursor-default sm:max-w-[min(100%,26rem)]"
+                  >
                     <span className="customers-modal-genz-h-chip-strong">
                       {t("customer360ChipLastEdited", "Last saved")}
                     </span>
@@ -3037,10 +3047,16 @@ export function NewCustomerModal({
                       : "border-transparent text-slate-500 hover:border-neutral-200 hover:text-slate-800"
                   }`}
                 >
-                  {id === "waschanlage" ? (
-                    <Droplets className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
-                  ) : id === "vat" ? (
+                  {id === "vat" ? (
                     <BadgeCheck className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "kunde" ? (
+                    <Building2 className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "art" ? (
+                    <Landmark className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "waschanlage" ? (
+                    <Droplets className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
+                  ) : id === "history" ? (
+                    <Clock className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
                   ) : id === "beziehungenFzg" ? (
                     <Car className="h-3.5 w-3.5 shrink-0 opacity-80 sm:h-4 sm:w-4" aria-hidden />
                   ) : null}

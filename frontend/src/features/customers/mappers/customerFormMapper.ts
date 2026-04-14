@@ -59,6 +59,11 @@ export function splitStoredPhone(stored: string | undefined): { code: string; nu
   return { code: "+49", number: s };
 }
 
+/** Normalizes phone / mobile input (shared with timetable contact drawer). */
+export function normalizePhoneValue(raw: string | undefined): string {
+  return (raw ?? "").replace(/\s+/g, " ").trim();
+}
+
 export function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
   return {
     id: Math.random().toString(36).slice(2),

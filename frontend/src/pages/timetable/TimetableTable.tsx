@@ -205,12 +205,7 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                       <button
                         type="button"
                         onClick={() => onOpenOffer(row)}
-                        className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[10px] font-bold shadow-md transition active:scale-[0.98] ${
-                          row.outcome === 'has_trucks'
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-orange-900/20 hover:brightness-105'
-                            : 'cursor-not-allowed bg-slate-100 text-slate-400 ring-1 ring-slate-200/80'
-                        }`}
-                        disabled={row.outcome !== 'has_trucks'}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-2.5 text-[10px] font-bold text-white shadow-md shadow-orange-900/20 transition hover:brightness-105 active:scale-[0.98]"
                       >
                         <Truck className="h-3 w-3" strokeWidth={2} />
                         {row.offer

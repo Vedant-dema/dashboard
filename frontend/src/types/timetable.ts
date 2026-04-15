@@ -43,6 +43,10 @@ export interface TimetableTruckOffer {
   expected_price_eur: number | null;
   /** Latest purchasing bid (EUR); snapshotted into `negotiation_rounds` when recording. */
   purchase_bid_eur?: number | null;
+  /** Inbound purchase lane (DEMA acquires) — mutually exclusive with `verkauft` in UI. */
+  gekauft?: boolean;
+  /** Outbound disposal to another company — mutually exclusive with `gekauft` in UI. */
+  verkauft?: boolean;
   location: string;
   notes: string;
   /** Chronological record of quoted prices for follow-up calls on the same vehicle. */
@@ -195,6 +199,9 @@ export interface TimetableOfferInput {
   quantity: number | null;
   expected_price_eur: number | null;
   purchase_bid_eur: number | null;
+  /** Optional; omitted preserves existing offer flags on merge. */
+  gekauft?: boolean;
+  verkauft?: boolean;
   location: string;
   notes: string;
 }

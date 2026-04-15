@@ -311,6 +311,8 @@ export function NewAngebotModal({
       purchase_bid_eur: parseOptionalEuro(form.preisvorstellung_dema),
       location: "",
       notes: "",
+      gekauft: form.gekauft,
+      verkauft: form.verkauft,
       negotiation_rounds: form.negotiation_rounds,
     };
   }, [
@@ -319,6 +321,8 @@ export function NewAngebotModal({
     form.typ,
     form.preisvorstellung_kunde,
     form.preisvorstellung_dema,
+    form.gekauft,
+    form.verkauft,
     form.negotiation_rounds,
   ]);
 

@@ -504,6 +504,8 @@ function normalizeOffer(raw: unknown): TimetableTruckOffer | null {
     quantity: asNumberOrNull(r.quantity),
     expected_price_eur: asNumberOrNull(r.expected_price_eur),
     ...(purchase_bid_eur != null ? { purchase_bid_eur } : {}),
+    gekauft: asBool(r.gekauft, false),
+    verkauft: asBool(r.verkauft, false),
     location,
     notes,
     ...(negotiation_rounds.length > 0 ? { negotiation_rounds } : {}),

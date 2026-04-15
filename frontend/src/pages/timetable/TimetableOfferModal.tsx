@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Truck, X } from 'lucide-react'
+import { Truck, X, ArrowDownLeft, ArrowUpRight, CircleDashed } from 'lucide-react'
 import type { TimetableEntry, TimetableOfferInput, TimetableTruckOffer } from '../../types/timetable'
+import { angebotLedgerKind } from '../../lib/angebotLedger'
 import { ensureOfferIdsAndSelection } from './contactDrawerFormUtils'
 import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel'
 import {
@@ -18,6 +19,8 @@ type Props = {
   onSave: (payload: TimetableOfferInput) => void
 }
 
+type StockLedgerForm = 'purchase' | 'disposal' | 'neutral'
+
 type OfferFormState = {
   vehicle_type: string
   brand: string
@@ -27,8 +30,22 @@ type OfferFormState = {
   quantity: string
   expected_price_eur: string
   purchase_bid_eur: string
+  stock_ledger: StockLedgerForm
   location: string
   notes: string
+}
+
+function ledgerFormFromOffer(o: TimetableTruckOffer | null | undefined): StockLedgerForm {
+  const k = angebotLedgerKind({ gekauft: o?.gekauft, verkauft: o?.verkauft })
+  if (k === 'purchase') return 'purchase'
+  if (k === 'disposal') return 'disposal'
+  return 'neutral'
+}
+
+function ledgerPayload(mode: StockLedgerForm): Pick<TimetableOfferInput, 'gekauft' | 'verkauft'> {
+  if (mode === 'purchase') return { gekauft: true, verkauft: false }
+  if (mode === 'disposal') return { gekauft: false, verkauft: true }
+  return { gekauft: false, verkauft: false }
 }
 
 function initialState(): OfferFormState {
@@ -41,6 +58,7 @@ function initialState(): OfferFormState {
     quantity: '',
     expected_price_eur: '',
     purchase_bid_eur: '',
+    stock_ledger: 'neutral',
     location: '',
     notes: '',
   }
@@ -74,6 +92,7 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
       quantity: o?.quantity != null ? String(o.quantity) : '',
       expected_price_eur: o?.expected_price_eur != null ? String(o.expected_price_eur) : '',
       purchase_bid_eur: o?.purchase_bid_eur != null ? String(o.purchase_bid_eur) : '',
+      stock_ledger: ledgerFormFromOffer(o),
       location: o?.location ?? '',
       notes: o?.notes ?? '',
     })
@@ -97,6 +116,7 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
       quantity: toNumberOrNull(form.quantity),
       expected_price_eur: toNumberOrNull(form.expected_price_eur),
       purchase_bid_eur: toNumberOrNull(form.purchase_bid_eur),
+      ...ledgerPayload(form.stock_ledger),
       location: form.location.trim(),
       notes: form.notes.trim(),
     }),
@@ -231,6 +251,51 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
               className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
             />
           </label>
+          <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+              {t('angebotStockLedgerLabel', 'Stock transaction type')}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {t(
+                'angebotStockLedgerHint',
+                'Purchase (inbound) and third-party sale (outbound) are mutually exclusive—pick the lane that matches this row.',
+              )}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(
+                [
+                  { id: 'purchase' as const, label: t('angebotStockLedgerPurchase', 'Purchased'), Icon: ArrowDownLeft },
+                  {
+                    id: 'disposal' as const,
+                    label: t('angebotStockLedgerDisposal', 'Sold (third party)'),
+                    Icon: ArrowUpRight,
+                  },
+                  { id: 'neutral' as const, label: t('angebotStockLedgerNeutral', 'Unclassified'), Icon: CircleDashed },
+                ] as const
+              ).map(({ id, label, Icon }) => {
+                const active = form.stock_ledger === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, stock_ledger: id }))}
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition sm:min-h-0 ${
+                      active
+                        ? id === 'purchase'
+                          ? 'border-emerald-600 bg-emerald-600 text-white'
+                          : id === 'disposal'
+                            ? 'border-amber-600 bg-amber-600 text-white'
+                            : 'border-slate-600 bg-slate-700 text-white'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           <label className="sm:col-span-2 text-sm font-medium text-slate-700">
             {t('timetableOfferNotes', 'Offer notes')}
             <textarea
@@ -272,6 +337,7 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
                 quantity: toNumberOrNull(form.quantity),
                 expected_price_eur: toNumberOrNull(form.expected_price_eur),
                 purchase_bid_eur: toNumberOrNull(form.purchase_bid_eur),
+                ...ledgerPayload(form.stock_ledger),
                 location: form.location.trim(),
                 notes: form.notes.trim(),
               })

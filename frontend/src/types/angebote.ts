@@ -1,3 +1,5 @@
+import type { TimetableNegotiationPriceRound } from './timetable';
+
 /** Vehicle offer row (legacy „ANGEBOT“ / „ANGEBOTE“). */
 export interface AngebotStamm {
   id: number;
@@ -56,6 +58,8 @@ export interface AngebotStamm {
   extras?: string;
   /** Demo: angehängte Bild-Dateinamen oder Ordnerhinweis */
   bilder_liste?: string;
+  /** Erfasste Preisrunden (DEMA vs. Kunde), analog Kalender-Angebot. */
+  negotiation_rounds?: TimetableNegotiationPriceRound[];
 }
 
 export interface AngeboteDbState {

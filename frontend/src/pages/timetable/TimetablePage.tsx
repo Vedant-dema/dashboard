@@ -41,7 +41,11 @@ import { DEPARTMENT_I18N_KEY } from '../../types/departmentArea';
 import { TimetableMiniCalendar } from './TimetableMiniCalendar';
 import { TimetableTable } from './TimetableTable';
 import { TimetableCallModal } from './TimetableCallModal';
-import { TimetableContactDrawer } from './TimetableContactDrawer';
+import {
+  TimetableContactDrawer,
+  type TimetableContactEntryOfferFocus,
+  type TimetableJumpToEntryOfferPayload,
+} from './TimetableContactDrawer';
 import { TimetableOfferModal } from './TimetableOfferModal';
 import {
   appendTimetableCallNoteToEntry,
@@ -127,6 +131,12 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const [callModalEntry, setCallModalEntry] = useState<TimetableEntry | null>(null);
   const [offerModalEntry, setOfferModalEntry] = useState<TimetableEntry | null>(null);
   const [contactDrawerEntryId, setContactDrawerEntryId] = useState<number | null>(null);
+  /** One-shot focus when jumping from offer memory to another row (and optional price merge). */
+  const [contactDrawerOfferJump, setContactDrawerOfferJump] = useState<{
+    entryId: number;
+    offerId: string;
+    applyPrices: { expected_price_eur: number | null; purchase_bid_eur: number | null } | null;
+  } | null>(null);
   const viewerBuyerCode = useMemo(() => viewerBuyerCodeFromSessionName(user?.name), [user?.name]);
   const contactDrawerEntry = useMemo(
     () =>
@@ -135,6 +145,35 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         : null,
     [contactDrawerEntryId, db.entries]
   );
+
+  const contactEntryOfferFocus: TimetableContactEntryOfferFocus | null = useMemo(() => {
+    if (!contactDrawerEntry || !contactDrawerOfferJump) return null;
+    if (contactDrawerOfferJump.entryId !== contactDrawerEntry.id) return null;
+    return {
+      offerId: contactDrawerOfferJump.offerId,
+      workspaceTab: 'offer',
+      applyPrices: contactDrawerOfferJump.applyPrices,
+    };
+  }, [contactDrawerEntry, contactDrawerOfferJump]);
+
+  const handleJumpToEntryOffer = useCallback((payload: TimetableJumpToEntryOfferPayload) => {
+    setContactDrawerOfferJump({
+      entryId: payload.entryId,
+      offerId: payload.offerId,
+      applyPrices: payload.mergeMemoryPrices
+        ? {
+            expected_price_eur: payload.expected_price_eur,
+            purchase_bid_eur: payload.purchase_bid_eur,
+          }
+        : null,
+    });
+    setContactDrawerEntryId(payload.entryId);
+  }, []);
+
+  const clearContactDrawerOfferJump = useCallback(() => {
+    setContactDrawerOfferJump(null);
+  }, []);
+
   const [createForm, setCreateForm] = useState<CreateFormState>({
     date: todayIso,
     time: '09:00',
@@ -194,6 +233,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         return;
       }
       setSelectedDate(normalizeIsoDateFromScheduled(entry.scheduled_at));
+      setContactDrawerOfferJump(null);
       setContactDrawerEntryId(entryId);
       stripTimetableEntryFromLocationHash();
     };
@@ -295,14 +335,14 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const filterChipItems = useMemo(
     () =>
       [
-        ['all_day', t('timetableFilterAllDay', 'All day')],
-        ['open', t('timetableFilterUnfinished', 'Open calls')],
-        ['open_other_buyer', t('timetableFilterUnfinishedOther', 'Open — other buyer')],
-        ['other_buyer_range', t('timetableFilterOtherBuyerRange', 'Other buyers (range)')],
-        ['follow_up', t('timetableFilterFollowUp', 'Follow-up')],
-        ['offers', t('timetableFilterOffers', 'Offers')],
-        ['completed', t('timetableFilterCompleted', 'Completed')],
+        ['all_day', t('timetableFilterAllDay', 'All')],
+        ['open', t('timetableFilterUnfinished', 'Not closed')],
+        ['offers', t('timetableFilterOffers', 'Trucks available')],
+        ['follow_up', t('timetableFilterFollowUp', 'Follow-up scheduled')],
+        ['completed', t('timetableFilterCompleted', 'Done / no trucks')],
         ['completed_no_followup', t('timetableFilterDoneNoFollowUp', 'Done without follow-up')],
+        ['open_other_buyer', t('timetableFilterUnfinishedOther', 'Open — other buyer')],
+        ['other_buyer_range', t('timetableFilterOtherBuyerRange', 'Other buyer · date range')],
         ['parked', t('timetableFilterParked', 'Parked')],
       ] as Array<[TimetableFilterMode, string]>,
     [t]
@@ -468,29 +508,27 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   );
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(165deg,#eef2ff_0%,#f8fafc_38%,#ecfdf5_100%)]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.4] [background-image:radial-gradient(circle_at_1px_1px,rgb(100_116_139/0.14)_1px,transparent_0)] [background-size:24px_24px]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -left-32 top-1/4 -z-10 h-[28rem] w-[28rem] rounded-full bg-emerald-400/25 blur-[100px] motion-safe:animate-timetable-blob motion-reduce:animate-none"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-[22rem] w-[22rem] rounded-full bg-indigo-400/20 blur-[90px] motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-7s]"
-        aria-hidden
-      />
+    <div className="dema-canvas-root timetable-page-chrono relative flex min-h-full min-h-0 flex-1 flex-col overflow-x-hidden">
+      <div className="timetable-chrono-ambient" aria-hidden>
+        <div className="timetable-chrono-base" />
+        <div className="timetable-chrono-float timetable-chrono-float-a" />
+        <div className="timetable-chrono-float timetable-chrono-float-b" />
+        <div className="timetable-chrono-bands" />
+        <div className="timetable-chrono-cyclic-shell">
+          <div className="timetable-chrono-cyclic" />
+        </div>
+        <div className="timetable-chrono-rhythm" />
+        <div className="timetable-chrono-trace" />
+        <div className="timetable-chrono-noise" />
+        <div className="timetable-chrono-vignette" />
+      </div>
 
+      <div className="dema-canvas-content flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="timetable-print-root flex min-h-0 flex-1 flex-col gap-5 p-4 pb-10 md:gap-7 md:p-6">
         <header className="order-1 overflow-hidden rounded-3xl border border-slate-800/50 bg-[#06060d] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.45)] ring-1 ring-white/[0.06]">
           <div className="relative px-5 py-6 md:px-8 md:py-8">
-            <div className="pointer-events-none absolute -right-16 -top-32 h-[22rem] w-[22rem] rounded-full bg-indigo-500/25 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none" />
-            <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-11s]" />
+            <div className="pointer-events-none absolute -right-16 -top-32 h-[22rem] w-[22rem] rounded-full bg-indigo-500/25 blur-3xl animate-timetable-blob" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl animate-timetable-blob [animation-delay:-11s]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent" />
             <div className="pointer-events-none absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent blur-sm" />
             <div className="relative flex flex-col gap-8 motion-safe:animate-timetable-fade-up motion-reduce:animate-none lg:flex-row lg:items-center lg:justify-between lg:gap-10">
@@ -598,7 +636,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         </header>
 
         <main className="order-2 flex min-h-0 flex-1 flex-col gap-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
-            <div className="no-print relative z-10 overflow-visible rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:p-6">
+            <div className="no-print relative z-10 overflow-visible rounded-3xl border border-slate-200/80 bg-white/72 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:bg-white/68 md:p-6">
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
                   <div className="min-w-0 flex-1">
@@ -904,28 +942,23 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
 
             <div className="relative z-0 min-h-0 flex-1">
               <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md shadow-slate-900/20">
-                      {t('timetableDailyQueue', 'Your queue')}
-                    </span>
-                    <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-white px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-slate-600 shadow-sm">
-                      {filteredRows.length} {t('timetableRowsLabel', 'rows')}
-                    </span>
-                  </div>
-                  <p className="max-w-xl text-xs leading-relaxed text-slate-500 sm:border-l sm:border-slate-200 sm:pl-4">
-                    {t(
-                      'timetableQueueToolbarHint',
-                      'Click a row to open the contact workspace. Under Follow-up, use 10 min, 30 min, or 1 h for instant callback slots; allow notifications for an optional desktop reminder.'
-                    )}
-                  </p>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md shadow-slate-900/20">
+                    {t('timetableDailyQueue', 'Your queue')}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200/90 bg-white px-2.5 py-1 font-mono text-xs font-semibold tabular-nums text-slate-600 shadow-sm">
+                    {filteredRows.length} {t('timetableRowsLabel', 'rows')}
+                  </span>
                 </div>
               </div>
               <TimetableTable
                 rows={filteredRows}
                 localeTag={localeTag}
                 t={t}
-                onOpenContact={(row) => setContactDrawerEntryId(row.id)}
+                onOpenContact={(row) => {
+                  setContactDrawerOfferJump(null);
+                  setContactDrawerEntryId(row.id);
+                }}
                 onOpenCallLog={setCallModalEntry}
                 onOpenOffer={setOfferModalEntry}
                 onQuickFollowUp={applyQuickFollowUp}
@@ -957,9 +990,15 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         allEntries={db.entries}
         localeTag={localeTag}
         t={t}
-        onClose={() => setContactDrawerEntryId(null)}
+        onClose={() => {
+          setContactDrawerEntryId(null);
+          setContactDrawerOfferJump(null);
+        }}
         onPersist={persistContactEntry}
         onLogCall={(row) => setCallModalEntry(row)}
+        contactEntryOfferFocus={contactEntryOfferFocus}
+        onContactEntryOfferFocusConsumed={clearContactDrawerOfferJump}
+        onRequestJumpToEntryOffer={handleJumpToEntryOffer}
       />
 
       <TimetableCallModal
@@ -977,6 +1016,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         onClose={() => setOfferModalEntry(null)}
         onSave={applyOffer}
       />
+      </div>
     </div>
   );
 }

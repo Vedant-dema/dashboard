@@ -8,6 +8,8 @@ type Props = {
   localeTag: string
   t: (key: string, fallback: string) => string
   onApplyPrices: (item: TimetableOfferMemoryItem) => void
+  /** Select that vehicle in the strip (same calendar row) or jump to the other row; does not merge prices. */
+  onOpenOffer?: (item: TimetableOfferMemoryItem) => void
 }
 
 function formatWhen(iso: string, localeTag: string, t: Props['t']): string {
@@ -22,6 +24,7 @@ export function TimetableOfferMemoryPanel({
   localeTag,
   t,
   onApplyPrices,
+  onOpenOffer,
 }: Props) {
   return (
     <div className="rounded-2xl border border-blue-100/90 bg-gradient-to-br from-blue-50/70 via-white to-white p-4 shadow-sm ring-1 ring-blue-900/[0.04] sm:p-5">
@@ -100,7 +103,16 @@ export function TimetableOfferMemoryPanel({
                 {item.latestNote ? (
                   <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-xs text-slate-600">{item.latestNote}</p>
                 ) : null}
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  {onOpenOffer ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenOffer(item)}
+                      className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                    >
+                      {t('timetableOfferMemoryOpenVehicle', 'Open this vehicle')}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => onApplyPrices(item)}

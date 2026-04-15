@@ -48,6 +48,7 @@ import { TimetableOfferNegotiationHistory } from './components/TimetableOfferNeg
 import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel';
 import { TimetableOfferVehicleStrip } from './components/TimetableOfferVehicleStrip';
 import { TimetableOfferMinimalBlock } from './components/TimetableOfferMinimalBlock';
+import { TimetableOfferCompactPreview } from './components/TimetableOfferCompactPreview';
 import {
   emptyOverviewAdresse,
   formatOverviewAddressLine,
@@ -58,9 +59,27 @@ import { TimetableExtraKontakteBlock } from './components/TimetableExtraKontakte
 import {
   collectTimetableOfferMemory,
   offerHasVehicleIdentity,
+  offerVehicleSameEnough,
   type TimetableOfferMemoryItem,
 } from './timetableOfferMemory';
 import { useAuth } from '../../contexts/AuthContext';
+
+type DrawerWorkspaceTab = 'call' | 'offer' | 'offer_compact_preview';
+
+/** Parent supplies this when opening the drawer so we select an offer chip (and optionally merge prices). */
+export type TimetableContactEntryOfferFocus = {
+  offerId: string;
+  workspaceTab?: DrawerWorkspaceTab;
+  applyPrices?: { expected_price_eur: number | null; purchase_bid_eur: number | null } | null;
+};
+
+export type TimetableJumpToEntryOfferPayload = {
+  entryId: number;
+  offerId: string;
+  mergeMemoryPrices: boolean;
+  expected_price_eur: number | null;
+  purchase_bid_eur: number | null;
+};
 
 type Props = {
   entry: TimetableEntry | null;
@@ -70,12 +89,22 @@ type Props = {
   onClose: () => void;
   onPersist: (entry: TimetableEntry) => void;
   onLogCall: (entry: TimetableEntry) => void;
+  /** When switching calendar rows from offer memory, parent sets this once for the new `entry`. */
+  contactEntryOfferFocus?: TimetableContactEntryOfferFocus | null;
+  onContactEntryOfferFocusConsumed?: () => void;
+  /** Open another timetable row and focus an offer (optional merge of memory prices). */
+  onRequestJumpToEntryOffer?: (payload: TimetableJumpToEntryOfferPayload) => void;
 };
-
-type DrawerWorkspaceTab = 'call' | 'offer';
 
 function cloneEntry(e: TimetableEntry): TimetableEntry {
   return JSON.parse(JSON.stringify(e)) as TimetableEntry;
+}
+
+function scrollOfferVehicleStripIntoView() {
+  if (typeof document === 'undefined') return;
+  window.requestAnimationFrame(() => {
+    document.getElementById('tt-offer-vehicle-strip')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 }
 
 function formatRowDateTime(raw: string, localeTag: string): { date: string; time: string } {
@@ -179,14 +208,6 @@ function vehicleExtraHasContent(v: TimetableVehicleDisplayExtra | undefined): bo
 }
 
 const ART_LAND_OPTIONS = ['IL', 'EU', 'Drittland'] as const;
-
-const ZUSTAENDIGE_OPTIONS = [
-  'nicht zugeordnet',
-  'Liciu Ana-Maria',
-  'Mitsos Deligiannis',
-  'Anna Schmidt',
-  'Team Verkauf',
-];
 
 const TT_KUNDE_PANEL_SURFACE = 'overflow-hidden rounded-2xl';
 const TT_KUNDE_SECTION_TITLE = 'text-sm font-bold uppercase tracking-[0.08em] text-slate-700';
@@ -316,6 +337,9 @@ export function TimetableContactDrawer({
   onClose,
   onPersist,
   onLogCall,
+  contactEntryOfferFocus = null,
+  onContactEntryOfferFocusConsumed,
+  onRequestJumpToEntryOffer,
 }: Props) {
   const { user } = useAuth();
   const [draft, setDraft] = useState<TimetableEntry | null>(null);
@@ -371,10 +395,6 @@ export function TimetableContactDrawer({
   }, []);
 
   useEffect(() => {
-    setDrawerWorkspaceTab('call');
-  }, [entry?.id]);
-
-  useEffect(() => {
     setBemerkungenComfortOpen(false);
   }, [entry?.id]);
 
@@ -407,11 +427,32 @@ export function TimetableContactDrawer({
         ];
       }
       next.contact_profile = pr;
-      setDraft(ensureOfferIdsAndSelection(next));
-      setDirty(false);
+      let seeded = ensureOfferIdsAndSelection(next);
+      const focus = contactEntryOfferFocus;
+      let dirtyNext = false;
+      if (focus?.offerId && (seeded.offers ?? []).some((o) => o.id === focus.offerId)) {
+        let offers = seeded.offers ?? [];
+        if (focus.applyPrices) {
+          const ap = focus.applyPrices;
+          offers = offers.map((o) =>
+            o.id === focus.offerId
+              ? { ...o, expected_price_eur: ap.expected_price_eur, purchase_bid_eur: ap.purchase_bid_eur }
+              : o
+          );
+          dirtyNext = true;
+        }
+        seeded = { ...seeded, offers, selected_offer_id: focus.offerId };
+        setDrawerWorkspaceTab(focus.workspaceTab ?? 'offer');
+        onContactEntryOfferFocusConsumed?.();
+      } else {
+        if (focus?.offerId) onContactEntryOfferFocusConsumed?.();
+        setDrawerWorkspaceTab('call');
+      }
+      setDraft(seeded);
+      setDirty(dirtyNext);
     }
     prevEntryIdRef.current = entry.id;
-  }, [entry]);
+  }, [entry, contactEntryOfferFocus, onContactEntryOfferFocusConsumed]);
 
   const entryFingerprint = useMemo(() => (entry ? JSON.stringify(entry) : ''), [entry]);
 
@@ -525,13 +566,23 @@ export function TimetableContactDrawer({
 
   const addVehicleOffer = useCallback(() => {
     patchDraft((prev) => {
+      const e0 = ensureOfferIdsAndSelection(prev);
+      const sid = e0.selected_offer_id ?? e0.offers[0]?.id;
+      const current = e0.offers.find((o) => o.id === sid) ?? e0.offers[0];
+      if (current && offerHasVehicleIdentity(current)) {
+        const dup = e0.offers.find((o) => o.id !== current.id && offerVehicleSameEnough(current, o));
+        if (dup) {
+          return { ...e0, selected_offer_id: dup.id };
+        }
+      }
       const nu = createEmptyTruckOffer();
       return {
-        ...prev,
-        offers: [...(prev.offers ?? []), nu],
+        ...e0,
+        offers: [...e0.offers, nu],
         selected_offer_id: nu.id,
       };
     });
+    scrollOfferVehicleStripIntoView();
   }, [patchDraft]);
 
   const removeVehicleOffer = useCallback(
@@ -623,14 +674,38 @@ export function TimetableContactDrawer({
     [patchDraft]
   );
 
-  const applyOfferMemoryPrices = useCallback(
-    (item: TimetableOfferMemoryItem) => {
-      setOfferField({
+  const navigateToMemoryOffer = useCallback(
+    (item: TimetableOfferMemoryItem, mode: 'apply' | 'open') => {
+      if (!draft) return;
+      const mergePrices = mode === 'apply';
+      const pricesPart = {
+        expected_price_eur: item.latestSellerAskingEur,
+        purchase_bid_eur: item.latestPurchaseBidEur,
+      };
+      if (item.entryId === draft.id) {
+        const exists = (draft.offers ?? []).some((o) => o.id === item.offerId);
+        if (exists) {
+          patchDraft((prev) => {
+            const e0 = ensureOfferIdsAndSelection(prev);
+            const offers = mergePrices
+              ? e0.offers.map((o) => (o.id === item.offerId ? { ...o, ...pricesPart } : o))
+              : e0.offers;
+            return { ...e0, offers, selected_offer_id: item.offerId };
+          });
+          setDrawerWorkspaceTab('offer');
+          scrollOfferVehicleStripIntoView();
+          return;
+        }
+      }
+      onRequestJumpToEntryOffer?.({
+        entryId: item.entryId,
+        offerId: item.offerId,
+        mergeMemoryPrices: mergePrices,
         expected_price_eur: item.latestSellerAskingEur,
         purchase_bid_eur: item.latestPurchaseBidEur,
       });
     },
-    [setOfferField]
+    [draft, patchDraft, onRequestJumpToEntryOffer]
   );
 
   const handleSave = useCallback(() => {
@@ -967,6 +1042,22 @@ export function TimetableContactDrawer({
               >
                 <Truck className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
                 <span>{t('timetableContactColOffer', 'Offer')}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="tt-drawer-tab-offer-compact-preview"
+                aria-selected={drawerWorkspaceTab === 'offer_compact_preview'}
+                aria-controls="tt-drawer-panel-offer-compact-preview"
+                onClick={() => setDrawerWorkspaceTab('offer_compact_preview')}
+                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                  drawerWorkspaceTab === 'offer_compact_preview'
+                    ? 'bg-gradient-to-r from-slate-800 to-sky-700 text-white shadow-md shadow-sky-900/20 ring-white/15 hover:brightness-105'
+                    : 'border border-sky-200/85 bg-sky-50/85 text-sky-950 shadow-sm ring-sky-900/10 hover:border-sky-300 hover:bg-sky-100/80'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
+                <span>{t('timetableOfferCompactPreviewTab', 'Pro Test')}</span>
               </button>
             </div>
 
@@ -1329,6 +1420,8 @@ export function TimetableContactDrawer({
                 </div>
               </div>
                 </div>
+              ) : drawerWorkspaceTab === 'offer_compact_preview' ? (
+                <TimetableOfferCompactPreview t={t} />
               ) : (
               <div
                 id="tt-drawer-panel-offer"
@@ -1336,75 +1429,98 @@ export function TimetableContactDrawer({
                 aria-labelledby="tt-drawer-tab-offer"
                 className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 flex min-w-0 w-full flex-col gap-6 border border-slate-200/60 bg-white p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE}`}
               >
-                <TimetableOfferVehicleStrip
-                  offers={eOffer.offers}
-                  selectedId={eOffer.selected_offer_id}
-                  onSelect={selectOfferId}
-                  onAdd={addVehicleOffer}
-                  onRemove={removeVehicleOffer}
-                  t={t}
-                />
+                <div id="tt-offer-vehicle-strip" className="min-w-0 scroll-mt-4">
+                  <TimetableOfferVehicleStrip
+                    offers={eOffer.offers}
+                    selectedId={eOffer.selected_offer_id}
+                    onSelect={selectOfferId}
+                    onAdd={addVehicleOffer}
+                    onRemove={removeVehicleOffer}
+                    t={t}
+                  />
+                </div>
                 <div className="flex min-w-0 w-full flex-col gap-8 lg:flex-row lg:items-stretch lg:gap-0">
-                <section
-                  className="flex min-w-0 flex-1 flex-col gap-3 lg:basis-1/2 lg:pr-8"
-                  aria-labelledby="tt-drawer-offer-gen-heading"
-                >
-                  <p
-                    id="tt-drawer-offer-gen-heading"
-                    className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                  <section
+                    className="flex min-w-0 flex-1 flex-col gap-3 lg:basis-1/3 lg:pr-6"
+                    aria-labelledby="tt-drawer-offer-gen-heading"
                   >
-                    {t('timetableOfferGenTitle', 'Offer generator')}
-                  </p>
-                  <div className="min-w-0 flex-1">
-                    <TimetableOfferGeneratorBlock
-                      rowKey={`${draft.id}-${selectedOfferId}`}
-                      currentOffer={offer}
+                    <p
+                      id="tt-drawer-offer-gen-heading"
+                      className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                    >
+                      {t('timetableOfferGenTitle', 'Offer generator')}
+                    </p>
+                    <div className="min-w-0 flex-1">
+                      <TimetableOfferGeneratorBlock
+                        rowKey={`${draft.id}-${selectedOfferId}`}
+                        currentOffer={offer}
+                        setOfferField={setOfferField}
+                        setVehicleExtra={setVehicleExtra}
+                        onGeneratorApplied={() => setDirty(true)}
+                        t={t}
+                      />
+                    </div>
+                  </section>
+                  <div
+                    className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-slate-200/90 to-transparent lg:hidden"
+                    aria-hidden
+                  />
+                  <div
+                    className="hidden w-px shrink-0 self-stretch bg-gradient-to-b from-transparent via-slate-200/85 to-transparent lg:block"
+                    aria-hidden
+                  />
+                  <section
+                    className="flex min-w-0 flex-1 flex-col gap-4 lg:basis-1/3 lg:px-6"
+                    aria-labelledby="tt-drawer-offer-form-heading"
+                  >
+                    <p
+                      id="tt-drawer-offer-form-heading"
+                      className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                    >
+                      {t('timetableContactColOffer', 'Offer')}
+                    </p>
+                    <TimetableOfferMinimalBlock
+                      offer={offer}
+                      vehicleExtra={ve}
                       setOfferField={setOfferField}
                       setVehicleExtra={setVehicleExtra}
-                      onGeneratorApplied={() => setDirty(true)}
                       t={t}
                     />
-                  </div>
-                </section>
-                <div
-                  className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-slate-200/90 to-transparent lg:hidden"
-                  aria-hidden
-                />
-                <div
-                  className="hidden w-px shrink-0 self-stretch bg-gradient-to-b from-transparent via-slate-200/85 to-transparent lg:block"
-                  aria-hidden
-                />
-                <section
-                  className="flex min-w-0 flex-1 flex-col gap-4 lg:basis-1/2 lg:pl-8"
-                  aria-labelledby="tt-drawer-offer-form-heading"
-                >
-                  <p
-                    id="tt-drawer-offer-form-heading"
-                    className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                  </section>
+                  <div
+                    className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-slate-200/90 to-transparent lg:hidden"
+                    aria-hidden
+                  />
+                  <div
+                    className="hidden w-px shrink-0 self-stretch bg-gradient-to-b from-transparent via-slate-200/85 to-transparent lg:block"
+                    aria-hidden
+                  />
+                  <section
+                    className="flex min-w-0 flex-1 flex-col gap-4 lg:basis-1/3 lg:pl-6"
+                    aria-labelledby="tt-drawer-offer-price-compare-heading"
                   >
-                    {t('timetableContactColOffer', 'Offer')}
-                  </p>
-                  <TimetableOfferMinimalBlock
-                    offer={offer}
-                    vehicleExtra={ve}
-                    setOfferField={setOfferField}
-                    setVehicleExtra={setVehicleExtra}
-                    t={t}
-                  />
-                  <TimetableOfferMemoryPanel
-                    items={offerMemoryItems}
-                    offerHasVehicleIdentity={hasVehicleIdentity}
-                    localeTag={localeTag}
-                    t={t}
-                    onApplyPrices={applyOfferMemoryPrices}
-                  />
-                  <TimetableOfferNegotiationHistory
-                    offer={offer}
-                    setOfferField={setOfferField}
-                    localeTag={localeTag}
-                    t={t}
-                  />
-                </section>
+                    <p
+                      id="tt-drawer-offer-price-compare-heading"
+                      className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--3 shrink-0`}
+                    >
+                      {t('timetableOfferPriceComparisonTitle', 'Price comparison')}
+                    </p>
+                    <TimetableOfferMemoryPanel
+                      items={offerMemoryItems}
+                      offerHasVehicleIdentity={hasVehicleIdentity}
+                      localeTag={localeTag}
+                      t={t}
+                      onApplyPrices={(item) => navigateToMemoryOffer(item, 'apply')}
+                      onOpenOffer={(item) => navigateToMemoryOffer(item, 'open')}
+                    />
+                    <TimetableOfferNegotiationHistory
+                      offer={offer}
+                      setOfferField={setOfferField}
+                      localeTag={localeTag}
+                      t={t}
+                      compactTop
+                    />
+                  </section>
                 </div>
               </div>
               )}
@@ -1422,29 +1538,7 @@ export function TimetableContactDrawer({
                 {t('customer360UnsavedChanges', 'You have unsaved changes.')}
               </div>
             ) : null}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-                <label className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-600">
-                  {t('newCustomerZustaendige', 'Responsible person')}
-                </label>
-                <select
-                  value={p.zustaendige_person ?? 'nicht zugeordnet'}
-                  onChange={(e) =>
-                    patchDraft((prev) => {
-                      const pr = ensureProfile(prev);
-                      pr.zustaendige_person = e.target.value;
-                      return { ...prev, contact_profile: { ...pr } };
-                    })
-                  }
-                  className="h-11 min-h-[44px] w-full rounded border border-neutral-300 bg-white px-3 text-sm text-slate-800 sm:h-9 sm:min-h-0 sm:w-auto sm:max-w-xs"
-                >
-                  {ZUSTAENDIGE_OPTIONS.map((z) => (
-                    <option key={z} value={z}>
-                      {z}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end sm:gap-4">
               <div className="flex flex-wrap justify-end gap-2">
                 <button
                   type="button"

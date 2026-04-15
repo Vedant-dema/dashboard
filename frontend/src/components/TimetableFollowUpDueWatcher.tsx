@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlarmClock, UserRound, X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { loadTimetableDb } from '../store/timetableStore';
+import {
+  loadTimetableDb,
+  timetableRowIsMine,
+  viewerBuyerCodeFromSessionName,
+} from '../store/timetableStore';
 import { processDueTimetableFollowUpReminders } from '../pages/timetable/timetableReminderNotify';
 import { timetableHashOpenContact } from '../pages/timetable/timetableContactDeepLink';
 import type { TimetableEntry } from '../types/timetable';
@@ -64,12 +69,14 @@ function FollowUpAlertCard({
 }
 
 /**
- * Keeps purchase timetable follow-up alerts near real time by polling `localStorage`
- * about once per second while the tab is open. Desktop notifications are optional; in-app cards stay until dismissed.
- * when due (unless blocked by session dedupe).
+ * Polls `localStorage` about once per second while the tab is open and surfaces due follow-ups
+ * (in-app toasts until dismissed; optional desktop notifications). Uses the same buyer filter as
+ * the dashboard follow-up list (`timetableRowIsMine`), not every stored row — avoids alerts for other buyers.
  */
 export function TimetableFollowUpDueWatcher() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const viewerCode = useMemo(() => viewerBuyerCodeFromSessionName(user?.name), [user?.name]);
   const tRef = useRef(t);
   tRef.current = t;
 
@@ -80,11 +87,14 @@ export function TimetableFollowUpDueWatcher() {
   }, []);
 
   useEffect(() => {
+    setAlerts([]);
+
     const run = () => {
       try {
         const db = loadTimetableDb();
+        const mine = db.entries.filter((e) => timetableRowIsMine(e, viewerCode));
         processDueTimetableFollowUpReminders(
-          db.entries,
+          mine,
           (key, fb) => tRef.current(key, fb),
           {
             onInAppDue: (row: TimetableEntry, title: string, body: string) => {
@@ -112,7 +122,7 @@ export function TimetableFollowUpDueWatcher() {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, []);
+  }, [viewerCode]);
 
   if (alerts.length === 0) return null;
 

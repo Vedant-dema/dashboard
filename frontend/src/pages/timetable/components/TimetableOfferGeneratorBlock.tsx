@@ -56,7 +56,7 @@ export function TimetableOfferGeneratorBlock({
 
   const previewLines = useMemo(() => lastParsed?.summaryLines ?? [], [lastParsed])
 
-  const setAppliedMessage = useCallback(
+  const setSaveAppliedMessage = useCallback(
     (count: number) => {
       if (count > 0) {
         setStatusText(
@@ -77,16 +77,32 @@ export function TimetableOfferGeneratorBlock({
     [t]
   )
 
+  const setFormatPreviewMessage = useCallback(
+    (count: number) => {
+      if (count > 0) {
+        setStatusText(
+          t(
+            'timetableOfferGenFormatPreviewCount',
+            'Recognized {count} value(s) — click Save to apply them to the offer form.'
+          ).replace('{count}', String(count))
+        )
+      } else {
+        setStatusText(
+          t(
+            'timetableOfferGenNoValues',
+            'No structured values found. Include make, model, km, year, price, or registration.'
+          )
+        )
+      }
+    },
+    [t]
+  )
+
   const handleFormat = useCallback(() => {
     const parsed = parseOfferFreeText(genText, currentOffer)
-    const count = applyParsed(parsed)
-
     setLastParsed(parsed)
-    setAppliedMessage(count)
-    if (count > 0) {
-      onGeneratorApplied?.()
-    }
-  }, [genText, currentOffer, applyParsed, setAppliedMessage, onGeneratorApplied])
+    setFormatPreviewMessage(extractedCount(parsed))
+  }, [genText, currentOffer, setFormatPreviewMessage])
 
   const handleSave = useCallback(() => {
     const trimmed = genText.trim()
@@ -95,13 +111,13 @@ export function TimetableOfferGeneratorBlock({
     const parsed = lastParsed ?? parseOfferFreeText(trimmed, currentOffer)
     const count = applyParsed(parsed)
 
-    setAppliedMessage(count)
+    setSaveAppliedMessage(count)
     if (count > 0) {
       onGeneratorApplied?.()
     }
     setGenText('')
     setLastParsed(null)
-  }, [genText, lastParsed, currentOffer, applyParsed, setAppliedMessage, onGeneratorApplied])
+  }, [genText, lastParsed, currentOffer, applyParsed, setSaveAppliedMessage, onGeneratorApplied])
 
   const handleCopy = useCallback(async () => {
     const v = genText.trim()
@@ -159,7 +175,7 @@ export function TimetableOfferGeneratorBlock({
         <p className="shrink-0 text-xs leading-relaxed text-slate-600">
           {t(
             'timetableOfferGenHint',
-            'Customers often report by phone, email, or messenger about a truck for sale. Paste unstructured text here (for example from WhatsApp or email). Format extracts recognized values, shows a short structured version here, and fills the offer form. Save applies values and clears this box.'
+            'Customers often report by phone, email, or messenger about a truck for sale. Paste unstructured text here (for example from WhatsApp or email). Format extracts recognized values and shows a structured preview below without changing the offer form. Save applies values to the offer form and clears this box.'
           )}
         </p>
 
@@ -194,7 +210,7 @@ export function TimetableOfferGeneratorBlock({
             disabled={!hasText}
             title={t(
               'timetableOfferGenFormatTitle',
-              'Extract values, show a structured short text, and fill the offer form.'
+              'Extract values and show a structured preview (does not fill the offer form).'
             )}
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
           >

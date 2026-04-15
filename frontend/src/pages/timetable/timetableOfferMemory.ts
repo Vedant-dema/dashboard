@@ -110,6 +110,11 @@ export function offerHasVehicleIdentity(offer: TimetableTruckOffer): boolean {
   return Boolean(normalizeText(offer.brand) || normalizeText(offer.model) || offer.year != null)
 }
 
+/** Same threshold as “same vehicle” in {@link collectTimetableOfferMemory} (similarity score ≥ 45). */
+export function offerVehicleSameEnough(a: TimetableTruckOffer, b: TimetableTruckOffer): boolean {
+  return offerVehicleSimilarity(a, b) >= 45
+}
+
 function offerVehicleSimilarity(a: TimetableTruckOffer, b: TimetableTruckOffer): number {
   let score = 0
   const brandA = normalizeText(a.brand)

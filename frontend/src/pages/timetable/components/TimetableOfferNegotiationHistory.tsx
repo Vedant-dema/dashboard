@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { TimetableTruckOffer } from '../../../types/timetable'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -10,9 +10,20 @@ type Props = {
   setOfferField: (patch: Partial<TimetableTruckOffer>) => void
   localeTag: string
   t: (key: string, fallback: string) => string
+  /** When set, replaces the default timetable hint paragraph (for other surfaces, e.g. Angebot modal). */
+  description?: ReactNode
+  /** Omit top margin when embedded in a tight column layout. */
+  compactTop?: boolean
 }
 
-export function TimetableOfferNegotiationHistory({ offer, setOfferField, localeTag, t }: Props) {
+export function TimetableOfferNegotiationHistory({
+  offer,
+  setOfferField,
+  localeTag,
+  t,
+  description,
+  compactTop,
+}: Props) {
   const { user } = useAuth()
   const author = useMemo(() => (user?.name ?? user?.email ?? '').trim(), [user?.email, user?.name])
   const [roundNote, setRoundNote] = useState('')
@@ -47,16 +58,21 @@ export function TimetableOfferNegotiationHistory({ offer, setOfferField, localeT
   }
 
   return (
-    <div className="mt-5 space-y-3 rounded-2xl border border-indigo-100/90 bg-gradient-to-br from-indigo-50/60 via-white to-white p-4 shadow-sm ring-1 ring-indigo-900/[0.04] sm:p-5">
+    <div
+      className={`${
+        compactTop ? 'mt-0' : 'mt-5'
+      } space-y-3 rounded-2xl border border-indigo-100/90 bg-gradient-to-br from-indigo-50/60 via-white to-white p-4 shadow-sm ring-1 ring-indigo-900/[0.04] sm:p-5`}
+    >
       <div>
         <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">
           {t('timetableNegotiationTitle', 'Price negotiation')}
         </h4>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          {t(
-            'timetableNegotiationHint',
-            'Record a round from the two price fields above so follow-up calls show earlier quotes for this vehicle.'
-          )}
+          {description ??
+            t(
+              'timetableNegotiationHint',
+              'Record a round from the two price fields above so follow-up calls show earlier quotes for this vehicle.'
+            )}
         </p>
       </div>
 

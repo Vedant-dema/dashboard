@@ -170,12 +170,53 @@ html[data-dema-theme="dark"] .bg-white\/95 {
     inset 0 1px 0 0 rgb(148 163 184 / 0.08);
 }
 
+/* Frosted / glass “white” panels (chat, timetable, contact drawer) — full opacity ladder */
+html[data-dema-theme="dark"] .bg-white\/40,
+html[data-dema-theme="dark"] .bg-white\/45,
+html[data-dema-theme="dark"] .bg-white\/50,
+html[data-dema-theme="dark"] .bg-white\/55,
+html[data-dema-theme="dark"] .bg-white\/60,
+html[data-dema-theme="dark"] .bg-white\/65,
+html[data-dema-theme="dark"] .bg-white\/68,
+html[data-dema-theme="dark"] .bg-white\/70,
+html[data-dema-theme="dark"] .bg-white\/72,
+html[data-dema-theme="dark"] .bg-white\/75,
+html[data-dema-theme="dark"] .bg-white\/80,
+html[data-dema-theme="dark"] .bg-white\/85,
+html[data-dema-theme="dark"] .bg-white\/92 {
+  background-color: rgb(15 23 42 / 0.82) !important;
+  box-shadow:
+    0 12px 32px -18px rgb(2 6 23 / 0.65),
+    inset 0 1px 0 0 rgb(148 163 184 / 0.06);
+}
+
 html[data-dema-theme="dark"] .bg-slate-50,
+html[data-dema-theme="dark"] .bg-slate-50\/30,
+html[data-dema-theme="dark"] .bg-slate-50\/40,
+html[data-dema-theme="dark"] .bg-slate-50\/50,
+html[data-dema-theme="dark"] .bg-slate-50\/60,
 html[data-dema-theme="dark"] .bg-slate-50\/70,
 html[data-dema-theme="dark"] .bg-slate-50\/80,
-html[data-dema-theme="dark"] .bg-slate-50\/50,
-html[data-dema-theme="dark"] .bg-slate-100 {
+html[data-dema-theme="dark"] .bg-slate-50\/90,
+html[data-dema-theme="dark"] .bg-slate-50\/95,
+html[data-dema-theme="dark"] .bg-slate-100,
+html[data-dema-theme="dark"] .bg-slate-100\/60,
+html[data-dema-theme="dark"] .bg-slate-100\/80,
+html[data-dema-theme="dark"] .bg-slate-100\/90,
+html[data-dema-theme="dark"] .bg-slate-100\/95 {
   background-color: rgb(20 31 53 / 0.88) !important;
+}
+
+html[data-dema-theme="dark"] .bg-neutral-50 {
+  background-color: rgb(20 31 53 / 0.88) !important;
+}
+
+html[data-dema-theme="dark"] .bg-neutral-100 {
+  background-color: rgb(51 65 85 / 0.78) !important;
+}
+
+html[data-dema-theme="dark"] .bg-neutral-200 {
+  background-color: rgb(51 65 85 / 0.72) !important;
 }
 
 html[data-dema-theme="dark"] .bg-\[\#F4F7FE\]\/80 {
@@ -187,6 +228,17 @@ html[data-dema-theme="dark"] .border-slate-200\/60,
 html[data-dema-theme="dark"] .border-slate-200\/80,
 html[data-dema-theme="dark"] .border-slate-100 {
   border-color: rgb(71 85 105 / 0.64) !important;
+}
+
+html[data-dema-theme="dark"] .border-neutral-200,
+html[data-dema-theme="dark"] .border-neutral-300 {
+  border-color: rgb(71 85 105 / 0.64) !important;
+}
+
+html[data-dema-theme="dark"] .border-teal-100,
+html[data-dema-theme="dark"] .border-teal-200\/70,
+html[data-dema-theme="dark"] .border-teal-200\/80 {
+  border-color: rgb(45 212 191 / 0.28) !important;
 }
 
 html[data-dema-theme="dark"] .border-blue-100,
@@ -297,6 +349,11 @@ html[data-dema-theme="dark"] .bg-violet-50\/70 {
 
 html[data-dema-theme="dark"] .bg-teal-50\/90,
 html[data-dema-theme="dark"] .bg-teal-50\/80,
+html[data-dema-theme="dark"] .bg-teal-50\/70,
+html[data-dema-theme="dark"] .bg-teal-50\/60,
+html[data-dema-theme="dark"] .bg-teal-50\/40,
+html[data-dema-theme="dark"] .bg-teal-50\/30,
+html[data-dema-theme="dark"] .bg-teal-50\/25,
 html[data-dema-theme="dark"] .bg-teal-50,
 html[data-dema-theme="dark"] .bg-cyan-50,
 html[data-dema-theme="dark"] .bg-indigo-50 {
@@ -332,6 +389,14 @@ html[data-dema-theme="dark"] .hover\:bg-teal-50:hover {
   background-color: rgb(13 148 136 / 0.26) !important;
 }
 
+html[data-dema-theme="dark"] .hover\:bg-teal-100\/80:hover {
+  background-color: rgb(15 118 110 / 0.38) !important;
+}
+
+html[data-dema-theme="dark"] .hover\:border-teal-200:hover {
+  border-color: rgb(45 212 191 / 0.35) !important;
+}
+
 html[data-dema-theme="dark"] .bg-blue-600 {
   background-color: rgb(37 99 235) !important;
 }
@@ -345,9 +410,98 @@ html[data-dema-theme="dark"] .hover\:bg-slate-100:hover,
 html[data-dema-theme="dark"] .hover\:bg-white:hover,
 html[data-dema-theme="dark"] .hover\:bg-slate-50\/50:hover,
 html[data-dema-theme="dark"] .hover\:bg-slate-50\/80:hover,
+html[data-dema-theme="dark"] .hover\:bg-slate-50\/90:hover,
+html[data-dema-theme="dark"] .hover\:bg-slate-100\/80:hover,
 html[data-dema-theme="dark"] .hover\:bg-blue-50:hover,
-html[data-dema-theme="dark"] .hover\:bg-violet-50\/80:hover {
+html[data-dema-theme="dark"] .hover\:bg-violet-50\/80:hover,
+html[data-dema-theme="dark"] .hover\:bg-neutral-50:hover {
   background-color: rgb(30 41 59 / 0.6) !important;
+}
+
+html[data-dema-theme="dark"] .focus\:bg-white:focus {
+  background-color: rgb(15 23 42 / 0.92) !important;
+}
+
+html[data-dema-theme="dark"] .open\:bg-white\/70:is([open], :popover-open, :open) {
+  background-color: rgb(15 23 42 / 0.85) !important;
+}
+
+/* Tailwind multi-stop “paper” gradients (not covered by flat bg-* remaps) */
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-white.via-white.to-slate-50\/95 {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(15 23 42 / 0.96) 0%,
+    rgb(15 23 42 / 0.93) 55%,
+    rgb(20 31 53 / 0.9) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-teal-50\/25.to-slate-50\/40 {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(13 148 136 / 0.12) 0%,
+    rgb(15 23 42 / 0.55) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-r.from-slate-50.to-white {
+  background-image: linear-gradient(
+    to right,
+    rgb(30 41 59 / 0.92) 0%,
+    rgb(15 23 42 / 0.9) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-br.from-slate-50.to-white {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(30 41 59 / 0.92) 0%,
+    rgb(15 23 42 / 0.9) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-slate-50.to-white {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(30 41 59 / 0.92) 0%,
+    rgb(15 23 42 / 0.9) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-slate-100\/95.to-slate-100\/60 {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(30 41 59 / 0.9) 0%,
+    rgb(30 41 59 / 0.72) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-slate-50\/90.to-slate-50\/40 {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(20 31 53 / 0.88) 0%,
+    rgb(20 31 53 / 0.62) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-white.to-slate-50\/90 {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(15 23 42 / 0.94) 0%,
+    rgb(20 31 53 / 0.88) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .bg-gradient-to-b.from-slate-100\/95.to-slate-50\/90 {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(30 41 59 / 0.9) 0%,
+    rgb(20 31 53 / 0.85) 100%
+  ) !important;
+}
+
+html[data-dema-theme="dark"] .ring-offset-white {
+  --tw-ring-offset-color: rgb(15 23 42) !important;
 }
 
 html[data-dema-theme="dark"] .hover\:text-blue-700:hover,
@@ -1479,6 +1633,263 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
       0 0 0 4px rgb(59 130 246 / 0.14),
       0 0 40px -4px rgb(37 99 235 / 0.12),
       0 0 48px -8px rgb(125 211 252 / 0.14);
+  }
+
+  /* Purchase Kalender / timetable — chrono lattice (distinct from Customers sapphire orbs + grid drift) */
+  .timetable-page-chrono .timetable-chrono-ambient {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .timetable-chrono-float {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(72px) saturate(1.08);
+    mix-blend-mode: multiply;
+    opacity: 0.42;
+    z-index: 1;
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-float {
+    mix-blend-mode: screen;
+    opacity: 0.28;
+  }
+  .timetable-chrono-float-a {
+    width: min(52vmin, 520px);
+    height: min(52vmin, 520px);
+    left: -14%;
+    top: 8%;
+    background: radial-gradient(circle at 40% 40%, rgb(16 185 129 / 0.55), transparent 68%);
+    animation: timetable-chrono-float-a 9s ease-in-out infinite;
+    will-change: transform;
+  }
+  .timetable-chrono-float-b {
+    width: min(46vmin, 460px);
+    height: min(46vmin, 460px);
+    right: -12%;
+    bottom: 4%;
+    background: radial-gradient(circle at 55% 45%, rgb(139 92 246 / 0.5), transparent 68%);
+    animation: timetable-chrono-float-b 11s ease-in-out infinite;
+    animation-delay: -4s;
+    will-change: transform;
+  }
+  .timetable-chrono-ambient::after {
+    content: "";
+    position: absolute;
+    inset: -28%;
+    z-index: 3;
+    background:
+      radial-gradient(ellipse 58% 50% at 72% 32%, rgb(139 92 246 / 0.16), transparent 55%),
+      radial-gradient(ellipse 52% 48% at 22% 68%, rgb(16 185 129 / 0.14), transparent 52%);
+    animation: timetable-chrono-glow-breathe 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-ambient::after {
+    background:
+      radial-gradient(ellipse 58% 50% at 72% 32%, rgb(167 139 250 / 0.22), transparent 55%),
+      radial-gradient(ellipse 52% 48% at 22% 68%, rgb(52 211 153 / 0.16), transparent 52%);
+  }
+  .timetable-chrono-base {
+    position: absolute;
+    inset: -18%;
+    background:
+      radial-gradient(ellipse 72% 46% at 50% 108%, rgb(16 185 129 / 0.14), transparent 58%),
+      radial-gradient(ellipse 52% 40% at 8% 16%, rgb(139 92 246 / 0.11), transparent 54%),
+      radial-gradient(ellipse 48% 36% at 94% 20%, rgb(45 212 191 / 0.1), transparent 52%),
+      linear-gradient(
+        188deg,
+        rgb(248 250 252) 0%,
+        rgb(241 245 249 / 0.98) 42%,
+        rgb(236 253 245 / 0.72) 78%,
+        rgb(248 250 252) 100%
+      );
+    background-size: 145% 130%, 125% 120%, 130% 125%, 100% 100%;
+    animation: timetable-chrono-base-shift 10s ease-in-out infinite alternate;
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-base {
+    background:
+      radial-gradient(ellipse 70% 48% at 50% 102%, rgb(52 211 153 / 0.18), transparent 56%),
+      radial-gradient(ellipse 50% 38% at 4% 14%, rgb(167 139 250 / 0.2), transparent 52%),
+      radial-gradient(ellipse 46% 34% at 98% 16%, rgb(45 212 191 / 0.14), transparent 50%),
+      linear-gradient(188deg, rgb(15 23 42) 0%, rgb(15 23 42 / 0.92) 45%, rgb(6 78 59 / 0.28) 100%);
+    background-size: 145% 130%, 125% 120%, 130% 125%, 100% 100%;
+    animation: timetable-chrono-base-shift 10s ease-in-out infinite alternate;
+  }
+  .timetable-chrono-bands {
+    position: absolute;
+    inset: -6% -2%;
+    opacity: 0.52;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent,
+      transparent 46px,
+      rgb(100 116 139 / 0.085) 46px,
+      rgb(100 116 139 / 0.085) 47px
+    );
+    animation: timetable-chrono-bands-drift 5s linear infinite;
+    mask-image: linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%);
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-bands {
+    opacity: 0.44;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent,
+      transparent 46px,
+      rgb(148 163 184 / 0.1) 46px,
+      rgb(148 163 184 / 0.1) 47px
+    );
+  }
+  .timetable-chrono-cyclic-shell {
+    position: absolute;
+    inset: -48%;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+  }
+  .timetable-chrono-cyclic {
+    width: min(140vmin, 1200px);
+    height: min(140vmin, 1200px);
+    border-radius: 50%;
+    opacity: 0.2;
+    background: conic-gradient(
+      from 210deg at 50% 50%,
+      rgb(16 185 129 / 0.55),
+      transparent 22%,
+      rgb(139 92 246 / 0.5),
+      transparent 48%,
+      rgb(45 212 191 / 0.45),
+      transparent 74%,
+      rgb(52 211 153 / 0.4),
+      transparent 100%
+    );
+    filter: blur(38px) saturate(1.05);
+    animation: timetable-chrono-cyclic-spin 36s linear infinite;
+    will-change: transform;
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-cyclic {
+    opacity: 0.26;
+    filter: blur(42px) saturate(1.08);
+  }
+  .timetable-chrono-rhythm {
+    position: absolute;
+    inset: 0;
+    opacity: 0.34;
+    background-image: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 71px,
+      rgb(71 85 105 / 0.055) 71px,
+      rgb(71 85 105 / 0.055) 72px
+    );
+    animation: timetable-chrono-rhythm-shift 12s linear infinite;
+    mask-image: radial-gradient(ellipse 92% 80% at 50% 45%, black 18%, transparent 72%);
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-rhythm {
+    opacity: 0.36;
+    background-image: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 71px,
+      rgb(148 163 184 / 0.09) 71px,
+      rgb(148 163 184 / 0.09) 72px
+    );
+  }
+  .timetable-chrono-trace {
+    position: absolute;
+    inset: -25% -35%;
+    opacity: 0.62;
+    background: linear-gradient(
+      108deg,
+      transparent 43%,
+      rgb(255 255 255 / 0.09) 49.2%,
+      rgb(255 255 255 / 0.2) 50%,
+      rgb(255 255 255 / 0.08) 50.8%,
+      transparent 57%
+    );
+    background-size: 220% 220%;
+    animation: timetable-chrono-trace-slide 7.5s ease-in-out infinite;
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-trace {
+    opacity: 0.52;
+    background: linear-gradient(
+      108deg,
+      transparent 43%,
+      rgb(52 211 153 / 0.05) 49.2%,
+      rgb(167 139 250 / 0.09) 50%,
+      rgb(45 212 191 / 0.04) 50.8%,
+      transparent 57%
+    );
+  }
+  .timetable-chrono-noise {
+    position: absolute;
+    inset: 0;
+    opacity: 0.038;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-noise {
+    opacity: 0.065;
+  }
+  .timetable-chrono-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 90% 74% at 50% 40%,
+      transparent 36%,
+      rgb(15 23 42 / 0.04) 100%
+    );
+    pointer-events: none;
+  }
+  html[data-dema-theme="dark"] .timetable-chrono-vignette {
+    background: radial-gradient(ellipse 94% 82% at 50% 38%, transparent 28%, rgb(2 6 23 / 0.42) 100%);
+  }
+
+  /* Timetable / Kalender — Tailwind `animate-timetable-*` utilities (keyframes live in this layer) */
+  @keyframes timetable-blob-morph {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.88;
+    }
+    33% {
+      transform: translate(5%, -7%) scale(1.08);
+      opacity: 1;
+    }
+    66% {
+      transform: translate(-4%, 5%) scale(0.96);
+      opacity: 0.9;
+    }
+  }
+  @keyframes timetable-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes timetable-stat-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-timetable-blob {
+    animation: timetable-blob-morph 13s ease-in-out infinite;
+  }
+  .animate-timetable-fade-up {
+    animation: timetable-fade-up 0.5s ease-out both;
+  }
+  .animate-timetable-stat {
+    animation: timetable-stat-in 0.4s ease-out both;
   }
 
   /* New/edit customer modal — flat neutral shell (Fluent-like; behavior unchanged) */
@@ -2828,6 +3239,86 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   }
 }
 
+@keyframes timetable-chrono-base-shift {
+  0% {
+    background-position: 0% 70%, 0% 30%, 100% 20%, 0 0;
+  }
+  100% {
+    background-position: 100% 25%, 100% 70%, 0% 65%, 0 0;
+  }
+}
+
+@keyframes timetable-chrono-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes timetable-chrono-float-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(14%, 10%) scale(1.14);
+  }
+}
+
+@keyframes timetable-chrono-float-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.02);
+  }
+  50% {
+    transform: translate(-12%, -9%) scale(0.92);
+  }
+}
+
+@keyframes timetable-chrono-bands-drift {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(94px);
+  }
+}
+
+@keyframes timetable-chrono-cyclic-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes timetable-chrono-rhythm-shift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 144px 0;
+  }
+}
+
+@keyframes timetable-chrono-trace-slide {
+  0%,
+  100% {
+    background-position: 0% 35%;
+    opacity: 0.38;
+  }
+  50% {
+    background-position: 100% 65%;
+    opacity: 0.78;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dema-canvas-base,
   .dema-canvas-orb-a,
@@ -2857,6 +3348,7 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .customers-genz-btn-primary {
     animation: none !important;
   }
+  /* Kalender decorative ambient: keep moving (user preference); OS reduce-motion still applies to Tailwind motion-* utilities on the page. */
 }
 
 @keyframes auth-line-draw {

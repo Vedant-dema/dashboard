@@ -65,7 +65,14 @@ import {
 import { commitAsciiNormalized } from "../common/utils/commitAsciiNormalized";
 import { isViesProxyHttpErrorGarbage } from "../common/utils/viesProxyErrorText";
 import { useLanguage } from "../contexts/LanguageContext";
-import { normalizePhoneValue } from "../features/customers/mappers/customerFormMapper";
+import {
+  normalizePhoneValue,
+  type CustomerFormDraft,
+} from "../features/customers/mappers/customerFormMapper";
+import {
+  collectNewCustomerKundeRequiredIssues,
+  NEW_CUSTOMER_KUNDE_FOCUS as KF,
+} from "../features/customers/validators/customerValidation";
 
 type TabId =
   | "vat"
@@ -220,11 +227,6 @@ function emptyAdresse(typ = "Hauptadresse"): AdresseEntry {
 }
 
 const API_BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
-
-const FOCUS_ID_FIRMENNAME = "new-kunde-field-firmenname";
-const FOCUS_ID_STRASSE = "new-kunde-field-strasse";
-const FOCUS_ID_UST = "new-kunde-field-ust-id";
-const FOCUS_ID_KONTAKT_EMAIL = "new-kunde-field-kontakt-email";
 
 function focusModalCustomerField(fieldId: string) {
   window.setTimeout(() => {
@@ -2510,11 +2512,16 @@ export function NewCustomerModal({
     setFooterMessage(null);
     type Issue = { message: string; tab: TabId; fieldId: string; preFocus?: () => void };
     const issues: Issue[] = [];
-    if (!form.firmenname.trim()) {
+    const kundeIssues = collectNewCustomerKundeRequiredIssues(form as CustomerFormDraft);
+    for (const ki of kundeIssues) {
       issues.push({
-        message: t("newCustomerRequiredFirmenname", "Please enter a company name."),
+        message: t(ki.messageKey, ki.messageFallback),
         tab: "kunde",
-        fieldId: FOCUS_ID_FIRMENNAME,
+        fieldId: ki.fieldId,
+        preFocus: () => {
+          if (ki.preFocus === "mainAdresse") setActiveAdresseIdx(0);
+          if (ki.preFocus === "primaryKontakt") setActiveKontaktIdx(0);
+        },
       });
     }
     const em = form.kontakte[0]?.email?.trim() ?? "";
@@ -2525,7 +2532,7 @@ export function NewCustomerModal({
           "Please enter a valid email address for the primary contact."
         ),
         tab: "kunde",
-        fieldId: FOCUS_ID_KONTAKT_EMAIL,
+        fieldId: KF.kontaktEmail,
         preFocus: () => setActiveKontaktIdx(0),
       });
     }
@@ -2623,19 +2630,19 @@ export function NewCustomerModal({
   const goToCompanyFromSummary = useCallback(() => {
     setTab("kunde");
     setActiveAdresseIdx(0);
-    focusModalCustomerField(FOCUS_ID_FIRMENNAME);
+    focusModalCustomerField(KF.firmenname);
   }, []);
 
   const goToAddressFromSummary = useCallback(() => {
     setTab("kunde");
     setActiveAdresseIdx(0);
-    focusModalCustomerField(FOCUS_ID_STRASSE);
+    focusModalCustomerField(KF.strasse);
   }, []);
 
   const goToVatFieldFromSummary = useCallback(() => {
     setTab("kunde");
     setActiveAdresseIdx(0);
-    focusModalCustomerField(FOCUS_ID_UST);
+    focusModalCustomerField(KF.ust);
   }, []);
 
   useEffect(() => {
@@ -3344,8 +3351,12 @@ export function NewCustomerModal({
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className={labelClass}>{t("newCustomerLabelCustomerType", "Customer type")}</label>
+                      <label className={labelClass}>
+                        {t("newCustomerLabelCustomerType", "Customer type")}{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
                       <select
+                        id={KF.customerType}
                         value={form.customer_type}
                         onChange={(e) => {
                           const next = e.target.value as FormState["customer_type"];
@@ -3364,7 +3375,10 @@ export function NewCustomerModal({
                       </select>
                     </div>
                     <div>
-                      <label className={labelClass}>{t("newCustomerLabelStatus", "Status")}</label>
+                      <label className={labelClass}>
+                        {t("newCustomerLabelStatus", "Status")}{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
                       <select
                         value={form.customer_status}
                         onChange={(e) => set("customer_status", e.target.value as FormState["customer_status"])}
@@ -3378,9 +3392,14 @@ export function NewCustomerModal({
                   </div>
 
                   <div>
-                    <label className={labelClass}>{t("newCustomerLabelBranche", "Industry")}{isExtracted("branche") && <KiBadge />}</label>
+                    <label className={labelClass}>
+                      {t("newCustomerLabelBranche", "Industry")}{" "}
+                      <span className="text-red-500">*</span>
+                      {isExtracted("branche") && <KiBadge />}
+                    </label>
                     <ExtractedFieldWrapper extracted={isExtracted("branche")}>
                       <SuggestTextInput
+                        id={KF.branche}
                         type="text"
                         value={form.branche}
                         onChange={(e) => set("branche", e.target.value)}
@@ -3403,7 +3422,10 @@ export function NewCustomerModal({
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-end">
                     <div>
-                      <span className={labelClass}>{t("newCustomerLabelFzgHandel", "Vehicle trader")}</span>
+                      <span className={labelClass}>
+                        {t("newCustomerLabelFzgHandel", "Vehicle trader")}{" "}
+                        <span className="text-red-500">*</span>
+                      </span>
                       <div className="mt-1 flex flex-wrap gap-2">
                         {(["ja", "nein"] as const).map((v) => (
                           <label
@@ -3417,6 +3439,7 @@ export function NewCustomerModal({
                             <input
                               type="radio"
                               name="fzg"
+                              id={v === "ja" ? KF.fzgHandelJa : undefined}
                               checked={form.fzgHandel === v}
                               onChange={() => set("fzgHandel", v)}
                               className="border-neutral-300 text-neutral-700"
@@ -3428,11 +3451,13 @@ export function NewCustomerModal({
                     </div>
                     <div>
                       <label className={labelClass}>
-                        {t("newCustomerLabelGesellschaftsform", "Legal form")}
+                        {t("newCustomerLabelGesellschaftsform", "Legal form")}{" "}
+                        <span className="text-red-500">*</span>
                         {isExtracted("gesellschaftsform") && <KiBadge />}
                       </label>
                       <ExtractedFieldWrapper extracted={isExtracted("gesellschaftsform")}>
                         <SuggestTextInput
+                          id={KF.gesellschaftsform}
                           type="text"
                           value={form.gesellschaftsform}
                           onChange={(e) => set("gesellschaftsform", e.target.value)}
@@ -3609,7 +3634,7 @@ export function NewCustomerModal({
                         </label>
                         <ExtractedFieldWrapper extracted={isExtracted("firmenname")}>
                           <SuggestTextInput
-                            id={FOCUS_ID_FIRMENNAME}
+                            id={KF.firmenname}
                             type="text"
                             value={form.firmenname}
                             onChange={(e) => set("firmenname", e.target.value)}
@@ -3724,10 +3749,14 @@ export function NewCustomerModal({
                             />
                           </div>
                           <div>
-                            <label className={labelClass}>{t("newCustomerLabelStrasse", "Street")}{isExtracted("strasse") && <KiBadge />}</label>
+                            <label className={labelClass}>
+                              {t("newCustomerLabelStrasse", "Street")}{" "}
+                              <span className="text-red-500">*</span>
+                              {isExtracted("strasse") && <KiBadge />}
+                            </label>
                             <ExtractedFieldWrapper extracted={isExtracted("strasse")}>
                               <SuggestTextInput
-                                id={FOCUS_ID_STRASSE}
+                                id={safeAdresseIdx === 0 ? KF.strasse : undefined}
                                 type="text"
                                 value={a.strasse}
                                 onChange={(e) => patchAdresse({ strasse: e.target.value })}
@@ -3755,9 +3784,14 @@ export function NewCustomerModal({
 
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <div>
-                              <label className={labelClass}>{t("newCustomerLabelPLZ", "ZIP")}{isExtracted("plz") && <KiBadge />}</label>
+                              <label className={labelClass}>
+                                {t("newCustomerLabelPLZ", "ZIP")}{" "}
+                                <span className="text-red-500">*</span>
+                                {isExtracted("plz") && <KiBadge />}
+                              </label>
                               <ExtractedFieldWrapper extracted={isExtracted("plz")}>
                                 <SuggestTextInput
+                                  id={safeAdresseIdx === 0 ? KF.plz : undefined}
                                   type="text"
                                   value={a.plz}
                                   onChange={(e) => patchAdresse({ plz: e.target.value })}
@@ -3782,9 +3816,14 @@ export function NewCustomerModal({
                               </ExtractedFieldWrapper>
                             </div>
                             <div>
-                              <label className={labelClass}>{t("newCustomerLabelOrt", "City")}{isExtracted("ort") && <KiBadge />}</label>
+                              <label className={labelClass}>
+                                {t("newCustomerLabelOrt", "City")}{" "}
+                                <span className="text-red-500">*</span>
+                                {isExtracted("ort") && <KiBadge />}
+                              </label>
                               <ExtractedFieldWrapper extracted={isExtracted("ort")}>
                                 <SuggestTextInput
+                                  id={safeAdresseIdx === 0 ? KF.ort : undefined}
                                   type="text"
                                   value={a.ort}
                                   onChange={(e) => patchAdresse({ ort: e.target.value })}
@@ -3812,8 +3851,13 @@ export function NewCustomerModal({
 
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <div>
-                              <label className={labelClass}>{t("newCustomerLabelLand", "Country")}{isExtracted("land_code") && <KiBadge />}</label>
+                              <label className={labelClass}>
+                                {t("newCustomerLabelLand", "Country")}{" "}
+                                <span className="text-red-500">*</span>
+                                {isExtracted("land_code") && <KiBadge />}
+                              </label>
                               <select
+                                id={safeAdresseIdx === 0 ? KF.land : undefined}
                                 value={a.land_code}
                                 onChange={(e) => {
                                   const code = e.target.value;
@@ -3851,7 +3895,7 @@ export function NewCustomerModal({
                               <label className={labelClass}>{t("newCustomerLabelUstIdNr", "VAT ID no.")}{isExtracted("ust_id_nr") && <KiBadge />}</label>
                               <ExtractedFieldWrapper extracted={isExtracted("ust_id_nr")}>
                                 <SuggestTextInput
-                                  id={FOCUS_ID_UST}
+                                  id={safeAdresseIdx === 0 ? KF.ust : undefined}
                                   type="text"
                                   value={a.ust_id_nr}
                                   onChange={(e) => patchAdresse({ ust_id_nr: e.target.value })}
@@ -4014,6 +4058,7 @@ export function NewCustomerModal({
                               {safeIdx === 0 ? <span className="text-red-500"> *</span> : null}
                             </label>
                             <input
+                              id={safeIdx === 0 ? KF.kontaktName : undefined}
                               type="text"
                               value={k.name}
                               onChange={(e) =>
@@ -4081,8 +4126,12 @@ export function NewCustomerModal({
 
                           {/* Telefon */}
                           <div>
-                            <label className={labelClass}>{t("newCustomerLabelTelefon", "Phone")}</label>
+                            <label className={labelClass}>
+                              {t("newCustomerLabelTelefon", "Phone")}
+                              {safeIdx === 0 ? <span className="text-red-500"> *</span> : null}
+                            </label>
                             <input
+                              id={safeIdx === 0 ? KF.kontaktTelefon : undefined}
                               type="tel"
                               value={k.telefon}
                               onChange={(e) =>
@@ -4146,7 +4195,7 @@ export function NewCustomerModal({
                           <div>
                             <label className={labelClass}>{t("newCustomerLabelEmail", "E-mail")}</label>
                             <input
-                              id={safeIdx === 0 ? FOCUS_ID_KONTAKT_EMAIL : undefined}
+                              id={safeIdx === 0 ? KF.kontaktEmail : undefined}
                               type="email"
                               value={k.email}
                               onChange={(e) =>

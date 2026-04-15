@@ -1,5 +1,15 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Search, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  X,
+  ArrowDownLeft,
+  ArrowUpRight,
+  CircleDashed,
+  AlertTriangle,
+} from "lucide-react";
 import type { AngebotStamm } from "../types/angebote";
 import { combinedMatch } from "../lib/globalSearchMatch";
 import { useApplyGlobalSearchFocus } from "../hooks/useApplyGlobalSearchFocus";
@@ -14,6 +24,7 @@ import { NewAngebotModal } from "../components/NewAngebotModal";
 import { useLanguage } from "../contexts/LanguageContext";
 import type { DepartmentArea } from "../types/departmentArea";
 import { DEPARTMENT_I18N_KEY } from "../types/departmentArea";
+import { angebotLedgerKind, type AngebotLedgerKind } from "../lib/angebotLedger";
 
 const SORT_OPTIONS = [
   "Angebot-ID",
@@ -47,6 +58,8 @@ function yn(v: boolean): string {
   return v ? "Ja" : "Nein";
 }
 
+type StockFlowLaneFilter = "all" | AngebotLedgerKind;
+
 export function AngebotePage({ department }: { department?: DepartmentArea }) {
   const { t } = useLanguage();
   const [db, setDb] = useState(() => loadAngeboteDb());
@@ -68,8 +81,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
   const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
   const [land, setLand] = useState("");
   const [sortierung, setSortierung] = useState<string>(SORT_OPTIONS[0]);
-  const [nurVerkauft, setNurVerkauft] = useState(false);
-  const [nurGekauft, setNurGekauft] = useState(false);
+  const [stockFlowLane, setStockFlowLane] = useState<StockFlowLaneFilter>("all");
   const [nurAnbieten, setNurAnbieten] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -196,8 +208,9 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
       const l = land.trim().toLowerCase();
       list = list.filter((a) => (a.land_code || "").toLowerCase().includes(l));
     }
-    if (nurVerkauft) list = list.filter((a) => a.verkauft);
-    if (nurGekauft) list = list.filter((a) => a.gekauft === true);
+    if (stockFlowLane !== "all") {
+      list = list.filter((a) => angebotLedgerKind(a) === stockFlowLane);
+    }
     if (nurAnbieten) list = list.filter((a) => a.anbieten);
 
     const cmp = (a: AngebotStamm, b: AngebotStamm) => {
@@ -238,8 +251,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
     modellTyp,
     kundenfilter,
     land,
-    nurVerkauft,
-    nurGekauft,
+    stockFlowLane,
     nurAnbieten,
     sortierung,
   ]);
@@ -261,8 +273,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
     setModellTyp("");
     setKundenfilter("");
     setLand("");
-    setNurVerkauft(false);
-    setNurGekauft(false);
+    setStockFlowLane("all");
     setNurAnbieten(false);
   };
 
@@ -278,6 +289,116 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
   useApplyGlobalSearchFocus("angebote", focusAngebotFromSearch);
 
   const selected = selectedId != null ? db.angebote.find((a) => a.id === selectedId) : null;
+
+  const ledgerMix = useMemo(() => {
+    const z = { purchase: 0, disposal: 0, neutral: 0, conflict: 0 };
+    for (const a of filtered) {
+      z[angebotLedgerKind(a)] += 1;
+    }
+    return z;
+  }, [filtered]);
+
+  const stockFlowLaneButtons = useMemo(
+    () =>
+      (
+        [
+          { id: "all" as const, labelKey: "angeboteStockLaneAll" as const, fallback: "All types", Icon: null },
+          {
+            id: "purchase" as const,
+            labelKey: "angebotStockLedgerPurchase" as const,
+            fallback: "Purchased",
+            Icon: ArrowDownLeft,
+          },
+          {
+            id: "disposal" as const,
+            labelKey: "angebotStockLedgerDisposal" as const,
+            fallback: "Sold (third party)",
+            Icon: ArrowUpRight,
+          },
+          {
+            id: "neutral" as const,
+            labelKey: "angebotStockLedgerNeutral" as const,
+            fallback: "Unclassified",
+            Icon: CircleDashed,
+          },
+          {
+            id: "conflict" as const,
+            labelKey: "angeboteStockLaneConflict" as const,
+            fallback: "Review",
+            Icon: AlertTriangle,
+          },
+        ] as const
+      ).map((o) => ({ ...o, label: t(o.labelKey, o.fallback) })),
+    [t],
+  );
+
+  const renderLedgerBadge = useCallback(
+    (kind: AngebotLedgerKind, forSelectedRow: boolean) => {
+      const base =
+        "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide";
+      const sel = forSelectedRow
+        ? "border border-white/25 bg-white/10 text-white shadow-sm"
+        : "";
+      if (kind === "purchase") {
+        return (
+          <span
+            className={`${base} ${
+              forSelectedRow ? sel : "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-700/10"
+            }`}
+            title={t("angebotStockLedgerPurchaseSub", "Inbound — DEMA acquires the vehicle.")}
+          >
+            <ArrowDownLeft className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+            <span className="truncate">{t("angebotStockLedgerPurchase", "Purchased")}</span>
+          </span>
+        );
+      }
+      if (kind === "disposal") {
+        return (
+          <span
+            className={`${base} ${
+              forSelectedRow ? sel : "bg-amber-100 text-amber-950 ring-1 ring-amber-700/15"
+            }`}
+            title={t("angebotStockLedgerDisposalSub", "Outbound — disposal to another company.")}
+          >
+            <ArrowUpRight className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+            <span className="truncate">{t("angebotStockLedgerDisposal", "Sold (third party)")}</span>
+          </span>
+        );
+      }
+      if (kind === "conflict") {
+        return (
+          <span
+            className={`${base} ${
+              forSelectedRow ? sel : "bg-rose-100 text-rose-950 ring-1 ring-rose-600/15"
+            }`}
+            title={t("angeboteStockLaneConflictHint", "Purchase and disposal are both set — pick one lane in the offer form.")}
+          >
+            <AlertTriangle className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+            <span className="truncate">{t("angeboteStockLaneConflict", "Review")}</span>
+          </span>
+        );
+      }
+      return (
+        <span
+          className={`${base} ${
+            forSelectedRow ? sel : "bg-slate-100 text-slate-600 ring-1 ring-slate-300/60"
+          }`}
+          title={t("angebotStockLedgerNeutralSub", "Neither purchase nor third-party sale flagged yet.")}
+        >
+          <CircleDashed className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+          <span className="truncate">{t("angebotStockLedgerNeutral", "Unclassified")}</span>
+        </span>
+      );
+    },
+    [t],
+  );
+
+  const ledgerStripeClass = useCallback((kind: AngebotLedgerKind) => {
+    if (kind === "purchase") return "border-l-[3px] border-l-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/65";
+    if (kind === "disposal") return "border-l-[3px] border-l-amber-500 bg-amber-50/35 hover:bg-amber-50/55";
+    if (kind === "conflict") return "border-l-[3px] border-l-rose-500 bg-rose-50/35 hover:bg-rose-50/55";
+    return "";
+  }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-6 pb-8">
@@ -500,33 +621,38 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6 border-t border-slate-100 pt-3">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={nurGekauft}
-              onChange={(e) => setNurGekauft(e.target.checked)}
-              className="rounded border-slate-300"
-            />
-            gekauft
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={nurVerkauft}
-              onChange={(e) => setNurVerkauft(e.target.checked)}
-              className="rounded border-slate-300"
-            />
-            verkauft
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="space-y-2 border-t border-slate-100 pt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            {t("angeboteStockFlowFilterTitle", "Stock flow")}
+          </p>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {stockFlowLaneButtons.map(({ id, label, Icon }) => {
+              const active = stockFlowLane === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setStockFlowLane(id)}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition sm:min-h-0 sm:py-1 ${
+                    active
+                      ? "border-teal-600 bg-teal-600 text-white shadow-sm shadow-teal-600/25"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50/60"
+                  }`}
+                >
+                  {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden /> : null}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600 sm:min-h-0">
             <input
               type="checkbox"
               checked={nurAnbieten}
               onChange={(e) => setNurAnbieten(e.target.checked)}
               className="rounded border-slate-300"
             />
-            FZG anbieten
+            {t("angeboteFilterOfferVehicle", "Offer vehicle")}
           </label>
         </div>
 
@@ -583,7 +709,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
                 <th className="whitespace-nowrap px-3 py-3">AufbauArt</th>
                 <th className="whitespace-nowrap px-3 py-3">EZ</th>
                 <th className="whitespace-nowrap px-3 py-3">Preis</th>
-                <th className="whitespace-nowrap px-3 py-3">Verkauft</th>
+                <th className="whitespace-nowrap px-3 py-3">{t("angeboteStockFlowColHeader", "Stock flow")}</th>
                 <th className="whitespace-nowrap px-3 py-3">Anbieten</th>
                 <th className="whitespace-nowrap px-3 py-3">Abgebieter</th>
                 <th className="whitespace-nowrap px-3 py-3">PLZ</th>
@@ -599,20 +725,29 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={18} className="px-4 py-12 text-center text-sm text-slate-500">
-                    Keine Angebote für diese Filter. „alle“ zurücksetzen oder neues Angebot anlegen.
+                    {t(
+                      "angeboteEmptyFiltered",
+                      "No offers match these filters. Reset filters or create a new offer.",
+                    )}
                   </td>
                 </tr>
               ) : (
-                filtered.map((row, i) => (
+                filtered.map((row, i) => {
+                  const ledger = angebotLedgerKind(row);
+                  const isRowSelected = selectedId === row.id;
+                  const stripe = ledgerStripeClass(ledger);
+                  const zebraNeutral =
+                    ledger === "neutral"
+                      ? i % 2 === 1
+                        ? "bg-slate-50/90 text-slate-800 hover:bg-slate-100"
+                        : "text-slate-800 hover:bg-slate-50"
+                      : "text-slate-800";
+                  return (
                   <tr
                     key={row.id}
                     onClick={() => setSelectedId(row.id)}
                     className={`cursor-pointer transition ${
-                      selectedId === row.id
-                        ? "bg-slate-800 text-white"
-                        : i % 2 === 1
-                          ? "bg-slate-50/90 text-slate-800 hover:bg-slate-100"
-                          : "text-slate-800 hover:bg-slate-50"
+                      isRowSelected ? "bg-slate-800 text-white" : `${stripe} ${zebraNeutral}`.trim()
                     }`}
                   >
                     <td className="whitespace-nowrap px-3 py-2.5 font-medium tabular-nums">{row.angebot_nr}</td>
@@ -623,7 +758,9 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
                     <td className="whitespace-nowrap px-3 py-2.5">{row.aufbauart}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{row.ez || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{formatEur(row.preis)}</td>
-                    <td className="whitespace-nowrap px-3 py-2.5">{yn(row.verkauft)}</td>
+                    <td className="max-w-[9rem] px-3 py-2.5 align-middle">
+                      {renderLedgerBadge(ledger, isRowSelected)}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2.5">{yn(row.anbieten)}</td>
                     <td className="max-w-[120px] truncate px-3 py-2.5">{row.abgebieter || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{row.plz}</td>
@@ -636,14 +773,24 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
                     <td className="whitespace-nowrap px-3 py-2.5">{row.eingeholt || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2.5">{row.verhandelt || "—"}</td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-        <div className="shrink-0 border-t border-slate-200 bg-slate-50/90 px-4 py-2.5 text-right text-sm text-slate-600">
-          Anzahl der ausgewählten Fahrzeuge:{" "}
-          <span className="font-semibold tabular-nums text-slate-800">{filtered.length}</span>
+        <div className="shrink-0 space-y-1 border-t border-slate-200 bg-slate-50/90 px-4 py-2.5 text-right text-sm text-slate-600">
+          <div>
+            {t("angeboteFooterRowCount", "Rows shown:")}{" "}
+            <span className="font-semibold tabular-nums text-slate-800">{filtered.length}</span>
+          </div>
+          <div className="text-xs text-slate-500">
+            {t("angeboteSummaryLedgerMix", "{purchase} inbound · {disposal} outbound · {neutral} open · {conflict} review")
+              .replace("{purchase}", String(ledgerMix.purchase))
+              .replace("{disposal}", String(ledgerMix.disposal))
+              .replace("{neutral}", String(ledgerMix.neutral))
+              .replace("{conflict}", String(ledgerMix.conflict))}
+          </div>
         </div>
       </div>
 
@@ -680,6 +827,20 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div className="mb-4 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-teal-50/30 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  {t("angeboteDrawerLabelStockFlow", "Stock flow")}
+                </p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  {renderLedgerBadge(angebotLedgerKind(selected), false)}
+                  <span className="text-[11px] leading-snug text-slate-500 sm:max-w-[15rem] sm:text-right">
+                    {t(
+                      "angeboteDrawerStockFlowHint",
+                      "Inbound purchase vs outbound third-party sale — same as the new-offer form.",
+                    )}
+                  </span>
+                </div>
+              </div>
               <dl className="space-y-3 text-sm">
                 {(
                   [
@@ -691,7 +852,6 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
                     ["FIN", selected.fahrgestellnummer || "—"],
                     ["EZ", selected.ez || "—"],
                     ["Preis", formatEur(selected.preis)],
-                    ["Verkauft", yn(selected.verkauft)],
                     ["Anbieten", yn(selected.anbieten)],
                     ["Abgemeldet", yn(selected.abgemeldet ?? false)],
                     ["Kunde", selected.firmenname],

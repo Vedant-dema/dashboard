@@ -1,9 +1,16 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { X, Printer, FolderOpen, Car, Gauge, Euro } from "lucide-react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { X, Printer, FolderOpen, Car, Gauge, Euro, ArrowDownLeft, ArrowUpRight, CircleDashed } from "lucide-react";
 import type { NewAngebotPayload } from "../types/angebote";
+import type { TimetableNegotiationPriceRound, TimetableTruckOffer } from "../types/timetable";
 import { SuggestTextInput } from "./SuggestTextInput";
 import { GlobalAddressSearch, type GlobalAddressResult } from "./GlobalAddressSearch";
-import { useLanguage } from "../contexts/LanguageContext";
+import {
+  useLanguage,
+  localeTagForLanguage,
+  type LanguageCode,
+} from "../contexts/LanguageContext";
+import { TimetableOfferNegotiationHistory } from "../pages/timetable/components/TimetableOfferNegotiationHistory";
+import { newTruckOfferId } from "../pages/timetable/contactDrawerFormUtils";
 
 type TabId = "fahrzeug" | "technik" | "preise";
 
@@ -91,6 +98,22 @@ function parsePreis(s: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+function parseOptionalEuro(s: string): number | null {
+  const t = s.trim();
+  if (!t || t === "—") return null;
+  const normalized = t.replace(/\./g, "").replace(",", ".");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+type StockLedgerMode = "purchase" | "disposal" | "neutral";
+
+function stockLedgerModeFromFlags(gekauft: boolean, verkauft: boolean): StockLedgerMode {
+  if (gekauft && !verkauft) return "purchase";
+  if (verkauft && !gekauft) return "disposal";
+  return "neutral";
+}
+
 type FormState = {
   angebot_datum: string;
   abgabetermin: string;
@@ -131,6 +154,7 @@ type FormState = {
   preis_kunde_2: string;
   preis_kunde_3: string;
   extras: string;
+  negotiation_rounds: TimetableNegotiationPriceRound[];
   firmenname: string;
   plz: string;
   ort: string;
@@ -185,6 +209,7 @@ function initialForm(): FormState {
     preis_kunde_2: "",
     preis_kunde_3: "",
     extras: "",
+    negotiation_rounds: [],
     firmenname: "",
     plz: "",
     ort: "",
@@ -241,6 +266,7 @@ function formToPayload(f: FormState): NewAngebotPayload {
     preis_kunde_3: parseOptionalInt(f.preis_kunde_3),
     extras: emptyToUndef(f.extras),
     bilder_liste: emptyToUndef(f.bilder_liste),
+    negotiation_rounds: f.negotiation_rounds.length ? f.negotiation_rounds : undefined,
   };
 }
 
@@ -259,11 +285,50 @@ export function NewAngebotModal({
   fabrikatSuggestions,
   onSubmit,
 }: Props) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [tab, setTab] = useState<TabId>("fahrzeug");
   const [form, setForm] = useState<FormState>(initialForm);
   const [extrasLocked, setExtrasLocked] = useState(true);
   const bilderInputRef = useRef<HTMLInputElement>(null);
+  const negotiationBridgeOfferIdRef = useRef(newTruckOfferId());
+
+  const localeTag = useMemo(
+    () => localeTagForLanguage(language as LanguageCode),
+    [language]
+  );
+
+  const negotiationBridgeOffer = useMemo((): TimetableTruckOffer => {
+    return {
+      id: negotiationBridgeOfferIdRef.current,
+      captured_at: "",
+      vehicle_type: "",
+      brand: form.fabrikat.trim(),
+      model: `${form.modellreihe.trim()} ${form.typ.trim()}`.trim(),
+      year: null,
+      mileage_km: null,
+      quantity: null,
+      expected_price_eur: parseOptionalEuro(form.preisvorstellung_kunde),
+      purchase_bid_eur: parseOptionalEuro(form.preisvorstellung_dema),
+      location: "",
+      notes: "",
+      negotiation_rounds: form.negotiation_rounds,
+    };
+  }, [
+    form.fabrikat,
+    form.modellreihe,
+    form.typ,
+    form.preisvorstellung_kunde,
+    form.preisvorstellung_dema,
+    form.negotiation_rounds,
+  ]);
+
+  const setNegotiationOfferField = useCallback((patch: Partial<TimetableTruckOffer>) => {
+    if (patch.negotiation_rounds === undefined) return;
+    setForm((s) => ({
+      ...s,
+      negotiation_rounds: patch.negotiation_rounds ?? [],
+    }));
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -276,6 +341,53 @@ export function NewAngebotModal({
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((s) => ({ ...s, [key]: value }));
   }, []);
+
+  const stockLedgerMode = useMemo(
+    () => stockLedgerModeFromFlags(form.gekauft, form.verkauft),
+    [form.gekauft, form.verkauft],
+  );
+
+  const applyStockLedgerMode = useCallback((mode: StockLedgerMode) => {
+    setForm((s) => ({
+      ...s,
+      gekauft: mode === "purchase",
+      verkauft: mode === "disposal",
+    }));
+  }, []);
+
+  const stockLedgerOptions = useMemo(
+    () =>
+      [
+        {
+          id: "purchase" as const,
+          title: t("angebotStockLedgerPurchase", "Purchased"),
+          sub: t(
+            "angebotStockLedgerPurchaseSub",
+            "Inbound — DEMA acquires the vehicle",
+          ),
+          Icon: ArrowDownLeft,
+        },
+        {
+          id: "disposal" as const,
+          title: t("angebotStockLedgerDisposal", "Sold (third party)"),
+          sub: t(
+            "angebotStockLedgerDisposalSub",
+            "Outbound — disposal to another company",
+          ),
+          Icon: ArrowUpRight,
+        },
+        {
+          id: "neutral" as const,
+          title: t("angebotStockLedgerNeutral", "Unclassified"),
+          sub: t(
+            "angebotStockLedgerNeutralSub",
+            "Neither purchase nor third-party sale flagged yet",
+          ),
+          Icon: CircleDashed,
+        },
+      ] as const,
+    [t],
+  );
 
   const handleAddressSelect = useCallback((r: GlobalAddressResult) => {
     setForm((s) => ({
@@ -356,6 +468,16 @@ export function NewAngebotModal({
               <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-semibold text-teal-100">
                 (Neu)
               </span>
+              {stockLedgerMode === "purchase" && (
+                <span className="rounded-md border border-emerald-400/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-100">
+                  {t("angebotStockLedgerPurchase", "Purchased")}
+                </span>
+              )}
+              {stockLedgerMode === "disposal" && (
+                <span className="rounded-md border border-amber-400/40 bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-100">
+                  {t("angebotStockLedgerDisposal", "Sold (third party)")}
+                </span>
+              )}
             </div>
             <p className="mt-0.5 text-xs text-slate-300">
               DEMA Management · automatische ID{" "}
@@ -510,8 +632,44 @@ export function NewAngebotModal({
                       className={inputClass}
                     />
                   </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4">
+                    <p className={labelClass}>{t("angebotStockLedgerLabel", "Stock transaction type")}</p>
+                    <p className="mb-3 text-[11px] leading-snug text-slate-500 sm:text-xs">
+                      {t(
+                        "angebotStockLedgerHint",
+                        "Purchase (inbound) and third-party sale (outbound) are mutually exclusive—pick the lane that matches this row.",
+                      )}
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label={t("angebotStockLedgerLabel", "Stock transaction type")}>
+                      {stockLedgerOptions.map(({ id, title, sub, Icon }) => {
+                        const active = stockLedgerMode === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => applyStockLedgerMode(id)}
+                            className={`flex min-h-[44px] w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2.5 text-left transition sm:min-h-0 ${
+                              active
+                                ? id === "purchase"
+                                  ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500/30"
+                                  : id === "disposal"
+                                    ? "border-amber-500 bg-amber-50 ring-1 ring-amber-500/30"
+                                    : "border-slate-500 bg-white ring-1 ring-slate-400/25"
+                                : "border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50/40"
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                              <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                              {title}
+                            </span>
+                            <span className="text-[10px] leading-tight text-slate-500">{sub}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-4">
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-slate-700 sm:min-h-0">
                       <input
                         type="checkbox"
                         checked={form.anbieten}
@@ -520,16 +678,7 @@ export function NewAngebotModal({
                       />
                       Fahrzeug anbieten
                     </label>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.verkauft}
-                        onChange={(e) => set("verkauft", e.target.checked)}
-                        className="rounded border-slate-300 text-teal-600"
-                      />
-                      Verkauft
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-slate-700 sm:min-h-0">
                       <input
                         type="checkbox"
                         checked={form.abgemeldet}
@@ -537,15 +686,6 @@ export function NewAngebotModal({
                         className="rounded border-slate-300 text-teal-600"
                       />
                       Abgemeldet
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.gekauft}
-                        onChange={(e) => set("gekauft", e.target.checked)}
-                        className="rounded border-slate-300 text-teal-600"
-                      />
-                      gekauft
                     </label>
                   </div>
                   <div>
@@ -880,8 +1020,13 @@ export function NewAngebotModal({
                 </p>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
-                <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm lg:col-span-2">
+              {/*
+                md+ = three columns (Verknüpfte | Extras | Preisverhandlung).
+                Below md, stack with negotiation first so it is not hidden under the tall Extras block
+                (lg-only columns were easy to miss on laptops/tablets < 1024px).
+              */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="order-2 min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:order-1">
                   <p className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wide text-slate-400">
                     <span>Verknüpfte Datensätze</span>
                   </p>
@@ -890,7 +1035,7 @@ export function NewAngebotModal({
                     (wie die leere Liste im Legacy-Formular).
                   </div>
                 </div>
-                <div className="rounded-xl border border-teal-200/80 bg-teal-50/40 p-4 shadow-sm">
+                <div className="order-3 min-w-0 rounded-xl border border-teal-200/80 bg-teal-50/40 p-4 shadow-sm md:order-2">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="text-xs font-bold uppercase tracking-wide text-teal-900">Extras</p>
                     <button
@@ -910,6 +1055,19 @@ export function NewAngebotModal({
                     className={`${inputClass} min-h-[160px] resize-y py-2 ${
                       extrasLocked ? "cursor-default bg-slate-50 text-slate-600" : ""
                     }`}
+                  />
+                </div>
+                <div className="order-1 min-w-0 md:order-3">
+                  <TimetableOfferNegotiationHistory
+                    offer={negotiationBridgeOffer}
+                    setOfferField={setNegotiationOfferField}
+                    localeTag={localeTag}
+                    t={t}
+                    compactTop
+                    description={t(
+                      "angebotNegotiationHint",
+                      "Each price round captures the customer (seller) asking price and DEMA's price from the Technik & Termine tab. Enter or update those fields there, then return here and tap Record price round."
+                    )}
                   />
                 </div>
               </div>

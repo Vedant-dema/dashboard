@@ -675,7 +675,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     dashboardFollowUpCall: "Anrufen",
     dashboardFollowUpEmpty:
       "Keine fälligen Wiedervorlagen in den nächsten 24 Stunden — alles erledigt oder noch nicht geplant.",
-    timetableFollowUpGoToCustomer: "Zum Kunden (Kalender)",
+    timetableFollowUpGoToCustomer: "Zum Kunden",
     welcomeTitle: "Willkommen im DEMA Management System",
     welcomeSubtitle: "Hier ist Ihre Übersicht — Sales, Purchase und Waschanlage auf einen Blick.",
     quickActionsTitle: "Schnelle Aktionen",
@@ -879,8 +879,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersInvoicesPdfCompany: "Firma",
     customersInvoicesPdfFooter:
       "Rechnungen werden unter Rechnungen erstellt. Dieses PDF ist nur eine Vorschau.",
-    customersFieldBriefPrintBtn: "PDF / Außendienst-Übersicht",
-    customersFieldBriefPrintAria: "Kunden-Übersicht für den Außendienst als PDF herunterladen",
+    customersFieldBriefPrintBtn: "Data druken",
+    customersFieldBriefPrintAria: "Data druken: Kundenübersicht als PDF herunterladen",
     customersFieldBriefDocTitle: "Kunde — Außendienst-Übersicht",
     customersFieldBriefSubtitle: "Referenz vor Ort · Nur intern",
     customersFieldBriefGenerated: "Erstellt:",
@@ -2463,8 +2463,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersInvoicesPdfCompany: "Company",
     customersInvoicesPdfFooter:
       "Invoices are created on the Invoices page. This PDF is a preview only.",
-    customersFieldBriefPrintBtn: "PDF / Field handout",
-    customersFieldBriefPrintAria: "Download customer field handout as PDF",
+    customersFieldBriefPrintBtn: "Print data",
+    customersFieldBriefPrintAria: "Print data: download customer summary as PDF",
     customersFieldBriefDocTitle: "Customer — Field handout",
     customersFieldBriefSubtitle: "On-site reference · Internal use only",
     customersFieldBriefGenerated: "Generated:",
@@ -3745,7 +3745,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     dashboardFollowUpCall: "Appeler",
     dashboardFollowUpEmpty:
       "Aucun suivi d’achat à traiter dans les prochaines 24 heures — tout est à jour ou rien n’est planifié dans cette fenêtre.",
-    timetableFollowUpGoToCustomer: "Voir le client (calendrier)",
+    timetableFollowUpGoToCustomer: "Voir le client",
     welcomeTitle: "Bienvenue dans le système de gestion DEMA",
     welcomeSubtitle: "Voici votre vue d'ensemble — Ventes, Achats et Lavage en un coup d'oeil.",
     quickActionsTitle: "Actions rapides",
@@ -3950,8 +3950,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     customersInvoicesPdfCompany: "Soci\u00E9t\u00E9",
     customersInvoicesPdfFooter:
       "Les factures sont cr\u00E9\u00E9es sur la page Factures. Ce PDF est un aper\u00E7u seulement.",
-    customersFieldBriefPrintBtn: "PDF / Fiche terrain",
-    customersFieldBriefPrintAria: "T\u00E9l\u00E9charger la fiche client terrain au format PDF",
+    customersFieldBriefPrintBtn: "Imprimer les données",
+    customersFieldBriefPrintAria: "Imprimer les données : télécharger le récapitulatif client en PDF",
     customersFieldBriefDocTitle: "Client — Fiche terrain",
     customersFieldBriefSubtitle: "R\u00E9f\u00E9rence sur site · Usage interne uniquement",
     customersFieldBriefGenerated: "G\u00E9n\u00E9r\u00E9 :",
@@ -4805,7 +4805,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "Hora",
     timetableContactApptColPurpose: "Motivo",
     timetableContactApptColDone: "Hecho",
-    customersFieldBriefPrintBtn: "PDF / Hoja de campo",
+    customersFieldBriefPrintBtn: "Imprimir datos",
     customersFieldBriefPrintAria: "Descargar la ficha de cliente para campo en PDF",
     customersFieldBriefDocTitle: "Cliente — Hoja de campo",
     customersFieldBriefSubtitle: "Referencia in situ · Solo uso interno",
@@ -4916,7 +4916,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "Llamar",
     dashboardFollowUpEmpty:
       "Sin seguimientos de compra pendientes en las próximas 24 horas: todo al día o nada planificado en este intervalo.",
-    timetableFollowUpGoToCustomer: "Ir al cliente (calendario)",
+    timetableFollowUpGoToCustomer: "Ir al cliente",
     timetableNotifReminderTitle: "Recordatorio de llamada",
     timetableNotifReminderBody: "{company}: hora de devolver la llamada.",
     timetableQueueToolbarHint:
@@ -5316,7 +5316,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "Ora",
     timetableContactApptColPurpose: "Motivo",
     timetableContactApptColDone: "Fatto",
-    customersFieldBriefPrintBtn: "PDF / Scheda operativa",
+    customersFieldBriefPrintBtn: "Stampa dati",
     customersFieldBriefPrintAria: "Scarica la scheda cliente sul campo in PDF",
     customersFieldBriefDocTitle: "Cliente — Scheda operativa",
     customersFieldBriefSubtitle: "Riferimento in sede · Solo uso interno",
@@ -5427,7 +5427,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "Chiama",
     dashboardFollowUpEmpty:
       "Nessun follow-up acquisti in scadenza nelle prossime 24 ore: tutto sotto controllo o nulla in programma in questa finestra.",
-    timetableFollowUpGoToCustomer: "Vai al cliente (calendario)",
+    timetableFollowUpGoToCustomer: "Vai al cliente",
     timetableNotifReminderTitle: "Promemoria di richiamata",
     timetableNotifReminderBody: "{company} \u2014 \u00E8 ora di richiamare.",
     timetableQueueToolbarHint:
@@ -5582,7 +5582,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "Hora",
     timetableContactApptColPurpose: "Assunto",
     timetableContactApptColDone: "Concluído",
-    customersFieldBriefPrintBtn: "PDF / Folha de campo",
+    customersFieldBriefPrintBtn: "Imprimir dados",
     customersFieldBriefPrintAria: "Descarregar a ficha de cliente de campo em PDF",
     customersFieldBriefDocTitle: "Cliente — Folha de campo",
     customersFieldBriefSubtitle: "Referência no local · Apenas uso interno",
@@ -5693,7 +5693,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "Ligar",
     dashboardFollowUpEmpty:
       "Sem acompanhamentos de compras nas pr\u00F3ximas 24 horas: est\u00E1 tudo em dia ou nada est\u00E1 agendado neste intervalo.",
-    timetableFollowUpGoToCustomer: "Ir para o cliente (calend\u00E1rio)",
+    timetableFollowUpGoToCustomer: "Ir para o cliente",
     timetableNotifReminderTitle: "Lembrete de chamada",
     timetableNotifReminderBody: "{company} \u2014 hora de retornar a chamada.",
     timetableQueueToolbarHint:
@@ -5848,7 +5848,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "Saat",
     timetableContactApptColPurpose: "Amaç",
     timetableContactApptColDone: "Tamam",
-    customersFieldBriefPrintBtn: "PDF / Saha özeti",
+    customersFieldBriefPrintBtn: "Verileri yazdır",
     customersFieldBriefPrintAria: "Saha müşteri özetini PDF olarak indirin",
     customersFieldBriefDocTitle: "Müşteri — Saha özeti",
     customersFieldBriefSubtitle: "Yerinde referans · Yalnızca dahili kullanım",
@@ -5959,7 +5959,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "Ara",
     dashboardFollowUpEmpty:
       "\u00D6n\u00FCm\u00FCzdeki 24 saat i\u00E7inde vadesi gelen sat\u0131n alma yeniden g\u00F6r\u00FC\u015Fmesi yok; g\u00FCndem bo\u015F veya bu pencerede plan yok.",
-    timetableFollowUpGoToCustomer: "M\u00FC\u015Fteriye git (takvim)",
+    timetableFollowUpGoToCustomer: "M\u00FC\u015Fteriye git",
     timetableNotifReminderTitle: "Geri arama hat\u0131rlat\u0131c\u0131s\u0131",
     timetableNotifReminderBody: "{company} \u2014 geri arama zaman\u0131.",
     timetableQueueToolbarHint:
@@ -6114,7 +6114,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "Время",
     timetableContactApptColPurpose: "Цель",
     timetableContactApptColDone: "Готово",
-    customersFieldBriefPrintBtn: "PDF / полевой лист",
+    customersFieldBriefPrintBtn: "Печать данных",
     customersFieldBriefPrintAria: "Скачать полевую карточку клиента в PDF",
     customersFieldBriefDocTitle: "Клиент — полевой лист",
     customersFieldBriefSubtitle: "Справка на объекте · Только для внутреннего использования",
@@ -6225,7 +6225,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "Позвонить",
     dashboardFollowUpEmpty:
       "\u041D\u0435\u0442 \u043D\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u043D\u0438\u0439 \u043F\u043E \u0437\u0430\u043A\u0443\u043F\u043A\u0430\u043C \u043D\u0430 \u0431\u043B\u0438\u0436\u0430\u0439\u0448\u0438\u0435 24 \u0447\u0430\u0441\u0430 \u2014 \u0432\u0441\u0451 \u0432 \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u0438\u043B\u0438 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0437\u0430\u043F\u043B\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u043E.",
-    timetableFollowUpGoToCustomer: "К клиенту (календарь)",
+    timetableFollowUpGoToCustomer: "К клиенту",
     timetableNotifReminderTitle: "Напоминание о звонке",
     timetableNotifReminderBody: "{company} — пора перезвонить.",
     timetableQueueToolbarHint:
@@ -6372,7 +6372,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactZustaendigePerson: "Responsible person",
     timetableContactZustaendigePlaceholder: "— Select —",
     timetableContactSaveChanges: "Save changes",
-    customersFieldBriefPrintBtn: "PDF / मैदानी सारांश",
+    customersFieldBriefPrintBtn: "डेटा प्रिंट करें",
     customersFieldBriefPrintAria: "मैदानी ग्राहक सारांश PDF में डाउनलोड करें",
     customersFieldBriefDocTitle: "ग्राहक — मैदानी सारांश",
     customersFieldBriefSubtitle: "स्थल पर संदर्भ · केवल आंतरिक उपयोग",
@@ -6483,7 +6483,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "कॉल",
     dashboardFollowUpEmpty:
       "अगले 24 घंटों में कोई खरीद फॉलो-अप नहीं — सब अपडेट है या इस अवधि में कुछ निर्धारित नहीं है।",
-    timetableFollowUpGoToCustomer: "ग्राहक पर जाएँ (कैलेंडर)",
+    timetableFollowUpGoToCustomer: "ग्राहक पर जाएँ",
     timetableNotifReminderTitle: "कॉलबैक रिमाइंडर",
     timetableNotifReminderBody: "{company} — अब वापस कॉल करें।",
     timetableQueueToolbarHint:
@@ -6630,7 +6630,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "الوقت",
     timetableContactApptColPurpose: "الغرض",
     timetableContactApptColDone: "تم",
-    customersFieldBriefPrintBtn: "PDF / ملخص ميداني",
+    customersFieldBriefPrintBtn: "طباعة البيانات",
     customersFieldBriefPrintAria: "تنزيل ملخص العميل الميداني كملف PDF",
     customersFieldBriefDocTitle: "عميل — ملخص ميداني",
     customersFieldBriefSubtitle: "مرجع في الموقع · للاستخدام الداخلي فقط",
@@ -6741,7 +6741,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "اتصال",
     dashboardFollowUpEmpty:
       "لا توجد متابعات مشتريات مستحقة خلال الـ 24 ساعة القادمة — لا يوجد ما يتطلب إجراءً أو لا شيء مجدولاً في هذه النافذة.",
-    timetableFollowUpGoToCustomer: "الانتقال إلى العميل (التقويم)",
+    timetableFollowUpGoToCustomer: "الانتقال إلى العميل",
     timetableNotifReminderTitle: "تذكير بالاتصال العائد",
     timetableNotifReminderBody: "{company} — حان وقت الاتصال العائد.",
     timetableQueueToolbarHint:
@@ -6883,7 +6883,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "时间",
     timetableContactApptColPurpose: "事由",
     timetableContactApptColDone: "完成",
-    customersFieldBriefPrintBtn: "PDF / 外勤摘要",
+    customersFieldBriefPrintBtn: "打印资料",
     customersFieldBriefPrintAria: "将外勤客户摘要下载为 PDF",
     customersFieldBriefDocTitle: "客户 — 外勤摘要",
     customersFieldBriefSubtitle: "现场参考 · 仅限内部使用",
@@ -6991,7 +6991,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "拨打",
     dashboardFollowUpEmpty:
       "未来 24 小时内没有到期的采购跟进 — 当前无待办或该时段内无安排。",
-    timetableFollowUpGoToCustomer: "前往客户（日历）",
+    timetableFollowUpGoToCustomer: "前往客户",
     timetableNotifReminderTitle: "回电提醒",
     timetableNotifReminderBody: "{company} — 请回电。",
     timetableQueueToolbarHint:
@@ -7138,7 +7138,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableContactApptColTime: "時刻",
     timetableContactApptColPurpose: "目的",
     timetableContactApptColDone: "完了",
-    customersFieldBriefPrintBtn: "PDF / 現場用サマリー",
+    customersFieldBriefPrintBtn: "データを印刷",
     customersFieldBriefPrintAria: "現場用の顧客サマリーをPDFでダウンロード",
     customersFieldBriefDocTitle: "顧客 — 現場用サマリー",
     customersFieldBriefSubtitle: "現場参照・社内利用のみ",
@@ -7249,7 +7249,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     dashboardFollowUpCall: "電話",
     dashboardFollowUpEmpty:
       "今後24時間以内に期限の購入フォローアップはありません。対応は不要か、この期間に予定がありません。",
-    timetableFollowUpGoToCustomer: "顧客へ移動（カレンダー）",
+    timetableFollowUpGoToCustomer: "顧客へ移動",
     timetableNotifReminderTitle: "折り返し電話のリマインダー",
     timetableNotifReminderBody: "{company} — 折り返し電話の時間です。",
     timetableQueueToolbarHint:

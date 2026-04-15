@@ -628,7 +628,7 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm">
                 <p
                   id="settings-font-family-label"
                   className="text-xs font-semibold uppercase tracking-wide text-slate-500"
@@ -674,7 +674,7 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm">
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0 flex-1">
                     <p

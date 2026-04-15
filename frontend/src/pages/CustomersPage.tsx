@@ -30,7 +30,7 @@ import {
   CheckCircle2,
   CircleDashed,
   Pencil,
-  FileDown,
+  Printer,
 } from "lucide-react";
 import type { KundenHistoryEntry, KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import type { RechnungListRow } from "../types/rechnungen";
@@ -1445,15 +1445,15 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
                 type="button"
                 onClick={() => void handleDownloadCustomerFieldBriefPdf()}
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-900 sm:min-h-0 sm:py-1.5 sm:text-[13px]"
-                aria-label={t("customersFieldBriefPrintAria", "Download customer field handout as PDF")}
+                aria-label={t("customersFieldBriefPrintAria", "Print data: download customer summary as PDF")}
                 aria-describedby="customers-field-brief-pdf-hint"
                 title={t(
                   "customersFieldBriefPrintBrowserHintShort",
                   "Creates a PDF in your browser (no print dialog)."
                 )}
               >
-                <FileDown className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                {t("customersFieldBriefPrintBtn", "PDF / Field handout")}
+                <Printer className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                {t("customersFieldBriefPrintBtn", "Print data")}
               </button>
             </div>
           }

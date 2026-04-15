@@ -83,11 +83,13 @@ function phoneDigits(raw: string): string {
 
 /**
  * Join dial code + number for PDF display. Avoids "+49 +49 40 …" when `telefon` already starts with the code.
+ * When the subscriber number is empty, returns "" (not the bare dial code) so empty contact slots stay hidden.
  */
 function joinTelCodeAndNumber(code: string, num: string): string {
   const c = code.trim();
   const n = num.trim();
-  if (!n) return c;
+  /* Empty cards often store only a default dial code (e.g. +49) with no number — do not show as a phone line. */
+  if (!n) return "";
   if (!c) return n;
   const cCompact = c.replace(/\s/g, "");
   const nCompact = n.replace(/\s/g, "");
@@ -288,7 +290,7 @@ export function buildCustomerFieldBriefHtml(opts: CustomerFieldBriefHtmlOpts): s
   }
   .sheet { max-width: 190mm; margin: 0 auto; padding: 0 0 10mm; }
 
-  /* Corporate letterhead — DE/MA wordmark + tagline (no secondary logo / address block). */
+  /* Corporate letterhead — DE/MA wordmark + tagline only (no raster logo). */
   .dema-letterhead {
     display: block;
     padding-bottom: 8pt;

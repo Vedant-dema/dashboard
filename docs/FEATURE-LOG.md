@@ -24,7 +24,7 @@
 | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
 | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-257 |
-| 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) | FEATURE-258, FEATURE-259, FEATURE-260, FEATURE-261, FEATURE-262, FEATURE-263, FEATURE-264, FEATURE-265, FEATURE-266, FEATURE-267, FEATURE-268, FEATURE-269, FEATURE-270, FEATURE-271, FEATURE-272, FEATURE-273 |
+| 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) | FEATURE-258, FEATURE-259, FEATURE-260, FEATURE-261, FEATURE-262, FEATURE-263, FEATURE-264, FEATURE-265, FEATURE-266, FEATURE-267, FEATURE-268, FEATURE-269, FEATURE-270, FEATURE-271, FEATURE-272, FEATURE-273, FEATURE-274, FEATURE-275, FEATURE-276, FEATURE-277, FEATURE-278, FEATURE-279, FEATURE-280 |
 
 ---
 
@@ -310,6 +310,13 @@
 | FEATURE-271 | Follow-up alerts — “Go to customer” deep-link opens timetable contact drawer | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
 | FEATURE-272 | Follow-up in-app alert — manual dismiss only + faster due polling | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
 | FEATURE-273 | Dashboard purchase follow-ups — always show card with “nothing due” copy | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-274 | “Go to customer” label — drop calendar parenthetical | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-275 | Kunden field brief PDF — hide empty kontakte slots (dial code only) | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-276 | Kunden PDF button label — “Data druken” (de) + i18n refresh | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-277 | Kunden field brief PDF — restore print logo on letterhead | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-278 | Kunden field brief PDF — remove right-hand logo (wordmark only) | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-279 | Kunden “Data druken” button — printer icon (not download) | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-280 | Settings Typography — dark mode surface fix | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

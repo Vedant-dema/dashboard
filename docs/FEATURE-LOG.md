@@ -24,6 +24,7 @@
 | 2026-04-10 | [2026-04-10.md](feature-logs/2026-04-10.md) | FEATURE-148 … FEATURE-184 |
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
 | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-257 |
+| 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) | FEATURE-258, FEATURE-259, FEATURE-260, FEATURE-261, FEATURE-262, FEATURE-263, FEATURE-264, FEATURE-265, FEATURE-266, FEATURE-267, FEATURE-268, FEATURE-269, FEATURE-270, FEATURE-271, FEATURE-272, FEATURE-273 |
 
 ---
 
@@ -287,6 +288,28 @@
 | FEATURE-255 | Kalender (timetable) header meta — customer-style animated chips | Modified | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
 | FEATURE-256 | Timetable multi-offer (vehicles) per row | Added | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
 | FEATURE-257 | Activity notes — author name tag with timestamp | Added | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) |
+| FEATURE-258 | Timetable Bemerkungen — large comfort-reading dialog | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden — print / PDF field handout for on-site staff | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden field brief — short print window title + hint to disable browser headers/footers | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden field brief — slimmer PDF (trim identity, drop contacts & financial blocks, plain header) | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden field brief — client PDF download (html2pdf.js), no print dialog | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden field brief PDF — letterhead without trucks; sections identity + addresses + VIES only | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden field brief PDF — all addresses + master & list contacts + appointments | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-259 | Kunden field brief PDF — omit status, master VAT, and full VIES section | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-260 | Kunden field brief PDF — dashboard logo in letterhead (top right) | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-261 | Purchase timetable table — hide Arte (KA/A) and buyer (DEMO) columns | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-262 | Kunden field brief PDF — letterhead truck SVG instead of dashboard logo | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-263 | Kunden field brief PDF — remove truck SVG, restore dashboard logo | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-264 | Kunden field brief PDF — omit appointments (TERMINE) section | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-265 | Purchase timetable — quick callback reminders (10 / 30 / 60 min) | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-266 | Purchase timetable — reminder popover with custom minutes | Extended | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-267 | Purchase timetable follow-up — poll-based desktop reminders | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-268 | Dashboard strip for purchase timetable follow-ups (due / soon) | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-269 | Purchase follow-up — in-app due alerts + robust local datetime parse | Extended | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-270 | Purchase timetable reminder — notification permission gate before scheduling | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-271 | Follow-up alerts — “Go to customer” deep-link opens timetable contact drawer | Added | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-272 | Follow-up in-app alert — manual dismiss only + faster due polling | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
+| FEATURE-273 | Dashboard purchase follow-ups — always show card with “nothing due” copy | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

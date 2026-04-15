@@ -1,0 +1,129 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlarmClock, UserRound, X } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { loadTimetableDb } from '../store/timetableStore';
+import { processDueTimetableFollowUpReminders } from '../pages/timetable/timetableReminderNotify';
+import { timetableHashOpenContact } from '../pages/timetable/timetableContactDeepLink';
+import type { TimetableEntry } from '../types/timetable';
+
+/** Poll interval for due follow-ups — keep low latency when the tab is active (localStorage read is cheap). */
+const POLL_MS = 1000;
+
+type InAppAlert = {
+  key: string;
+  title: string;
+  body: string;
+  entryId: number;
+};
+
+function FollowUpAlertCard({
+  item,
+  onDismissKey,
+}: {
+  item: InAppAlert;
+  onDismissKey: (key: string) => void;
+}) {
+  const { t } = useLanguage();
+
+  const goToCustomer = () => {
+    window.location.hash = timetableHashOpenContact(item.entryId);
+  };
+
+  return (
+    <div
+      role="status"
+      className="dema-paper-surface pointer-events-auto flex gap-3 rounded-2xl border p-4 ring-1 ring-amber-300/50"
+    >
+      <span className="dema-paper-surface-icon mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1">
+        <AlarmClock className="h-5 w-5" strokeWidth={2} aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="dema-paper-surface-title text-sm font-bold">{item.title}</p>
+        <p className="dema-paper-surface-body mt-1 text-sm leading-snug">{item.body}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={goToCustomer}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white transition hover:bg-slate-800"
+          >
+            <UserRound className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+            {t('timetableFollowUpGoToCustomer', 'Go to customer')}
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onDismissKey(item.key)}
+        className="dema-paper-surface-close inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition"
+        aria-label={t('commonClose', 'Close')}
+      >
+        <X className="h-4 w-4" strokeWidth={2} aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Keeps purchase timetable follow-up alerts near real time by polling `localStorage`
+ * about once per second while the tab is open. Desktop notifications are optional; in-app cards stay until dismissed.
+ * when due (unless blocked by session dedupe).
+ */
+export function TimetableFollowUpDueWatcher() {
+  const { t } = useLanguage();
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  const [alerts, setAlerts] = useState<InAppAlert[]>([]);
+
+  const dismiss = useCallback((key: string) => {
+    setAlerts((prev) => prev.filter((a) => a.key !== key));
+  }, []);
+
+  useEffect(() => {
+    const run = () => {
+      try {
+        const db = loadTimetableDb();
+        processDueTimetableFollowUpReminders(
+          db.entries,
+          (key, fb) => tRef.current(key, fb),
+          {
+            onInAppDue: (row: TimetableEntry, title: string, body: string) => {
+              if (!row.follow_up_at) return;
+              const key = `${row.id}|${row.follow_up_at}`;
+              setAlerts((prev) => {
+                if (prev.some((p) => p.key === key)) return prev;
+                return [...prev, { key, title, body, entryId: row.id }];
+              });
+            },
+          }
+        );
+      } catch {
+        // ignore corrupt storage during migration
+      }
+    };
+
+    run();
+    const id = window.setInterval(run, POLL_MS);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-x-3 top-20 z-[240] flex flex-col items-stretch gap-3 md:left-auto md:right-6 md:top-24 md:w-[min(100%,24rem)]"
+      aria-live="polite"
+    >
+      {alerts.map((item) => (
+        <FollowUpAlertCard key={item.key} item={item} onDismissKey={dismiss} />
+      ))}
+    </div>
+  );
+}

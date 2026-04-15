@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   CircleDashed,
   Pencil,
+  FileDown,
 } from "lucide-react";
 import type { KundenHistoryEntry, KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import type { RechnungListRow } from "../types/rechnungen";
@@ -46,6 +47,10 @@ import {
   type AuditEditor,
 } from "../features/customers/repository/customerRepository";
 import { NewCustomerModal } from "../components/NewCustomerModal";
+import {
+  buildCustomerFieldBriefSections,
+  downloadCustomerFieldBriefPdf,
+} from "../features/customers/utils/customerFieldBriefPrint";
 import { DatePickerInput } from "../components/DatePickerInput";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import {
@@ -414,6 +419,32 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const closeCustomerInvoicesModal = useCallback(() => {
     setCustomerInvoicesOpen(false);
   }, []);
+
+  const handleDownloadCustomerFieldBriefPdf = useCallback(async () => {
+    if (!draftKunde) return;
+    const apptSectionTitle = t("customersFieldBriefSectionAppointments", "Appointments");
+    const sections = buildCustomerFieldBriefSections(draftKunde, t).filter(
+      (s) => s.title !== apptSectionTitle
+    );
+    const company = draftKunde.firmenname.trim() || t("customersTitle", "Customers");
+    const ku = draftKunde.kunden_nr.trim();
+    const headline = `${company} · ${ku}`;
+    const filename = t("customersFieldBriefPdfFilename", "DEMA-field-brief_{nr}.pdf").replace("{nr}", ku);
+    const ok = await downloadCustomerFieldBriefPdf({
+      lang: localeTag,
+      windowTitle: t("customersFieldBriefPrintPageTitle", "DEMA · {nr}").replace("{nr}", ku),
+      headline,
+      letterheadTagline: t(
+        "customersFieldBriefLetterheadTagline",
+        "Commercial vehicle trading • Master workshop HGV + cars • HGV wash line"
+      ),
+      sections,
+      filename,
+    });
+    if (!ok) {
+      alert(t("customersFieldBriefPopupBlocked", "The PDF could not be created. Try again or use another browser."));
+    }
+  }, [draftKunde, localeTag, t]);
 
   const openInvoicePdfInBrowser = useCallback(
     (r: RechnungListRow) => {
@@ -1390,19 +1421,41 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             risikoSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
           }}
           editHeaderDocumentsAction={
-            <button
-              type="button"
-              onClick={() => setUnterlagenOpen(true)}
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-neutral-50 sm:min-h-0 sm:py-1.5 sm:text-[13px]"
-            >
-              <FolderOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-              {t("customersDocsOpen", "Open documents")}
-              {unterlagenForCustomer.length > 0 ? (
-                <span className="rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {unterlagenForCustomer.length}
-                </span>
-              ) : null}
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setUnterlagenOpen(true)}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-neutral-50 sm:min-h-0 sm:py-1.5 sm:text-[13px]"
+              >
+                <FolderOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                {t("customersDocsOpen", "Open documents")}
+                {unterlagenForCustomer.length > 0 ? (
+                  <span className="rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {unterlagenForCustomer.length}
+                  </span>
+                ) : null}
+              </button>
+              <span id="customers-field-brief-pdf-hint" className="sr-only">
+                {t(
+                  "customersFieldBriefPrintBrowserHint",
+                  "Builds a PDF from the customer handout in your browser. Large notes or many appointments may take a few seconds; the file downloads when rendering finishes."
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleDownloadCustomerFieldBriefPdf()}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-900 sm:min-h-0 sm:py-1.5 sm:text-[13px]"
+                aria-label={t("customersFieldBriefPrintAria", "Download customer field handout as PDF")}
+                aria-describedby="customers-field-brief-pdf-hint"
+                title={t(
+                  "customersFieldBriefPrintBrowserHintShort",
+                  "Creates a PDF in your browser (no print dialog)."
+                )}
+              >
+                <FileDown className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                {t("customersFieldBriefPrintBtn", "PDF / Field handout")}
+              </button>
+            </div>
           }
           editKundeAppointmentsContent={
               <section className="customers-modal-genz-frost-card flex min-h-0 flex-col rounded-2xl border border-white/60 p-4">

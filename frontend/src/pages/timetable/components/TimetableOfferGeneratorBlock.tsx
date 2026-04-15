@@ -5,6 +5,7 @@ import { parseOfferFreeText } from '../timetableOfferFreeTextParse'
 
 type Props = {
   rowKey: string
+  currentOffer: TimetableTruckOffer
   setOfferField: (patch: Partial<TimetableTruckOffer>) => void
   setVehicleExtra: (patch: Partial<TimetableVehicleDisplayExtra>) => void
   onGeneratorApplied?: () => void
@@ -17,6 +18,7 @@ function extractedCount(parsed: ReturnType<typeof parseOfferFreeText>): number {
 
 export function TimetableOfferGeneratorBlock({
   rowKey,
+  currentOffer,
   setOfferField,
   setVehicleExtra,
   onGeneratorApplied,
@@ -76,7 +78,7 @@ export function TimetableOfferGeneratorBlock({
   )
 
   const handleFormat = useCallback(() => {
-    const parsed = parseOfferFreeText(genText)
+    const parsed = parseOfferFreeText(genText, currentOffer)
     const count = applyParsed(parsed)
 
     setLastParsed(parsed)
@@ -84,13 +86,13 @@ export function TimetableOfferGeneratorBlock({
     if (count > 0) {
       onGeneratorApplied?.()
     }
-  }, [genText, applyParsed, setAppliedMessage, onGeneratorApplied])
+  }, [genText, currentOffer, applyParsed, setAppliedMessage, onGeneratorApplied])
 
   const handleSave = useCallback(() => {
     const trimmed = genText.trim()
     if (!trimmed) return
 
-    const parsed = lastParsed ?? parseOfferFreeText(trimmed)
+    const parsed = lastParsed ?? parseOfferFreeText(trimmed, currentOffer)
     const count = applyParsed(parsed)
 
     setAppliedMessage(count)
@@ -99,7 +101,7 @@ export function TimetableOfferGeneratorBlock({
     }
     setGenText('')
     setLastParsed(null)
-  }, [genText, lastParsed, applyParsed, setAppliedMessage, onGeneratorApplied])
+  }, [genText, lastParsed, currentOffer, applyParsed, setAppliedMessage, onGeneratorApplied])
 
   const handleCopy = useCallback(async () => {
     const v = genText.trim()

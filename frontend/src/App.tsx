@@ -20,6 +20,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { ChatPage } from "./pages/ChatPage";
 import { TimetablePage } from "./pages/timetable";
 import { PresenceReporter } from "./components/PresenceReporter";
+import { TimetableFollowUpDueWatcher } from "./components/TimetableFollowUpDueWatcher";
 import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
 import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
 import { useAuth, setReturnHash } from "./contexts/AuthContext";
@@ -214,6 +215,7 @@ export default function App() {
   return (
     <div className="min-h-screen font-sans">
       <PresenceReporter />
+      <TimetableFollowUpDueWatcher />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-h-screen min-w-0 flex-col md:pl-[260px]">
         <Header

@@ -73,6 +73,93 @@ html[data-dema-theme="dark"] {
   color-scheme: dark;
 }
 
+/*
+ * Purchase follow-up surfaces (toast + dashboard strip): always a light “paper” panel.
+ * Dark theme remaps text-slate-* / bg-amber-50 for navy surfaces — that made reminder copy invisible.
+ */
+.dema-paper-surface {
+  background-color: #fffbeb;
+  color: #0f172a;
+  border-color: rgb(251 191 36 / 0.72);
+  box-shadow: 0 8px 28px rgb(15 23 42 / 0.08);
+}
+html[data-dema-theme="dark"] .dema-paper-surface {
+  background-color: #fffbeb !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 40px rgb(0 0 0 / 0.38);
+}
+.dema-paper-surface-icon {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  --tw-ring-color: rgb(251 191 36 / 0.45) !important;
+}
+.dema-paper-surface-title {
+  color: #060a12 !important;
+}
+.dema-paper-surface-body {
+  color: #1e293b !important;
+}
+.dema-paper-surface-muted {
+  color: #475569 !important;
+}
+.dema-paper-surface-subtle {
+  color: #64748b !important;
+}
+.dema-paper-surface-close {
+  color: #64748b !important;
+}
+.dema-paper-surface-close:hover {
+  background-color: #fef3c7 !important;
+  color: #0f172a !important;
+}
+.dema-paper-surface-list {
+  background-color: #ffffff !important;
+  border-color: rgb(254 215 170 / 0.95) !important;
+}
+html[data-dema-theme="dark"] .dema-paper-surface-list {
+  background-color: #ffffff !important;
+}
+.dema-paper-surface-badge-due {
+  background-color: #fef3c7 !important;
+  color: #78350f !important;
+  --tw-ring-color: rgb(251 191 36 / 0.55) !important;
+}
+.dema-paper-surface-badge-soon {
+  background-color: #e0f2fe !important;
+  color: #0c4a6e !important;
+  --tw-ring-color: rgb(125 211 252 / 0.55) !important;
+}
+.dema-paper-surface-call {
+  background-color: #ecfdf5 !important;
+  color: #065f46 !important;
+  border-color: rgb(167 243 208) !important;
+}
+.dema-paper-surface-call:hover {
+  background-color: #d1fae5 !important;
+}
+
+/* Purchase timetable — reminder popover: keep a true white sheet in dark theme */
+.dema-timetable-reminder-dialog {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog .text-slate-900,
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog .text-slate-800 {
+  color: #0f172a !important;
+}
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog .text-slate-700,
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog .text-slate-600 {
+  color: #334155 !important;
+}
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog .text-slate-500,
+html[data-dema-theme="dark"] .dema-timetable-reminder-dialog .text-slate-400 {
+  color: #64748b !important;
+}
+
 /* Surface hierarchy */
 html[data-dema-theme="dark"] .bg-white,
 html[data-dema-theme="dark"] .bg-white\/90,

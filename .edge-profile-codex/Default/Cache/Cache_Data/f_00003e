@@ -1,0 +1,223 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/pages/timetable/TimetableMiniCalendar.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6265600e"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import __vite__cjsImport3_react from "/node_modules/.vite/deps/react.js?v=6265600e"; const useMemo = __vite__cjsImport3_react["useMemo"];
+import { ChevronLeft, ChevronRight } from "/node_modules/.vite/deps/lucide-react.js?v=6265600e";
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+function buildGrid(year, month) {
+  const firstDow = new Date(year, month, 1).getDay();
+  const mondayIndex = (firstDow + 6) % 7;
+  const totalDays = daysInMonth(year, month);
+  const cells = [];
+  for (let i = 0; i < mondayIndex; i += 1) cells.push(null);
+  for (let d = 1; d <= totalDays; d += 1) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+export function TimetableMiniCalendar({
+  localeTag,
+  viewYear,
+  viewMonth,
+  selectedDate,
+  dayCounts,
+  onPrevMonth,
+  onNextMonth,
+  onSelectDay,
+  title,
+  prevLabel,
+  nextLabel
+}) {
+  _s();
+  const monthLabel = useMemo(
+    () => new Intl.DateTimeFormat(localeTag, { month: "long", year: "numeric" }).format(
+      new Date(viewYear, viewMonth, 1)
+    ),
+    [localeTag, viewMonth, viewYear]
+  );
+  const weekdayLabels = useMemo(
+    () => Array.from(
+      { length: 7 },
+      (_, i) => new Intl.DateTimeFormat(localeTag, { weekday: "short" }).format(new Date(2026, 0, i + 5)).slice(0, 2)
+    ),
+    [localeTag]
+  );
+  const grid = useMemo(() => buildGrid(viewYear, viewMonth), [viewMonth, viewYear]);
+  const today = /* @__PURE__ */ new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate()
+  ).padStart(2, "0")}`;
+  return /* @__PURE__ */ jsxDEV("div", { className: "overflow-hidden rounded-2xl border border-slate-200/70 bg-gradient-to-b from-white via-white to-slate-50/95 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04]", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between gap-1 border-b border-white/10 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-1 py-2.5 shadow-inner shadow-black/20", children: [
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          type: "button",
+          onClick: onPrevMonth,
+          title: prevLabel,
+          className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white/75 transition duration-200 hover:bg-white/10 hover:text-white active:scale-95",
+          children: /* @__PURE__ */ jsxDEV(ChevronLeft, { className: "h-5 w-5", strokeWidth: 2 }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+            lineNumber: 99,
+            columnNumber: 11
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+          lineNumber: 93,
+          columnNumber: 9
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV("div", { className: "min-w-0 flex-1 px-1 text-center", children: [
+        /* @__PURE__ */ jsxDEV("p", { className: "text-[9px] font-bold uppercase tracking-[0.22em] text-emerald-300/90", children: title }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+          lineNumber: 102,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("p", { className: "truncate text-sm font-bold capitalize tracking-tight text-white", children: monthLabel }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+          lineNumber: 103,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+        lineNumber: 101,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          type: "button",
+          onClick: onNextMonth,
+          title: nextLabel,
+          className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white/75 transition duration-200 hover:bg-white/10 hover:text-white active:scale-95",
+          children: /* @__PURE__ */ jsxDEV(ChevronRight, { className: "h-5 w-5", strokeWidth: 2 }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+            lineNumber: 111,
+            columnNumber: 11
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+          lineNumber: 105,
+          columnNumber: 9
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+      lineNumber: 92,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "p-3.5", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "mb-2.5 grid grid-cols-7 gap-0.5 rounded-xl bg-gradient-to-b from-slate-100/95 to-slate-100/60 py-2.5 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500 shadow-inner shadow-slate-900/[0.03]", children: weekdayLabels.map(
+        (day, idx) => /* @__PURE__ */ jsxDEV("span", { className: "tabular-nums", children: day }, `${idx}-${day}`, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+          lineNumber: 118,
+          columnNumber: 11
+        }, this)
+      ) }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+        lineNumber: 116,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "grid grid-cols-7 gap-1.5 sm:gap-2", children: grid.map((day, idx) => {
+        if (day == null) return /* @__PURE__ */ jsxDEV("span", { className: "h-11 sm:h-12" }, `empty-${idx}`, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+          lineNumber: 126,
+          columnNumber: 37
+        }, this);
+        const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const isSelected = iso === selectedDate;
+        const isToday = iso === todayIso;
+        const count = dayCounts[iso] ?? 0;
+        return /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: () => onSelectDay(iso),
+            className: `relative flex h-11 items-center justify-center rounded-xl text-xs font-bold tabular-nums transition duration-200 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 active:scale-[0.96] sm:h-12 ${isSelected ? "z-[1] scale-[1.02] bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-900/35 ring-2 ring-amber-400/90 ring-offset-2 ring-offset-white" : isToday ? "bg-amber-100 text-amber-950 ring-1 ring-amber-400/70 hover:scale-105 hover:bg-amber-50 hover:shadow-md" : "text-slate-700 hover:z-[1] hover:scale-105 hover:bg-white hover:shadow-md hover:shadow-slate-900/8"}`,
+            children: [
+              day,
+              count > 0 ? /* @__PURE__ */ jsxDEV(
+                "span",
+                {
+                  className: `absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${isSelected ? "bg-amber-400 text-slate-900" : "bg-rose-500 text-white shadow-sm"}`,
+                  children: count > 9 ? "9+" : String(count)
+                },
+                void 0,
+                false,
+                {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+                  lineNumber: 147,
+                  columnNumber: 17
+                },
+                this
+              ) : null
+            ]
+          },
+          iso,
+          true,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+            lineNumber: 133,
+            columnNumber: 15
+          },
+          this
+        );
+      }) }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+        lineNumber: 124,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+      lineNumber: 115,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx",
+    lineNumber: 91,
+    columnNumber: 5
+  }, this);
+}
+_s(TimetableMiniCalendar, "XeNInaLoFNowO/UzHYMWaeEAyAI=");
+_c = TimetableMiniCalendar;
+var _c;
+$RefreshReg$(_c, "TimetableMiniCalendar");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/timetable/TimetableMiniCalendar.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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Y0FBTStCLFVBQVVGLFFBQVFSO0FBQ3hCLGNBQU1XLFFBQVEvQixVQUFVNEIsR0FBRyxLQUFLO0FBRWhDLGVBQ0U7QUFBQSxVQUFDO0FBQUE7QUFBQSxZQUVDLE1BQUs7QUFBQSxZQUNMLFNBQVMsTUFBTXpCLFlBQVl5QixHQUFHO0FBQUEsWUFDOUIsV0FBVyx3UEFDVEMsYUFDSSwwS0FDQUMsVUFDRSwyR0FDQSxvR0FBb0c7QUFBQSxZQUczR0o7QUFBQUE7QUFBQUEsY0FDQUssUUFBUSxJQUNQO0FBQUEsZ0JBQUM7QUFBQTtBQUFBLGtCQUNDLFdBQVcsaUlBQ1RGLGFBQWEsZ0NBQWdDLGtDQUFrQztBQUFBLGtCQUdoRkUsa0JBQVEsSUFBSSxPQUFPVCxPQUFPUyxLQUFLO0FBQUE7QUFBQSxnQkFMbEM7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLGNBTUEsSUFDRTtBQUFBO0FBQUE7QUFBQSxVQXBCQ0g7QUFBQUEsVUFEUDtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLFFBc0JBO0FBQUEsTUFFSixDQUFDLEtBakNIO0FBQUE7QUFBQTtBQUFBO0FBQUEsYUFrQ0E7QUFBQSxTQTNDRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFdBNENBO0FBQUEsT0FwRUY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQXFFQTtBQUVKO0FBQUNyQixHQTdHZVosdUJBQXFCO0FBQUEsS0FBckJBO0FBQXFCLElBQUFxQztBQUFBLGFBQUFBLElBQUEiLCJuYW1lcyI6WyJ1c2VNZW1vIiwiQ2hldnJvbkxlZnQiLCJDaGV2cm9uUmlnaHQiLCJkYXlzSW5Nb250aCIsInllYXIiLCJtb250aCIsIkRhdGUiLCJnZXREYXRlIiwiYnVpbGRHcmlkIiwiZmlyc3REb3ciLCJnZXREYXkiLCJtb25kYXlJbmRleCIsInRvdGFsRGF5cyIsImNlbGxzIiwiaSIsInB1c2giLCJkIiwibGVuZ3RoIiwiVGltZXRhYmxlTWluaUNhbGVuZGFyIiwibG9jYWxlVGFnIiwidmlld1llYXIiLCJ2aWV3TW9udGgiLCJzZWxlY3RlZERhdGUiLCJkYXlDb3VudHMiLCJvblByZXZNb250aCIsIm9uTmV4dE1vbnRoIiwib25TZWxlY3REYXkiLCJ0aXRsZSIsInByZXZMYWJlbCIsIm5leHRMYWJlbCIsIl9zIiwibW9udGhMYWJlbCIsIkludGwiLCJEYXRlVGltZUZvcm1hdCIsImZvcm1hdCIsIndlZWtkYXlMYWJlbHMiLCJBcnJheSIsImZyb20iLCJfIiwid2Vla2RheSIsInNsaWNlIiwiZ3JpZCIsInRvZGF5IiwidG9kYXlJc28iLCJnZXRGdWxsWWVhciIsIlN0cmluZyIsImdldE1vbnRoIiwicGFkU3RhcnQiLCJtYXAiLCJkYXkiLCJpZHgiLCJpc28iLCJpc1NlbGVjdGVkIiwiaXNUb2RheSIsImNvdW50IiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiVGltZXRhYmxlTWluaUNhbGVuZGFyLnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyB1c2VNZW1vIH0gZnJvbSAncmVhY3QnO1xuaW1wb3J0IHsgQ2hldnJvbkxlZnQsIENoZXZyb25SaWdodCB9IGZyb20gJ2x1Y2lkZS1yZWFjdCc7XG5cbnR5cGUgUHJvcHMgPSB7XG4gIGxvY2FsZVRhZzogc3RyaW5nO1xuICB2aWV3WWVhcjogbnVtYmVyO1xuICB2aWV3TW9udGg6IG51bWJlcjtcbiAgc2VsZWN0ZWREYXRlOiBzdHJpbmc7XG4gIGRheUNvdW50czogUmVjb3JkPHN0cmluZywgbnVtYmVyPjtcbiAgb25QcmV2TW9udGg6ICgpID0+IHZvaWQ7XG4gIG9uTmV4dE1vbnRoOiAoKSA9PiB2b2lkO1xuICBvblNlbGVjdERheTogKGlzb0RhdGU6IHN0cmluZykgPT4gdm9pZDtcbiAgdGl0bGU6IHN0cmluZztcbiAgcHJldkxhYmVsOiBzdHJpbmc7XG4gIG5leHRMYWJlbDogc3RyaW5nO1xufTtcblxuZnVuY3Rpb24gZGF5c0luTW9udGgoeWVhcjogbnVtYmVyLCBtb250aDogbnVtYmVyKTogbnVtYmVyIHtcbiAgcmV0dXJuIG5ldyBEYXRlKHllYXIsIG1vbnRoICsgMSwgMCkuZ2V0RGF0ZSgpO1xufVxuXG5mdW5jdGlvbiBidWlsZEdyaWQoeWVhcjogbnVtYmVyLCBtb250aDogbnVtYmVyKTogQXJyYXk8bnVtYmVyIHwgbnVsbD4ge1xuICBjb25zdCBmaXJzdERvdyA9IG5ldyBEYXRlKHllYXIsIG1vbnRoLCAxKS5nZXREYXkoKTtcbiAgY29uc3QgbW9uZGF5SW5kZXggPSAoZmlyc3REb3cgKyA2KSAlIDc7XG4gIGNvbnN0IHRvdGFsRGF5cyA9IGRheXNJbk1vbnRoKHllYXIsIG1vbnRoKTtcbiAgY29uc3QgY2VsbHM6IEFycmF5PG51bWJlciB8IG51bGw+ID0gW107XG5cbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBtb25kYXlJbmRleDsgaSArPSAxKSBjZWxscy5wdXNoKG51bGwpO1xuICBmb3IgKGxldCBkID0gMTsgZCA8PSB0b3RhbERheXM7IGQgKz0gMSkgY2VsbHMucHVzaChkKTtcbiAgd2hpbGUgKGNlbGxzLmxlbmd0aCAlIDcgIT09IDApIGNlbGxzLnB1c2gobnVsbCk7XG4gIHJldHVybiBjZWxscztcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIFRpbWV0YWJsZU1pbmlDYWxlbmRhcih7XG4gIGxvY2FsZVRhZyxcbiAgdmlld1llYXIsXG4gIHZpZXdNb250aCxcbiAgc2VsZWN0ZWREYXRlLFxuICBkYXlDb3VudHMsXG4gIG9uUHJldk1vbnRoLFxuICBvbk5leHRNb250aCxcbiAgb25TZWxlY3REYXksXG4gIHRpdGxlLFxuICBwcmV2TGFiZWwsXG4gIG5leHRMYWJlbCxcbn06IFByb3BzKSB7XG4gIGNvbnN0IG1vbnRoTGFiZWwgPSB1c2VNZW1vKFxuICAgICgpID0+XG4gICAgICBuZXcgSW50bC5EYXRlVGltZUZvcm1hdChsb2NhbGVUYWcsIHsgbW9udGg6ICdsb25nJywgeWVhcjogJ251bWVyaWMnIH0pLmZvcm1hdChcbiAgICAgICAgbmV3IERhdGUodmlld1llYXIsIHZpZXdNb250aCwgMSlcbiAgICAgICksXG4gICAgW2xvY2FsZVRhZywgdmlld01vbnRoLCB2aWV3WWVhcl1cbiAgKTtcblxuICBjb25zdCB3ZWVrZGF5TGFiZWxzID0gdXNlTWVtbyhcbiAgICAoKSA9PlxuICAgICAgQXJyYXkuZnJvbSh7IGxlbmd0aDogNyB9LCAoXywgaSkgPT5cbiAgICAgICAgbmV3IEludGwuRGF0ZVRpbWVGb3JtYXQobG9jYWxlVGFnLCB7IHdlZWtkYXk6ICdzaG9ydCcgfSlcbiAgICAgICAgICAuZm9ybWF0KG5ldyBEYXRlKDIwMjYsIDAsIGkgKyA1KSlcbiAgICAgICAgICAuc2xpY2UoMCwgMilcbiAgICAgICksXG4gICAgW2xvY2FsZVRhZ11cbiAgKTtcblxuICBjb25zdCBncmlkID0gdXNlTWVtbygoKSA9PiBidWlsZEdyaWQodmlld1llYXIsIHZpZXdNb250aCksIFt2aWV3TW9udGgsIHZpZXdZZWFyXSk7XG4gIGNvbnN0IHRvZGF5ID0gbmV3IERhdGUoKTtcbiAgY29uc3QgdG9kYXlJc28gPSBgJHt0b2RheS5nZXRGdWxsWWVhcigpfS0ke1N0cmluZyh0b2RheS5nZXRNb250aCgpICsgMSkucGFkU3RhcnQoMiwgJzAnKX0tJHtTdHJpbmcoXG4gICAgdG9kYXkuZ2V0RGF0ZSgpXG4gICkucGFkU3RhcnQoMiwgJzAnKX1gO1xuXG4gIHJldHVybiAoXG4gICAgPGRpdiBjbGFzc05hbWU9XCJvdmVyZmxvdy1oaWRkZW4gcm91bmRlZC0yeGwgYm9yZGVyIGJvcmRlci1zbGF0ZS0yMDAvNzAgYmctZ3JhZGllbnQtdG8tYiBmcm9tLXdoaXRlIHZpYS13aGl0ZSB0by1zbGF0ZS01MC85NSBzaGFkb3ctWzBfMTZweF80MHB4Xy0xMnB4X3JnYmEoMTUsMjMsNDIsMC4xMildIHJpbmctMSByaW5nLXNsYXRlLTkwMC9bMC4wNF1cIj5cbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1iZXR3ZWVuIGdhcC0xIGJvcmRlci1iIGJvcmRlci13aGl0ZS8xMCBiZy1ncmFkaWVudC10by1yIGZyb20tc2xhdGUtOTUwIHZpYS1zbGF0ZS05MDAgdG8tc2xhdGUtOTUwIHB4LTEgcHktMi41IHNoYWRvdy1pbm5lciBzaGFkb3ctYmxhY2svMjBcIj5cbiAgICAgICAgPGJ1dHRvblxuICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxuICAgICAgICAgIG9uQ2xpY2s9e29uUHJldk1vbnRofVxuICAgICAgICAgIHRpdGxlPXtwcmV2TGFiZWx9XG4gICAgICAgICAgY2xhc3NOYW1lPVwiZmxleCBoLTEwIHctMTAgc2hyaW5rLTAgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHJvdW5kZWQteGwgdGV4dC13aGl0ZS83NSB0cmFuc2l0aW9uIGR1cmF0aW9uLTIwMCBob3ZlcjpiZy13aGl0ZS8xMCBob3Zlcjp0ZXh0LXdoaXRlIGFjdGl2ZTpzY2FsZS05NVwiXG4gICAgICAgID5cbiAgICAgICAgICA8Q2hldnJvbkxlZnQgY2xhc3NOYW1lPVwiaC01IHctNVwiIHN0cm9rZVdpZHRoPXsyfSAvPlxuICAgICAgICA8L2J1dHRvbj5cbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtaW4tdy0wIGZsZXgtMSBweC0xIHRleHQtY2VudGVyXCI+XG4gICAgICAgICAgPHAgY2xhc3NOYW1lPVwidGV4dC1bOXB4XSBmb250LWJvbGQgdXBwZXJjYXNlIHRyYWNraW5nLVswLjIyZW1dIHRleHQtZW1lcmFsZC0zMDAvOTBcIj57dGl0bGV9PC9wPlxuICAgICAgICAgIDxwIGNsYXNzTmFtZT1cInRydW5jYXRlIHRleHQtc20gZm9udC1ib2xkIGNhcGl0YWxpemUgdHJhY2tpbmctdGlnaHQgdGV4dC13aGl0ZVwiPnttb250aExhYmVsfTwvcD5cbiAgICAgICAgPC9kaXY+XG4gICAgICAgIDxidXR0b25cbiAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcbiAgICAgICAgICBvbkNsaWNrPXtvbk5leHRNb250aH1cbiAgICAgICAgICB0aXRsZT17bmV4dExhYmVsfVxuICAgICAgICAgIGNsYXNzTmFtZT1cImZsZXggaC0xMCB3LTEwIHNocmluay0wIGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciByb3VuZGVkLXhsIHRleHQtd2hpdGUvNzUgdHJhbnNpdGlvbiBkdXJhdGlvbi0yMDAgaG92ZXI6Ymctd2hpdGUvMTAgaG92ZXI6dGV4dC13aGl0ZSBhY3RpdmU6c2NhbGUtOTVcIlxuICAgICAgICA+XG4gICAgICAgICAgPENoZXZyb25SaWdodCBjbGFzc05hbWU9XCJoLTUgdy01XCIgc3Ryb2tlV2lkdGg9ezJ9IC8+XG4gICAgICAgIDwvYnV0dG9uPlxuICAgICAgPC9kaXY+XG5cbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwicC0zLjVcIj5cbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtYi0yLjUgZ3JpZCBncmlkLWNvbHMtNyBnYXAtMC41IHJvdW5kZWQteGwgYmctZ3JhZGllbnQtdG8tYiBmcm9tLXNsYXRlLTEwMC85NSB0by1zbGF0ZS0xMDAvNjAgcHktMi41IHRleHQtY2VudGVyIHRleHQtWzEwcHhdIGZvbnQtYm9sZCB1cHBlcmNhc2UgdHJhY2tpbmctd2lkZSB0ZXh0LXNsYXRlLTUwMCBzaGFkb3ctaW5uZXIgc2hhZG93LXNsYXRlLTkwMC9bMC4wM11cIj5cbiAgICAgICAgICB7d2Vla2RheUxhYmVscy5tYXAoKGRheSwgaWR4KSA9PiAoXG4gICAgICAgICAgICA8c3BhbiBrZXk9e2Ake2lkeH0tJHtkYXl9YH0gY2xhc3NOYW1lPVwidGFidWxhci1udW1zXCI+XG4gICAgICAgICAgICAgIHtkYXl9XG4gICAgICAgICAgICA8L3NwYW4+XG4gICAgICAgICAgKSl9XG4gICAgICAgIDwvZGl2PlxuXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZ3JpZCBncmlkLWNvbHMtNyBnYXAtMS41IHNtOmdhcC0yXCI+XG4gICAgICAgICAge2dyaWQubWFwKChkYXksIGlkeCkgPT4ge1xuICAgICAgICAgICAgaWYgKGRheSA9PSBudWxsKSByZXR1cm4gPHNwYW4ga2V5PXtgZW1wdHktJHtpZHh9YH0gY2xhc3NOYW1lPVwiaC0xMSBzbTpoLTEyXCIgLz47XG4gICAgICAgICAgICBjb25zdCBpc28gPSBgJHt2aWV3WWVhcn0tJHtTdHJpbmcodmlld01vbnRoICsgMSkucGFkU3RhcnQoMiwgJzAnKX0tJHtTdHJpbmcoZGF5KS5wYWRTdGFydCgyLCAnMCcpfWA7XG4gICAgICAgICAgICBjb25zdCBpc1NlbGVjdGVkID0gaXNvID09PSBzZWxlY3RlZERhdGU7XG4gICAgICAgICAgICBjb25zdCBpc1RvZGF5ID0gaXNvID09PSB0b2RheUlzbztcbiAgICAgICAgICAgIGNvbnN0IGNvdW50ID0gZGF5Q291bnRzW2lzb10gPz8gMDtcblxuICAgICAgICAgICAgcmV0dXJuIChcbiAgICAgICAgICAgICAgPGJ1dHRvblxuICAgICAgICAgICAgICAgIGtleT17aXNvfVxuICAgICAgICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxuICAgICAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IG9uU2VsZWN0RGF5KGlzbyl9XG4gICAgICAgICAgICAgICAgY2xhc3NOYW1lPXtgcmVsYXRpdmUgZmxleCBoLTExIGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciByb3VuZGVkLXhsIHRleHQteHMgZm9udC1ib2xkIHRhYnVsYXItbnVtcyB0cmFuc2l0aW9uIGR1cmF0aW9uLTIwMCB3aWxsLWNoYW5nZS10cmFuc2Zvcm0gZm9jdXMtdmlzaWJsZTpvdXRsaW5lLW5vbmUgZm9jdXMtdmlzaWJsZTpyaW5nLTIgZm9jdXMtdmlzaWJsZTpyaW5nLWVtZXJhbGQtNTAwLzUwIGFjdGl2ZTpzY2FsZS1bMC45Nl0gc206aC0xMiAke1xuICAgICAgICAgICAgICAgICAgaXNTZWxlY3RlZFxuICAgICAgICAgICAgICAgICAgICA/ICd6LVsxXSBzY2FsZS1bMS4wMl0gYmctZ3JhZGllbnQtdG8tYnIgZnJvbS1lbWVyYWxkLTYwMCB0by10ZWFsLTcwMCB0ZXh0LXdoaXRlIHNoYWRvdy1sZyBzaGFkb3ctZW1lcmFsZC05MDAvMzUgcmluZy0yIHJpbmctYW1iZXItNDAwLzkwIHJpbmctb2Zmc2V0LTIgcmluZy1vZmZzZXQtd2hpdGUnXG4gICAgICAgICAgICAgICAgICAgIDogaXNUb2RheVxuICAgICAgICAgICAgICAgICAgICAgID8gJ2JnLWFtYmVyLTEwMCB0ZXh0LWFtYmVyLTk1MCByaW5nLTEgcmluZy1hbWJlci00MDAvNzAgaG92ZXI6c2NhbGUtMTA1IGhvdmVyOmJnLWFtYmVyLTUwIGhvdmVyOnNoYWRvdy1tZCdcbiAgICAgICAgICAgICAgICAgICAgICA6ICd0ZXh0LXNsYXRlLTcwMCBob3Zlcjp6LVsxXSBob3ZlcjpzY2FsZS0xMDUgaG92ZXI6Ymctd2hpdGUgaG92ZXI6c2hhZG93LW1kIGhvdmVyOnNoYWRvdy1zbGF0ZS05MDAvOCdcbiAgICAgICAgICAgICAgICB9YH1cbiAgICAgICAgICAgICAgPlxuICAgICAgICAgICAgICAgIHtkYXl9XG4gICAgICAgICAgICAgICAge2NvdW50ID4gMCA/IChcbiAgICAgICAgICAgICAgICAgIDxzcGFuXG4gICAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT17YGFic29sdXRlIC1yaWdodC0wLjUgLXRvcC0wLjUgZmxleCBoLTQgbWluLXctNCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgcm91bmRlZC1mdWxsIHB4LTEgdGV4dC1bOXB4XSBmb250LWJvbGQgbGVhZGluZy1ub25lICR7XG4gICAgICAgICAgICAgICAgICAgICAgaXNTZWxlY3RlZCA/ICdiZy1hbWJlci00MDAgdGV4dC1zbGF0ZS05MDAnIDogJ2JnLXJvc2UtNTAwIHRleHQtd2hpdGUgc2hhZG93LXNtJ1xuICAgICAgICAgICAgICAgICAgICB9YH1cbiAgICAgICAgICAgICAgICAgID5cbiAgICAgICAgICAgICAgICAgICAge2NvdW50ID4gOSA/ICc5KycgOiBTdHJpbmcoY291bnQpfVxuICAgICAgICAgICAgICAgICAgPC9zcGFuPlxuICAgICAgICAgICAgICAgICkgOiBudWxsfVxuICAgICAgICAgICAgICA8L2J1dHRvbj5cbiAgICAgICAgICAgICk7XG4gICAgICAgICAgfSl9XG4gICAgICAgIDwvZGl2PlxuICAgICAgPC9kaXY+XG4gICAgPC9kaXY+XG4gICk7XG59XG4iXSwiZmlsZSI6IkM6L1VzZXJzL3ZlZGFuL0RvY3VtZW50cy9EZW1hLURhc2hib2FyZC9mcm9udGVuZC9zcmMvcGFnZXMvdGltZXRhYmxlL1RpbWV0YWJsZU1pbmlDYWxlbmRhci50c3gifQ==

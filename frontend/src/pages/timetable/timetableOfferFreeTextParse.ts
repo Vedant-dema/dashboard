@@ -59,6 +59,22 @@ export type OfferFreeTextParse = {
   summaryLines: string[]
 }
 
+type PriceEntry = {
+  amount: number
+  year: number | null
+}
+
+type VehicleMention = {
+  line: string
+  index: number
+  brand: string
+  model: string
+  vehicle_type: string
+  year: number | null
+  mileage_km: number | null
+  quantity: number | null
+}
+
 function normalizeInput(raw: string): string {
   return raw.replace(/\u00A0/g, ' ').replace(/\r/g, '\n').trim()
 }
@@ -106,31 +122,126 @@ function parseKm(text: string): number | null {
   return null
 }
 
-function parsePriceEur(text: string): number | null {
-  const explicit = text.match(
-    /\b(\d{1,3}(?:[.\s]\d{3})+|\d{4,7}|\d{1,3}(?:,\d{1,2})?)\s*(?:\u20AC|eur|euro|netto|brutto)\b/i
-  )
-  if (explicit) {
-    const digits = compactDigits(explicit[1] ?? '')
-    const n = toSafeInt(digits)
-    if (n != null && n >= 500) return n
+function parseAmountToken(raw: string): number | null {
+  const compact = raw.replace(/\s/g, '').toLowerCase()
+  if (!compact) return null
+
+  if (compact.endsWith('k')) {
+    const unit = compact.slice(0, -1).replace(',', '.')
+    const n = Number(unit)
+    if (Number.isFinite(n) && n >= 1) return Math.round(n * 1000)
+    return null
   }
 
-  const byLabel = text.match(
-    /\b(?:preis|price|vb|verhandlungsbasis)\s*[:\-]?\s*(\d{1,3}(?:[.\s]\d{3})+|\d{4,7}|\d{1,3}(?:,\d{1,2})?)\b/i
-  )
-  if (byLabel) {
-    const digits = compactDigits(byLabel[1] ?? '')
-    const n = toSafeInt(digits)
-    if (n != null && n >= 500) return n
+  const n = toSafeInt(compactDigits(raw))
+  if (n == null || n < 500) return null
+  return n
+}
+
+function parsePriceEntries(text: string): PriceEntry[] {
+  const out: PriceEntry[] = []
+  const seen = new Set<string>()
+  const re = /(\d{1,3}(?:[.\s]\d{3})+|\d{4,7}|\d{2,3}(?:[.,]\d{1,2})?\s*k)\s*(?:\u20AC|eur|euro)?/gi
+  const parseYearNearPrice = (start: number, end: number): number | null => {
+    const ahead = text.slice(end, Math.min(text.length, end + 28))
+    const aheadYear = ahead.match(/\b((?:19|20)\d{2})\b/)
+    if (aheadYear) {
+      const n = toSafeInt(aheadYear[1] ?? '')
+      if (n != null && n >= 1980 && n <= 2060) return n
+    }
+
+    const behind = text.slice(Math.max(0, start - 18), start)
+    const behindYears = [...behind.matchAll(/\b((?:19|20)\d{2})\b/g)]
+    const tail = behindYears[behindYears.length - 1]
+    if (tail) {
+      const n = toSafeInt(tail[1] ?? '')
+      if (n != null && n >= 1980 && n <= 2060) return n
+    }
+    return null
   }
 
-  const kPrice = text.match(/\b(\d{2,3})(?:[.,]\d+)?\s*k\b/i)
-  if (kPrice) {
-    const n = toSafeInt(kPrice[1] ?? '')
-    if (n != null && n >= 10) return n * 1000
+  for (const m of text.matchAll(re)) {
+    const amountRaw = m[1] ?? ''
+    const amount = parseAmountToken(amountRaw)
+    if (amount == null) continue
+
+    const whole = m[0] ?? ''
+    const hasExplicitMoneyUnit = /(?:\u20AC|eur|euro|\bk\b)/i.test(whole)
+    if (!hasExplicitMoneyUnit && amount >= 1980 && amount <= 2060) continue
+
+    const idx = m.index ?? 0
+    const end = idx + (m[0]?.length ?? 0)
+    const around = text.slice(Math.max(0, idx - 8), Math.min(text.length, end + 8))
+    if (/\b(?:km|tkm|kilometer)\b/i.test(around)) continue
+
+    const year = parseYearNearPrice(idx, end)
+    const key = `${amount}-${year ?? 'na'}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ amount, year })
   }
-  return null
+  return out
+}
+
+const SELLER_LABEL_RE =
+  /\b(?:preisidee\s*verk(?:a|ae|\u00e4)ufer|verk(?:a|ae|\u00e4)ufer(?:preis|preisidee)?|seller(?:\s*asking)?|asking|preisvorstellung|price(?:\s*idea)?|vb)\b\s*[:\-]?/i
+const PURCHASE_LABEL_RE =
+  /\b(?:dema\s*(?:einkauf|ankauf|bid|purchase)|einkaufspreis|ankauf|purchase(?:\s*(?:price|bid))?|our\s*bid)\b\s*[:\-]?/i
+
+function stripLabelPrefix(line: string, labelRe: RegExp): string {
+  const m = line.match(labelRe)
+  if (!m || typeof m.index !== 'number') return line.trim()
+  return line.slice(m.index + m[0].length).trim()
+}
+
+function pickBestPrice(entries: PriceEntry[], yearHint: number | null): number | null {
+  if (entries.length === 0) return null
+  if (yearHint != null) {
+    const exact = entries.find((e) => e.year === yearHint)
+    if (exact) return exact.amount
+  }
+  const yearless = entries.find((e) => e.year == null)
+  if (yearless) return yearless.amount
+  return entries[0]?.amount ?? null
+}
+
+function parseSellerAndPurchasePrices(
+  text: string,
+  yearHint: number | null
+): { seller: number | null; purchase: number | null } {
+  const sellerEntries: PriceEntry[] = []
+  const purchaseEntries: PriceEntry[] = []
+  const genericEntries: PriceEntry[] = []
+
+  const hasMoney = (line: string) =>
+    /\b(?:\d{1,3}(?:[.\s]\d{3})+|\d{4,7}|\d{2,3}(?:[.,]\d{1,2})?\s*k)\b/i.test(line) &&
+    /\b(?:\u20AC|eur|euro|preis|price|vb|einkauf|ankauf|bid)\b/i.test(line)
+
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) continue
+    if (!hasMoney(line)) continue
+
+    if (PURCHASE_LABEL_RE.test(line)) {
+      purchaseEntries.push(...parsePriceEntries(stripLabelPrefix(line, PURCHASE_LABEL_RE)))
+      continue
+    }
+    if (SELLER_LABEL_RE.test(line)) {
+      sellerEntries.push(...parsePriceEntries(stripLabelPrefix(line, SELLER_LABEL_RE)))
+      continue
+    }
+    if (!/\b(?:km|tkm|kilometer)\b/i.test(line)) {
+      genericEntries.push(...parsePriceEntries(line))
+    }
+  }
+
+  if (genericEntries.length === 0) {
+    genericEntries.push(...parsePriceEntries(text))
+  }
+
+  const seller = pickBestPrice(sellerEntries.length > 0 ? sellerEntries : genericEntries, yearHint)
+  const purchase = pickBestPrice(purchaseEntries, yearHint)
+  return { seller, purchase }
 }
 
 function parseRegistration(text: string): string | null {
@@ -254,9 +365,95 @@ function parseBrandModel(raw: string): { brand: string; model: string } {
   return { brand: '', model: '' }
 }
 
+function extractVehicleMentions(raw: string): VehicleMention[] {
+  const out: VehicleMention[] = []
+  const lines = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  lines.forEach((line, index) => {
+    const clean = line.replace(/^[-*]\s*/, '').trim()
+    if (!clean) return
+    const bm = parseBrandModel(clean)
+    const hasVehicleIdentity = !!bm.brand || !!bm.model || /\b(?:lkw|szm|transporter|trailer|auflieger)\b/i.test(clean)
+    if (!hasVehicleIdentity) return
+    out.push({
+      line: clean,
+      index,
+      brand: bm.brand,
+      model: bm.model,
+      vehicle_type: pickVehicleType(clean),
+      year: parseYear(clean),
+      mileage_km: parseKm(clean),
+      quantity: parseQuantity(clean),
+    })
+  })
+
+  if (out.length === 0) {
+    const bm = parseBrandModel(raw)
+    if (bm.brand || bm.model) {
+      out.push({
+        line: raw,
+        index: 0,
+        brand: bm.brand,
+        model: bm.model,
+        vehicle_type: pickVehicleType(raw),
+        year: parseYear(raw),
+        mileage_km: parseKm(raw),
+        quantity: parseQuantity(raw),
+      })
+    }
+  }
+  return out
+}
+
+function normCmp(raw: string | undefined): string {
+  return (raw ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function pickPrimaryVehicleMention(
+  mentions: VehicleMention[],
+  preferred?: Partial<TimetableTruckOffer>
+): VehicleMention | null {
+  if (mentions.length === 0) return null
+  const prefBrand = normCmp(preferred?.brand)
+  const prefModel = normCmp(preferred?.model)
+  const prefYear = preferred?.year ?? null
+  const prefType = normCmp(preferred?.vehicle_type)
+
+  const score = (m: VehicleMention) =>
+    (m.brand ? 3 : 0) +
+    (m.model ? 3 : 0) +
+    (m.year != null ? 2 : 0) +
+    (m.mileage_km != null ? 2 : 0) +
+    (m.quantity != null ? 1 : 0) +
+    (prefBrand && normCmp(m.brand) === prefBrand ? 4 : 0) +
+    (prefModel && normCmp(m.model) === prefModel ? 4 : 0) +
+    (prefModel && normCmp(m.model).includes(prefModel) ? 2 : 0) +
+    (prefType && normCmp(m.vehicle_type) === prefType ? 2 : 0) +
+    (prefYear != null && m.year === prefYear ? 5 : 0)
+  return [...mentions].sort((a, b) => score(b) - score(a) || a.index - b.index)[0] ?? null
+}
+
+function lineLooksLikeVehicleSpec(line: string): boolean {
+  const l = line.replace(/^[-*]\s*/, '').trim()
+  if (!l) return false
+  const bm = parseBrandModel(l)
+  if (bm.brand || bm.model) return true
+  if (parseKm(l) != null) return true
+  if (parseYear(l) != null) return true
+  if (parseQuantity(l) != null && /\b(?:fahrzeuge?|trucks?|units?)\b/i.test(l)) return true
+  return false
+}
+
 function extractEquipmentNotes(raw: string): string | null {
   const found: string[] = []
   const seen = new Set<string>()
+  const equipmentKeywordRe = new RegExp(EQUIPMENT_RE.source, 'i')
 
   const push = (value: string) => {
     const clean = value.trim().replace(/\s+/g, ' ').replace(/[.,;:]+$/, '')
@@ -270,18 +467,20 @@ function extractEquipmentNotes(raw: string): string | null {
   for (const line of raw.split('\n')) {
     const l = line.trim()
     if (!l) continue
-    if (/^(ausstattung|extras?)\s*:/i.test(l)) {
-      const rest = l.replace(/^(ausstattung|extras?)\s*:/i, '')
+    if (/^(ausstattung|extras?|equipment|features?)\s*:/i.test(l)) {
+      const rest = l.replace(/^(ausstattung|extras?|equipment|features?)\s*:/i, '')
       for (const part of rest.split(/[,;/]| und /i)) push(part)
       continue
     }
-    if (/^[-*]\s+/.test(l)) {
+    if (/^[-*]\s+/.test(l) && equipmentKeywordRe.test(l) && !lineLooksLikeVehicleSpec(l)) {
       push(l.replace(/^[-*]\s+/, ''))
     }
   }
 
   for (const m of raw.matchAll(/\(([^)]{3,140})\)/g)) {
-    for (const part of (m[1] ?? '').split(/[,;/]| und /i)) push(part)
+    const chunk = (m[1] ?? '').trim()
+    if (!equipmentKeywordRe.test(chunk)) continue
+    for (const part of chunk.split(/[,;/]| und /i)) push(part)
   }
 
   for (const m of raw.matchAll(EQUIPMENT_RE)) {
@@ -301,7 +500,10 @@ function addLine(lines: string[], seen: Set<string>, label: string, value: strin
 }
 
 /** On-device heuristic parser - no network; best-effort structured fields from pasted notes. */
-export function parseOfferFreeText(raw: string): OfferFreeTextParse {
+export function parseOfferFreeText(
+  raw: string,
+  preferredOffer?: Partial<TimetableTruckOffer>
+): OfferFreeTextParse {
   const normalized = normalizeInput(raw)
   if (!normalized) {
     return { offerPatch: {}, vehicleExtraPatch: {}, summaryLines: [] }
@@ -312,13 +514,19 @@ export function parseOfferFreeText(raw: string): OfferFreeTextParse {
   const summaryLines: string[] = []
   const summarySeen = new Set<string>()
 
-  const vehicleType = pickVehicleType(normalized)
+  const mentions = extractVehicleMentions(normalized)
+  const primary = pickPrimaryVehicleMention(mentions, preferredOffer)
+  if (mentions.length > 1) {
+    addLine(summaryLines, summarySeen, 'Vehicle records', mentions.length)
+  }
+
+  const vehicleType = primary?.vehicle_type || pickVehicleType(normalized)
   if (vehicleType) {
     offerPatch.vehicle_type = vehicleType
     addLine(summaryLines, summarySeen, 'Vehicle type', vehicleType)
   }
 
-  const { brand, model } = parseBrandModel(normalized)
+  const { brand, model } = primary ?? parseBrandModel(normalized)
   if (brand) {
     offerPatch.brand = brand
     addLine(summaryLines, summarySeen, 'Brand', brand)
@@ -328,13 +536,13 @@ export function parseOfferFreeText(raw: string): OfferFreeTextParse {
     addLine(summaryLines, summarySeen, 'Model', model)
   }
 
-  const body = pickBody(normalized)
+  const body = pickBody(primary?.line ?? normalized)
   if (body) {
     vehicleExtraPatch.body_type = body
     addLine(summaryLines, summarySeen, 'Body', body)
   }
 
-  const registration = parseRegistration(normalized)
+  const registration = parseRegistration(primary?.line ?? '') || parseRegistration(normalized)
   if (registration) {
     vehicleExtraPatch.registration_mm_yyyy = registration
     addLine(summaryLines, summarySeen, 'First reg', registration)
@@ -349,26 +557,31 @@ export function parseOfferFreeText(raw: string): OfferFreeTextParse {
   }
 
   if (offerPatch.year == null) {
-    const year = parseYear(normalized)
+    const year = primary?.year ?? parseYear(normalized)
     if (year != null) {
       offerPatch.year = year
       addLine(summaryLines, summarySeen, 'Year', year)
     }
   }
 
-  const mileage = parseKm(normalized)
+  const mileage = primary?.mileage_km ?? parseKm(normalized)
   if (mileage != null) {
     offerPatch.mileage_km = mileage
     addLine(summaryLines, summarySeen, 'Mileage', mileage.toLocaleString('de-DE'))
   }
 
-  const price = parsePriceEur(normalized)
-  if (price != null) {
-    offerPatch.expected_price_eur = price
-    addLine(summaryLines, summarySeen, 'Price EUR', price.toLocaleString('de-DE'))
+  const yearHint = offerPatch.year ?? primary?.year ?? null
+  const prices = parseSellerAndPurchasePrices(normalized, yearHint)
+  if (prices.seller != null) {
+    offerPatch.expected_price_eur = prices.seller
+    addLine(summaryLines, summarySeen, 'Seller EUR', prices.seller.toLocaleString('de-DE'))
+  }
+  if (prices.purchase != null) {
+    offerPatch.purchase_bid_eur = prices.purchase
+    addLine(summaryLines, summarySeen, 'Purchasing EUR', prices.purchase.toLocaleString('de-DE'))
   }
 
-  const quantity = parseQuantity(normalized)
+  const quantity = primary?.quantity ?? parseQuantity(normalized)
   if (quantity != null) {
     offerPatch.quantity = quantity
     addLine(summaryLines, summarySeen, 'Quantity', quantity)

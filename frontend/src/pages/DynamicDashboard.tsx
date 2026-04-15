@@ -28,6 +28,7 @@ import {
 } from "../widgets/registry";
 import { Plus, X, GripVertical } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
+import { TimetableDashboardReminders } from "../components/TimetableDashboardReminders";
 
 const COLS = 12;
 const ROW_HEIGHT = 80;
@@ -151,6 +152,7 @@ export function DynamicDashboard() {
         <div className="dema-canvas-vignette" />
       </div>
       <div className="dema-canvas-content relative p-6 pb-12">
+      <TimetableDashboardReminders />
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">

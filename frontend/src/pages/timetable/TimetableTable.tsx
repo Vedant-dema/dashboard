@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Phone, PhoneCall, Truck } from 'lucide-react';
 import type { TimetableEntry } from '../../types/timetable';
 import { entryAnyOfferHasContent, getActivityNotesLastSnippet } from './contactDrawerFormUtils';
+import { TimetableFollowUpReminderCell } from './components/TimetableFollowUpReminderCell';
 
 type Props = {
   rows: TimetableEntry[];
@@ -10,6 +11,7 @@ type Props = {
   onOpenContact: (entry: TimetableEntry) => void;
   onOpenCallLog: (entry: TimetableEntry) => void;
   onOpenOffer: (entry: TimetableEntry) => void;
+  onQuickFollowUp: (entry: TimetableEntry, minutes: number) => void;
 };
 
 function formatRowDate(raw: string, localeTag: string): string {
@@ -32,11 +34,6 @@ function formatRowTime(raw: string, localeTag: string): string {
 }
 
 const EM_DASH = '\u2014';
-
-function kaArtFromRow(row: TimetableEntry): string {
-  if (row.outcome === 'has_trucks' || entryAnyOfferHasContent(row)) return 'KA';
-  return 'A';
-}
 
 function isPlaceholderPhone(phone: string | undefined | null): boolean {
   const p = (phone ?? '').trim();
@@ -73,19 +70,26 @@ function rowAccentClass(outcome: TimetableEntry['outcome']): string {
   return 'border-l-[3px] border-l-transparent';
 }
 
-const COL_COUNT = 14;
+const COL_COUNT = 12;
 
-export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLog, onOpenOffer }: Props) {
+export function TimetableTable({
+  rows,
+  localeTag,
+  t,
+  onOpenContact,
+  onOpenCallLog,
+  onOpenOffer,
+  onQuickFollowUp,
+}: Props) {
   const emptyMark = useMemo(() => t('commonPlaceholderDash', '—'), [t]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-900/[0.04]">
       <div className="overflow-x-auto">
-        <table className="min-w-[1320px] w-full text-sm">
+        <table className="min-w-[1180px] w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
               <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColKa', 'Ka')}</th>
-              <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColArte', 'Arte')}</th>
               <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColDate', 'Date')}</th>
               <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColTime', 'Time')}</th>
               <th className="min-w-[10rem] px-3 py-3 font-medium">{t('timetableColCompany', 'Company')}</th>
@@ -94,9 +98,10 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
               <th className="min-w-[6rem] px-3 py-3 font-medium">{t('timetableColPurpose', 'Purpose')}</th>
               <th className="min-w-[14rem] px-3 py-3 font-medium">{t('timetableColRemark', 'Notes')}</th>
               <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColOutcome', 'Outcome')}</th>
-              <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColFollowUp', 'Follow-up')}</th>
+              <th className="min-w-[12rem] whitespace-nowrap px-3 py-3 font-medium">
+                {t('timetableColFollowUp', 'Follow-up')}
+              </th>
               <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColDone', 'Done')}</th>
-              <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColVp', 'Buyer')}</th>
               <th className="whitespace-nowrap px-3 py-3 font-medium">{t('timetableColActions', 'Actions')}</th>
             </tr>
           </thead>
@@ -125,11 +130,6 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                   <td className="whitespace-nowrap px-3 py-3.5">
                     <span className="inline-flex min-w-[1.75rem] justify-center rounded-md bg-slate-200/80 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-slate-800 ring-1 ring-slate-300/60">
                       {row.legacy_ka ?? 'A'}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3.5">
-                    <span className="inline-flex min-w-[1.75rem] justify-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold uppercase text-slate-800 ring-1 ring-slate-200/80">
-                      {row.legacy_arte ?? kaArtFromRow(row)}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5 font-semibold tabular-nums text-slate-900">
@@ -180,21 +180,24 @@ export function TimetableTable({ rows, localeTag, t, onOpenContact, onOpenCallLo
                       {outcomeLabel(row, t)}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3.5 text-xs font-medium tabular-nums text-slate-700">
-                    {row.follow_up_at ? formatRowTime(row.follow_up_at, localeTag) : emptyMark}
-                    {row.follow_up_at ? (
-                      <span className="ml-1 block text-[10px] font-normal text-slate-500">
-                        {formatRowDate(row.follow_up_at, localeTag)}
-                      </span>
-                    ) : null}
+                  <td
+                    className="min-w-[12rem] px-3 py-3.5 text-xs font-medium tabular-nums text-slate-700"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <TimetableFollowUpReminderCell
+                      row={row}
+                      localeTag={localeTag}
+                      t={t}
+                      onQuickFollowUp={onQuickFollowUp}
+                      formatRowTime={formatRowTime}
+                      formatRowDate={formatRowDate}
+                      emptyMark={emptyMark}
+                    />
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5 text-xs font-bold text-slate-800">
                     {row.is_completed || row.outcome === 'no_trucks'
                       ? t('timetableDoneYes', 'Yes')
                       : t('timetableDoneNo', 'No')}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3.5 font-mono text-xs font-bold text-slate-600">
-                    {row.buyer_name}
                   </td>
                   <td className="px-3 py-3.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-col gap-2 print:hidden">

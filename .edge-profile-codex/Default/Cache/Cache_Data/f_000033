@@ -1,0 +1,379 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/widgets/ProfileModuleWidget.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6265600e"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import __vite__cjsImport3_react from "/node_modules/.vite/deps/react.js?v=6265600e"; const useEffect = __vite__cjsImport3_react["useEffect"]; const useMemo = __vite__cjsImport3_react["useMemo"]; const useState = __vite__cjsImport3_react["useState"];
+import { Clock3, LogIn, LogOut, Mail, ShieldCheck, UserRound } from "/node_modules/.vite/deps/lucide-react.js?v=6265600e";
+import { useAuth } from "/src/contexts/AuthContext.tsx";
+import { useWidgetLanguage } from "/src/widgets/useWidgetLanguage.ts?t=1776240837999";
+import { cfgString } from "/src/widgets/widgetConfigHelpers.ts";
+import { loadPunchClock, punchInNow, punchOutNow } from "/src/store/punchClockStore.ts";
+import { useProfileAvatarDataUrl } from "/src/hooks/useProfileAvatar.ts";
+import {
+  profileExtraMatchesSession,
+  resolveDisplayName,
+  useProfileExtraSettings
+} from "/src/hooks/useProfileExtraSettings.ts";
+function initialsFromName(name) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "?";
+}
+function formatTime(iso, locale) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch {
+    return "—";
+  }
+}
+export function ProfileModuleWidget({ config }) {
+  _s();
+  const { user } = useAuth();
+  const avatarDataUrl = useProfileAvatarDataUrl();
+  const profileExtra = useProfileExtraSettings();
+  const { t, localeTag } = useWidgetLanguage();
+  const [now, setNow] = useState(() => /* @__PURE__ */ new Date());
+  const [punch, setPunch] = useState(() => loadPunchClock());
+  const locale = localeTag;
+  const customTitle = cfgString(config, "customTitle", "");
+  const footnote = cfgString(config, "profileFootnote", "");
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
+    return () => window.clearInterval(id);
+  }, []);
+  useEffect(() => {
+    const sync = () => setPunch(loadPunchClock());
+    window.addEventListener("dema-punch-changed", sync);
+    return () => window.removeEventListener("dema-punch-changed", sync);
+  }, []);
+  const todayFullLabel = useMemo(
+    () => now.toLocaleDateString(locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    }),
+    [now, locale]
+  );
+  const timeLabel = useMemo(() => now.toLocaleTimeString(locale), [now, locale]);
+  const name = resolveDisplayName(user?.email, user?.name, profileExtra) || t("commonUser", "Benutzer");
+  const email = user?.email ?? "—";
+  const initials = initialsFromName(name);
+  const extraForUser = profileExtraMatchesSession(user?.email, profileExtra);
+  const profileMeta = extraForUser ? [profileExtra.jobTitle.trim(), profileExtra.location.trim()].filter(Boolean).join(" · ") : "";
+  const punchedIn = Boolean(punch.punchInIso && !punch.punchOutIso);
+  const punchedOut = Boolean(punch.punchOutIso);
+  const punchInLabel = formatTime(punch.punchInIso, locale);
+  const punchOutLabel = formatTime(punch.punchOutIso, locale);
+  const statusColor = punchedIn ? "bg-emerald-500" : punchedOut ? "bg-red-500" : "bg-slate-300";
+  const statusText = punchedIn ? t("profilePunchInActive", "Eingestempelt") : punchedOut ? t("profilePunchOutDone", "Ausgestempelt") : t("profilePunchIdle", "Nicht eingestempelt");
+  const openSettings = () => {
+    window.location.hash = "#/settings";
+  };
+  return /* @__PURE__ */ jsxDEV("div", { className: "glass-card flex h-full flex-col overflow-hidden p-5", children: [
+    customTitle ? /* @__PURE__ */ jsxDEV("h2", { className: "mb-3 text-sm font-bold text-slate-800", children: customTitle }, void 0, false, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 110,
+      columnNumber: 22
+    }, this) : null,
+    /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-3", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-blue-600/25", children: avatarDataUrl ? /* @__PURE__ */ jsxDEV("img", { src: avatarDataUrl, alt: "", className: "h-full w-full object-cover" }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 114,
+        columnNumber: 11
+      }, this) : initials }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 112,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "min-w-0", children: [
+        /* @__PURE__ */ jsxDEV("p", { className: "truncate text-base font-bold text-slate-900", children: name }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 120,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("p", { className: "truncate text-xs text-slate-500", children: email }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 121,
+          columnNumber: 11
+        }, this),
+        profileMeta ? /* @__PURE__ */ jsxDEV("p", { className: "mt-0.5 truncate text-[11px] text-slate-400", children: profileMeta }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 122,
+          columnNumber: 26
+        }, this) : null
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 119,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 111,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3", children: [
+      /* @__PURE__ */ jsxDEV("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-400", children: t("profileToday", "Heute") }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 127,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("p", { className: "mt-0.5 text-sm font-semibold capitalize text-slate-800", children: todayFullLabel }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 128,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("p", { className: "mt-1 text-xs tabular-nums text-slate-500", children: timeLabel }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 129,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 126,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-3 flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2.5", children: [
+      /* @__PURE__ */ jsxDEV("span", { className: `h-3 w-3 shrink-0 rounded-full ${statusColor} shadow-sm ring-2 ring-white`, "aria-hidden": true }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 133,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("span", { className: "text-sm font-semibold text-slate-800", children: statusText }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 134,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 132,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-2 grid grid-cols-2 gap-2", children: [
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            punchInNow();
+            setPunch(loadPunchClock());
+          },
+          disabled: punchedIn,
+          className: "flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50",
+          children: [
+            /* @__PURE__ */ jsxDEV(LogIn, { className: "h-3.5 w-3.5" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+              lineNumber: 147,
+              columnNumber: 11
+            }, this),
+            t("profilePunchIn", "Einstempeln")
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 138,
+          columnNumber: 9
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            punchOutNow();
+            setPunch(loadPunchClock());
+          },
+          disabled: !punchedIn,
+          className: "flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 py-2 text-xs font-semibold text-red-800 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50",
+          children: [
+            /* @__PURE__ */ jsxDEV(LogOut, { className: "h-3.5 w-3.5" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+              lineNumber: 159,
+              columnNumber: 11
+            }, this),
+            t("profilePunchOut", "Ausstempeln")
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 150,
+          columnNumber: 9
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 137,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-3 grid grid-cols-2 gap-2", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "rounded-xl border border-slate-100 bg-slate-50/80 p-2.5", children: [
+        /* @__PURE__ */ jsxDEV("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-400", children: t("profilePunchInTime", "Einstempelzeit") }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 166,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("p", { className: "mt-1 text-sm font-semibold tabular-nums text-slate-800", children: punchInLabel }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 167,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 165,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "rounded-xl border border-slate-100 bg-slate-50/80 p-2.5", children: [
+        /* @__PURE__ */ jsxDEV("p", { className: "text-[10px] font-semibold uppercase tracking-wide text-slate-400", children: t("profilePunchOutTime", "Ausstempelzeit") }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 170,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("p", { className: "mt-1 text-sm font-semibold tabular-nums text-slate-800", children: punchOutLabel }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 171,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 169,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 164,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-3 space-y-1.5 text-xs text-slate-600", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2 rounded-lg bg-violet-50/70 px-2.5 py-2", children: [
+        /* @__PURE__ */ jsxDEV(Mail, { className: "h-3.5 w-3.5 text-violet-600" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 177,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("span", { className: "truncate", children: t("profileInternalComms", "Interne Kommunikation aktiv") }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 178,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 176,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2 rounded-lg bg-emerald-50/70 px-2.5 py-2", children: [
+        /* @__PURE__ */ jsxDEV(ShieldCheck, { className: "h-3.5 w-3.5 text-emerald-600" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 181,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("span", { className: "truncate", children: t("profileRoleVerified", "Rolle verifiziert") }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 182,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 180,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2 rounded-lg bg-blue-50/70 px-2.5 py-2", children: [
+        /* @__PURE__ */ jsxDEV(Clock3, { className: "h-3.5 w-3.5 text-blue-600" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 185,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("span", { className: "truncate", children: t("profileLiveClock", "Live-Uhr (lokal)") }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+          lineNumber: 186,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 184,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 175,
+      columnNumber: 7
+    }, this),
+    footnote ? /* @__PURE__ */ jsxDEV("p", { className: "mt-3 rounded-lg border border-slate-100 bg-slate-50/80 p-2 text-xs text-slate-600", children: footnote }, void 0, false, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 190,
+      columnNumber: 19
+    }, this) : null,
+    /* @__PURE__ */ jsxDEV("div", { className: "mt-auto pt-3", children: /* @__PURE__ */ jsxDEV(
+      "button",
+      {
+        type: "button",
+        onClick: openSettings,
+        className: "flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50",
+        children: [
+          /* @__PURE__ */ jsxDEV(UserRound, { className: "h-3.5 w-3.5" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+            lineNumber: 198,
+            columnNumber: 11
+          }, this),
+          t("profileOpenSettings", "Einstellungen öffnen")
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+        lineNumber: 193,
+        columnNumber: 9
+      },
+      this
+    ) }, void 0, false, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+      lineNumber: 192,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx",
+    lineNumber: 109,
+    columnNumber: 5
+  }, this);
+}
+_s(ProfileModuleWidget, "fdVuBb/IResG9PLViC1863hFO24=", false, function() {
+  return [useAuth, useProfileAvatarDataUrl, useProfileExtraSettings, useWidgetLanguage];
+});
+_c = ProfileModuleWidget;
+var _c;
+$RefreshReg$(_c, "ProfileModuleWidget");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/ProfileModuleWidget.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QUFBLE1BQUM7QUFBQTtBQUFBLFFBQ0MsTUFBSztBQUFBLFFBQ0wsU0FBUzZCO0FBQUFBLFFBQ1QsV0FBVTtBQUFBLFFBRVY7QUFBQSxpQ0FBQyxhQUFVLFdBQVUsaUJBQXJCO0FBQUE7QUFBQTtBQUFBO0FBQUEsaUJBQWtDO0FBQUEsVUFDakNwQyxFQUFFLHVCQUF1QixzQkFBc0I7QUFBQTtBQUFBO0FBQUEsTUFObEQ7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLElBT0EsS0FSRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFdBU0E7QUFBQSxPQTVGRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBNkZBO0FBRUo7QUFBQ0osR0E1SmVGLHFCQUFtQjtBQUFBLFVBQ2hCOUIsU0FDS00seUJBQ0RHLHlCQUNJUixpQkFBaUI7QUFBQTtBQUFBLEtBSjVCNkI7QUFBbUIsSUFBQTRDO0FBQUEsYUFBQUEsSUFBQSIsIm5hbWVzIjpbInVzZUVmZmVjdCIsInVzZU1lbW8iLCJ1c2VTdGF0ZSIsIkNsb2NrMyIsIkxvZ0luIiwiTG9nT3V0IiwiTWFpbCIsIlNoaWVsZENoZWNrIiwiVXNlclJvdW5kIiwidXNlQXV0aCIsInVzZVdpZGdldExhbmd1YWdlIiwiY2ZnU3RyaW5nIiwibG9hZFB1bmNoQ2xvY2siLCJwdW5jaEluTm93IiwicHVuY2hPdXROb3ciLCJ1c2VQcm9maWxlQXZhdGFyRGF0YVVybCIsInByb2ZpbGVFeHRyYU1hdGNoZXNTZXNzaW9uIiwicmVzb2x2ZURpc3BsYXlOYW1lIiwidXNlUHJvZmlsZUV4dHJhU2V0dGluZ3MiLCJpbml0aWFsc0Zyb21OYW1lIiwibmFtZSIsInBhcnRzIiwidHJpbSIsInNwbGl0IiwiZmlsdGVyIiwiQm9vbGVhbiIsIm1hcCIsInAiLCJqb2luIiwic2xpY2UiLCJ0b1VwcGVyQ2FzZSIsImZvcm1hdFRpbWUiLCJpc28iLCJsb2NhbGUiLCJEYXRlIiwidG9Mb2NhbGVUaW1lU3RyaW5nIiwiaG91ciIsIm1pbnV0ZSIsInNlY29uZCIsIlByb2ZpbGVNb2R1bGVXaWRnZXQiLCJjb25maWciLCJfcyIsInVzZXIiLCJhdmF0YXJEYXRhVXJsIiwicHJvZmlsZUV4dHJhIiwidCIsImxvY2FsZVRhZyIsIm5vdyIsInNldE5vdyIsInB1bmNoIiwic2V0UHVuY2giLCJjdXN0b21UaXRsZSIsImZvb3Rub3RlIiwiaWQiLCJ3aW5kb3ciLCJzZXRJbnRlcnZhbCIsImNsZWFySW50ZXJ2YWwiLCJzeW5jIiwiYWRkRXZlbnRMaXN0ZW5lciIsInJlbW92ZUV2ZW50TGlzdGVuZXIiLCJ0b2RheUZ1bGxMYWJlbCIsInRvTG9jYWxlRGF0ZVN0cmluZyIsIndlZWtkYXkiLCJkYXkiLCJtb250aCIsInllYXIiLCJ0aW1lTGFiZWwiLCJlbWFpbCIsImluaXRpYWxzIiwiZXh0cmFGb3JVc2VyIiwicHJvZmlsZU1ldGEiLCJqb2JUaXRsZSIsImxvY2F0aW9uIiwicHVuY2hlZEluIiwicHVuY2hJbklzbyIsInB1bmNoT3V0SXNvIiwicHVuY2hlZE91dCIsInB1bmNoSW5MYWJlbCIsInB1bmNoT3V0TGFiZWwiLCJzdGF0dXNDb2xvciIsInN0YXR1c1RleHQiLCJvcGVuU2V0dGluZ3MiLCJoYXNoIiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiUHJvZmlsZU1vZHVsZVdpZGdldC50c3giXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgdXNlRWZmZWN0LCB1c2VNZW1vLCB1c2VTdGF0ZSB9IGZyb20gXCJyZWFjdFwiO1xyXG5pbXBvcnQgeyBDbG9jazMsIExvZ0luLCBMb2dPdXQsIE1haWwsIFNoaWVsZENoZWNrLCBVc2VyUm91bmQgfSBmcm9tIFwibHVjaWRlLXJlYWN0XCI7XHJcbmltcG9ydCB7IHVzZUF1dGggfSBmcm9tIFwiLi4vY29udGV4dHMvQXV0aENvbnRleHRcIjtcclxuaW1wb3J0IHsgdXNlV2lkZ2V0TGFuZ3VhZ2UgfSBmcm9tIFwiLi91c2VXaWRnZXRMYW5ndWFnZVwiO1xyXG5pbXBvcnQgdHlwZSB7IFdpZGdldFJlbmRlclByb3BzIH0gZnJvbSBcIi4uL3R5cGVzL2Rhc2hib2FyZFwiO1xyXG5pbXBvcnQgeyBjZmdTdHJpbmcgfSBmcm9tIFwiLi93aWRnZXRDb25maWdIZWxwZXJzXCI7XHJcbmltcG9ydCB7IGxvYWRQdW5jaENsb2NrLCBwdW5jaEluTm93LCBwdW5jaE91dE5vdywgdHlwZSBQdW5jaENsb2NrU3RhdGUgfSBmcm9tIFwiLi4vc3RvcmUvcHVuY2hDbG9ja1N0b3JlXCI7XHJcbmltcG9ydCB7IHVzZVByb2ZpbGVBdmF0YXJEYXRhVXJsIH0gZnJvbSBcIi4uL2hvb2tzL3VzZVByb2ZpbGVBdmF0YXJcIjtcclxuaW1wb3J0IHtcclxuICBwcm9maWxlRXh0cmFNYXRjaGVzU2Vzc2lvbixcclxuICByZXNvbHZlRGlzcGxheU5hbWUsXHJcbiAgdXNlUHJvZmlsZUV4dHJhU2V0dGluZ3MsXHJcbn0gZnJvbSBcIi4uL2hvb2tzL3VzZVByb2ZpbGVFeHRyYVNldHRpbmdzXCI7XHJcblxyXG5mdW5jdGlvbiBpbml0aWFsc0Zyb21OYW1lKG5hbWU6IHN0cmluZyk6IHN0cmluZyB7XHJcbiAgY29uc3QgcGFydHMgPSBuYW1lLnRyaW0oKS5zcGxpdCgvXFxzKy8pLmZpbHRlcihCb29sZWFuKTtcclxuICByZXR1cm4gcGFydHMubWFwKChwKSA9PiBwWzBdKS5qb2luKFwiXCIpLnNsaWNlKDAsIDIpLnRvVXBwZXJDYXNlKCkgfHwgXCI/XCI7XHJcbn1cclxuXHJcbmZ1bmN0aW9uIGZvcm1hdFRpbWUoaXNvOiBzdHJpbmcgfCBudWxsLCBsb2NhbGU6IHN0cmluZyk6IHN0cmluZyB7XHJcbiAgaWYgKCFpc28pIHJldHVybiBcIuKAlFwiO1xyXG4gIHRyeSB7XHJcbiAgICByZXR1cm4gbmV3IERhdGUoaXNvKS50b0xvY2FsZVRpbWVTdHJpbmcobG9jYWxlLCB7IGhvdXI6IFwiMi1kaWdpdFwiLCBtaW51dGU6IFwiMi1kaWdpdFwiLCBzZWNvbmQ6IFwiMi1kaWdpdFwiIH0pO1xyXG4gIH0gY2F0Y2gge1xyXG4gICAgcmV0dXJuIFwi4oCUXCI7XHJcbiAgfVxyXG59XHJcblxyXG5leHBvcnQgZnVuY3Rpb24gUHJvZmlsZU1vZHVsZVdpZGdldCh7IGNvbmZpZyB9OiBXaWRnZXRSZW5kZXJQcm9wcykge1xyXG4gIGNvbnN0IHsgdXNlciB9ID0gdXNlQXV0aCgpO1xyXG4gIGNvbnN0IGF2YXRhckRhdGFVcmwgPSB1c2VQcm9maWxlQXZhdGFyRGF0YVVybCgpO1xyXG4gIGNvbnN0IHByb2ZpbGVFeHRyYSA9IHVzZVByb2ZpbGVFeHRyYVNldHRpbmdzKCk7XHJcbiAgY29uc3QgeyB0LCBsb2NhbGVUYWcgfSA9IHVzZVdpZGdldExhbmd1YWdlKCk7XHJcbiAgY29uc3QgW25vdywgc2V0Tm93XSA9IHVzZVN0YXRlKCgpID0+IG5ldyBEYXRlKCkpO1xyXG4gIGNvbnN0IFtwdW5jaCwgc2V0UHVuY2hdID0gdXNlU3RhdGU8UHVuY2hDbG9ja1N0YXRlPigoKSA9PiBsb2FkUHVuY2hDbG9jaygpKTtcclxuICBjb25zdCBsb2NhbGUgPSBsb2NhbGVUYWc7XHJcbiAgY29uc3QgY3VzdG9tVGl0bGUgPSBjZmdTdHJpbmcoY29uZmlnLCBcImN1c3RvbVRpdGxlXCIsIFwiXCIpO1xyXG4gIGNvbnN0IGZvb3Rub3RlID0gY2ZnU3RyaW5nKGNvbmZpZywgXCJwcm9maWxlRm9vdG5vdGVcIiwgXCJcIik7XHJcblxyXG4gIHVzZUVmZmVjdCgoKSA9PiB7XHJcbiAgICBjb25zdCBpZCA9IHdpbmRvdy5zZXRJbnRlcnZhbCgoKSA9PiBzZXROb3cobmV3IERhdGUoKSksIDEwMDApO1xyXG4gICAgcmV0dXJuICgpID0+IHdpbmRvdy5jbGVhckludGVydmFsKGlkKTtcclxuICB9LCBbXSk7XHJcblxyXG4gIHVzZUVmZmVjdCgoKSA9PiB7XHJcbiAgICBjb25zdCBzeW5jID0gKCkgPT4gc2V0UHVuY2gobG9hZFB1bmNoQ2xvY2soKSk7XHJcbiAgICB3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcihcImRlbWEtcHVuY2gtY2hhbmdlZFwiLCBzeW5jKTtcclxuICAgIHJldHVybiAoKSA9PiB3aW5kb3cucmVtb3ZlRXZlbnRMaXN0ZW5lcihcImRlbWEtcHVuY2gtY2hhbmdlZFwiLCBzeW5jKTtcclxuICB9LCBbXSk7XHJcblxyXG4gIGNvbnN0IHRvZGF5RnVsbExhYmVsID0gdXNlTWVtbyhcclxuICAgICgpID0+XHJcbiAgICAgIG5vdy50b0xvY2FsZURhdGVTdHJpbmcobG9jYWxlLCB7XHJcbiAgICAgICAgd2Vla2RheTogXCJsb25nXCIsXHJcbiAgICAgICAgZGF5OiBcIm51bWVyaWNcIixcclxuICAgICAgICBtb250aDogXCJsb25nXCIsXHJcbiAgICAgICAgeWVhcjogXCJudW1lcmljXCIsXHJcbiAgICAgIH0pLFxyXG4gICAgW25vdywgbG9jYWxlXVxyXG4gICk7XHJcblxyXG4gIGNvbnN0IHRpbWVMYWJlbCA9IHVzZU1lbW8oKCkgPT4gbm93LnRvTG9jYWxlVGltZVN0cmluZyhsb2NhbGUpLCBbbm93LCBsb2NhbGVdKTtcclxuXHJcbiAgY29uc3QgbmFtZSA9XHJcbiAgICByZXNvbHZlRGlzcGxheU5hbWUodXNlcj8uZW1haWwsIHVzZXI/Lm5hbWUsIHByb2ZpbGVFeHRyYSkgfHwgdChcImNvbW1vblVzZXJcIiwgXCJCZW51dHplclwiKTtcclxuICBjb25zdCBlbWFpbCA9IHVzZXI/LmVtYWlsID8/IFwi4oCUXCI7XHJcbiAgY29uc3QgaW5pdGlhbHMgPSBpbml0aWFsc0Zyb21OYW1lKG5hbWUpO1xyXG4gIGNvbnN0IGV4dHJhRm9yVXNlciA9IHByb2ZpbGVFeHRyYU1hdGNoZXNTZXNzaW9uKHVzZXI/LmVtYWlsLCBwcm9maWxlRXh0cmEpO1xyXG4gIGNvbnN0IHByb2ZpbGVNZXRhID0gZXh0cmFGb3JVc2VyXHJcbiAgICA/IFtwcm9maWxlRXh0cmEuam9iVGl0bGUudHJpbSgpLCBwcm9maWxlRXh0cmEubG9jYXRpb24udHJpbSgpXS5maWx0ZXIoQm9vbGVhbikuam9pbihcIiDCtyBcIilcclxuICAgIDogXCJcIjtcclxuXHJcbiAgY29uc3QgcHVuY2hlZEluID0gQm9vbGVhbihwdW5jaC5wdW5jaEluSXNvICYmICFwdW5jaC5wdW5jaE91dElzbyk7XHJcbiAgY29uc3QgcHVuY2hlZE91dCA9IEJvb2xlYW4ocHVuY2gucHVuY2hPdXRJc28pO1xyXG4gIGNvbnN0IHB1bmNoSW5MYWJlbCA9IGZvcm1hdFRpbWUocHVuY2gucHVuY2hJbklzbywgbG9jYWxlKTtcclxuICBjb25zdCBwdW5jaE91dExhYmVsID0gZm9ybWF0VGltZShwdW5jaC5wdW5jaE91dElzbywgbG9jYWxlKTtcclxuXHJcbiAgY29uc3Qgc3RhdHVzQ29sb3IgPSBwdW5jaGVkSW4gPyBcImJnLWVtZXJhbGQtNTAwXCIgOiBwdW5jaGVkT3V0ID8gXCJiZy1yZWQtNTAwXCIgOiBcImJnLXNsYXRlLTMwMFwiO1xyXG4gIGNvbnN0IHN0YXR1c1RleHQgPSBwdW5jaGVkSW5cclxuICAgID8gdChcInByb2ZpbGVQdW5jaEluQWN0aXZlXCIsIFwiRWluZ2VzdGVtcGVsdFwiKVxyXG4gICAgOiBwdW5jaGVkT3V0XHJcbiAgICAgID8gdChcInByb2ZpbGVQdW5jaE91dERvbmVcIiwgXCJBdXNnZXN0ZW1wZWx0XCIpXHJcbiAgICAgIDogdChcInByb2ZpbGVQdW5jaElkbGVcIiwgXCJOaWNodCBlaW5nZXN0ZW1wZWx0XCIpO1xyXG5cclxuICBjb25zdCBvcGVuU2V0dGluZ3MgPSAoKSA9PiB7XHJcbiAgICB3aW5kb3cubG9jYXRpb24uaGFzaCA9IFwiIy9zZXR0aW5nc1wiO1xyXG4gIH07XHJcblxyXG4gIHJldHVybiAoXHJcbiAgICA8ZGl2IGNsYXNzTmFtZT1cImdsYXNzLWNhcmQgZmxleCBoLWZ1bGwgZmxleC1jb2wgb3ZlcmZsb3ctaGlkZGVuIHAtNVwiPlxyXG4gICAgICB7Y3VzdG9tVGl0bGUgPyA8aDIgY2xhc3NOYW1lPVwibWItMyB0ZXh0LXNtIGZvbnQtYm9sZCB0ZXh0LXNsYXRlLTgwMFwiPntjdXN0b21UaXRsZX08L2gyPiA6IG51bGx9XHJcbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTNcIj5cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaC0xNCB3LTE0IHNocmluay0wIGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBvdmVyZmxvdy1oaWRkZW4gcm91bmRlZC0yeGwgYmctZ3JhZGllbnQtdG8tYnIgZnJvbS1ibHVlLTUwMCB0by1pbmRpZ28tNjAwIHRleHQtbGcgZm9udC1ib2xkIHRleHQtd2hpdGUgc2hhZG93LWxnIHNoYWRvdy1ibHVlLTYwMC8yNVwiPlxyXG4gICAgICAgICAge2F2YXRhckRhdGFVcmwgPyAoXHJcbiAgICAgICAgICAgIDxpbWcgc3JjPXthdmF0YXJEYXRhVXJsfSBhbHQ9XCJcIiBjbGFzc05hbWU9XCJoLWZ1bGwgdy1mdWxsIG9iamVjdC1jb3ZlclwiIC8+XHJcbiAgICAgICAgICApIDogKFxyXG4gICAgICAgICAgICBpbml0aWFsc1xyXG4gICAgICAgICAgKX1cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cIm1pbi13LTBcIj5cclxuICAgICAgICAgIDxwIGNsYXNzTmFtZT1cInRydW5jYXRlIHRleHQtYmFzZSBmb250LWJvbGQgdGV4dC1zbGF0ZS05MDBcIj57bmFtZX08L3A+XHJcbiAgICAgICAgICA8cCBjbGFzc05hbWU9XCJ0cnVuY2F0ZSB0ZXh0LXhzIHRleHQtc2xhdGUtNTAwXCI+e2VtYWlsfTwvcD5cclxuICAgICAgICAgIHtwcm9maWxlTWV0YSA/IDxwIGNsYXNzTmFtZT1cIm10LTAuNSB0cnVuY2F0ZSB0ZXh0LVsxMXB4XSB0ZXh0LXNsYXRlLTQwMFwiPntwcm9maWxlTWV0YX08L3A+IDogbnVsbH1cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcblxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cIm10LTQgcm91bmRlZC14bCBib3JkZXIgYm9yZGVyLXNsYXRlLTEwMCBiZy1zbGF0ZS01MC84MCBwLTNcIj5cclxuICAgICAgICA8cCBjbGFzc05hbWU9XCJ0ZXh0LVsxMHB4XSBmb250LXNlbWlib2xkIHVwcGVyY2FzZSB0cmFja2luZy13aWRlIHRleHQtc2xhdGUtNDAwXCI+e3QoXCJwcm9maWxlVG9kYXlcIiwgXCJIZXV0ZVwiKX08L3A+XHJcbiAgICAgICAgPHAgY2xhc3NOYW1lPVwibXQtMC41IHRleHQtc20gZm9udC1zZW1pYm9sZCBjYXBpdGFsaXplIHRleHQtc2xhdGUtODAwXCI+e3RvZGF5RnVsbExhYmVsfTwvcD5cclxuICAgICAgICA8cCBjbGFzc05hbWU9XCJtdC0xIHRleHQteHMgdGFidWxhci1udW1zIHRleHQtc2xhdGUtNTAwXCI+e3RpbWVMYWJlbH08L3A+XHJcbiAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC0zIGZsZXggaXRlbXMtY2VudGVyIGdhcC0yIHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1zbGF0ZS0xMDAgYmctd2hpdGUgcHgtMyBweS0yLjVcIj5cclxuICAgICAgICA8c3BhbiBjbGFzc05hbWU9e2BoLTMgdy0zIHNocmluay0wIHJvdW5kZWQtZnVsbCAke3N0YXR1c0NvbG9yfSBzaGFkb3ctc20gcmluZy0yIHJpbmctd2hpdGVgfSBhcmlhLWhpZGRlbiAvPlxyXG4gICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cInRleHQtc20gZm9udC1zZW1pYm9sZCB0ZXh0LXNsYXRlLTgwMFwiPntzdGF0dXNUZXh0fTwvc3Bhbj5cclxuICAgICAgPC9kaXY+XHJcblxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cIm10LTIgZ3JpZCBncmlkLWNvbHMtMiBnYXAtMlwiPlxyXG4gICAgICAgIDxidXR0b25cclxuICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxyXG4gICAgICAgICAgb25DbGljaz17KCkgPT4ge1xyXG4gICAgICAgICAgICBwdW5jaEluTm93KCk7XHJcbiAgICAgICAgICAgIHNldFB1bmNoKGxvYWRQdW5jaENsb2NrKCkpO1xyXG4gICAgICAgICAgfX1cclxuICAgICAgICAgIGRpc2FibGVkPXtwdW5jaGVkSW59XHJcbiAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtMS41IHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1lbWVyYWxkLTIwMCBiZy1lbWVyYWxkLTUwIHB5LTIgdGV4dC14cyBmb250LXNlbWlib2xkIHRleHQtZW1lcmFsZC04MDAgdHJhbnNpdGlvbiBob3ZlcjpiZy1lbWVyYWxkLTEwMCBkaXNhYmxlZDpjdXJzb3Itbm90LWFsbG93ZWQgZGlzYWJsZWQ6b3BhY2l0eS01MFwiXHJcbiAgICAgICAgPlxyXG4gICAgICAgICAgPExvZ0luIGNsYXNzTmFtZT1cImgtMy41IHctMy41XCIgLz5cclxuICAgICAgICAgIHt0KFwicHJvZmlsZVB1bmNoSW5cIiwgXCJFaW5zdGVtcGVsblwiKX1cclxuICAgICAgICA8L2J1dHRvbj5cclxuICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHtcclxuICAgICAgICAgICAgcHVuY2hPdXROb3coKTtcclxuICAgICAgICAgICAgc2V0UHVuY2gobG9hZFB1bmNoQ2xvY2soKSk7XHJcbiAgICAgICAgICB9fVxyXG4gICAgICAgICAgZGlzYWJsZWQ9eyFwdW5jaGVkSW59XHJcbiAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtMS41IHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1yZWQtMjAwIGJnLXJlZC01MCBweS0yIHRleHQteHMgZm9udC1zZW1pYm9sZCB0ZXh0LXJlZC04MDAgdHJhbnNpdGlvbiBob3ZlcjpiZy1yZWQtMTAwIGRpc2FibGVkOmN1cnNvci1ub3QtYWxsb3dlZCBkaXNhYmxlZDpvcGFjaXR5LTUwXCJcclxuICAgICAgICA+XHJcbiAgICAgICAgICA8TG9nT3V0IGNsYXNzTmFtZT1cImgtMy41IHctMy41XCIgLz5cclxuICAgICAgICAgIHt0KFwicHJvZmlsZVB1bmNoT3V0XCIsIFwiQXVzc3RlbXBlbG5cIil9XHJcbiAgICAgICAgPC9idXR0b24+XHJcbiAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC0zIGdyaWQgZ3JpZC1jb2xzLTIgZ2FwLTJcIj5cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1zbGF0ZS0xMDAgYmctc2xhdGUtNTAvODAgcC0yLjVcIj5cclxuICAgICAgICAgIDxwIGNsYXNzTmFtZT1cInRleHQtWzEwcHhdIGZvbnQtc2VtaWJvbGQgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGUgdGV4dC1zbGF0ZS00MDBcIj57dChcInByb2ZpbGVQdW5jaEluVGltZVwiLCBcIkVpbnN0ZW1wZWx6ZWl0XCIpfTwvcD5cclxuICAgICAgICAgIDxwIGNsYXNzTmFtZT1cIm10LTEgdGV4dC1zbSBmb250LXNlbWlib2xkIHRhYnVsYXItbnVtcyB0ZXh0LXNsYXRlLTgwMFwiPntwdW5jaEluTGFiZWx9PC9wPlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwicm91bmRlZC14bCBib3JkZXIgYm9yZGVyLXNsYXRlLTEwMCBiZy1zbGF0ZS01MC84MCBwLTIuNVwiPlxyXG4gICAgICAgICAgPHAgY2xhc3NOYW1lPVwidGV4dC1bMTBweF0gZm9udC1zZW1pYm9sZCB1cHBlcmNhc2UgdHJhY2tpbmctd2lkZSB0ZXh0LXNsYXRlLTQwMFwiPnt0KFwicHJvZmlsZVB1bmNoT3V0VGltZVwiLCBcIkF1c3N0ZW1wZWx6ZWl0XCIpfTwvcD5cclxuICAgICAgICAgIDxwIGNsYXNzTmFtZT1cIm10LTEgdGV4dC1zbSBmb250LXNlbWlib2xkIHRhYnVsYXItbnVtcyB0ZXh0LXNsYXRlLTgwMFwiPntwdW5jaE91dExhYmVsfTwvcD5cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcblxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cIm10LTMgc3BhY2UteS0xLjUgdGV4dC14cyB0ZXh0LXNsYXRlLTYwMFwiPlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIgcm91bmRlZC1sZyBiZy12aW9sZXQtNTAvNzAgcHgtMi41IHB5LTJcIj5cclxuICAgICAgICAgIDxNYWlsIGNsYXNzTmFtZT1cImgtMy41IHctMy41IHRleHQtdmlvbGV0LTYwMFwiIC8+XHJcbiAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJ0cnVuY2F0ZVwiPnt0KFwicHJvZmlsZUludGVybmFsQ29tbXNcIiwgXCJJbnRlcm5lIEtvbW11bmlrYXRpb24gYWt0aXZcIil9PC9zcGFuPlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIgcm91bmRlZC1sZyBiZy1lbWVyYWxkLTUwLzcwIHB4LTIuNSBweS0yXCI+XHJcbiAgICAgICAgICA8U2hpZWxkQ2hlY2sgY2xhc3NOYW1lPVwiaC0zLjUgdy0zLjUgdGV4dC1lbWVyYWxkLTYwMFwiIC8+XHJcbiAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJ0cnVuY2F0ZVwiPnt0KFwicHJvZmlsZVJvbGVWZXJpZmllZFwiLCBcIlJvbGxlIHZlcmlmaXppZXJ0XCIpfTwvc3Bhbj5cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0yIHJvdW5kZWQtbGcgYmctYmx1ZS01MC83MCBweC0yLjUgcHktMlwiPlxyXG4gICAgICAgICAgPENsb2NrMyBjbGFzc05hbWU9XCJoLTMuNSB3LTMuNSB0ZXh0LWJsdWUtNjAwXCIgLz5cclxuICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cInRydW5jYXRlXCI+e3QoXCJwcm9maWxlTGl2ZUNsb2NrXCIsIFwiTGl2ZS1VaHIgKGxva2FsKVwiKX08L3NwYW4+XHJcbiAgICAgICAgPC9kaXY+XHJcbiAgICAgIDwvZGl2PlxyXG5cclxuICAgICAge2Zvb3Rub3RlID8gPHAgY2xhc3NOYW1lPVwibXQtMyByb3VuZGVkLWxnIGJvcmRlciBib3JkZXItc2xhdGUtMTAwIGJnLXNsYXRlLTUwLzgwIHAtMiB0ZXh0LXhzIHRleHQtc2xhdGUtNjAwXCI+e2Zvb3Rub3RlfTwvcD4gOiBudWxsfVxyXG5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC1hdXRvIHB0LTNcIj5cclxuICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgIG9uQ2xpY2s9e29wZW5TZXR0aW5nc31cclxuICAgICAgICAgIGNsYXNzTmFtZT1cImZsZXggdy1mdWxsIGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtMiByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItc2xhdGUtMjAwIGJnLXdoaXRlIHB5LTIgdGV4dC14cyBmb250LXNlbWlib2xkIHRleHQtc2xhdGUtNzAwIHRyYW5zaXRpb24gaG92ZXI6Ymctc2xhdGUtNTBcIlxyXG4gICAgICAgID5cclxuICAgICAgICAgIDxVc2VyUm91bmQgY2xhc3NOYW1lPVwiaC0zLjUgdy0zLjVcIiAvPlxyXG4gICAgICAgICAge3QoXCJwcm9maWxlT3BlblNldHRpbmdzXCIsIFwiRWluc3RlbGx1bmdlbiDDtmZmbmVuXCIpfVxyXG4gICAgICAgIDwvYnV0dG9uPlxyXG4gICAgICA8L2Rpdj5cclxuICAgIDwvZGl2PlxyXG4gICk7XHJcbn1cclxuIl0sImZpbGUiOiJDOi9Vc2Vycy92ZWRhbi9Eb2N1bWVudHMvRGVtYS1EYXNoYm9hcmQvZnJvbnRlbmQvc3JjL3dpZGdldHMvUHJvZmlsZU1vZHVsZVdpZGdldC50c3gifQ==

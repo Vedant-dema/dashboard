@@ -6,6 +6,7 @@ import {
   Copy,
   ExternalLink,
   MapPin,
+  Maximize2,
   Phone,
   Plus,
   Sparkles,
@@ -70,6 +71,8 @@ type Props = {
   onPersist: (entry: TimetableEntry) => void;
   onLogCall: (entry: TimetableEntry) => void;
 };
+
+type DrawerWorkspaceTab = 'call' | 'offer';
 
 function cloneEntry(e: TimetableEntry): TimetableEntry {
   return JSON.parse(JSON.stringify(e)) as TimetableEntry;
@@ -320,7 +323,8 @@ export function TimetableContactDrawer({
   const [smartSummaryOpen, setSmartSummaryOpen] = useState(false);
   const [kundenDbTick, setKundenDbTick] = useState(0);
   /** Split master/contact vs. offer so the offer generator is not shown on the call workspace. */
-  const [drawerWorkspaceTab, setDrawerWorkspaceTab] = useState<'call' | 'offer'>('call');
+  const [drawerWorkspaceTab, setDrawerWorkspaceTab] = useState<DrawerWorkspaceTab>('call');
+  const [bemerkungenComfortOpen, setBemerkungenComfortOpen] = useState(false);
   const [copyFlash, setCopyFlash] = useState<'ok' | 'err' | null>(null);
   const smartSummaryRef = useRef<HTMLDivElement>(null);
   const prevEntryIdRef = useRef<number | null>(null);
@@ -368,6 +372,10 @@ export function TimetableContactDrawer({
 
   useEffect(() => {
     setDrawerWorkspaceTab('call');
+  }, [entry?.id]);
+
+  useEffect(() => {
+    setBemerkungenComfortOpen(false);
   }, [entry?.id]);
 
   useLayoutEffect(() => {
@@ -441,6 +449,10 @@ export function TimetableContactDrawer({
     if (!entry) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (bemerkungenComfortOpen) {
+          setBemerkungenComfortOpen(false);
+          return;
+        }
         if (smartSummaryOpen) {
           setSmartSummaryOpen(false);
           return;
@@ -450,7 +462,7 @@ export function TimetableContactDrawer({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [entry, onClose, smartSummaryOpen]);
+  }, [bemerkungenComfortOpen, entry, onClose, smartSummaryOpen]);
 
   const smartBullets = useMemo(() => {
     if (!draft) return [] as string[];
@@ -938,7 +950,7 @@ export function TimetableContactDrawer({
                 }`}
               >
                 <Phone className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
-                <span>{t('timetableContactDrawerTabCall', 'Call & contact')}</span>
+                <span>{t('timetableContactDrawerTabCall', 'Appointment')}</span>
               </button>
               <button
                 type="button"
@@ -1282,12 +1294,25 @@ export function TimetableContactDrawer({
               <div
                 className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 flex min-h-[min(70dvh,22rem)] min-w-0 flex-col overflow-hidden border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-1 lg:min-h-[min(78dvh,28rem)]`}
               >
-                <p
-                  id="tt-drawer-bemerkungen-heading"
-                  className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--4 shrink-0`}
-                >
-                  {t('timetableContactBemerkungen', 'Remarks')}
-                </p>
+                <div className="flex shrink-0 flex-wrap items-start justify-between gap-2">
+                  <p
+                    id="tt-drawer-bemerkungen-heading"
+                    className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--4 min-w-0 flex-1`}
+                  >
+                    {t('timetableContactBemerkungen', 'Remarks')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setBemerkungenComfortOpen(true)}
+                    aria-haspopup="dialog"
+                    className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-300/90 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:px-4"
+                  >
+                    <Maximize2 className="h-4 w-4 shrink-0 text-slate-600 sm:h-[1.125rem] sm:w-[1.125rem]" aria-hidden />
+                    <span className="max-w-[11rem] text-left leading-tight sm:max-w-[16rem]">
+                      {t('timetableContactBemerkungenOpenLarge', 'Large view')}
+                    </span>
+                  </button>
+                </div>
                 <div
                   id="tt-drawer-bemerkungen"
                   aria-labelledby="tt-drawer-bemerkungen-heading"
@@ -1333,6 +1358,7 @@ export function TimetableContactDrawer({
                   <div className="min-w-0 flex-1">
                     <TimetableOfferGeneratorBlock
                       rowKey={`${draft.id}-${selectedOfferId}`}
+                      currentOffer={offer}
                       setOfferField={setOfferField}
                       setVehicleExtra={setVehicleExtra}
                       onGeneratorApplied={() => setDirty(true)}
@@ -1443,5 +1469,65 @@ export function TimetableContactDrawer({
     </div>
   );
 
-  return typeof document !== 'undefined' ? createPortal(modalUi, document.body) : null;
+  const bemerkungenComfortPortal =
+    bemerkungenComfortOpen && typeof document !== 'undefined' ? (
+      <div
+        className="fixed inset-0 z-[110] flex items-end justify-center bg-slate-950/55 p-0 pb-[env(safe-area-inset-bottom)] backdrop-blur-[1px] sm:items-center sm:p-4 sm:pb-4"
+        role="presentation"
+        onClick={() => setBemerkungenComfortOpen(false)}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tt-bemerkungen-large-title"
+          className="flex max-h-[min(96dvh,64rem)] min-h-[min(52dvh,20rem)] w-full max-w-[min(80rem,100vw)] flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:min-h-[min(58dvh,24rem)] sm:rounded-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="min-w-0 flex-1 pr-2">
+              <h2
+                id="tt-bemerkungen-large-title"
+                className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"
+              >
+                {t('timetableContactBemerkungenLargeTitle', 'Remarks — large view')}
+              </h2>
+              <p className="mt-1.5 text-sm text-slate-600 sm:text-base">
+                {t(
+                  'timetableContactBemerkungenLargeHint',
+                  'Larger text and more space to read and edit notes comfortably.'
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBemerkungenComfortOpen(false)}
+              aria-label={t('commonClose', 'Close')}
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-300/80 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 sm:px-4"
+            >
+              <X className="h-5 w-5 shrink-0" aria-hidden />
+              <span className="hidden sm:inline">{t('commonClose', 'Close')}</span>
+            </button>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+            <TimetableActivityNotesThread
+              draft={draft}
+              profile={p}
+              patchDraft={patchDraft}
+              localeTag={localeTag}
+              t={t}
+              layout="comfortOverlay"
+            />
+          </div>
+        </div>
+      </div>
+    ) : null;
+
+  if (typeof document === 'undefined') return null;
+
+  return (
+    <>
+      {createPortal(modalUi, document.body)}
+      {bemerkungenComfortPortal ? createPortal(bemerkungenComfortPortal, document.body) : null}
+    </>
+  );
 }

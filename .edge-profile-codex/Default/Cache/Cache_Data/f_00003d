@@ -1,0 +1,326 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/auth/AuthDashboardGraphic.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6265600e"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+export function AuthDashboardGraphic({ className = "" }) {
+  return /* @__PURE__ */ jsxDEV(
+    "svg",
+    {
+      className,
+      viewBox: "0 0 440 200",
+      fill: "none",
+      xmlns: "http://www.w3.org/2000/svg",
+      "aria-hidden": true,
+      children: [
+        /* @__PURE__ */ jsxDEV("defs", { children: [
+          /* @__PURE__ */ jsxDEV("linearGradient", { id: "authDashLine", x1: "0", y1: "0", x2: "1", y2: "0", children: [
+            /* @__PURE__ */ jsxDEV("stop", { stopColor: "#93c5fd" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 32,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("stop", { offset: "0.5", stopColor: "#c4b5fd" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 33,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("stop", { offset: "1", stopColor: "#67e8f9" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 34,
+              columnNumber: 11
+            }, this)
+          ] }, void 0, true, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 31,
+            columnNumber: 9
+          }, this),
+          /* @__PURE__ */ jsxDEV("linearGradient", { id: "authDashBar", x1: "0", y1: "1", x2: "0", y2: "0", children: [
+            /* @__PURE__ */ jsxDEV("stop", { stopColor: "#3b82f6", stopOpacity: "0.9" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 37,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("stop", { offset: "1", stopColor: "#6366f1", stopOpacity: "0.5" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 38,
+              columnNumber: 11
+            }, this)
+          ] }, void 0, true, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 36,
+            columnNumber: 9
+          }, this),
+          /* @__PURE__ */ jsxDEV("filter", { id: "authDashGlow", x: "-20%", y: "-20%", width: "140%", height: "140%", children: [
+            /* @__PURE__ */ jsxDEV("feGaussianBlur", { stdDeviation: "2", result: "b" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 41,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("feMerge", { children: [
+              /* @__PURE__ */ jsxDEV("feMergeNode", { in: "b" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+                lineNumber: 43,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("feMergeNode", { in: "SourceGraphic" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+                lineNumber: 44,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 42,
+              columnNumber: 11
+            }, this)
+          ] }, void 0, true, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 40,
+            columnNumber: 9
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 30,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV(
+          "rect",
+          {
+            x: "4",
+            y: "8",
+            width: "210",
+            height: "184",
+            rx: "14",
+            className: "stroke-white/15",
+            strokeWidth: "1",
+            fill: "rgb(255 255 255 / 0.04)"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 50,
+            columnNumber: 7
+          },
+          this
+        ),
+        /* @__PURE__ */ jsxDEV("rect", { x: "20", y: "24", width: "88", height: "6", rx: "3", fill: "rgb(255 255 255 / 0.18)", className: "auth-pulse-dot" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 60,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV("rect", { x: "20", y: "38", width: "120", height: "4", rx: "2", fill: "rgb(255 255 255 / 0.08)" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 61,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV("rect", { x: "20", y: "56", width: "52", height: "28", rx: "8", fill: "rgb(59 130 246 / 0.25)" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 64,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV("rect", { x: "80", y: "56", width: "52", height: "28", rx: "8", fill: "rgb(139 92 246 / 0.2)" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 65,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV("rect", { x: "140", y: "56", width: "52", height: "28", rx: "8", fill: "rgb(34 211 238 / 0.15)" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 66,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV("g", { transform: "translate(20, 100)", children: [
+          /* @__PURE__ */ jsxDEV(
+            "rect",
+            {
+              className: "auth-svg-bar",
+              x: "0",
+              y: "44",
+              width: "14",
+              height: "40",
+              rx: "4",
+              fill: "url(#authDashBar)",
+              style: { animationDelay: "0.45s" }
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 70,
+              columnNumber: 9
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            "rect",
+            {
+              className: "auth-svg-bar",
+              x: "22",
+              y: "28",
+              width: "14",
+              height: "56",
+              rx: "4",
+              fill: "url(#authDashBar)",
+              style: { animationDelay: "0.58s" }
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 80,
+              columnNumber: 9
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            "rect",
+            {
+              className: "auth-svg-bar",
+              x: "44",
+              y: "36",
+              width: "14",
+              height: "48",
+              rx: "4",
+              fill: "url(#authDashBar)",
+              style: { animationDelay: "0.71s" }
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 90,
+              columnNumber: 9
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            "rect",
+            {
+              className: "auth-svg-bar",
+              x: "66",
+              y: "12",
+              width: "14",
+              height: "72",
+              rx: "4",
+              fill: "url(#authDashBar)",
+              style: { animationDelay: "0.84s" }
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 100,
+              columnNumber: 9
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 69,
+          columnNumber: 7
+        }, this),
+        /* @__PURE__ */ jsxDEV(
+          "rect",
+          {
+            x: "228",
+            y: "8",
+            width: "208",
+            height: "184",
+            rx: "14",
+            className: "stroke-white/10",
+            strokeWidth: "1",
+            fill: "rgb(255 255 255 / 0.03)"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 113,
+            columnNumber: 7
+          },
+          this
+        ),
+        /* @__PURE__ */ jsxDEV("rect", { x: "244", y: "28", width: "72", height: "5", rx: "2.5", fill: "rgb(255 255 255 / 0.14)" }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+          lineNumber: 123,
+          columnNumber: 7
+        }, this),
+        [0, 1, 2, 3].map(
+          (i) => /* @__PURE__ */ jsxDEV("g", { transform: `translate(244, ${48 + i * 34})`, children: [
+            /* @__PURE__ */ jsxDEV("rect", { width: "160", height: "8", rx: "4", fill: "rgb(255 255 255 / 0.06)" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 126,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("rect", { width: "100", height: "8", rx: "4", y: "12", fill: "rgb(255 255 255 / 0.04)" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+              lineNumber: 127,
+              columnNumber: 11
+            }, this)
+          ] }, i, true, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 125,
+            columnNumber: 7
+          }, this)
+        ),
+        /* @__PURE__ */ jsxDEV(
+          "path",
+          {
+            className: "auth-svg-line",
+            d: "M 32 168 C 100 130, 160 150, 230 120 S 360 100, 408 88",
+            stroke: "url(#authDashLine)",
+            strokeWidth: "2.5",
+            strokeLinecap: "round",
+            filter: "url(#authDashGlow)"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+            lineNumber: 132,
+            columnNumber: 7
+          },
+          this
+        )
+      ]
+    },
+    void 0,
+    true,
+    {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx",
+      lineNumber: 23,
+      columnNumber: 5
+    },
+    this
+  );
+}
+_c = AuthDashboardGraphic;
+var _c;
+$RefreshReg$(_c, "AuthDashboardGraphic");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthDashboardGraphic.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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VixHQUFFO0FBQUEsWUFDRixRQUFPO0FBQUEsWUFDUCxhQUFZO0FBQUEsWUFDWixlQUFjO0FBQUEsWUFDZCxRQUFPO0FBQUE7QUFBQSxVQU5UO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQSxRQU02QjtBQUFBO0FBQUE7QUFBQSxJQW5IL0I7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLEVBcUhBO0FBRUo7QUFBQ0MsS0F6SGVMO0FBQW9CLElBQUFLO0FBQUEsYUFBQUEsSUFBQSIsIm5hbWVzIjpbIkF1dGhEYXNoYm9hcmRHcmFwaGljIiwiY2xhc3NOYW1lIiwiYW5pbWF0aW9uRGVsYXkiLCJtYXAiLCJpIiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQXV0aERhc2hib2FyZEdyYXBoaWMudHN4Il0sInNvdXJjZXNDb250ZW50IjpbIi8qKiBBYnN0cmFjdCBkYXNoYm9hcmQgcHJldmlldyDigJQgZGVjb3JhdGl2ZSBTVkcgd2l0aCBDU1MtZHJpdmVuIGRyYXcgLyBiYXIgYW5pbWF0aW9ucy4gKi9cclxuZXhwb3J0IGZ1bmN0aW9uIEF1dGhEYXNoYm9hcmRHcmFwaGljKHsgY2xhc3NOYW1lID0gXCJcIiB9OiB7IGNsYXNzTmFtZT86IHN0cmluZyB9KSB7XHJcbiAgcmV0dXJuIChcclxuICAgIDxzdmdcclxuICAgICAgY2xhc3NOYW1lPXtjbGFzc05hbWV9XHJcbiAgICAgIHZpZXdCb3g9XCIwIDAgNDQwIDIwMFwiXHJcbiAgICAgIGZpbGw9XCJub25lXCJcclxuICAgICAgeG1sbnM9XCJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Z1wiXHJcbiAgICAgIGFyaWEtaGlkZGVuXHJcbiAgICA+XHJcbiAgICAgIDxkZWZzPlxyXG4gICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD1cImF1dGhEYXNoTGluZVwiIHgxPVwiMFwiIHkxPVwiMFwiIHgyPVwiMVwiIHkyPVwiMFwiPlxyXG4gICAgICAgICAgPHN0b3Agc3RvcENvbG9yPVwiIzkzYzVmZFwiIC8+XHJcbiAgICAgICAgICA8c3RvcCBvZmZzZXQ9XCIwLjVcIiBzdG9wQ29sb3I9XCIjYzRiNWZkXCIgLz5cclxuICAgICAgICAgIDxzdG9wIG9mZnNldD1cIjFcIiBzdG9wQ29sb3I9XCIjNjdlOGY5XCIgLz5cclxuICAgICAgICA8L2xpbmVhckdyYWRpZW50PlxyXG4gICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD1cImF1dGhEYXNoQmFyXCIgeDE9XCIwXCIgeTE9XCIxXCIgeDI9XCIwXCIgeTI9XCIwXCI+XHJcbiAgICAgICAgICA8c3RvcCBzdG9wQ29sb3I9XCIjM2I4MmY2XCIgc3RvcE9wYWNpdHk9XCIwLjlcIiAvPlxyXG4gICAgICAgICAgPHN0b3Agb2Zmc2V0PVwiMVwiIHN0b3BDb2xvcj1cIiM2MzY2ZjFcIiBzdG9wT3BhY2l0eT1cIjAuNVwiIC8+XHJcbiAgICAgICAgPC9saW5lYXJHcmFkaWVudD5cclxuICAgICAgICA8ZmlsdGVyIGlkPVwiYXV0aERhc2hHbG93XCIgeD1cIi0yMCVcIiB5PVwiLTIwJVwiIHdpZHRoPVwiMTQwJVwiIGhlaWdodD1cIjE0MCVcIj5cclxuICAgICAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249XCIyXCIgcmVzdWx0PVwiYlwiIC8+XHJcbiAgICAgICAgICA8ZmVNZXJnZT5cclxuICAgICAgICAgICAgPGZlTWVyZ2VOb2RlIGluPVwiYlwiIC8+XHJcbiAgICAgICAgICAgIDxmZU1lcmdlTm9kZSBpbj1cIlNvdXJjZUdyYXBoaWNcIiAvPlxyXG4gICAgICAgICAgPC9mZU1lcmdlPlxyXG4gICAgICAgIDwvZmlsdGVyPlxyXG4gICAgICA8L2RlZnM+XHJcblxyXG4gICAgICB7LyogTWFpbiDigJx3aW5kb3figJ0gKi99XHJcbiAgICAgIDxyZWN0XHJcbiAgICAgICAgeD1cIjRcIlxyXG4gICAgICAgIHk9XCI4XCJcclxuICAgICAgICB3aWR0aD1cIjIxMFwiXHJcbiAgICAgICAgaGVpZ2h0PVwiMTg0XCJcclxuICAgICAgICByeD1cIjE0XCJcclxuICAgICAgICBjbGFzc05hbWU9XCJzdHJva2Utd2hpdGUvMTVcIlxyXG4gICAgICAgIHN0cm9rZVdpZHRoPVwiMVwiXHJcbiAgICAgICAgZmlsbD1cInJnYigyNTUgMjU1IDI1NSAvIDAuMDQpXCJcclxuICAgICAgLz5cclxuICAgICAgPHJlY3QgeD1cIjIwXCIgeT1cIjI0XCIgd2lkdGg9XCI4OFwiIGhlaWdodD1cIjZcIiByeD1cIjNcIiBmaWxsPVwicmdiKDI1NSAyNTUgMjU1IC8gMC4xOClcIiBjbGFzc05hbWU9XCJhdXRoLXB1bHNlLWRvdFwiIC8+XHJcbiAgICAgIDxyZWN0IHg9XCIyMFwiIHk9XCIzOFwiIHdpZHRoPVwiMTIwXCIgaGVpZ2h0PVwiNFwiIHJ4PVwiMlwiIGZpbGw9XCJyZ2IoMjU1IDI1NSAyNTUgLyAwLjA4KVwiIC8+XHJcblxyXG4gICAgICB7LyogTWluaSBLUEkgcGlsbHMgKi99XHJcbiAgICAgIDxyZWN0IHg9XCIyMFwiIHk9XCI1NlwiIHdpZHRoPVwiNTJcIiBoZWlnaHQ9XCIyOFwiIHJ4PVwiOFwiIGZpbGw9XCJyZ2IoNTkgMTMwIDI0NiAvIDAuMjUpXCIgLz5cclxuICAgICAgPHJlY3QgeD1cIjgwXCIgeT1cIjU2XCIgd2lkdGg9XCI1MlwiIGhlaWdodD1cIjI4XCIgcng9XCI4XCIgZmlsbD1cInJnYigxMzkgOTIgMjQ2IC8gMC4yKVwiIC8+XHJcbiAgICAgIDxyZWN0IHg9XCIxNDBcIiB5PVwiNTZcIiB3aWR0aD1cIjUyXCIgaGVpZ2h0PVwiMjhcIiByeD1cIjhcIiBmaWxsPVwicmdiKDM0IDIxMSAyMzggLyAwLjE1KVwiIC8+XHJcblxyXG4gICAgICB7LyogQmFycyBjaGFydCAqL31cclxuICAgICAgPGcgdHJhbnNmb3JtPVwidHJhbnNsYXRlKDIwLCAxMDApXCI+XHJcbiAgICAgICAgPHJlY3RcclxuICAgICAgICAgIGNsYXNzTmFtZT1cImF1dGgtc3ZnLWJhclwiXHJcbiAgICAgICAgICB4PVwiMFwiXHJcbiAgICAgICAgICB5PVwiNDRcIlxyXG4gICAgICAgICAgd2lkdGg9XCIxNFwiXHJcbiAgICAgICAgICBoZWlnaHQ9XCI0MFwiXHJcbiAgICAgICAgICByeD1cIjRcIlxyXG4gICAgICAgICAgZmlsbD1cInVybCgjYXV0aERhc2hCYXIpXCJcclxuICAgICAgICAgIHN0eWxlPXt7IGFuaW1hdGlvbkRlbGF5OiBcIjAuNDVzXCIgfX1cclxuICAgICAgICAvPlxyXG4gICAgICAgIDxyZWN0XHJcbiAgICAgICAgICBjbGFzc05hbWU9XCJhdXRoLXN2Zy1iYXJcIlxyXG4gICAgICAgICAgeD1cIjIyXCJcclxuICAgICAgICAgIHk9XCIyOFwiXHJcbiAgICAgICAgICB3aWR0aD1cIjE0XCJcclxuICAgICAgICAgIGhlaWdodD1cIjU2XCJcclxuICAgICAgICAgIHJ4PVwiNFwiXHJcbiAgICAgICAgICBmaWxsPVwidXJsKCNhdXRoRGFzaEJhcilcIlxyXG4gICAgICAgICAgc3R5bGU9e3sgYW5pbWF0aW9uRGVsYXk6IFwiMC41OHNcIiB9fVxyXG4gICAgICAgIC8+XHJcbiAgICAgICAgPHJlY3RcclxuICAgICAgICAgIGNsYXNzTmFtZT1cImF1dGgtc3ZnLWJhclwiXHJcbiAgICAgICAgICB4PVwiNDRcIlxyXG4gICAgICAgICAgeT1cIjM2XCJcclxuICAgICAgICAgIHdpZHRoPVwiMTRcIlxyXG4gICAgICAgICAgaGVpZ2h0PVwiNDhcIlxyXG4gICAgICAgICAgcng9XCI0XCJcclxuICAgICAgICAgIGZpbGw9XCJ1cmwoI2F1dGhEYXNoQmFyKVwiXHJcbiAgICAgICAgICBzdHlsZT17eyBhbmltYXRpb25EZWxheTogXCIwLjcxc1wiIH19XHJcbiAgICAgICAgLz5cclxuICAgICAgICA8cmVjdFxyXG4gICAgICAgICAgY2xhc3NOYW1lPVwiYXV0aC1zdmctYmFyXCJcclxuICAgICAgICAgIHg9XCI2NlwiXHJcbiAgICAgICAgICB5PVwiMTJcIlxyXG4gICAgICAgICAgd2lkdGg9XCIxNFwiXHJcbiAgICAgICAgICBoZWlnaHQ9XCI3MlwiXHJcbiAgICAgICAgICByeD1cIjRcIlxyXG4gICAgICAgICAgZmlsbD1cInVybCgjYXV0aERhc2hCYXIpXCJcclxuICAgICAgICAgIHN0eWxlPXt7IGFuaW1hdGlvbkRlbGF5OiBcIjAuODRzXCIgfX1cclxuICAgICAgICAvPlxyXG4gICAgICA8L2c+XHJcblxyXG4gICAgICB7LyogU2Vjb25kIHBhbmVsIOKAlCBsaXN0ICovfVxyXG4gICAgICA8cmVjdFxyXG4gICAgICAgIHg9XCIyMjhcIlxyXG4gICAgICAgIHk9XCI4XCJcclxuICAgICAgICB3aWR0aD1cIjIwOFwiXHJcbiAgICAgICAgaGVpZ2h0PVwiMTg0XCJcclxuICAgICAgICByeD1cIjE0XCJcclxuICAgICAgICBjbGFzc05hbWU9XCJzdHJva2Utd2hpdGUvMTBcIlxyXG4gICAgICAgIHN0cm9rZVdpZHRoPVwiMVwiXHJcbiAgICAgICAgZmlsbD1cInJnYigyNTUgMjU1IDI1NSAvIDAuMDMpXCJcclxuICAgICAgLz5cclxuICAgICAgPHJlY3QgeD1cIjI0NFwiIHk9XCIyOFwiIHdpZHRoPVwiNzJcIiBoZWlnaHQ9XCI1XCIgcng9XCIyLjVcIiBmaWxsPVwicmdiKDI1NSAyNTUgMjU1IC8gMC4xNClcIiAvPlxyXG4gICAgICB7WzAsIDEsIDIsIDNdLm1hcCgoaSkgPT4gKFxyXG4gICAgICAgIDxnIGtleT17aX0gdHJhbnNmb3JtPXtgdHJhbnNsYXRlKDI0NCwgJHs0OCArIGkgKiAzNH0pYH0+XHJcbiAgICAgICAgICA8cmVjdCB3aWR0aD1cIjE2MFwiIGhlaWdodD1cIjhcIiByeD1cIjRcIiBmaWxsPVwicmdiKDI1NSAyNTUgMjU1IC8gMC4wNilcIiAvPlxyXG4gICAgICAgICAgPHJlY3Qgd2lkdGg9XCIxMDBcIiBoZWlnaHQ9XCI4XCIgcng9XCI0XCIgeT1cIjEyXCIgZmlsbD1cInJnYigyNTUgMjU1IDI1NSAvIDAuMDQpXCIgLz5cclxuICAgICAgICA8L2c+XHJcbiAgICAgICkpfVxyXG5cclxuICAgICAgey8qIFRyZW5kIGxpbmUgc3Bhbm5pbmcgYm90aCBwYW5lbHMgKi99XHJcbiAgICAgIDxwYXRoXHJcbiAgICAgICAgY2xhc3NOYW1lPVwiYXV0aC1zdmctbGluZVwiXHJcbiAgICAgICAgZD1cIk0gMzIgMTY4IEMgMTAwIDEzMCwgMTYwIDE1MCwgMjMwIDEyMCBTIDM2MCAxMDAsIDQwOCA4OFwiXHJcbiAgICAgICAgc3Ryb2tlPVwidXJsKCNhdXRoRGFzaExpbmUpXCJcclxuICAgICAgICBzdHJva2VXaWR0aD1cIjIuNVwiXHJcbiAgICAgICAgc3Ryb2tlTGluZWNhcD1cInJvdW5kXCJcclxuICAgICAgICBmaWx0ZXI9XCJ1cmwoI2F1dGhEYXNoR2xvdylcIlxyXG4gICAgICAvPlxyXG4gICAgPC9zdmc+XHJcbiAgKTtcclxufVxyXG4iXSwiZmlsZSI6IkM6L1VzZXJzL3ZlZGFuL0RvY3VtZW50cy9EZW1hLURhc2hib2FyZC9mcm9udGVuZC9zcmMvY29tcG9uZW50cy9hdXRoL0F1dGhEYXNoYm9hcmRHcmFwaGljLnRzeCJ9

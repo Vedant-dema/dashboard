@@ -1,0 +1,254 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/widgets/TodoListWidget.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6265600e"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import __vite__cjsImport3_react from "/node_modules/.vite/deps/react.js?v=6265600e"; const useMemo = __vite__cjsImport3_react["useMemo"]; const useState = __vite__cjsImport3_react["useState"];
+import { Check, Circle, Plus, Trash2 } from "/node_modules/.vite/deps/lucide-react.js?v=6265600e";
+import { useWidgetLanguage } from "/src/widgets/useWidgetLanguage.ts?t=1776240837999";
+import { cfgString } from "/src/widgets/widgetConfigHelpers.ts";
+import { getTodosFromConfig, todoDisplay } from "/src/widgets/dynamicWidgetLists.ts";
+import { TODO_PRESETS } from "/src/widgets/widgetListPresets.ts";
+const selectCls = "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20";
+export function TodoListWidget({ config, onUpdateConfig }) {
+  _s();
+  const { t } = useWidgetLanguage();
+  const title = cfgString(config, "customTitle", t("widgetTitleTodoList", "To-do Liste"));
+  const list = useMemo(() => getTodosFromConfig(config), [config]);
+  const persist = (next) => {
+    onUpdateConfig?.({
+      todoItems: next,
+      todoLines: void 0
+    });
+  };
+  const toggle = (id) => {
+    persist(list.map((it) => it.id === id ? { ...it, done: !it.done } : it));
+  };
+  const remove = (id) => {
+    persist(list.filter((it) => it.id !== id));
+  };
+  const [adding, setAdding] = useState(false);
+  const [formTemplate, setFormTemplate] = useState(TODO_PRESETS[0].id);
+  const addPreset = () => {
+    const next = {
+      id: `d-${Date.now()}`,
+      templateId: formTemplate,
+      done: false
+    };
+    persist([...list, next]);
+    setAdding(false);
+  };
+  const canEdit = Boolean(onUpdateConfig);
+  return /* @__PURE__ */ jsxDEV("div", { className: "flex h-full flex-col", children: [
+    /* @__PURE__ */ jsxDEV("h2", { className: "mb-3 text-lg font-bold text-slate-800", children: title }, void 0, false, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+      lineNumber: 68,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("ul", { className: "min-h-0 flex-1 space-y-2 overflow-auto", children: list.map(
+      (it) => /* @__PURE__ */ jsxDEV("li", { className: "flex items-start gap-2", children: [
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: () => canEdit && toggle(it.id),
+            disabled: !canEdit,
+            className: "flex min-w-0 flex-1 items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 text-left transition hover:border-blue-200 hover:bg-white disabled:pointer-events-none disabled:opacity-90",
+            children: [
+              /* @__PURE__ */ jsxDEV("span", { className: "mt-0.5 shrink-0 text-blue-600", children: it.done ? /* @__PURE__ */ jsxDEV(Check, { className: "h-5 w-5" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+                lineNumber: 79,
+                columnNumber: 28
+              }, this) : /* @__PURE__ */ jsxDEV(Circle, { className: "h-5 w-5" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+                lineNumber: 79,
+                columnNumber: 60
+              }, this) }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+                lineNumber: 78,
+                columnNumber: 15
+              }, this),
+              /* @__PURE__ */ jsxDEV(
+                "span",
+                {
+                  className: `text-sm font-medium ${it.done ? "text-slate-400 line-through" : "text-slate-800"}`,
+                  children: todoDisplay(it)
+                },
+                void 0,
+                false,
+                {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+                  lineNumber: 81,
+                  columnNumber: 15
+                },
+                this
+              )
+            ]
+          },
+          void 0,
+          true,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+            lineNumber: 72,
+            columnNumber: 13
+          },
+          this
+        ),
+        canEdit && /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: () => remove(it.id),
+            className: "mt-1 shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600",
+            title: t("commonRemove", "Entfernen"),
+            children: /* @__PURE__ */ jsxDEV(Trash2, { className: "h-4 w-4" }, void 0, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+              lineNumber: 94,
+              columnNumber: 17
+            }, this)
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+            lineNumber: 88,
+            columnNumber: 11
+          },
+          this
+        )
+      ] }, it.id, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+        lineNumber: 71,
+        columnNumber: 9
+      }, this)
+    ) }, void 0, false, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+      lineNumber: 69,
+      columnNumber: 7
+    }, this),
+    canEdit && adding && /* @__PURE__ */ jsxDEV("div", { className: "mt-3 space-y-2 rounded-xl border border-blue-100 bg-blue-50/40 p-3", children: [
+      /* @__PURE__ */ jsxDEV("label", { className: "mb-0.5 block text-[10px] font-medium uppercase text-slate-500", children: t("todoPickTemplate", "Vorlage wählen") }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+        lineNumber: 103,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("select", { className: selectCls, value: formTemplate, onChange: (e) => setFormTemplate(e.target.value), children: TODO_PRESETS.map(
+        (p) => /* @__PURE__ */ jsxDEV("option", { value: p.id, children: p.label }, p.id, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+          lineNumber: 108,
+          columnNumber: 11
+        }, this)
+      ) }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+        lineNumber: 106,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex gap-2 pt-1", children: [
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: addPreset,
+            className: "flex-1 rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700",
+            children: t("commonAdd", "Hinzufügen")
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+            lineNumber: 114,
+            columnNumber: 13
+          },
+          this
+        ),
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: () => setAdding(false),
+            className: "flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-600 hover:bg-white",
+            children: t("commonCancel", "Abbrechen")
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+            lineNumber: 121,
+            columnNumber: 13
+          },
+          this
+        )
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+        lineNumber: 113,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+      lineNumber: 102,
+      columnNumber: 7
+    }, this),
+    canEdit && !adding && /* @__PURE__ */ jsxDEV(
+      "button",
+      {
+        type: "button",
+        onClick: () => setAdding(true),
+        className: "mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 py-2.5 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-50/50",
+        children: [
+          /* @__PURE__ */ jsxDEV(Plus, { className: "h-4 w-4" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+            lineNumber: 138,
+            columnNumber: 11
+          }, this),
+          t("todoAddEntry", "Eintrag hinzufügen")
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+        lineNumber: 133,
+        columnNumber: 7
+      },
+      this
+    )
+  ] }, void 0, true, {
+    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx",
+    lineNumber: 67,
+    columnNumber: 5
+  }, this);
+}
+_s(TodoListWidget, "pAHZ6TOpfioHD4ok+JOhb6/CRxY=", false, function() {
+  return [useWidgetLanguage];
+});
+_c = TodoListWidget;
+var _c;
+$RefreshReg$(_c, "TodoListWidget");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/widgets/TodoListWidget.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QU1BO0FBQUEsUUFDQTtBQUFBLFVBQUM7QUFBQTtBQUFBLFlBQ0MsTUFBSztBQUFBLFlBQ0wsU0FBUyxNQUFNZ0IsVUFBVSxLQUFLO0FBQUEsWUFDOUIsV0FBVTtBQUFBLFlBRVRoQixZQUFFLGdCQUFnQixXQUFXO0FBQUE7QUFBQSxVQUxoQztBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUEsUUFNQTtBQUFBLFdBZEY7QUFBQTtBQUFBO0FBQUE7QUFBQSxhQWVBO0FBQUEsU0ExQkY7QUFBQTtBQUFBO0FBQUE7QUFBQSxXQTJCQTtBQUFBLElBR0R1QixXQUFXLENBQUNSLFVBQ1g7QUFBQSxNQUFDO0FBQUE7QUFBQSxRQUNDLE1BQUs7QUFBQSxRQUNMLFNBQVMsTUFBTUMsVUFBVSxJQUFJO0FBQUEsUUFDN0IsV0FBVTtBQUFBLFFBRVY7QUFBQSxpQ0FBQyxRQUFLLFdBQVUsYUFBaEI7QUFBQTtBQUFBO0FBQUE7QUFBQSxpQkFBeUI7QUFBQSxVQUN4QmhCLEVBQUUsZ0JBQWdCLG9CQUFvQjtBQUFBO0FBQUE7QUFBQSxNQU56QztBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUEsSUFPQTtBQUFBLE9BekVKO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0EyRUE7QUFFSjtBQUFDRCxHQWpIZUgsZ0JBQWM7QUFBQSxVQUNkTixpQkFBaUI7QUFBQTtBQUFBLEtBRGpCTTtBQUFjLElBQUFrQztBQUFBLGFBQUFBLElBQUEiLCJuYW1lcyI6WyJ1c2VNZW1vIiwidXNlU3RhdGUiLCJDaGVjayIsIkNpcmNsZSIsIlBsdXMiLCJUcmFzaDIiLCJ1c2VXaWRnZXRMYW5ndWFnZSIsImNmZ1N0cmluZyIsImdldFRvZG9zRnJvbUNvbmZpZyIsInRvZG9EaXNwbGF5IiwiVE9ET19QUkVTRVRTIiwic2VsZWN0Q2xzIiwiVG9kb0xpc3RXaWRnZXQiLCJjb25maWciLCJvblVwZGF0ZUNvbmZpZyIsIl9zIiwidCIsInRpdGxlIiwibGlzdCIsInBlcnNpc3QiLCJuZXh0IiwidG9kb0l0ZW1zIiwidG9kb0xpbmVzIiwidW5kZWZpbmVkIiwidG9nZ2xlIiwiaWQiLCJtYXAiLCJpdCIsImRvbmUiLCJyZW1vdmUiLCJmaWx0ZXIiLCJhZGRpbmciLCJzZXRBZGRpbmciLCJmb3JtVGVtcGxhdGUiLCJzZXRGb3JtVGVtcGxhdGUiLCJhZGRQcmVzZXQiLCJEYXRlIiwibm93IiwidGVtcGxhdGVJZCIsImNhbkVkaXQiLCJCb29sZWFuIiwiZSIsInRhcmdldCIsInZhbHVlIiwicCIsImxhYmVsIiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiVG9kb0xpc3RXaWRnZXQudHN4Il0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IHVzZU1lbW8sIHVzZVN0YXRlIH0gZnJvbSBcInJlYWN0XCI7XHJcbmltcG9ydCB7IENoZWNrLCBDaXJjbGUsIFBsdXMsIFRyYXNoMiB9IGZyb20gXCJsdWNpZGUtcmVhY3RcIjtcclxuaW1wb3J0IHR5cGUgeyBXaWRnZXRSZW5kZXJQcm9wcyB9IGZyb20gXCIuLi90eXBlcy9kYXNoYm9hcmRcIjtcclxuaW1wb3J0IHsgdXNlV2lkZ2V0TGFuZ3VhZ2UgfSBmcm9tIFwiLi91c2VXaWRnZXRMYW5ndWFnZVwiO1xyXG5pbXBvcnQgeyBjZmdTdHJpbmcgfSBmcm9tIFwiLi93aWRnZXRDb25maWdIZWxwZXJzXCI7XHJcbmltcG9ydCB7IGdldFRvZG9zRnJvbUNvbmZpZywgdG9kb0Rpc3BsYXksIHR5cGUgVG9kb1N0b3JlZCB9IGZyb20gXCIuL2R5bmFtaWNXaWRnZXRMaXN0c1wiO1xyXG5pbXBvcnQgeyBUT0RPX1BSRVNFVFMgfSBmcm9tIFwiLi93aWRnZXRMaXN0UHJlc2V0c1wiO1xyXG5cclxuY29uc3Qgc2VsZWN0Q2xzID1cclxuICBcInctZnVsbCByb3VuZGVkLWxnIGJvcmRlciBib3JkZXItc2xhdGUtMjAwIGJnLXdoaXRlIHB4LTIgcHktMS41IHRleHQteHMgdGV4dC1zbGF0ZS04MDAgc2hhZG93LXNtIG91dGxpbmUtbm9uZSBmb2N1czpyaW5nLTIgZm9jdXM6cmluZy1ibHVlLTUwMC8yMFwiO1xyXG5cclxuZXhwb3J0IGZ1bmN0aW9uIFRvZG9MaXN0V2lkZ2V0KHsgY29uZmlnLCBvblVwZGF0ZUNvbmZpZyB9OiBXaWRnZXRSZW5kZXJQcm9wcykge1xyXG4gIGNvbnN0IHsgdCB9ID0gdXNlV2lkZ2V0TGFuZ3VhZ2UoKTtcclxuICBjb25zdCB0aXRsZSA9IGNmZ1N0cmluZyhjb25maWcsIFwiY3VzdG9tVGl0bGVcIiwgdChcIndpZGdldFRpdGxlVG9kb0xpc3RcIiwgXCJUby1kbyBMaXN0ZVwiKSk7XHJcbiAgY29uc3QgbGlzdCA9IHVzZU1lbW8oKCkgPT4gZ2V0VG9kb3NGcm9tQ29uZmlnKGNvbmZpZyksIFtjb25maWddKTtcclxuXHJcbiAgY29uc3QgcGVyc2lzdCA9IChuZXh0OiBUb2RvU3RvcmVkW10pID0+IHtcclxuICAgIG9uVXBkYXRlQ29uZmlnPy4oe1xyXG4gICAgICB0b2RvSXRlbXM6IG5leHQsXHJcbiAgICAgIHRvZG9MaW5lczogdW5kZWZpbmVkLFxyXG4gICAgfSk7XHJcbiAgfTtcclxuXHJcbiAgY29uc3QgdG9nZ2xlID0gKGlkOiBzdHJpbmcpID0+IHtcclxuICAgIHBlcnNpc3QobGlzdC5tYXAoKGl0KSA9PiAoaXQuaWQgPT09IGlkID8geyAuLi5pdCwgZG9uZTogIWl0LmRvbmUgfSA6IGl0KSkpO1xyXG4gIH07XHJcblxyXG4gIGNvbnN0IHJlbW92ZSA9IChpZDogc3RyaW5nKSA9PiB7XHJcbiAgICBwZXJzaXN0KGxpc3QuZmlsdGVyKChpdCkgPT4gaXQuaWQgIT09IGlkKSk7XHJcbiAgfTtcclxuXHJcbiAgY29uc3QgW2FkZGluZywgc2V0QWRkaW5nXSA9IHVzZVN0YXRlKGZhbHNlKTtcclxuICBjb25zdCBbZm9ybVRlbXBsYXRlLCBzZXRGb3JtVGVtcGxhdGVdID0gdXNlU3RhdGU8c3RyaW5nPihUT0RPX1BSRVNFVFNbMF0hLmlkKTtcclxuXHJcbiAgY29uc3QgYWRkUHJlc2V0ID0gKCkgPT4ge1xyXG4gICAgY29uc3QgbmV4dDogVG9kb1N0b3JlZCA9IHtcclxuICAgICAgaWQ6IGBkLSR7RGF0ZS5ub3coKX1gLFxyXG4gICAgICB0ZW1wbGF0ZUlkOiBmb3JtVGVtcGxhdGUsXHJcbiAgICAgIGRvbmU6IGZhbHNlLFxyXG4gICAgfTtcclxuICAgIHBlcnNpc3QoWy4uLmxpc3QsIG5leHRdKTtcclxuICAgIHNldEFkZGluZyhmYWxzZSk7XHJcbiAgfTtcclxuXHJcbiAgY29uc3QgY2FuRWRpdCA9IEJvb2xlYW4ob25VcGRhdGVDb25maWcpO1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGgtZnVsbCBmbGV4LWNvbFwiPlxyXG4gICAgICA8aDIgY2xhc3NOYW1lPVwibWItMyB0ZXh0LWxnIGZvbnQtYm9sZCB0ZXh0LXNsYXRlLTgwMFwiPnt0aXRsZX08L2gyPlxyXG4gICAgICA8dWwgY2xhc3NOYW1lPVwibWluLWgtMCBmbGV4LTEgc3BhY2UteS0yIG92ZXJmbG93LWF1dG9cIj5cclxuICAgICAgICB7bGlzdC5tYXAoKGl0KSA9PiAoXHJcbiAgICAgICAgICA8bGkga2V5PXtpdC5pZH0gY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1zdGFydCBnYXAtMlwiPlxyXG4gICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgdHlwZT1cImJ1dHRvblwiXHJcbiAgICAgICAgICAgICAgb25DbGljaz17KCkgPT4gY2FuRWRpdCAmJiB0b2dnbGUoaXQuaWQpfVxyXG4gICAgICAgICAgICAgIGRpc2FibGVkPXshY2FuRWRpdH1cclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IG1pbi13LTAgZmxleC0xIGl0ZW1zLXN0YXJ0IGdhcC0zIHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1zbGF0ZS0xMDAgYmctc2xhdGUtNTAvODAgcHgtMyBweS0yLjUgdGV4dC1sZWZ0IHRyYW5zaXRpb24gaG92ZXI6Ym9yZGVyLWJsdWUtMjAwIGhvdmVyOmJnLXdoaXRlIGRpc2FibGVkOnBvaW50ZXItZXZlbnRzLW5vbmUgZGlzYWJsZWQ6b3BhY2l0eS05MFwiXHJcbiAgICAgICAgICAgID5cclxuICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJtdC0wLjUgc2hyaW5rLTAgdGV4dC1ibHVlLTYwMFwiPlxyXG4gICAgICAgICAgICAgICAge2l0LmRvbmUgPyA8Q2hlY2sgY2xhc3NOYW1lPVwiaC01IHctNVwiIC8+IDogPENpcmNsZSBjbGFzc05hbWU9XCJoLTUgdy01XCIgLz59XHJcbiAgICAgICAgICAgICAgPC9zcGFuPlxyXG4gICAgICAgICAgICAgIDxzcGFuXHJcbiAgICAgICAgICAgICAgICBjbGFzc05hbWU9e2B0ZXh0LXNtIGZvbnQtbWVkaXVtICR7aXQuZG9uZSA/IFwidGV4dC1zbGF0ZS00MDAgbGluZS10aHJvdWdoXCIgOiBcInRleHQtc2xhdGUtODAwXCJ9YH1cclxuICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICB7dG9kb0Rpc3BsYXkoaXQpfVxyXG4gICAgICAgICAgICAgIDwvc3Bhbj5cclxuICAgICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICAgIHtjYW5FZGl0ICYmIChcclxuICAgICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHJlbW92ZShpdC5pZCl9XHJcbiAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJtdC0xIHNocmluay0wIHJvdW5kZWQtbGcgcC0xLjUgdGV4dC1zbGF0ZS00MDAgaG92ZXI6YmctcmVkLTUwIGhvdmVyOnRleHQtcmVkLTYwMFwiXHJcbiAgICAgICAgICAgICAgICB0aXRsZT17dChcImNvbW1vblJlbW92ZVwiLCBcIkVudGZlcm5lblwiKX1cclxuICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICA8VHJhc2gyIGNsYXNzTmFtZT1cImgtNCB3LTRcIiAvPlxyXG4gICAgICAgICAgICAgIDwvYnV0dG9uPlxyXG4gICAgICAgICAgICApfVxyXG4gICAgICAgICAgPC9saT5cclxuICAgICAgICApKX1cclxuICAgICAgPC91bD5cclxuXHJcbiAgICAgIHtjYW5FZGl0ICYmIGFkZGluZyAmJiAoXHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtdC0zIHNwYWNlLXktMiByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItYmx1ZS0xMDAgYmctYmx1ZS01MC80MCBwLTNcIj5cclxuICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0wLjUgYmxvY2sgdGV4dC1bMTBweF0gZm9udC1tZWRpdW0gdXBwZXJjYXNlIHRleHQtc2xhdGUtNTAwXCI+XHJcbiAgICAgICAgICAgIHt0KFwidG9kb1BpY2tUZW1wbGF0ZVwiLCBcIlZvcmxhZ2Ugd8OkaGxlblwiKX1cclxuICAgICAgICAgIDwvbGFiZWw+XHJcbiAgICAgICAgICA8c2VsZWN0IGNsYXNzTmFtZT17c2VsZWN0Q2xzfSB2YWx1ZT17Zm9ybVRlbXBsYXRlfSBvbkNoYW5nZT17KGUpID0+IHNldEZvcm1UZW1wbGF0ZShlLnRhcmdldC52YWx1ZSl9PlxyXG4gICAgICAgICAgICB7VE9ET19QUkVTRVRTLm1hcCgocCkgPT4gKFxyXG4gICAgICAgICAgICAgIDxvcHRpb24ga2V5PXtwLmlkfSB2YWx1ZT17cC5pZH0+XHJcbiAgICAgICAgICAgICAgICB7cC5sYWJlbH1cclxuICAgICAgICAgICAgICA8L29wdGlvbj5cclxuICAgICAgICAgICAgKSl9XHJcbiAgICAgICAgICA8L3NlbGVjdD5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBnYXAtMiBwdC0xXCI+XHJcbiAgICAgICAgICAgIDxidXR0b25cclxuICAgICAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgICAgICBvbkNsaWNrPXthZGRQcmVzZXR9XHJcbiAgICAgICAgICAgICAgY2xhc3NOYW1lPVwiZmxleC0xIHJvdW5kZWQtbGcgYmctYmx1ZS02MDAgcHktMS41IHRleHQteHMgZm9udC1zZW1pYm9sZCB0ZXh0LXdoaXRlIGhvdmVyOmJnLWJsdWUtNzAwXCJcclxuICAgICAgICAgICAgPlxyXG4gICAgICAgICAgICAgIHt0KFwiY29tbW9uQWRkXCIsIFwiSGluenVmw7xnZW5cIil9XHJcbiAgICAgICAgICAgIDwvYnV0dG9uPlxyXG4gICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgdHlwZT1cImJ1dHRvblwiXHJcbiAgICAgICAgICAgICAgb25DbGljaz17KCkgPT4gc2V0QWRkaW5nKGZhbHNlKX1cclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4LTEgcm91bmRlZC1sZyBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCBweS0xLjUgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTYwMCBob3ZlcjpiZy13aGl0ZVwiXHJcbiAgICAgICAgICAgID5cclxuICAgICAgICAgICAgICB7dChcImNvbW1vbkNhbmNlbFwiLCBcIkFiYnJlY2hlblwiKX1cclxuICAgICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgKX1cclxuXHJcbiAgICAgIHtjYW5FZGl0ICYmICFhZGRpbmcgJiYgKFxyXG4gICAgICAgIDxidXR0b25cclxuICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxyXG4gICAgICAgICAgb25DbGljaz17KCkgPT4gc2V0QWRkaW5nKHRydWUpfVxyXG4gICAgICAgICAgY2xhc3NOYW1lPVwibXQtMyBmbGV4IHctZnVsbCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgZ2FwLTIgcm91bmRlZC0yeGwgYm9yZGVyLTIgYm9yZGVyLWRhc2hlZCBib3JkZXItc2xhdGUtMjAwIHB5LTIuNSB0ZXh0LXNtIGZvbnQtc2VtaWJvbGQgdGV4dC1ibHVlLTYwMCB0cmFuc2l0aW9uIGhvdmVyOmJvcmRlci1ibHVlLTMwMCBob3ZlcjpiZy1ibHVlLTUwLzUwXCJcclxuICAgICAgICA+XHJcbiAgICAgICAgICA8UGx1cyBjbGFzc05hbWU9XCJoLTQgdy00XCIgLz5cclxuICAgICAgICAgIHt0KFwidG9kb0FkZEVudHJ5XCIsIFwiRWludHJhZyBoaW56dWbDvGdlblwiKX1cclxuICAgICAgICA8L2J1dHRvbj5cclxuICAgICAgKX1cclxuICAgIDwvZGl2PlxyXG4gICk7XHJcbn1cclxuIl0sImZpbGUiOiJDOi9Vc2Vycy92ZWRhbi9Eb2N1bWVudHMvRGVtYS1EYXNoYm9hcmQvZnJvbnRlbmQvc3JjL3dpZGdldHMvVG9kb0xpc3RXaWRnZXQudHN4In0=

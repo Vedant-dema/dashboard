@@ -1,0 +1,1332 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/pages/VerkaufterBestandPage.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6265600e"; const Fragment = __vite__cjsImport0_react_jsxDevRuntime["Fragment"]; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import __vite__cjsImport3_react from "/node_modules/.vite/deps/react.js?v=6265600e"; const useState = __vite__cjsImport3_react["useState"]; const useMemo = __vite__cjsImport3_react["useMemo"]; const useCallback = __vite__cjsImport3_react["useCallback"];
+import { Search, ChevronDown, ChevronUp, X } from "/node_modules/.vite/deps/lucide-react.js?v=6265600e";
+import { combinedMatch } from "/src/lib/globalSearchMatch.ts";
+import { useApplyGlobalSearchFocus } from "/src/hooks/useApplyGlobalSearchFocus.ts";
+import { loadVerkaufterBestandDb } from "/src/store/verkaufterBestandStore.ts";
+import { SuggestTextInput } from "/src/components/SuggestTextInput.tsx";
+import { useLanguage } from "/src/contexts/LanguageContext.tsx?t=1776240837999";
+import { DEPARTMENT_I18N_KEY } from "/src/types/departmentArea.ts";
+const SORT_OPTIONS = [
+  "Verkaufsdatum",
+  "Kaufdatum",
+  "Position",
+  "Firmenname",
+  "Fabrikat",
+  "Einkäufer"
+];
+const FAHRZEUGART_OPTIONS = ["", "LKW", "PKW", "Anhänger", "Auflieger", "Wechselbrücke", "Sonstige"];
+const AUFBAU_OPTIONS = ["", "SZM", "Pritsche", "Kastenwagen", "Koffer", "Kipper", "Plane", "Silo", "Sonstige"];
+const FLAG_FILTERS = [
+  { key: "fehlende_kosten", label: "Fehlende Kosten" },
+  { key: "kein_abholer", label: "kein Abholer" },
+  { key: "kein_kaeufer", label: "kein Käufer" },
+  { key: "keine_erstkontrolle", label: "keine Erstkontrolle" },
+  { key: "kein_auftrag_erteilt", label: "kein Auftrag erteilt", warn: true },
+  { key: "auftrag_erledigt", label: "Auftrag erledigt" },
+  { key: "reinigung_offen", label: "Reinigung offen" },
+  { key: "offene_auftraege", label: "offene Aufträge" },
+  { key: "kein_eingang", label: "kein Eingang" },
+  { key: "verkauf_check", label: "Verkauf Check" },
+  { key: "abgeholt", label: "Abgeholt" },
+  { key: "bh_check", label: "BH Check" }
+];
+function parseDeDate(s) {
+  const t = s.trim();
+  if (!t) return null;
+  const d = Date.parse(t);
+  return Number.isNaN(d) ? null : d;
+}
+function formatDeDate(iso) {
+  if (!iso) return "—";
+  const d = Date.parse(iso);
+  if (Number.isNaN(d)) return iso;
+  return new Date(d).toLocaleDateString("de-DE");
+}
+function matchesEzFilter(rowEz, filterEz) {
+  const f = filterEz.trim().toLowerCase();
+  if (!f) return true;
+  const r = (rowEz || "").toLowerCase();
+  return r.includes(f) || r.replace(/-/g, ".").includes(f);
+}
+export function VerkaufterBestandPage({ department }) {
+  _s();
+  const { t } = useLanguage();
+  const [db] = useState(() => loadVerkaufterBestandDb());
+  const [showMoreFilters, setShowMoreFilters] = useState(true);
+  const [positionsNr, setPositionsNr] = useState("");
+  const [linkaeufer, setLinkaeufer] = useState("");
+  const [beteiligter, setBeteiligter] = useState("");
+  const [verkaeufer, setVerkaeufer] = useState("");
+  const [verkaufVon, setVerkaufVon] = useState("");
+  const [verkaufBis, setVerkaufBis] = useState("");
+  const [kaufVon, setKaufVon] = useState("");
+  const [kaufBis, setKaufBis] = useState("");
+  const [fahrzeugart, setFahrzeugart] = useState("");
+  const [aufbauart, setAufbauart] = useState("");
+  const [fabrikat, setFabrikat] = useState("");
+  const [modellTyp, setModellTyp] = useState("");
+  const [ezFilter, setEzFilter] = useState("");
+  const [fahrgestell, setFahrgestell] = useState("");
+  const [extras, setExtras] = useState("");
+  const [telefon, setTelefon] = useState("");
+  const [debitorNr, setDebitorNr] = useState("");
+  const [firmenname, setFirmenname] = useState("");
+  const [plz, setPlz] = useState("");
+  const [ort, setOrt] = useState("");
+  const [land, setLand] = useState("");
+  const [importVerkaufsNr, setImportVerkaufsNr] = useState("");
+  const [sortierung, setSortierung] = useState(SORT_OPTIONS[0]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [flagFilters, setFlagFilters] = useState({});
+  const [globalHeaderSearch, setGlobalHeaderSearch] = useState("");
+  const setFlag = useCallback((key, value) => {
+    setFlagFilters((prev) => {
+      const next = { ...prev };
+      if (!value) delete next[key];
+      else
+        next[key] = true;
+      return next;
+    });
+  }, []);
+  const suggestions = useMemo(() => {
+    const fb = /* @__PURE__ */ new Set();
+    const pos = /* @__PURE__ */ new Set();
+    for (const r of db.rows) {
+      if (r.fabrikat) fb.add(r.fabrikat);
+      if (r.position_anzeige) pos.add(r.position_anzeige);
+    }
+    return { fabrikat: [...fb].sort(), position: [...pos].sort() };
+  }, [db.rows]);
+  const filtered = useMemo(
+    () => {
+      let list = [...db.rows];
+      if (globalHeaderSearch.trim()) {
+        const raw = globalHeaderSearch.trim();
+        list = list.filter(
+          (r) => combinedMatch(
+            raw,
+            [
+              r.position_anzeige,
+              r.firmenname,
+              r.fahrgestellnummer,
+              r.debitor_nr,
+              r.plz,
+              r.ort,
+              r.land,
+              r.fabrikat,
+              r.typ,
+              r.telefonnummer,
+              r.extras,
+              r.import_verkaufs_nr,
+              r.einkaeufer,
+              r.verkaeufer,
+              r.linkaeufer,
+              r.beteiligter
+            ],
+            [r.telefonnummer, r.fahrgestellnummer, r.debitor_nr]
+          )
+        );
+      }
+      if (positionsNr.trim()) {
+        const q = positionsNr.trim();
+        list = list.filter((r) => r.position_anzeige.includes(q));
+      }
+      if (linkaeufer.trim()) {
+        const q = linkaeufer.toLowerCase();
+        list = list.filter((r) => (r.linkaeufer || "").toLowerCase().includes(q));
+      }
+      if (beteiligter.trim()) {
+        const q = beteiligter.toLowerCase();
+        list = list.filter((r) => (r.beteiligter || "").toLowerCase().includes(q));
+      }
+      if (verkaeufer.trim()) {
+        const q = verkaeufer.toLowerCase();
+        list = list.filter((r) => (r.verkaeufer || "").toLowerCase().includes(q));
+      }
+      const vv = parseDeDate(verkaufVon);
+      const vb = parseDeDate(verkaufBis);
+      if (vv != null) list = list.filter((r) => Date.parse(r.verkauf_datum) >= vv);
+      if (vb != null) list = list.filter((r) => Date.parse(r.verkauf_datum) <= vb);
+      const kv = parseDeDate(kaufVon);
+      const kb = parseDeDate(kaufBis);
+      if (kv != null) list = list.filter((r) => Date.parse(r.kauf_datum) >= kv);
+      if (kb != null) list = list.filter((r) => Date.parse(r.kauf_datum) <= kb);
+      if (fahrzeugart) list = list.filter((r) => r.fahrzeugart === fahrzeugart);
+      if (aufbauart) list = list.filter((r) => r.aufbauart === aufbauart);
+      if (fabrikat.trim()) {
+        const f = fabrikat.toLowerCase();
+        list = list.filter((r) => r.fabrikat.toLowerCase().includes(f));
+      }
+      if (modellTyp.trim()) {
+        const m = modellTyp.toLowerCase();
+        list = list.filter((r) => r.typ.toLowerCase().includes(m));
+      }
+      if (ezFilter.trim()) list = list.filter((r) => matchesEzFilter(r.ez, ezFilter));
+      if (fahrgestell.trim()) {
+        const f = fahrgestell.toLowerCase();
+        list = list.filter((r) => r.fahrgestellnummer.toLowerCase().includes(f));
+      }
+      if (extras.trim()) {
+        const e = extras.toLowerCase();
+        list = list.filter((r) => (r.extras || "").toLowerCase().includes(e));
+      }
+      if (telefon.trim()) {
+        const raw = telefon.trim();
+        list = list.filter(
+          (r) => combinedMatch(raw, [r.telefonnummer], [r.telefonnummer])
+        );
+      }
+      if (debitorNr.trim()) list = list.filter((r) => r.debitor_nr.includes(debitorNr.trim()));
+      if (firmenname.trim()) {
+        const fn = firmenname.toLowerCase();
+        list = list.filter((r) => r.firmenname.toLowerCase().includes(fn));
+      }
+      if (plz.trim()) list = list.filter((r) => r.plz.includes(plz.trim()));
+      if (ort.trim()) list = list.filter((r) => r.ort.toLowerCase().includes(ort.trim().toLowerCase()));
+      if (land.trim()) list = list.filter((r) => r.land.toLowerCase().includes(land.trim().toLowerCase()));
+      if (importVerkaufsNr.trim()) {
+        const im = importVerkaufsNr.toLowerCase();
+        list = list.filter((r) => (r.import_verkaufs_nr || "").toLowerCase().includes(im));
+      }
+      Object.entries(flagFilters).forEach(([key, on]) => {
+        if (on) list = list.filter((r) => r[key] === true);
+      });
+      const cmp = (a, b) => {
+        switch (sortierung) {
+          case "Kaufdatum":
+            return b.kauf_datum.localeCompare(a.kauf_datum);
+          case "Position":
+            return parseInt(b.position_anzeige, 10) - parseInt(a.position_anzeige, 10);
+          case "Firmenname":
+            return a.firmenname.localeCompare(b.firmenname);
+          case "Fabrikat":
+            return a.fabrikat.localeCompare(b.fabrikat);
+          case "Einkäufer":
+            return a.einkaeufer.localeCompare(b.einkaeufer);
+          default:
+            return b.verkauf_datum.localeCompare(a.verkauf_datum);
+        }
+      };
+      list.sort(cmp);
+      return list;
+    },
+    [
+      db.rows,
+      globalHeaderSearch,
+      positionsNr,
+      linkaeufer,
+      beteiligter,
+      verkaeufer,
+      verkaufVon,
+      verkaufBis,
+      kaufVon,
+      kaufBis,
+      fahrzeugart,
+      aufbauart,
+      fabrikat,
+      modellTyp,
+      ezFilter,
+      fahrgestell,
+      extras,
+      telefon,
+      debitorNr,
+      firmenname,
+      plz,
+      ort,
+      land,
+      importVerkaufsNr,
+      flagFilters,
+      sortierung
+    ]
+  );
+  const showAll = () => {
+    setGlobalHeaderSearch("");
+    setPositionsNr("");
+    setLinkaeufer("");
+    setBeteiligter("");
+    setVerkaeufer("");
+    setVerkaufVon("");
+    setVerkaufBis("");
+    setKaufVon("");
+    setKaufBis("");
+    setFahrzeugart("");
+    setAufbauart("");
+    setFabrikat("");
+    setModellTyp("");
+    setEzFilter("");
+    setFahrgestell("");
+    setExtras("");
+    setTelefon("");
+    setDebitorNr("");
+    setFirmenname("");
+    setPlz("");
+    setOrt("");
+    setLand("");
+    setImportVerkaufsNr("");
+    setFlagFilters({});
+  };
+  const focusVerkaufterFromSearch = useCallback(
+    (id) => {
+      if (!db.rows.some((r) => r.id === id)) return;
+      showAll();
+      setSelectedId(id);
+    },
+    [db.rows]
+  );
+  useApplyGlobalSearchFocus("verkaufter", focusVerkaufterFromSearch);
+  const selected = selectedId != null ? db.rows.find((r) => r.id === selectedId) : null;
+  const inputFocus = "h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm focus:border-emerald-300 focus:outline-none focus:ring-1 focus:ring-emerald-500/20";
+  return /* @__PURE__ */ jsxDEV("div", { className: "flex min-h-0 flex-1 flex-col p-6 pb-8", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "mb-4", children: [
+      /* @__PURE__ */ jsxDEV("h1", { className: "text-2xl font-bold tracking-tight text-slate-800", children: t("sidebarSoldInventory", "Verkaufter Bestand") }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 340,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("p", { className: "mt-0.5 text-sm text-slate-500", children: [
+        t("verkaufterBestandSubtitle", "Suche verkaufter Bestand — Filter und Spalten wie im Legacy-System."),
+        department ? /* @__PURE__ */ jsxDEV(Fragment, { children: [
+          " ",
+          t("customersArea", "Area"),
+          ":",
+          " ",
+          /* @__PURE__ */ jsxDEV("span", { className: "font-medium text-slate-600", children: t(DEPARTMENT_I18N_KEY[department], department) }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 349,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 346,
+          columnNumber: 11
+        }, this) : null
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 343,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+      lineNumber: 339,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "glass-card mb-4 space-y-4 border-emerald-100/80 p-4 shadow-emerald-900/5", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex flex-wrap items-center gap-3", children: [
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            className: "flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200",
+            children: [
+              /* @__PURE__ */ jsxDEV(Search, { className: "h-4 w-4" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                lineNumber: 361,
+                columnNumber: 13
+              }, this),
+              "Zeigen"
+            ]
+          },
+          void 0,
+          true,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 357,
+            columnNumber: 11
+          },
+          this
+        ),
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: showAll,
+            className: "rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-medium text-emerald-800 hover:bg-emerald-50",
+            children: "alle"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 364,
+            columnNumber: 11
+          },
+          this
+        ),
+        /* @__PURE__ */ jsxDEV("span", { className: "text-xs text-slate-400", children: "Filter wirken sofort auf die Ergebnisliste." }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 371,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 356,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6", children: [
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "PositionsNr" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 376,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            SuggestTextInput,
+            {
+              type: "text",
+              value: positionsNr,
+              onChange: (e) => setPositionsNr(e.target.value),
+              suggestions: suggestions.position,
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 377,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 375,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Linkäufer" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 386,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              value: linkaeufer,
+              onChange: (e) => setLinkaeufer(e.target.value),
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 387,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 385,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Beteiligter" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 395,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              value: beteiligter,
+              onChange: (e) => setBeteiligter(e.target.value),
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 396,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 394,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Verkäufer" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 404,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              value: verkaeufer,
+              onChange: (e) => setVerkaeufer(e.target.value),
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 405,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 403,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "von Verkaufsdatum" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 413,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "date", value: verkaufVon, onChange: (e) => setVerkaufVon(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 414,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 412,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "bis Verkaufsdatum" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 417,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "date", value: verkaufBis, onChange: (e) => setVerkaufBis(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 418,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 416,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "von Kaufdatum" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 421,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "date", value: kaufVon, onChange: (e) => setKaufVon(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 422,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 420,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "bis Kaufdatum" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 425,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "date", value: kaufBis, onChange: (e) => setKaufBis(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 426,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 424,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Fahrzeugart" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 429,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("select", { value: fahrzeugart, onChange: (e) => setFahrzeugart(e.target.value), className: inputFocus, children: FAHRZEUGART_OPTIONS.map(
+            (o) => /* @__PURE__ */ jsxDEV("option", { value: o, children: o || "Alle" }, o || "a", false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 432,
+              columnNumber: 15
+            }, this)
+          ) }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 430,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 428,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "AufbauArt" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 439,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("select", { value: aufbauart, onChange: (e) => setAufbauart(e.target.value), className: inputFocus, children: AUFBAU_OPTIONS.map(
+            (o) => /* @__PURE__ */ jsxDEV("option", { value: o, children: o || "Alle" }, o || "a", false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 442,
+              columnNumber: 15
+            }, this)
+          ) }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 440,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 438,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Fabrikat" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 449,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            SuggestTextInput,
+            {
+              type: "text",
+              value: fabrikat,
+              onChange: (e) => setFabrikat(e.target.value),
+              suggestions: suggestions.fabrikat,
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 450,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 448,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Modell, Typ" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 459,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: modellTyp, onChange: (e) => setModellTyp(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 460,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 458,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "EZ (MM, JJJJ)" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 463,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              value: ezFilter,
+              onChange: (e) => setEzFilter(e.target.value),
+              placeholder: "z. B. 2018-06",
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 464,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 462,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Fahrgestellnummer" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 473,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: fahrgestell, onChange: (e) => setFahrgestell(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 474,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 472,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Extras" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 477,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: extras, onChange: (e) => setExtras(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 478,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 476,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Telefonnummer" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 481,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: telefon, onChange: (e) => setTelefon(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 482,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 480,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "DebitorNr" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 485,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: debitorNr, onChange: (e) => setDebitorNr(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 486,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 484,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Firmenname" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 489,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: firmenname, onChange: (e) => setFirmenname(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 490,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 488,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "PLZ" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 493,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: plz, onChange: (e) => setPlz(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 494,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 492,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Ort" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 497,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: ort, onChange: (e) => setOrt(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 498,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 496,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Land" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 501,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("input", { type: "text", value: land, onChange: (e) => setLand(e.target.value), className: inputFocus }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 502,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 500,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "ImportNr / VerkaufsNr" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 505,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              value: importVerkaufsNr,
+              onChange: (e) => setImportVerkaufsNr(e.target.value),
+              className: inputFocus
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 506,
+              columnNumber: 13
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 504,
+          columnNumber: 11
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "mb-1 block text-xs font-medium text-slate-500", children: "Sortierung" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 514,
+            columnNumber: 13
+          }, this),
+          /* @__PURE__ */ jsxDEV("select", { value: sortierung, onChange: (e) => setSortierung(e.target.value), className: inputFocus, children: SORT_OPTIONS.map(
+            (o) => /* @__PURE__ */ jsxDEV("option", { value: o, children: o }, o, false, {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 517,
+              columnNumber: 15
+            }, this)
+          ) }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 515,
+            columnNumber: 13
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 513,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 374,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { children: [
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            type: "button",
+            onClick: () => setShowMoreFilters(!showMoreFilters),
+            className: "flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-emerald-700",
+            children: [
+              showMoreFilters ? /* @__PURE__ */ jsxDEV(ChevronUp, { className: "h-4 w-4" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                lineNumber: 531,
+                columnNumber: 32
+              }, this) : /* @__PURE__ */ jsxDEV(ChevronDown, { className: "h-4 w-4" }, void 0, false, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                lineNumber: 531,
+                columnNumber: 68
+              }, this),
+              "Status-Filter"
+            ]
+          },
+          void 0,
+          true,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 526,
+            columnNumber: 11
+          },
+          this
+        ),
+        showMoreFilters && /* @__PURE__ */ jsxDEV("div", { className: "mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-3", children: FLAG_FILTERS.map(
+          ({ key, label, warn }) => /* @__PURE__ */ jsxDEV(
+            "label",
+            {
+              className: `flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm ${warn ? "border-amber-200 bg-amber-50/80 text-amber-950" : "border-slate-200 bg-slate-50/80 text-slate-700"}`,
+              children: [
+                /* @__PURE__ */ jsxDEV(
+                  "input",
+                  {
+                    type: "checkbox",
+                    checked: Boolean(flagFilters[key]),
+                    onChange: (e) => setFlag(key, e.target.checked),
+                    className: "rounded border-slate-300 text-emerald-600"
+                  },
+                  void 0,
+                  false,
+                  {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 545,
+                    columnNumber: 19
+                  },
+                  this
+                ),
+                label
+              ]
+            },
+            key,
+            true,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 537,
+              columnNumber: 13
+            },
+            this
+          )
+        ) }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 535,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 525,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+      lineNumber: 355,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "glass-card flex min-h-0 flex-1 flex-col overflow-hidden border-emerald-100/60 shadow-emerald-900/5", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "min-h-0 flex-1 overflow-auto", children: /* @__PURE__ */ jsxDEV("table", { className: "w-full min-w-[1400px] text-left text-sm", children: [
+        /* @__PURE__ */ jsxDEV("thead", { className: "sticky top-0 z-10 bg-emerald-50 font-semibold text-emerald-900", children: /* @__PURE__ */ jsxDEV("tr", { children: [
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Position" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 564,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Verkauf" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 565,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Kauf" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 566,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Fahrzeugart" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 567,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Fabrikat" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 568,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Typ" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 569,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "AufbauArt" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 570,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "EZ" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 571,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Fahrgestell" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 572,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "DebitorNr" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 573,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Firmenname" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 574,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "PLZ" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 575,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Ort" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 576,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Land" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 577,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ jsxDEV("th", { className: "whitespace-nowrap px-2 py-3", children: "Einkäufer" }, void 0, false, {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 578,
+            columnNumber: 17
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 563,
+          columnNumber: 15
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 562,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("tbody", { className: "divide-y divide-slate-100 bg-white", children: filtered.length === 0 ? /* @__PURE__ */ jsxDEV("tr", { children: /* @__PURE__ */ jsxDEV("td", { colSpan: 15, className: "px-4 py-12 text-center text-sm text-slate-500", children: "Keine Treffer. Filter mit „alle“ zurücksetzen." }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 584,
+          columnNumber: 19
+        }, this) }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 583,
+          columnNumber: 15
+        }, this) : filtered.map(
+          (row, i) => /* @__PURE__ */ jsxDEV(
+            "tr",
+            {
+              onClick: () => setSelectedId(row.id),
+              className: `cursor-pointer transition ${selectedId === row.id ? "bg-emerald-900 text-white" : i % 2 === 1 ? "bg-emerald-50/40 text-slate-800 hover:bg-emerald-50/80" : "text-slate-800 hover:bg-slate-50"}`,
+              children: [
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 font-medium tabular-nums", children: row.position_anzeige }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 601,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 tabular-nums", children: formatDeDate(row.verkauf_datum) }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 602,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 tabular-nums", children: formatDeDate(row.kauf_datum) }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 603,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2", children: row.fahrzeugart }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 604,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2", children: row.fabrikat }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 605,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "max-w-[140px] truncate px-2 py-2", title: row.typ, children: row.typ }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 606,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2", children: row.aufbauart }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 609,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 tabular-nums", children: row.ez || "—" }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 610,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "max-w-[160px] truncate px-2 py-2 font-mono text-xs", title: row.fahrgestellnummer, children: row.fahrgestellnummer }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 611,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 tabular-nums", children: row.debitor_nr }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 614,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "max-w-[180px] truncate px-2 py-2", title: row.firmenname, children: row.firmenname }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 615,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 tabular-nums", children: row.plz }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 618,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2", children: row.ort }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 619,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2", children: row.land }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 620,
+                  columnNumber: 21
+                }, this),
+                /* @__PURE__ */ jsxDEV("td", { className: "whitespace-nowrap px-2 py-2 font-medium", children: row.einkaeufer }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 621,
+                  columnNumber: 21
+                }, this)
+              ]
+            },
+            row.id,
+            true,
+            {
+              fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+              lineNumber: 590,
+              columnNumber: 15
+            },
+            this
+          )
+        ) }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 581,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 561,
+        columnNumber: 11
+      }, this) }, void 0, false, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 560,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "shrink-0 border-t border-emerald-100 bg-emerald-50/90 px-4 py-2.5 text-right text-sm text-slate-700", children: [
+        t("verkaufterBestandCount", "Anzahl der ausgewählten Fahrzeuge:"),
+        " ",
+        /* @__PURE__ */ jsxDEV("span", { className: "font-semibold tabular-nums text-emerald-900", children: filtered.length }, void 0, false, {
+          fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+          lineNumber: 630,
+          columnNumber: 11
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 628,
+        columnNumber: 9
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+      lineNumber: 559,
+      columnNumber: 7
+    }, this),
+    selected && /* @__PURE__ */ jsxDEV(
+      "div",
+      {
+        className: "fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-[2px]",
+        onClick: () => setSelectedId(null),
+        role: "presentation",
+        children: /* @__PURE__ */ jsxDEV(
+          "div",
+          {
+            className: "flex h-full w-full max-w-md shrink-0 flex-col border-l border-emerald-200 bg-white shadow-2xl",
+            onClick: (e) => e.stopPropagation(),
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-labelledby": "vb-drawer-title",
+            children: [
+              /* @__PURE__ */ jsxDEV("div", { className: "flex items-start justify-between gap-4 border-b border-emerald-100 bg-emerald-50/50 px-5 py-4", children: [
+                /* @__PURE__ */ jsxDEV("div", { className: "min-w-0", children: [
+                  /* @__PURE__ */ jsxDEV("p", { className: "text-xs font-medium uppercase tracking-wide text-emerald-800", children: "Position" }, void 0, false, {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 649,
+                    columnNumber: 17
+                  }, this),
+                  /* @__PURE__ */ jsxDEV("h2", { id: "vb-drawer-title", className: "truncate text-xl font-bold text-slate-800", children: selected.position_anzeige }, void 0, false, {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 650,
+                    columnNumber: 17
+                  }, this),
+                  /* @__PURE__ */ jsxDEV("p", { className: "mt-0.5 text-sm text-slate-600", children: [
+                    selected.fabrikat,
+                    " · ",
+                    selected.fahrgestellnummer
+                  ] }, void 0, true, {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 653,
+                    columnNumber: 17
+                  }, this)
+                ] }, void 0, true, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 648,
+                  columnNumber: 15
+                }, this),
+                /* @__PURE__ */ jsxDEV(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setSelectedId(null),
+                    className: "shrink-0 rounded-xl p-2 text-slate-500 hover:bg-white",
+                    "aria-label": "Schließen",
+                    children: /* @__PURE__ */ jsxDEV(X, { className: "h-5 w-5" }, void 0, false, {
+                      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                      lineNumber: 663,
+                      columnNumber: 17
+                    }, this)
+                  },
+                  void 0,
+                  false,
+                  {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 657,
+                    columnNumber: 15
+                  },
+                  this
+                )
+              ] }, void 0, true, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                lineNumber: 647,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { className: "min-h-0 flex-1 overflow-y-auto p-5 text-sm", children: [
+                /* @__PURE__ */ jsxDEV("dl", { className: "space-y-2", children: [
+                  ["Verkäufer", selected.verkaeufer || "—"],
+                  ["Linkäufer", selected.linkaeufer || "—"],
+                  ["Beteiligter", selected.beteiligter || "—"],
+                  ["Telefon", selected.telefonnummer || "—"],
+                  ["Extras", selected.extras || "—"],
+                  ["Import/Verkaufs-Nr.", selected.import_verkaufs_nr || "—"]
+                ].map(
+                  ([k, v]) => /* @__PURE__ */ jsxDEV("div", { className: "flex justify-between gap-2 border-b border-slate-100 py-1.5", children: [
+                    /* @__PURE__ */ jsxDEV("dt", { className: "text-slate-500", children: k }, void 0, false, {
+                      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                      lineNumber: 679,
+                      columnNumber: 21
+                    }, this),
+                    /* @__PURE__ */ jsxDEV("dd", { className: "max-w-[60%] text-right font-medium text-slate-800", children: v }, void 0, false, {
+                      fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                      lineNumber: 680,
+                      columnNumber: 21
+                    }, this)
+                  ] }, k, true, {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 678,
+                    columnNumber: 15
+                  }, this)
+                ) }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 667,
+                  columnNumber: 15
+                }, this),
+                /* @__PURE__ */ jsxDEV("p", { className: "mt-4 text-xs font-semibold uppercase text-slate-500", children: "Status-Markierungen" }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 684,
+                  columnNumber: 15
+                }, this),
+                /* @__PURE__ */ jsxDEV("ul", { className: "mt-2 flex flex-wrap gap-1.5", children: FLAG_FILTERS.filter(({ key }) => selected[key]).map(
+                  ({ label }) => /* @__PURE__ */ jsxDEV("li", { className: "rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900", children: label }, label, false, {
+                    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                    lineNumber: 687,
+                    columnNumber: 15
+                  }, this)
+                ) }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 685,
+                  columnNumber: 15
+                }, this),
+                !FLAG_FILTERS.some(({ key }) => selected[key]) ? /* @__PURE__ */ jsxDEV("p", { className: "mt-1 text-xs text-slate-400", children: "Keine gesetzten Status-Flags in der Demo." }, void 0, false, {
+                  fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                  lineNumber: 693,
+                  columnNumber: 13
+                }, this) : null
+              ] }, void 0, true, {
+                fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+                lineNumber: 666,
+                columnNumber: 13
+              }, this)
+            ]
+          },
+          void 0,
+          true,
+          {
+            fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+            lineNumber: 640,
+            columnNumber: 11
+          },
+          this
+        )
+      },
+      void 0,
+      false,
+      {
+        fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+        lineNumber: 635,
+        columnNumber: 7
+      },
+      this
+    )
+  ] }, void 0, true, {
+    fileName: "C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx",
+    lineNumber: 338,
+    columnNumber: 5
+  }, this);
+}
+_s(VerkaufterBestandPage, "AyKSRB5K0qcKshMLWG0EbummXJ0=", false, function() {
+  return [useLanguage, useApplyGlobalSearchFocus];
+});
+_c = VerkaufterBestandPage;
+var _c;
+$RefreshReg$(_c, "VerkaufterBestandPage");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/pages/VerkaufterBestandPage.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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O0FBQUEsdUJBQW9GLElBQ2xGO0FBQUEsbUJBNUJOO0FBQUE7QUFBQTtBQUFBO0FBQUEscUJBNkJBO0FBQUE7QUFBQTtBQUFBLFVBdkRGO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQSxRQXdEQTtBQUFBO0FBQUEsTUE3REY7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLElBOERBO0FBQUEsT0F2V0o7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQXlXQTtBQUVKO0FBQUN5QixHQTlsQmVGLHVCQUFxQjtBQUFBLFVBQ3JCN0IsYUEwT2RILHlCQUF5QjtBQUFBO0FBQUEsS0EzT1hnQztBQUFxQixJQUFBd0g7QUFBQSxhQUFBQSxJQUFBIiwibmFtZXMiOlsidXNlU3RhdGUiLCJ1c2VNZW1vIiwidXNlQ2FsbGJhY2siLCJTZWFyY2giLCJDaGV2cm9uRG93biIsIkNoZXZyb25VcCIsIlgiLCJjb21iaW5lZE1hdGNoIiwidXNlQXBwbHlHbG9iYWxTZWFyY2hGb2N1cyIsImxvYWRWZXJrYXVmdGVyQmVzdGFuZERiIiwiU3VnZ2VzdFRleHRJbnB1dCIsInVzZUxhbmd1YWdlIiwiREVQQVJUTUVOVF9JMThOX0tFWSIsIlNPUlRfT1BUSU9OUyIsIkZBSFJaRVVHQVJUX09QVElPTlMiLCJBVUZCQVVfT1BUSU9OUyIsIkZMQUdfRklMVEVSUyIsImtleSIsImxhYmVsIiwid2FybiIsInBhcnNlRGVEYXRlIiwicyIsInQiLCJ0cmltIiwiZCIsIkRhdGUiLCJwYXJzZSIsIk51bWJlciIsImlzTmFOIiwiZm9ybWF0RGVEYXRlIiwiaXNvIiwidG9Mb2NhbGVEYXRlU3RyaW5nIiwibWF0Y2hlc0V6RmlsdGVyIiwicm93RXoiLCJmaWx0ZXJFeiIsImYiLCJ0b0xvd2VyQ2FzZSIsInIiLCJpbmNsdWRlcyIsInJlcGxhY2UiLCJWZXJrYXVmdGVyQmVzdGFuZFBhZ2UiLCJkZXBhcnRtZW50IiwiX3MiLCJkYiIsInNob3dNb3JlRmlsdGVycyIsInNldFNob3dNb3JlRmlsdGVycyIsInBvc2l0aW9uc05yIiwic2V0UG9zaXRpb25zTnIiLCJsaW5rYWV1ZmVyIiwic2V0TGlua2FldWZlciIsImJldGVpbGlndGVyIiwic2V0QmV0ZWlsaWd0ZXIiLCJ2ZXJrYWV1ZmVyIiwic2V0VmVya2FldWZlciIsInZlcmthdWZWb24iLCJzZXRWZXJrYXVmVm9uIiwidmVya2F1ZkJpcyIsInNldFZlcmthdWZCaXMiLCJrYXVmVm9uIiwic2V0S2F1ZlZvbiIsImthdWZCaXMiLCJzZXRLYXVmQmlzIiwiZmFocnpldWdhcnQiLCJzZXRGYWhyemV1Z2FydCIsImF1ZmJhdWFydCIsInNldEF1ZmJhdWFydCIsImZhYnJpa2F0Iiwic2V0RmFicmlrYXQiLCJtb2RlbGxUeXAiLCJzZXRNb2RlbGxUeXAiLCJlekZpbHRlciIsInNldEV6RmlsdGVyIiwiZmFocmdlc3RlbGwiLCJzZXRGYWhyZ2VzdGVsbCIsImV4dHJhcyIsInNldEV4dHJhcyIsInRlbGVmb24iLCJzZXRUZWxlZm9uIiwiZGViaXRvck5yIiwic2V0RGViaXRvck5yIiwiZmlybWVubmFtZSIsInNldEZpcm1lbm5hbWUiLCJwbHoiLCJzZXRQbHoiLCJvcnQiLCJzZXRPcnQiLCJsYW5kIiwic2V0TGFuZCIsImltcG9ydFZlcmthdWZzTnIiLCJzZXRJbXBvcnRWZXJrYXVmc05yIiwic29ydGllcnVuZyIsInNldFNvcnRpZXJ1bmciLCJzZWxlY3RlZElkIiwic2V0U2VsZWN0ZWRJZCIsImZsYWdGaWx0ZXJzIiwic2V0RmxhZ0ZpbHRlcnMiLCJnbG9iYWxIZWFkZXJTZWFyY2giLCJzZXRHbG9iYWxIZWFkZXJTZWFyY2giLCJzZXRGbGFnIiwidmFsdWUiLCJwcmV2IiwibmV4dCIsInN1Z2dlc3Rpb25zIiwiZmIiLCJTZXQiLCJwb3MiLCJyb3dzIiwiYWRkIiwicG9zaXRpb25fYW56ZWlnZSIsInNvcnQiLCJwb3NpdGlvbiIsImZpbHRlcmVkIiwibGlzdCIsInJhdyIsImZpbHRlciIsImZhaHJnZXN0ZWxsbnVtbWVyIiwiZGViaXRvcl9uciIsInR5cCIsInRlbGVmb25udW1tZXIiLCJpbXBvcnRfdmVya2F1ZnNfbnIiLCJlaW5rYWV1ZmVyIiwicSIsInZ2IiwidmIiLCJ2ZXJrYXVmX2RhdHVtIiwia3YiLCJrYiIsImthdWZfZGF0dW0iLCJtIiwiZXoiLCJlIiwiZm4iLCJpbSIsIk9iamVjdCIsImVudHJpZXMiLCJmb3JFYWNoIiwib24iLCJjbXAiLCJhIiwiYiIsImxvY2FsZUNvbXBhcmUiLCJwYXJzZUludCIsInNob3dBbGwiLCJmb2N1c1ZlcmthdWZ0ZXJGcm9tU2VhcmNoIiwiaWQiLCJzb21lIiwic2VsZWN0ZWQiLCJmaW5kIiwiaW5wdXRGb2N1cyIsInRhcmdldCIsIm1hcCIsIm8iLCJCb29sZWFuIiwiY2hlY2tlZCIsImxlbmd0aCIsInJvdyIsImkiLCJzdG9wUHJvcGFnYXRpb24iLCJrIiwidiIsIl9jIl0sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VzIjpbIlZlcmthdWZ0ZXJCZXN0YW5kUGFnZS50c3giXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgdXNlU3RhdGUsIHVzZU1lbW8sIHVzZUNhbGxiYWNrIH0gZnJvbSBcInJlYWN0XCI7XHJcbmltcG9ydCB7IFNlYXJjaCwgQ2hldnJvbkRvd24sIENoZXZyb25VcCwgWCB9IGZyb20gXCJsdWNpZGUtcmVhY3RcIjtcclxuaW1wb3J0IHR5cGUgeyBWZXJrYXVmdGVyQmVzdGFuZFJvdyB9IGZyb20gXCIuLi90eXBlcy92ZXJrYXVmdGVyQmVzdGFuZFwiO1xyXG5pbXBvcnQgeyBjb21iaW5lZE1hdGNoIH0gZnJvbSBcIi4uL2xpYi9nbG9iYWxTZWFyY2hNYXRjaFwiO1xyXG5pbXBvcnQgeyB1c2VBcHBseUdsb2JhbFNlYXJjaEZvY3VzIH0gZnJvbSBcIi4uL2hvb2tzL3VzZUFwcGx5R2xvYmFsU2VhcmNoRm9jdXNcIjtcclxuaW1wb3J0IHsgbG9hZFZlcmthdWZ0ZXJCZXN0YW5kRGIgfSBmcm9tIFwiLi4vc3RvcmUvdmVya2F1ZnRlckJlc3RhbmRTdG9yZVwiO1xyXG5pbXBvcnQgeyBTdWdnZXN0VGV4dElucHV0IH0gZnJvbSBcIi4uL2NvbXBvbmVudHMvU3VnZ2VzdFRleHRJbnB1dFwiO1xyXG5pbXBvcnQgeyB1c2VMYW5ndWFnZSB9IGZyb20gXCIuLi9jb250ZXh0cy9MYW5ndWFnZUNvbnRleHRcIjtcclxuaW1wb3J0IHR5cGUgeyBEZXBhcnRtZW50QXJlYSB9IGZyb20gXCIuLi90eXBlcy9kZXBhcnRtZW50QXJlYVwiO1xyXG5pbXBvcnQgeyBERVBBUlRNRU5UX0kxOE5fS0VZIH0gZnJvbSBcIi4uL3R5cGVzL2RlcGFydG1lbnRBcmVhXCI7XHJcblxyXG5jb25zdCBTT1JUX09QVElPTlMgPSBbXHJcbiAgXCJWZXJrYXVmc2RhdHVtXCIsXHJcbiAgXCJLYXVmZGF0dW1cIixcclxuICBcIlBvc2l0aW9uXCIsXHJcbiAgXCJGaXJtZW5uYW1lXCIsXHJcbiAgXCJGYWJyaWthdFwiLFxyXG4gIFwiRWlua8OkdWZlclwiLFxyXG5dIGFzIGNvbnN0O1xyXG5cclxuY29uc3QgRkFIUlpFVUdBUlRfT1BUSU9OUyA9IFtcIlwiLCBcIkxLV1wiLCBcIlBLV1wiLCBcIkFuaMOkbmdlclwiLCBcIkF1ZmxpZWdlclwiLCBcIldlY2hzZWxicsO8Y2tlXCIsIFwiU29uc3RpZ2VcIl07XHJcbmNvbnN0IEFVRkJBVV9PUFRJT05TID0gW1wiXCIsIFwiU1pNXCIsIFwiUHJpdHNjaGVcIiwgXCJLYXN0ZW53YWdlblwiLCBcIktvZmZlclwiLCBcIktpcHBlclwiLCBcIlBsYW5lXCIsIFwiU2lsb1wiLCBcIlNvbnN0aWdlXCJdO1xyXG5cclxudHlwZSBGbGFnS2V5ID0ga2V5b2YgUGljazxcclxuICBWZXJrYXVmdGVyQmVzdGFuZFJvdyxcclxuICB8IFwiZmVobGVuZGVfa29zdGVuXCJcclxuICB8IFwia2Vpbl9hYmhvbGVyXCJcclxuICB8IFwia2Vpbl9rYWV1ZmVyXCJcclxuICB8IFwia2VpbmVfZXJzdGtvbnRyb2xsZVwiXHJcbiAgfCBcImtlaW5fYXVmdHJhZ19lcnRlaWx0XCJcclxuICB8IFwiYXVmdHJhZ19lcmxlZGlndFwiXHJcbiAgfCBcInJlaW5pZ3VuZ19vZmZlblwiXHJcbiAgfCBcIm9mZmVuZV9hdWZ0cmFlZ2VcIlxyXG4gIHwgXCJrZWluX2VpbmdhbmdcIlxyXG4gIHwgXCJ2ZXJrYXVmX2NoZWNrXCJcclxuICB8IFwiYWJnZWhvbHRcIlxyXG4gIHwgXCJiaF9jaGVja1wiXHJcbj47XHJcblxyXG5jb25zdCBGTEFHX0ZJTFRFUlM6IHsga2V5OiBGbGFnS2V5OyBsYWJlbDogc3RyaW5nOyB3YXJuPzogYm9vbGVhbiB9W10gPSBbXHJcbiAgeyBrZXk6IFwiZmVobGVuZGVfa29zdGVuXCIsIGxhYmVsOiBcIkZlaGxlbmRlIEtvc3RlblwiIH0sXHJcbiAgeyBrZXk6IFwia2Vpbl9hYmhvbGVyXCIsIGxhYmVsOiBcImtlaW4gQWJob2xlclwiIH0sXHJcbiAgeyBrZXk6IFwia2Vpbl9rYWV1ZmVyXCIsIGxhYmVsOiBcImtlaW4gS8OkdWZlclwiIH0sXHJcbiAgeyBrZXk6IFwia2VpbmVfZXJzdGtvbnRyb2xsZVwiLCBsYWJlbDogXCJrZWluZSBFcnN0a29udHJvbGxlXCIgfSxcclxuICB7IGtleTogXCJrZWluX2F1ZnRyYWdfZXJ0ZWlsdFwiLCBsYWJlbDogXCJrZWluIEF1ZnRyYWcgZXJ0ZWlsdFwiLCB3YXJuOiB0cnVlIH0sXHJcbiAgeyBrZXk6IFwiYXVmdHJhZ19lcmxlZGlndFwiLCBsYWJlbDogXCJBdWZ0cmFnIGVybGVkaWd0XCIgfSxcclxuICB7IGtleTogXCJyZWluaWd1bmdfb2ZmZW5cIiwgbGFiZWw6IFwiUmVpbmlndW5nIG9mZmVuXCIgfSxcclxuICB7IGtleTogXCJvZmZlbmVfYXVmdHJhZWdlXCIsIGxhYmVsOiBcIm9mZmVuZSBBdWZ0csOkZ2VcIiB9LFxyXG4gIHsga2V5OiBcImtlaW5fZWluZ2FuZ1wiLCBsYWJlbDogXCJrZWluIEVpbmdhbmdcIiB9LFxyXG4gIHsga2V5OiBcInZlcmthdWZfY2hlY2tcIiwgbGFiZWw6IFwiVmVya2F1ZiBDaGVja1wiIH0sXHJcbiAgeyBrZXk6IFwiYWJnZWhvbHRcIiwgbGFiZWw6IFwiQWJnZWhvbHRcIiB9LFxyXG4gIHsga2V5OiBcImJoX2NoZWNrXCIsIGxhYmVsOiBcIkJIIENoZWNrXCIgfSxcclxuXTtcclxuXHJcbmZ1bmN0aW9uIHBhcnNlRGVEYXRlKHM6IHN0cmluZyk6IG51bWJlciB8IG51bGwge1xyXG4gIGNvbnN0IHQgPSBzLnRyaW0oKTtcclxuICBpZiAoIXQpIHJldHVybiBudWxsO1xyXG4gIGNvbnN0IGQgPSBEYXRlLnBhcnNlKHQpO1xyXG4gIHJldHVybiBOdW1iZXIuaXNOYU4oZCkgPyBudWxsIDogZDtcclxufVxyXG5cclxuZnVuY3Rpb24gZm9ybWF0RGVEYXRlKGlzbzogc3RyaW5nKTogc3RyaW5nIHtcclxuICBpZiAoIWlzbykgcmV0dXJuIFwi4oCUXCI7XHJcbiAgY29uc3QgZCA9IERhdGUucGFyc2UoaXNvKTtcclxuICBpZiAoTnVtYmVyLmlzTmFOKGQpKSByZXR1cm4gaXNvO1xyXG4gIHJldHVybiBuZXcgRGF0ZShkKS50b0xvY2FsZURhdGVTdHJpbmcoXCJkZS1ERVwiKTtcclxufVxyXG5cclxuZnVuY3Rpb24gbWF0Y2hlc0V6RmlsdGVyKHJvd0V6OiBzdHJpbmcsIGZpbHRlckV6OiBzdHJpbmcpOiBib29sZWFuIHtcclxuICBjb25zdCBmID0gZmlsdGVyRXoudHJpbSgpLnRvTG93ZXJDYXNlKCk7XHJcbiAgaWYgKCFmKSByZXR1cm4gdHJ1ZTtcclxuICBjb25zdCByID0gKHJvd0V6IHx8IFwiXCIpLnRvTG93ZXJDYXNlKCk7XHJcbiAgcmV0dXJuIHIuaW5jbHVkZXMoZikgfHwgci5yZXBsYWNlKC8tL2csIFwiLlwiKS5pbmNsdWRlcyhmKTtcclxufVxyXG5cclxuZXhwb3J0IGZ1bmN0aW9uIFZlcmthdWZ0ZXJCZXN0YW5kUGFnZSh7IGRlcGFydG1lbnQgfTogeyBkZXBhcnRtZW50PzogRGVwYXJ0bWVudEFyZWEgfSkge1xyXG4gIGNvbnN0IHsgdCB9ID0gdXNlTGFuZ3VhZ2UoKTtcclxuICBjb25zdCBbZGJdID0gdXNlU3RhdGUoKCkgPT4gbG9hZFZlcmthdWZ0ZXJCZXN0YW5kRGIoKSk7XHJcblxyXG4gIGNvbnN0IFtzaG93TW9yZUZpbHRlcnMsIHNldFNob3dNb3JlRmlsdGVyc10gPSB1c2VTdGF0ZSh0cnVlKTtcclxuICBjb25zdCBbcG9zaXRpb25zTnIsIHNldFBvc2l0aW9uc05yXSA9IHVzZVN0YXRlKFwiXCIpO1xyXG4gIGNvbnN0IFtsaW5rYWV1ZmVyLCBzZXRMaW5rYWV1ZmVyXSA9IHVzZVN0YXRlKFwiXCIpO1xyXG4gIGNvbnN0IFtiZXRlaWxpZ3Rlciwgc2V0QmV0ZWlsaWd0ZXJdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW3ZlcmthZXVmZXIsIHNldFZlcmthZXVmZXJdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW3ZlcmthdWZWb24sIHNldFZlcmthdWZWb25dID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW3ZlcmthdWZCaXMsIHNldFZlcmthdWZCaXNdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW2thdWZWb24sIHNldEthdWZWb25dID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW2thdWZCaXMsIHNldEthdWZCaXNdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW2ZhaHJ6ZXVnYXJ0LCBzZXRGYWhyemV1Z2FydF0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbYXVmYmF1YXJ0LCBzZXRBdWZiYXVhcnRdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW2ZhYnJpa2F0LCBzZXRGYWJyaWthdF0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbbW9kZWxsVHlwLCBzZXRNb2RlbGxUeXBdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW2V6RmlsdGVyLCBzZXRFekZpbHRlcl0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbZmFocmdlc3RlbGwsIHNldEZhaHJnZXN0ZWxsXSA9IHVzZVN0YXRlKFwiXCIpO1xyXG4gIGNvbnN0IFtleHRyYXMsIHNldEV4dHJhc10gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbdGVsZWZvbiwgc2V0VGVsZWZvbl0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbZGViaXRvck5yLCBzZXREZWJpdG9yTnJdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW2Zpcm1lbm5hbWUsIHNldEZpcm1lbm5hbWVdID0gdXNlU3RhdGUoXCJcIik7XHJcbiAgY29uc3QgW3Bseiwgc2V0UGx6XSA9IHVzZVN0YXRlKFwiXCIpO1xyXG4gIGNvbnN0IFtvcnQsIHNldE9ydF0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbbGFuZCwgc2V0TGFuZF0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbaW1wb3J0VmVya2F1ZnNOciwgc2V0SW1wb3J0VmVya2F1ZnNOcl0gPSB1c2VTdGF0ZShcIlwiKTtcclxuICBjb25zdCBbc29ydGllcnVuZywgc2V0U29ydGllcnVuZ10gPSB1c2VTdGF0ZTxzdHJpbmc+KFNPUlRfT1BUSU9OU1swXSk7XHJcbiAgY29uc3QgW3NlbGVjdGVkSWQsIHNldFNlbGVjdGVkSWRdID0gdXNlU3RhdGU8bnVtYmVyIHwgbnVsbD4obnVsbCk7XHJcblxyXG4gIGNvbnN0IFtmbGFnRmlsdGVycywgc2V0RmxhZ0ZpbHRlcnNdID0gdXNlU3RhdGU8UGFydGlhbDxSZWNvcmQ8RmxhZ0tleSwgYm9vbGVhbj4+Pih7fSk7XHJcbiAgY29uc3QgW2dsb2JhbEhlYWRlclNlYXJjaCwgc2V0R2xvYmFsSGVhZGVyU2VhcmNoXSA9IHVzZVN0YXRlKFwiXCIpO1xyXG5cclxuICBjb25zdCBzZXRGbGFnID0gdXNlQ2FsbGJhY2soKGtleTogRmxhZ0tleSwgdmFsdWU6IGJvb2xlYW4pID0+IHtcclxuICAgIHNldEZsYWdGaWx0ZXJzKChwcmV2KSA9PiB7XHJcbiAgICAgIGNvbnN0IG5leHQgPSB7IC4uLnByZXYgfTtcclxuICAgICAgaWYgKCF2YWx1ZSkgZGVsZXRlIG5leHRba2V5XTtcclxuICAgICAgZWxzZSBuZXh0W2tleV0gPSB0cnVlO1xyXG4gICAgICByZXR1cm4gbmV4dDtcclxuICAgIH0pO1xyXG4gIH0sIFtdKTtcclxuXHJcbiAgY29uc3Qgc3VnZ2VzdGlvbnMgPSB1c2VNZW1vKCgpID0+IHtcclxuICAgIGNvbnN0IGZiID0gbmV3IFNldDxzdHJpbmc+KCk7XHJcbiAgICBjb25zdCBwb3MgPSBuZXcgU2V0PHN0cmluZz4oKTtcclxuICAgIGZvciAoY29uc3QgciBvZiBkYi5yb3dzKSB7XHJcbiAgICAgIGlmIChyLmZhYnJpa2F0KSBmYi5hZGQoci5mYWJyaWthdCk7XHJcbiAgICAgIGlmIChyLnBvc2l0aW9uX2FuemVpZ2UpIHBvcy5hZGQoci5wb3NpdGlvbl9hbnplaWdlKTtcclxuICAgIH1cclxuICAgIHJldHVybiB7IGZhYnJpa2F0OiBbLi4uZmJdLnNvcnQoKSwgcG9zaXRpb246IFsuLi5wb3NdLnNvcnQoKSB9O1xyXG4gIH0sIFtkYi5yb3dzXSk7XHJcblxyXG4gIGNvbnN0IGZpbHRlcmVkID0gdXNlTWVtbygoKSA9PiB7XHJcbiAgICBsZXQgbGlzdDogVmVya2F1ZnRlckJlc3RhbmRSb3dbXSA9IFsuLi5kYi5yb3dzXTtcclxuXHJcbiAgICBpZiAoZ2xvYmFsSGVhZGVyU2VhcmNoLnRyaW0oKSkge1xyXG4gICAgICBjb25zdCByYXcgPSBnbG9iYWxIZWFkZXJTZWFyY2gudHJpbSgpO1xyXG4gICAgICBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+XHJcbiAgICAgICAgY29tYmluZWRNYXRjaChcclxuICAgICAgICAgIHJhdyxcclxuICAgICAgICAgIFtcclxuICAgICAgICAgICAgci5wb3NpdGlvbl9hbnplaWdlLFxyXG4gICAgICAgICAgICByLmZpcm1lbm5hbWUsXHJcbiAgICAgICAgICAgIHIuZmFocmdlc3RlbGxudW1tZXIsXHJcbiAgICAgICAgICAgIHIuZGViaXRvcl9ucixcclxuICAgICAgICAgICAgci5wbHosXHJcbiAgICAgICAgICAgIHIub3J0LFxyXG4gICAgICAgICAgICByLmxhbmQsXHJcbiAgICAgICAgICAgIHIuZmFicmlrYXQsXHJcbiAgICAgICAgICAgIHIudHlwLFxyXG4gICAgICAgICAgICByLnRlbGVmb25udW1tZXIsXHJcbiAgICAgICAgICAgIHIuZXh0cmFzLFxyXG4gICAgICAgICAgICByLmltcG9ydF92ZXJrYXVmc19ucixcclxuICAgICAgICAgICAgci5laW5rYWV1ZmVyLFxyXG4gICAgICAgICAgICByLnZlcmthZXVmZXIsXHJcbiAgICAgICAgICAgIHIubGlua2FldWZlcixcclxuICAgICAgICAgICAgci5iZXRlaWxpZ3RlcixcclxuICAgICAgICAgIF0sXHJcbiAgICAgICAgICBbci50ZWxlZm9ubnVtbWVyLCByLmZhaHJnZXN0ZWxsbnVtbWVyLCByLmRlYml0b3JfbnJdXHJcbiAgICAgICAgKVxyXG4gICAgICApO1xyXG4gICAgfVxyXG5cclxuICAgIGlmIChwb3NpdGlvbnNOci50cmltKCkpIHtcclxuICAgICAgY29uc3QgcSA9IHBvc2l0aW9uc05yLnRyaW0oKTtcclxuICAgICAgbGlzdCA9IGxpc3QuZmlsdGVyKChyKSA9PiByLnBvc2l0aW9uX2FuemVpZ2UuaW5jbHVkZXMocSkpO1xyXG4gICAgfVxyXG4gICAgaWYgKGxpbmthZXVmZXIudHJpbSgpKSB7XHJcbiAgICAgIGNvbnN0IHEgPSBsaW5rYWV1ZmVyLnRvTG93ZXJDYXNlKCk7XHJcbiAgICAgIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gKHIubGlua2FldWZlciB8fCBcIlwiKS50b0xvd2VyQ2FzZSgpLmluY2x1ZGVzKHEpKTtcclxuICAgIH1cclxuICAgIGlmIChiZXRlaWxpZ3Rlci50cmltKCkpIHtcclxuICAgICAgY29uc3QgcSA9IGJldGVpbGlndGVyLnRvTG93ZXJDYXNlKCk7XHJcbiAgICAgIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gKHIuYmV0ZWlsaWd0ZXIgfHwgXCJcIikudG9Mb3dlckNhc2UoKS5pbmNsdWRlcyhxKSk7XHJcbiAgICB9XHJcbiAgICBpZiAodmVya2FldWZlci50cmltKCkpIHtcclxuICAgICAgY29uc3QgcSA9IHZlcmthZXVmZXIudG9Mb3dlckNhc2UoKTtcclxuICAgICAgbGlzdCA9IGxpc3QuZmlsdGVyKChyKSA9PiAoci52ZXJrYWV1ZmVyIHx8IFwiXCIpLnRvTG93ZXJDYXNlKCkuaW5jbHVkZXMocSkpO1xyXG4gICAgfVxyXG5cclxuICAgIGNvbnN0IHZ2ID0gcGFyc2VEZURhdGUodmVya2F1ZlZvbik7XHJcbiAgICBjb25zdCB2YiA9IHBhcnNlRGVEYXRlKHZlcmthdWZCaXMpO1xyXG4gICAgaWYgKHZ2ICE9IG51bGwpIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gRGF0ZS5wYXJzZShyLnZlcmthdWZfZGF0dW0pID49IHZ2KTtcclxuICAgIGlmICh2YiAhPSBudWxsKSBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+IERhdGUucGFyc2Uoci52ZXJrYXVmX2RhdHVtKSA8PSB2Yik7XHJcblxyXG4gICAgY29uc3Qga3YgPSBwYXJzZURlRGF0ZShrYXVmVm9uKTtcclxuICAgIGNvbnN0IGtiID0gcGFyc2VEZURhdGUoa2F1ZkJpcyk7XHJcbiAgICBpZiAoa3YgIT0gbnVsbCkgbGlzdCA9IGxpc3QuZmlsdGVyKChyKSA9PiBEYXRlLnBhcnNlKHIua2F1Zl9kYXR1bSkgPj0ga3YpO1xyXG4gICAgaWYgKGtiICE9IG51bGwpIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gRGF0ZS5wYXJzZShyLmthdWZfZGF0dW0pIDw9IGtiKTtcclxuXHJcbiAgICBpZiAoZmFocnpldWdhcnQpIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gci5mYWhyemV1Z2FydCA9PT0gZmFocnpldWdhcnQpO1xyXG4gICAgaWYgKGF1ZmJhdWFydCkgbGlzdCA9IGxpc3QuZmlsdGVyKChyKSA9PiByLmF1ZmJhdWFydCA9PT0gYXVmYmF1YXJ0KTtcclxuICAgIGlmIChmYWJyaWthdC50cmltKCkpIHtcclxuICAgICAgY29uc3QgZiA9IGZhYnJpa2F0LnRvTG93ZXJDYXNlKCk7XHJcbiAgICAgIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gci5mYWJyaWthdC50b0xvd2VyQ2FzZSgpLmluY2x1ZGVzKGYpKTtcclxuICAgIH1cclxuICAgIGlmIChtb2RlbGxUeXAudHJpbSgpKSB7XHJcbiAgICAgIGNvbnN0IG0gPSBtb2RlbGxUeXAudG9Mb3dlckNhc2UoKTtcclxuICAgICAgbGlzdCA9IGxpc3QuZmlsdGVyKChyKSA9PiByLnR5cC50b0xvd2VyQ2FzZSgpLmluY2x1ZGVzKG0pKTtcclxuICAgIH1cclxuICAgIGlmIChlekZpbHRlci50cmltKCkpIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gbWF0Y2hlc0V6RmlsdGVyKHIuZXosIGV6RmlsdGVyKSk7XHJcbiAgICBpZiAoZmFocmdlc3RlbGwudHJpbSgpKSB7XHJcbiAgICAgIGNvbnN0IGYgPSBmYWhyZ2VzdGVsbC50b0xvd2VyQ2FzZSgpO1xyXG4gICAgICBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+IHIuZmFocmdlc3RlbGxudW1tZXIudG9Mb3dlckNhc2UoKS5pbmNsdWRlcyhmKSk7XHJcbiAgICB9XHJcbiAgICBpZiAoZXh0cmFzLnRyaW0oKSkge1xyXG4gICAgICBjb25zdCBlID0gZXh0cmFzLnRvTG93ZXJDYXNlKCk7XHJcbiAgICAgIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gKHIuZXh0cmFzIHx8IFwiXCIpLnRvTG93ZXJDYXNlKCkuaW5jbHVkZXMoZSkpO1xyXG4gICAgfVxyXG4gICAgaWYgKHRlbGVmb24udHJpbSgpKSB7XHJcbiAgICAgIGNvbnN0IHJhdyA9IHRlbGVmb24udHJpbSgpO1xyXG4gICAgICBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+XHJcbiAgICAgICAgY29tYmluZWRNYXRjaChyYXcsIFtyLnRlbGVmb25udW1tZXJdLCBbci50ZWxlZm9ubnVtbWVyXSlcclxuICAgICAgKTtcclxuICAgIH1cclxuICAgIGlmIChkZWJpdG9yTnIudHJpbSgpKSBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+IHIuZGViaXRvcl9uci5pbmNsdWRlcyhkZWJpdG9yTnIudHJpbSgpKSk7XHJcbiAgICBpZiAoZmlybWVubmFtZS50cmltKCkpIHtcclxuICAgICAgY29uc3QgZm4gPSBmaXJtZW5uYW1lLnRvTG93ZXJDYXNlKCk7XHJcbiAgICAgIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gci5maXJtZW5uYW1lLnRvTG93ZXJDYXNlKCkuaW5jbHVkZXMoZm4pKTtcclxuICAgIH1cclxuICAgIGlmIChwbHoudHJpbSgpKSBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+IHIucGx6LmluY2x1ZGVzKHBsei50cmltKCkpKTtcclxuICAgIGlmIChvcnQudHJpbSgpKSBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+IHIub3J0LnRvTG93ZXJDYXNlKCkuaW5jbHVkZXMob3J0LnRyaW0oKS50b0xvd2VyQ2FzZSgpKSk7XHJcbiAgICBpZiAobGFuZC50cmltKCkpIGxpc3QgPSBsaXN0LmZpbHRlcigocikgPT4gci5sYW5kLnRvTG93ZXJDYXNlKCkuaW5jbHVkZXMobGFuZC50cmltKCkudG9Mb3dlckNhc2UoKSkpO1xyXG4gICAgaWYgKGltcG9ydFZlcmthdWZzTnIudHJpbSgpKSB7XHJcbiAgICAgIGNvbnN0IGltID0gaW1wb3J0VmVya2F1ZnNOci50b0xvd2VyQ2FzZSgpO1xyXG4gICAgICBsaXN0ID0gbGlzdC5maWx0ZXIoKHIpID0+IChyLmltcG9ydF92ZXJrYXVmc19uciB8fCBcIlwiKS50b0xvd2VyQ2FzZSgpLmluY2x1ZGVzKGltKSk7XHJcbiAgICB9XHJcblxyXG4gICAgKE9iamVjdC5lbnRyaWVzKGZsYWdGaWx0ZXJzKSBhcyBbRmxhZ0tleSwgYm9vbGVhbl1bXSkuZm9yRWFjaCgoW2tleSwgb25dKSA9PiB7XHJcbiAgICAgIGlmIChvbikgbGlzdCA9IGxpc3QuZmlsdGVyKChyKSA9PiByW2tleV0gPT09IHRydWUpO1xyXG4gICAgfSk7XHJcblxyXG4gICAgY29uc3QgY21wID0gKGE6IFZlcmthdWZ0ZXJCZXN0YW5kUm93LCBiOiBWZXJrYXVmdGVyQmVzdGFuZFJvdykgPT4ge1xyXG4gICAgICBzd2l0Y2ggKHNvcnRpZXJ1bmcpIHtcclxuICAgICAgICBjYXNlIFwiS2F1ZmRhdHVtXCI6XHJcbiAgICAgICAgICByZXR1cm4gYi5rYXVmX2RhdHVtLmxvY2FsZUNvbXBhcmUoYS5rYXVmX2RhdHVtKTtcclxuICAgICAgICBjYXNlIFwiUG9zaXRpb25cIjpcclxuICAgICAgICAgIHJldHVybiBwYXJzZUludChiLnBvc2l0aW9uX2FuemVpZ2UsIDEwKSAtIHBhcnNlSW50KGEucG9zaXRpb25fYW56ZWlnZSwgMTApO1xyXG4gICAgICAgIGNhc2UgXCJGaXJtZW5uYW1lXCI6XHJcbiAgICAgICAgICByZXR1cm4gYS5maXJtZW5uYW1lLmxvY2FsZUNvbXBhcmUoYi5maXJtZW5uYW1lKTtcclxuICAgICAgICBjYXNlIFwiRmFicmlrYXRcIjpcclxuICAgICAgICAgIHJldHVybiBhLmZhYnJpa2F0LmxvY2FsZUNvbXBhcmUoYi5mYWJyaWthdCk7XHJcbiAgICAgICAgY2FzZSBcIkVpbmvDpHVmZXJcIjpcclxuICAgICAgICAgIHJldHVybiBhLmVpbmthZXVmZXIubG9jYWxlQ29tcGFyZShiLmVpbmthZXVmZXIpO1xyXG4gICAgICAgIGRlZmF1bHQ6XHJcbiAgICAgICAgICByZXR1cm4gYi52ZXJrYXVmX2RhdHVtLmxvY2FsZUNvbXBhcmUoYS52ZXJrYXVmX2RhdHVtKTtcclxuICAgICAgfVxyXG4gICAgfTtcclxuICAgIGxpc3Quc29ydChjbXApO1xyXG4gICAgcmV0dXJuIGxpc3Q7XHJcbiAgfSwgW1xyXG4gICAgZGIucm93cyxcclxuICAgIGdsb2JhbEhlYWRlclNlYXJjaCxcclxuICAgIHBvc2l0aW9uc05yLFxyXG4gICAgbGlua2FldWZlcixcclxuICAgIGJldGVpbGlndGVyLFxyXG4gICAgdmVya2FldWZlcixcclxuICAgIHZlcmthdWZWb24sXHJcbiAgICB2ZXJrYXVmQmlzLFxyXG4gICAga2F1ZlZvbixcclxuICAgIGthdWZCaXMsXHJcbiAgICBmYWhyemV1Z2FydCxcclxuICAgIGF1ZmJhdWFydCxcclxuICAgIGZhYnJpa2F0LFxyXG4gICAgbW9kZWxsVHlwLFxyXG4gICAgZXpGaWx0ZXIsXHJcbiAgICBmYWhyZ2VzdGVsbCxcclxuICAgIGV4dHJhcyxcclxuICAgIHRlbGVmb24sXHJcbiAgICBkZWJpdG9yTnIsXHJcbiAgICBmaXJtZW5uYW1lLFxyXG4gICAgcGx6LFxyXG4gICAgb3J0LFxyXG4gICAgbGFuZCxcclxuICAgIGltcG9ydFZlcmthdWZzTnIsXHJcbiAgICBmbGFnRmlsdGVycyxcclxuICAgIHNvcnRpZXJ1bmcsXHJcbiAgXSk7XHJcblxyXG4gIGNvbnN0IHNob3dBbGwgPSAoKSA9PiB7XHJcbiAgICBzZXRHbG9iYWxIZWFkZXJTZWFyY2goXCJcIik7XHJcbiAgICBzZXRQb3NpdGlvbnNOcihcIlwiKTtcclxuICAgIHNldExpbmthZXVmZXIoXCJcIik7XHJcbiAgICBzZXRCZXRlaWxpZ3RlcihcIlwiKTtcclxuICAgIHNldFZlcmthZXVmZXIoXCJcIik7XHJcbiAgICBzZXRWZXJrYXVmVm9uKFwiXCIpO1xyXG4gICAgc2V0VmVya2F1ZkJpcyhcIlwiKTtcclxuICAgIHNldEthdWZWb24oXCJcIik7XHJcbiAgICBzZXRLYXVmQmlzKFwiXCIpO1xyXG4gICAgc2V0RmFocnpldWdhcnQoXCJcIik7XHJcbiAgICBzZXRBdWZiYXVhcnQoXCJcIik7XHJcbiAgICBzZXRGYWJyaWthdChcIlwiKTtcclxuICAgIHNldE1vZGVsbFR5cChcIlwiKTtcclxuICAgIHNldEV6RmlsdGVyKFwiXCIpO1xyXG4gICAgc2V0RmFocmdlc3RlbGwoXCJcIik7XHJcbiAgICBzZXRFeHRyYXMoXCJcIik7XHJcbiAgICBzZXRUZWxlZm9uKFwiXCIpO1xyXG4gICAgc2V0RGViaXRvck5yKFwiXCIpO1xyXG4gICAgc2V0RmlybWVubmFtZShcIlwiKTtcclxuICAgIHNldFBseihcIlwiKTtcclxuICAgIHNldE9ydChcIlwiKTtcclxuICAgIHNldExhbmQoXCJcIik7XHJcbiAgICBzZXRJbXBvcnRWZXJrYXVmc05yKFwiXCIpO1xyXG4gICAgc2V0RmxhZ0ZpbHRlcnMoe30pO1xyXG4gIH07XHJcblxyXG4gIGNvbnN0IGZvY3VzVmVya2F1ZnRlckZyb21TZWFyY2ggPSB1c2VDYWxsYmFjayhcclxuICAgIChpZDogbnVtYmVyKSA9PiB7XHJcbiAgICAgIGlmICghZGIucm93cy5zb21lKChyKSA9PiByLmlkID09PSBpZCkpIHJldHVybjtcclxuICAgICAgc2hvd0FsbCgpO1xyXG4gICAgICBzZXRTZWxlY3RlZElkKGlkKTtcclxuICAgIH0sXHJcbiAgICBbZGIucm93c11cclxuICApO1xyXG5cclxuICB1c2VBcHBseUdsb2JhbFNlYXJjaEZvY3VzKFwidmVya2F1ZnRlclwiLCBmb2N1c1ZlcmthdWZ0ZXJGcm9tU2VhcmNoKTtcclxuXHJcbiAgY29uc3Qgc2VsZWN0ZWQgPSBzZWxlY3RlZElkICE9IG51bGwgPyBkYi5yb3dzLmZpbmQoKHIpID0+IHIuaWQgPT09IHNlbGVjdGVkSWQpIDogbnVsbDtcclxuXHJcbiAgY29uc3QgaW5wdXRGb2N1cyA9XHJcbiAgICBcImgtOSB3LWZ1bGwgcm91bmRlZC1sZyBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCBiZy13aGl0ZSBweC0yLjUgdGV4dC1zbSBmb2N1czpib3JkZXItZW1lcmFsZC0zMDAgZm9jdXM6b3V0bGluZS1ub25lIGZvY3VzOnJpbmctMSBmb2N1czpyaW5nLWVtZXJhbGQtNTAwLzIwXCI7XHJcblxyXG4gIHJldHVybiAoXHJcbiAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggbWluLWgtMCBmbGV4LTEgZmxleC1jb2wgcC02IHBiLThcIj5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJtYi00XCI+XHJcbiAgICAgICAgPGgxIGNsYXNzTmFtZT1cInRleHQtMnhsIGZvbnQtYm9sZCB0cmFja2luZy10aWdodCB0ZXh0LXNsYXRlLTgwMFwiPlxyXG4gICAgICAgICAge3QoXCJzaWRlYmFyU29sZEludmVudG9yeVwiLCBcIlZlcmthdWZ0ZXIgQmVzdGFuZFwiKX1cclxuICAgICAgICA8L2gxPlxyXG4gICAgICAgIDxwIGNsYXNzTmFtZT1cIm10LTAuNSB0ZXh0LXNtIHRleHQtc2xhdGUtNTAwXCI+XHJcbiAgICAgICAgICB7dChcInZlcmthdWZ0ZXJCZXN0YW5kU3VidGl0bGVcIiwgXCJTdWNoZSB2ZXJrYXVmdGVyIEJlc3RhbmQg4oCUIEZpbHRlciB1bmQgU3BhbHRlbiB3aWUgaW0gTGVnYWN5LVN5c3RlbS5cIil9XHJcbiAgICAgICAgICB7ZGVwYXJ0bWVudCA/IChcclxuICAgICAgICAgICAgPD5cclxuICAgICAgICAgICAgICB7XCIgXCJ9XHJcbiAgICAgICAgICAgICAge3QoXCJjdXN0b21lcnNBcmVhXCIsIFwiQXJlYVwiKX06e1wiIFwifVxyXG4gICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cImZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNjAwXCI+e3QoREVQQVJUTUVOVF9JMThOX0tFWVtkZXBhcnRtZW50XSwgZGVwYXJ0bWVudCl9PC9zcGFuPlxyXG4gICAgICAgICAgICA8Lz5cclxuICAgICAgICAgICkgOiBudWxsfVxyXG4gICAgICAgIDwvcD5cclxuICAgICAgPC9kaXY+XHJcblxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cImdsYXNzLWNhcmQgbWItNCBzcGFjZS15LTQgYm9yZGVyLWVtZXJhbGQtMTAwLzgwIHAtNCBzaGFkb3ctZW1lcmFsZC05MDAvNVwiPlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LXdyYXAgaXRlbXMtY2VudGVyIGdhcC0zXCI+XHJcbiAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxyXG4gICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiByb3VuZGVkLXhsIGJnLXNsYXRlLTEwMCBweC00IHB5LTIuNSB0ZXh0LXNtIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNzAwIGhvdmVyOmJnLXNsYXRlLTIwMFwiXHJcbiAgICAgICAgICA+XHJcbiAgICAgICAgICAgIDxTZWFyY2ggY2xhc3NOYW1lPVwiaC00IHctNFwiIC8+XHJcbiAgICAgICAgICAgIFplaWdlblxyXG4gICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxyXG4gICAgICAgICAgICBvbkNsaWNrPXtzaG93QWxsfVxyXG4gICAgICAgICAgICBjbGFzc05hbWU9XCJyb3VuZGVkLXhsIGJvcmRlciBib3JkZXItZW1lcmFsZC0yMDAgYmctd2hpdGUgcHgtNCBweS0yLjUgdGV4dC1zbSBmb250LW1lZGl1bSB0ZXh0LWVtZXJhbGQtODAwIGhvdmVyOmJnLWVtZXJhbGQtNTBcIlxyXG4gICAgICAgICAgPlxyXG4gICAgICAgICAgICBhbGxlXHJcbiAgICAgICAgICA8L2J1dHRvbj5cclxuICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cInRleHQteHMgdGV4dC1zbGF0ZS00MDBcIj5GaWx0ZXIgd2lya2VuIHNvZm9ydCBhdWYgZGllIEVyZ2VibmlzbGlzdGUuPC9zcGFuPlxyXG4gICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImdyaWQgZ3JpZC1jb2xzLTIgZ2FwLTMgc206Z3JpZC1jb2xzLTMgbWQ6Z3JpZC1jb2xzLTQgbGc6Z3JpZC1jb2xzLTZcIj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5Qb3NpdGlvbnNOcjwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxTdWdnZXN0VGV4dElucHV0XHJcbiAgICAgICAgICAgICAgdHlwZT1cInRleHRcIlxyXG4gICAgICAgICAgICAgIHZhbHVlPXtwb3NpdGlvbnNOcn1cclxuICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldFBvc2l0aW9uc05yKGUudGFyZ2V0LnZhbHVlKX1cclxuICAgICAgICAgICAgICBzdWdnZXN0aW9ucz17c3VnZ2VzdGlvbnMucG9zaXRpb259XHJcbiAgICAgICAgICAgICAgY2xhc3NOYW1lPXtpbnB1dEZvY3VzfVxyXG4gICAgICAgICAgICAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+TGlua8OkdWZlcjwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dFxyXG4gICAgICAgICAgICAgIHR5cGU9XCJ0ZXh0XCJcclxuICAgICAgICAgICAgICB2YWx1ZT17bGlua2FldWZlcn1cclxuICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldExpbmthZXVmZXIoZS50YXJnZXQudmFsdWUpfVxyXG4gICAgICAgICAgICAgIGNsYXNzTmFtZT17aW5wdXRGb2N1c31cclxuICAgICAgICAgICAgLz5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPGRpdj5cclxuICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT1cIm1iLTEgYmxvY2sgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTUwMFwiPkJldGVpbGlndGVyPC9sYWJlbD5cclxuICAgICAgICAgICAgPGlucHV0XHJcbiAgICAgICAgICAgICAgdHlwZT1cInRleHRcIlxyXG4gICAgICAgICAgICAgIHZhbHVlPXtiZXRlaWxpZ3Rlcn1cclxuICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldEJldGVpbGlndGVyKGUudGFyZ2V0LnZhbHVlKX1cclxuICAgICAgICAgICAgICBjbGFzc05hbWU9e2lucHV0Rm9jdXN9XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5WZXJrw6R1ZmVyPC9sYWJlbD5cclxuICAgICAgICAgICAgPGlucHV0XHJcbiAgICAgICAgICAgICAgdHlwZT1cInRleHRcIlxyXG4gICAgICAgICAgICAgIHZhbHVlPXt2ZXJrYWV1ZmVyfVxyXG4gICAgICAgICAgICAgIG9uQ2hhbmdlPXsoZSkgPT4gc2V0VmVya2FldWZlcihlLnRhcmdldC52YWx1ZSl9XHJcbiAgICAgICAgICAgICAgY2xhc3NOYW1lPXtpbnB1dEZvY3VzfVxyXG4gICAgICAgICAgICAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+dm9uIFZlcmthdWZzZGF0dW08L2xhYmVsPlxyXG4gICAgICAgICAgICA8aW5wdXQgdHlwZT1cImRhdGVcIiB2YWx1ZT17dmVya2F1ZlZvbn0gb25DaGFuZ2U9eyhlKSA9PiBzZXRWZXJrYXVmVm9uKGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfSAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+YmlzIFZlcmthdWZzZGF0dW08L2xhYmVsPlxyXG4gICAgICAgICAgICA8aW5wdXQgdHlwZT1cImRhdGVcIiB2YWx1ZT17dmVya2F1ZkJpc30gb25DaGFuZ2U9eyhlKSA9PiBzZXRWZXJrYXVmQmlzKGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfSAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+dm9uIEthdWZkYXR1bTwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwiZGF0ZVwiIHZhbHVlPXtrYXVmVm9ufSBvbkNoYW5nZT17KGUpID0+IHNldEthdWZWb24oZS50YXJnZXQudmFsdWUpfSBjbGFzc05hbWU9e2lucHV0Rm9jdXN9IC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5iaXMgS2F1ZmRhdHVtPC9sYWJlbD5cclxuICAgICAgICAgICAgPGlucHV0IHR5cGU9XCJkYXRlXCIgdmFsdWU9e2thdWZCaXN9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0S2F1ZkJpcyhlLnRhcmdldC52YWx1ZSl9IGNsYXNzTmFtZT17aW5wdXRGb2N1c30gLz5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPGRpdj5cclxuICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT1cIm1iLTEgYmxvY2sgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTUwMFwiPkZhaHJ6ZXVnYXJ0PC9sYWJlbD5cclxuICAgICAgICAgICAgPHNlbGVjdCB2YWx1ZT17ZmFocnpldWdhcnR9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0RmFocnpldWdhcnQoZS50YXJnZXQudmFsdWUpfSBjbGFzc05hbWU9e2lucHV0Rm9jdXN9PlxyXG4gICAgICAgICAgICAgIHtGQUhSWkVVR0FSVF9PUFRJT05TLm1hcCgobykgPT4gKFxyXG4gICAgICAgICAgICAgICAgPG9wdGlvbiBrZXk9e28gfHwgXCJhXCJ9IHZhbHVlPXtvfT5cclxuICAgICAgICAgICAgICAgICAge28gfHwgXCJBbGxlXCJ9XHJcbiAgICAgICAgICAgICAgICA8L29wdGlvbj5cclxuICAgICAgICAgICAgICApKX1cclxuICAgICAgICAgICAgPC9zZWxlY3Q+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5BdWZiYXVBcnQ8L2xhYmVsPlxyXG4gICAgICAgICAgICA8c2VsZWN0IHZhbHVlPXthdWZiYXVhcnR9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0QXVmYmF1YXJ0KGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfT5cclxuICAgICAgICAgICAgICB7QVVGQkFVX09QVElPTlMubWFwKChvKSA9PiAoXHJcbiAgICAgICAgICAgICAgICA8b3B0aW9uIGtleT17byB8fCBcImFcIn0gdmFsdWU9e299PlxyXG4gICAgICAgICAgICAgICAgICB7byB8fCBcIkFsbGVcIn1cclxuICAgICAgICAgICAgICAgIDwvb3B0aW9uPlxyXG4gICAgICAgICAgICAgICkpfVxyXG4gICAgICAgICAgICA8L3NlbGVjdD5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPGRpdj5cclxuICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT1cIm1iLTEgYmxvY2sgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTUwMFwiPkZhYnJpa2F0PC9sYWJlbD5cclxuICAgICAgICAgICAgPFN1Z2dlc3RUZXh0SW5wdXRcclxuICAgICAgICAgICAgICB0eXBlPVwidGV4dFwiXHJcbiAgICAgICAgICAgICAgdmFsdWU9e2ZhYnJpa2F0fVxyXG4gICAgICAgICAgICAgIG9uQ2hhbmdlPXsoZSkgPT4gc2V0RmFicmlrYXQoZS50YXJnZXQudmFsdWUpfVxyXG4gICAgICAgICAgICAgIHN1Z2dlc3Rpb25zPXtzdWdnZXN0aW9ucy5mYWJyaWthdH1cclxuICAgICAgICAgICAgICBjbGFzc05hbWU9e2lucHV0Rm9jdXN9XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5Nb2RlbGwsIFR5cDwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwidGV4dFwiIHZhbHVlPXttb2RlbGxUeXB9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0TW9kZWxsVHlwKGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfSAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+RVogKE1NLCBKSkpKKTwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dFxyXG4gICAgICAgICAgICAgIHR5cGU9XCJ0ZXh0XCJcclxuICAgICAgICAgICAgICB2YWx1ZT17ZXpGaWx0ZXJ9XHJcbiAgICAgICAgICAgICAgb25DaGFuZ2U9eyhlKSA9PiBzZXRFekZpbHRlcihlLnRhcmdldC52YWx1ZSl9XHJcbiAgICAgICAgICAgICAgcGxhY2Vob2xkZXI9XCJ6LiBCLiAyMDE4LTA2XCJcclxuICAgICAgICAgICAgICBjbGFzc05hbWU9e2lucHV0Rm9jdXN9XHJcbiAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5GYWhyZ2VzdGVsbG51bW1lcjwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwidGV4dFwiIHZhbHVlPXtmYWhyZ2VzdGVsbH0gb25DaGFuZ2U9eyhlKSA9PiBzZXRGYWhyZ2VzdGVsbChlLnRhcmdldC52YWx1ZSl9IGNsYXNzTmFtZT17aW5wdXRGb2N1c30gLz5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPGRpdj5cclxuICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT1cIm1iLTEgYmxvY2sgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTUwMFwiPkV4dHJhczwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwidGV4dFwiIHZhbHVlPXtleHRyYXN9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0RXh0cmFzKGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfSAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+VGVsZWZvbm51bW1lcjwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwidGV4dFwiIHZhbHVlPXt0ZWxlZm9ufSBvbkNoYW5nZT17KGUpID0+IHNldFRlbGVmb24oZS50YXJnZXQudmFsdWUpfSBjbGFzc05hbWU9e2lucHV0Rm9jdXN9IC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5EZWJpdG9yTnI8L2xhYmVsPlxyXG4gICAgICAgICAgICA8aW5wdXQgdHlwZT1cInRleHRcIiB2YWx1ZT17ZGViaXRvck5yfSBvbkNoYW5nZT17KGUpID0+IHNldERlYml0b3JOcihlLnRhcmdldC52YWx1ZSl9IGNsYXNzTmFtZT17aW5wdXRGb2N1c30gLz5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPGRpdj5cclxuICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT1cIm1iLTEgYmxvY2sgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTUwMFwiPkZpcm1lbm5hbWU8L2xhYmVsPlxyXG4gICAgICAgICAgICA8aW5wdXQgdHlwZT1cInRleHRcIiB2YWx1ZT17ZmlybWVubmFtZX0gb25DaGFuZ2U9eyhlKSA9PiBzZXRGaXJtZW5uYW1lKGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfSAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+UExaPC9sYWJlbD5cclxuICAgICAgICAgICAgPGlucHV0IHR5cGU9XCJ0ZXh0XCIgdmFsdWU9e3Bsen0gb25DaGFuZ2U9eyhlKSA9PiBzZXRQbHooZS50YXJnZXQudmFsdWUpfSBjbGFzc05hbWU9e2lucHV0Rm9jdXN9IC8+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9XCJtYi0xIGJsb2NrIHRleHQteHMgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS01MDBcIj5PcnQ8L2xhYmVsPlxyXG4gICAgICAgICAgICA8aW5wdXQgdHlwZT1cInRleHRcIiB2YWx1ZT17b3J0fSBvbkNoYW5nZT17KGUpID0+IHNldE9ydChlLnRhcmdldC52YWx1ZSl9IGNsYXNzTmFtZT17aW5wdXRGb2N1c30gLz5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPGRpdj5cclxuICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT1cIm1iLTEgYmxvY2sgdGV4dC14cyBmb250LW1lZGl1bSB0ZXh0LXNsYXRlLTUwMFwiPkxhbmQ8L2xhYmVsPlxyXG4gICAgICAgICAgICA8aW5wdXQgdHlwZT1cInRleHRcIiB2YWx1ZT17bGFuZH0gb25DaGFuZ2U9eyhlKSA9PiBzZXRMYW5kKGUudGFyZ2V0LnZhbHVlKX0gY2xhc3NOYW1lPXtpbnB1dEZvY3VzfSAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+SW1wb3J0TnIgLyBWZXJrYXVmc05yPC9sYWJlbD5cclxuICAgICAgICAgICAgPGlucHV0XHJcbiAgICAgICAgICAgICAgdHlwZT1cInRleHRcIlxyXG4gICAgICAgICAgICAgIHZhbHVlPXtpbXBvcnRWZXJrYXVmc05yfVxyXG4gICAgICAgICAgICAgIG9uQ2hhbmdlPXsoZSkgPT4gc2V0SW1wb3J0VmVya2F1ZnNOcihlLnRhcmdldC52YWx1ZSl9XHJcbiAgICAgICAgICAgICAgY2xhc3NOYW1lPXtpbnB1dEZvY3VzfVxyXG4gICAgICAgICAgICAvPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPVwibWItMSBibG9jayB0ZXh0LXhzIGZvbnQtbWVkaXVtIHRleHQtc2xhdGUtNTAwXCI+U29ydGllcnVuZzwvbGFiZWw+XHJcbiAgICAgICAgICAgIDxzZWxlY3QgdmFsdWU9e3NvcnRpZXJ1bmd9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0U29ydGllcnVuZyhlLnRhcmdldC52YWx1ZSl9IGNsYXNzTmFtZT17aW5wdXRGb2N1c30+XHJcbiAgICAgICAgICAgICAge1NPUlRfT1BUSU9OUy5tYXAoKG8pID0+IChcclxuICAgICAgICAgICAgICAgIDxvcHRpb24ga2V5PXtvfSB2YWx1ZT17b30+XHJcbiAgICAgICAgICAgICAgICAgIHtvfVxyXG4gICAgICAgICAgICAgICAgPC9vcHRpb24+XHJcbiAgICAgICAgICAgICAgKSl9XHJcbiAgICAgICAgICAgIDwvc2VsZWN0PlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPC9kaXY+XHJcblxyXG4gICAgICAgIDxkaXY+XHJcbiAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxyXG4gICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRTaG93TW9yZUZpbHRlcnMoIXNob3dNb3JlRmlsdGVycyl9XHJcbiAgICAgICAgICAgIGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGdhcC0yIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS02MDAgaG92ZXI6dGV4dC1lbWVyYWxkLTcwMFwiXHJcbiAgICAgICAgICA+XHJcbiAgICAgICAgICAgIHtzaG93TW9yZUZpbHRlcnMgPyA8Q2hldnJvblVwIGNsYXNzTmFtZT1cImgtNCB3LTRcIiAvPiA6IDxDaGV2cm9uRG93biBjbGFzc05hbWU9XCJoLTQgdy00XCIgLz59XHJcbiAgICAgICAgICAgIFN0YXR1cy1GaWx0ZXJcclxuICAgICAgICAgIDwvYnV0dG9uPlxyXG4gICAgICAgICAge3Nob3dNb3JlRmlsdGVycyAmJiAoXHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibXQtMyBmbGV4IGZsZXgtd3JhcCBnYXAteC00IGdhcC15LTIgYm9yZGVyLXQgYm9yZGVyLXNsYXRlLTEwMCBwdC0zXCI+XHJcbiAgICAgICAgICAgICAge0ZMQUdfRklMVEVSUy5tYXAoKHsga2V5LCBsYWJlbCwgd2FybiB9KSA9PiAoXHJcbiAgICAgICAgICAgICAgICA8bGFiZWxcclxuICAgICAgICAgICAgICAgICAga2V5PXtrZXl9XHJcbiAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT17YGZsZXggY3Vyc29yLXBvaW50ZXIgaXRlbXMtY2VudGVyIGdhcC0yIHJvdW5kZWQtbGcgYm9yZGVyIHB4LTIuNSBweS0xLjUgdGV4dC1zbSAke1xyXG4gICAgICAgICAgICAgICAgICAgIHdhcm5cclxuICAgICAgICAgICAgICAgICAgICAgID8gXCJib3JkZXItYW1iZXItMjAwIGJnLWFtYmVyLTUwLzgwIHRleHQtYW1iZXItOTUwXCJcclxuICAgICAgICAgICAgICAgICAgICAgIDogXCJib3JkZXItc2xhdGUtMjAwIGJnLXNsYXRlLTUwLzgwIHRleHQtc2xhdGUtNzAwXCJcclxuICAgICAgICAgICAgICAgICAgfWB9XHJcbiAgICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICAgIDxpbnB1dFxyXG4gICAgICAgICAgICAgICAgICAgIHR5cGU9XCJjaGVja2JveFwiXHJcbiAgICAgICAgICAgICAgICAgICAgY2hlY2tlZD17Qm9vbGVhbihmbGFnRmlsdGVyc1trZXldKX1cclxuICAgICAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldEZsYWcoa2V5LCBlLnRhcmdldC5jaGVja2VkKX1cclxuICAgICAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJyb3VuZGVkIGJvcmRlci1zbGF0ZS0zMDAgdGV4dC1lbWVyYWxkLTYwMFwiXHJcbiAgICAgICAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgICAgICAgIHtsYWJlbH1cclxuICAgICAgICAgICAgICAgIDwvbGFiZWw+XHJcbiAgICAgICAgICAgICAgKSl9XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgKX1cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcblxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cImdsYXNzLWNhcmQgZmxleCBtaW4taC0wIGZsZXgtMSBmbGV4LWNvbCBvdmVyZmxvdy1oaWRkZW4gYm9yZGVyLWVtZXJhbGQtMTAwLzYwIHNoYWRvdy1lbWVyYWxkLTkwMC81XCI+XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtaW4taC0wIGZsZXgtMSBvdmVyZmxvdy1hdXRvXCI+XHJcbiAgICAgICAgICA8dGFibGUgY2xhc3NOYW1lPVwidy1mdWxsIG1pbi13LVsxNDAwcHhdIHRleHQtbGVmdCB0ZXh0LXNtXCI+XHJcbiAgICAgICAgICAgIDx0aGVhZCBjbGFzc05hbWU9XCJzdGlja3kgdG9wLTAgei0xMCBiZy1lbWVyYWxkLTUwIGZvbnQtc2VtaWJvbGQgdGV4dC1lbWVyYWxkLTkwMFwiPlxyXG4gICAgICAgICAgICAgIDx0cj5cclxuICAgICAgICAgICAgICAgIDx0aCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTNcIj5Qb3NpdGlvbjwvdGg+XHJcbiAgICAgICAgICAgICAgICA8dGggY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0zXCI+VmVya2F1ZjwvdGg+XHJcbiAgICAgICAgICAgICAgICA8dGggY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0zXCI+S2F1ZjwvdGg+XHJcbiAgICAgICAgICAgICAgICA8dGggY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0zXCI+RmFocnpldWdhcnQ8L3RoPlxyXG4gICAgICAgICAgICAgICAgPHRoIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktM1wiPkZhYnJpa2F0PC90aD5cclxuICAgICAgICAgICAgICAgIDx0aCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTNcIj5UeXA8L3RoPlxyXG4gICAgICAgICAgICAgICAgPHRoIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktM1wiPkF1ZmJhdUFydDwvdGg+XHJcbiAgICAgICAgICAgICAgICA8dGggY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0zXCI+RVo8L3RoPlxyXG4gICAgICAgICAgICAgICAgPHRoIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktM1wiPkZhaHJnZXN0ZWxsPC90aD5cclxuICAgICAgICAgICAgICAgIDx0aCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTNcIj5EZWJpdG9yTnI8L3RoPlxyXG4gICAgICAgICAgICAgICAgPHRoIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktM1wiPkZpcm1lbm5hbWU8L3RoPlxyXG4gICAgICAgICAgICAgICAgPHRoIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktM1wiPlBMWjwvdGg+XHJcbiAgICAgICAgICAgICAgICA8dGggY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0zXCI+T3J0PC90aD5cclxuICAgICAgICAgICAgICAgIDx0aCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTNcIj5MYW5kPC90aD5cclxuICAgICAgICAgICAgICAgIDx0aCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTNcIj5FaW5rw6R1ZmVyPC90aD5cclxuICAgICAgICAgICAgICA8L3RyPlxyXG4gICAgICAgICAgICA8L3RoZWFkPlxyXG4gICAgICAgICAgICA8dGJvZHkgY2xhc3NOYW1lPVwiZGl2aWRlLXkgZGl2aWRlLXNsYXRlLTEwMCBiZy13aGl0ZVwiPlxyXG4gICAgICAgICAgICAgIHtmaWx0ZXJlZC5sZW5ndGggPT09IDAgPyAoXHJcbiAgICAgICAgICAgICAgICA8dHI+XHJcbiAgICAgICAgICAgICAgICAgIDx0ZCBjb2xTcGFuPXsxNX0gY2xhc3NOYW1lPVwicHgtNCBweS0xMiB0ZXh0LWNlbnRlciB0ZXh0LXNtIHRleHQtc2xhdGUtNTAwXCI+XHJcbiAgICAgICAgICAgICAgICAgICAgS2VpbmUgVHJlZmZlci4gRmlsdGVyIG1pdCDigJ5hbGxl4oCcIHp1csO8Y2tzZXR6ZW4uXHJcbiAgICAgICAgICAgICAgICAgIDwvdGQ+XHJcbiAgICAgICAgICAgICAgICA8L3RyPlxyXG4gICAgICAgICAgICAgICkgOiAoXHJcbiAgICAgICAgICAgICAgICBmaWx0ZXJlZC5tYXAoKHJvdywgaSkgPT4gKFxyXG4gICAgICAgICAgICAgICAgICA8dHJcclxuICAgICAgICAgICAgICAgICAgICBrZXk9e3Jvdy5pZH1cclxuICAgICAgICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRTZWxlY3RlZElkKHJvdy5pZCl9XHJcbiAgICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPXtgY3Vyc29yLXBvaW50ZXIgdHJhbnNpdGlvbiAke1xyXG4gICAgICAgICAgICAgICAgICAgICAgc2VsZWN0ZWRJZCA9PT0gcm93LmlkXHJcbiAgICAgICAgICAgICAgICAgICAgICAgID8gXCJiZy1lbWVyYWxkLTkwMCB0ZXh0LXdoaXRlXCJcclxuICAgICAgICAgICAgICAgICAgICAgICAgOiBpICUgMiA9PT0gMVxyXG4gICAgICAgICAgICAgICAgICAgICAgICAgID8gXCJiZy1lbWVyYWxkLTUwLzQwIHRleHQtc2xhdGUtODAwIGhvdmVyOmJnLWVtZXJhbGQtNTAvODBcIlxyXG4gICAgICAgICAgICAgICAgICAgICAgICAgIDogXCJ0ZXh0LXNsYXRlLTgwMCBob3ZlcjpiZy1zbGF0ZS01MFwiXHJcbiAgICAgICAgICAgICAgICAgICAgfWB9XHJcbiAgICAgICAgICAgICAgICAgID5cclxuICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0yIGZvbnQtbWVkaXVtIHRhYnVsYXItbnVtc1wiPntyb3cucG9zaXRpb25fYW56ZWlnZX08L3RkPlxyXG4gICAgICAgICAgICAgICAgICAgIDx0ZCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTIgdGFidWxhci1udW1zXCI+e2Zvcm1hdERlRGF0ZShyb3cudmVya2F1Zl9kYXR1bSl9PC90ZD5cclxuICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0yIHRhYnVsYXItbnVtc1wiPntmb3JtYXREZURhdGUocm93LmthdWZfZGF0dW0pfTwvdGQ+XHJcbiAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktMlwiPntyb3cuZmFocnpldWdhcnR9PC90ZD5cclxuICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0yXCI+e3Jvdy5mYWJyaWthdH08L3RkPlxyXG4gICAgICAgICAgICAgICAgICAgIDx0ZCBjbGFzc05hbWU9XCJtYXgtdy1bMTQwcHhdIHRydW5jYXRlIHB4LTIgcHktMlwiIHRpdGxlPXtyb3cudHlwfT5cclxuICAgICAgICAgICAgICAgICAgICAgIHtyb3cudHlwfVxyXG4gICAgICAgICAgICAgICAgICAgIDwvdGQ+XHJcbiAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktMlwiPntyb3cuYXVmYmF1YXJ0fTwvdGQ+XHJcbiAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktMiB0YWJ1bGFyLW51bXNcIj57cm93LmV6IHx8IFwi4oCUXCJ9PC90ZD5cclxuICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3NOYW1lPVwibWF4LXctWzE2MHB4XSB0cnVuY2F0ZSBweC0yIHB5LTIgZm9udC1tb25vIHRleHQteHNcIiB0aXRsZT17cm93LmZhaHJnZXN0ZWxsbnVtbWVyfT5cclxuICAgICAgICAgICAgICAgICAgICAgIHtyb3cuZmFocmdlc3RlbGxudW1tZXJ9XHJcbiAgICAgICAgICAgICAgICAgICAgPC90ZD5cclxuICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0yIHRhYnVsYXItbnVtc1wiPntyb3cuZGViaXRvcl9ucn08L3RkPlxyXG4gICAgICAgICAgICAgICAgICAgIDx0ZCBjbGFzc05hbWU9XCJtYXgtdy1bMTgwcHhdIHRydW5jYXRlIHB4LTIgcHktMlwiIHRpdGxlPXtyb3cuZmlybWVubmFtZX0+XHJcbiAgICAgICAgICAgICAgICAgICAgICB7cm93LmZpcm1lbm5hbWV9XHJcbiAgICAgICAgICAgICAgICAgICAgPC90ZD5cclxuICAgICAgICAgICAgICAgICAgICA8dGQgY2xhc3NOYW1lPVwid2hpdGVzcGFjZS1ub3dyYXAgcHgtMiBweS0yIHRhYnVsYXItbnVtc1wiPntyb3cucGx6fTwvdGQ+XHJcbiAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktMlwiPntyb3cub3J0fTwvdGQ+XHJcbiAgICAgICAgICAgICAgICAgICAgPHRkIGNsYXNzTmFtZT1cIndoaXRlc3BhY2Utbm93cmFwIHB4LTIgcHktMlwiPntyb3cubGFuZH08L3RkPlxyXG4gICAgICAgICAgICAgICAgICAgIDx0ZCBjbGFzc05hbWU9XCJ3aGl0ZXNwYWNlLW5vd3JhcCBweC0yIHB5LTIgZm9udC1tZWRpdW1cIj57cm93LmVpbmthZXVmZXJ9PC90ZD5cclxuICAgICAgICAgICAgICAgICAgPC90cj5cclxuICAgICAgICAgICAgICAgICkpXHJcbiAgICAgICAgICAgICAgKX1cclxuICAgICAgICAgICAgPC90Ym9keT5cclxuICAgICAgICAgIDwvdGFibGU+XHJcbiAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJzaHJpbmstMCBib3JkZXItdCBib3JkZXItZW1lcmFsZC0xMDAgYmctZW1lcmFsZC01MC85MCBweC00IHB5LTIuNSB0ZXh0LXJpZ2h0IHRleHQtc20gdGV4dC1zbGF0ZS03MDBcIj5cclxuICAgICAgICAgIHt0KFwidmVya2F1ZnRlckJlc3RhbmRDb3VudFwiLCBcIkFuemFobCBkZXIgYXVzZ2V3w6RobHRlbiBGYWhyemV1Z2U6XCIpfXtcIiBcIn1cclxuICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cImZvbnQtc2VtaWJvbGQgdGFidWxhci1udW1zIHRleHQtZW1lcmFsZC05MDBcIj57ZmlsdGVyZWQubGVuZ3RofTwvc3Bhbj5cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcblxyXG4gICAgICB7c2VsZWN0ZWQgJiYgKFxyXG4gICAgICAgIDxkaXZcclxuICAgICAgICAgIGNsYXNzTmFtZT1cImZpeGVkIGluc2V0LTAgei01MCBmbGV4IGp1c3RpZnktZW5kIGJnLXNsYXRlLTkwMC80MCBiYWNrZHJvcC1ibHVyLVsycHhdXCJcclxuICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHNldFNlbGVjdGVkSWQobnVsbCl9XHJcbiAgICAgICAgICByb2xlPVwicHJlc2VudGF0aW9uXCJcclxuICAgICAgICA+XHJcbiAgICAgICAgICA8ZGl2XHJcbiAgICAgICAgICAgIGNsYXNzTmFtZT1cImZsZXggaC1mdWxsIHctZnVsbCBtYXgtdy1tZCBzaHJpbmstMCBmbGV4LWNvbCBib3JkZXItbCBib3JkZXItZW1lcmFsZC0yMDAgYmctd2hpdGUgc2hhZG93LTJ4bFwiXHJcbiAgICAgICAgICAgIG9uQ2xpY2s9eyhlKSA9PiBlLnN0b3BQcm9wYWdhdGlvbigpfVxyXG4gICAgICAgICAgICByb2xlPVwiZGlhbG9nXCJcclxuICAgICAgICAgICAgYXJpYS1tb2RhbD1cInRydWVcIlxyXG4gICAgICAgICAgICBhcmlhLWxhYmVsbGVkYnk9XCJ2Yi1kcmF3ZXItdGl0bGVcIlxyXG4gICAgICAgICAgPlxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtc3RhcnQganVzdGlmeS1iZXR3ZWVuIGdhcC00IGJvcmRlci1iIGJvcmRlci1lbWVyYWxkLTEwMCBiZy1lbWVyYWxkLTUwLzUwIHB4LTUgcHktNFwiPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibWluLXctMFwiPlxyXG4gICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwidGV4dC14cyBmb250LW1lZGl1bSB1cHBlcmNhc2UgdHJhY2tpbmctd2lkZSB0ZXh0LWVtZXJhbGQtODAwXCI+UG9zaXRpb248L3A+XHJcbiAgICAgICAgICAgICAgICA8aDIgaWQ9XCJ2Yi1kcmF3ZXItdGl0bGVcIiBjbGFzc05hbWU9XCJ0cnVuY2F0ZSB0ZXh0LXhsIGZvbnQtYm9sZCB0ZXh0LXNsYXRlLTgwMFwiPlxyXG4gICAgICAgICAgICAgICAgICB7c2VsZWN0ZWQucG9zaXRpb25fYW56ZWlnZX1cclxuICAgICAgICAgICAgICAgIDwvaDI+XHJcbiAgICAgICAgICAgICAgICA8cCBjbGFzc05hbWU9XCJtdC0wLjUgdGV4dC1zbSB0ZXh0LXNsYXRlLTYwMFwiPlxyXG4gICAgICAgICAgICAgICAgICB7c2VsZWN0ZWQuZmFicmlrYXR9IMK3IHtzZWxlY3RlZC5mYWhyZ2VzdGVsbG51bW1lcn1cclxuICAgICAgICAgICAgICAgIDwvcD5cclxuICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHNldFNlbGVjdGVkSWQobnVsbCl9XHJcbiAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJzaHJpbmstMCByb3VuZGVkLXhsIHAtMiB0ZXh0LXNsYXRlLTUwMCBob3ZlcjpiZy13aGl0ZVwiXHJcbiAgICAgICAgICAgICAgICBhcmlhLWxhYmVsPVwiU2NobGllw59lblwiXHJcbiAgICAgICAgICAgICAgPlxyXG4gICAgICAgICAgICAgICAgPFggY2xhc3NOYW1lPVwiaC01IHctNVwiIC8+XHJcbiAgICAgICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cIm1pbi1oLTAgZmxleC0xIG92ZXJmbG93LXktYXV0byBwLTUgdGV4dC1zbVwiPlxyXG4gICAgICAgICAgICAgIDxkbCBjbGFzc05hbWU9XCJzcGFjZS15LTJcIj5cclxuICAgICAgICAgICAgICAgIHsoXHJcbiAgICAgICAgICAgICAgICAgIFtcclxuICAgICAgICAgICAgICAgICAgICBbXCJWZXJrw6R1ZmVyXCIsIHNlbGVjdGVkLnZlcmthZXVmZXIgfHwgXCLigJRcIl0sXHJcbiAgICAgICAgICAgICAgICAgICAgW1wiTGlua8OkdWZlclwiLCBzZWxlY3RlZC5saW5rYWV1ZmVyIHx8IFwi4oCUXCJdLFxyXG4gICAgICAgICAgICAgICAgICAgIFtcIkJldGVpbGlndGVyXCIsIHNlbGVjdGVkLmJldGVpbGlndGVyIHx8IFwi4oCUXCJdLFxyXG4gICAgICAgICAgICAgICAgICAgIFtcIlRlbGVmb25cIiwgc2VsZWN0ZWQudGVsZWZvbm51bW1lciB8fCBcIuKAlFwiXSxcclxuICAgICAgICAgICAgICAgICAgICBbXCJFeHRyYXNcIiwgc2VsZWN0ZWQuZXh0cmFzIHx8IFwi4oCUXCJdLFxyXG4gICAgICAgICAgICAgICAgICAgIFtcIkltcG9ydC9WZXJrYXVmcy1Oci5cIiwgc2VsZWN0ZWQuaW1wb3J0X3ZlcmthdWZzX25yIHx8IFwi4oCUXCJdLFxyXG4gICAgICAgICAgICAgICAgICBdIGFzIGNvbnN0XHJcbiAgICAgICAgICAgICAgICApLm1hcCgoW2ssIHZdKSA9PiAoXHJcbiAgICAgICAgICAgICAgICAgIDxkaXYga2V5PXtrfSBjbGFzc05hbWU9XCJmbGV4IGp1c3RpZnktYmV0d2VlbiBnYXAtMiBib3JkZXItYiBib3JkZXItc2xhdGUtMTAwIHB5LTEuNVwiPlxyXG4gICAgICAgICAgICAgICAgICAgIDxkdCBjbGFzc05hbWU9XCJ0ZXh0LXNsYXRlLTUwMFwiPntrfTwvZHQ+XHJcbiAgICAgICAgICAgICAgICAgICAgPGRkIGNsYXNzTmFtZT1cIm1heC13LVs2MCVdIHRleHQtcmlnaHQgZm9udC1tZWRpdW0gdGV4dC1zbGF0ZS04MDBcIj57dn08L2RkPlxyXG4gICAgICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICAgICkpfVxyXG4gICAgICAgICAgICAgIDwvZGw+XHJcbiAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwibXQtNCB0ZXh0LXhzIGZvbnQtc2VtaWJvbGQgdXBwZXJjYXNlIHRleHQtc2xhdGUtNTAwXCI+U3RhdHVzLU1hcmtpZXJ1bmdlbjwvcD5cclxuICAgICAgICAgICAgICA8dWwgY2xhc3NOYW1lPVwibXQtMiBmbGV4IGZsZXgtd3JhcCBnYXAtMS41XCI+XHJcbiAgICAgICAgICAgICAgICB7RkxBR19GSUxURVJTLmZpbHRlcigoeyBrZXkgfSkgPT4gc2VsZWN0ZWRba2V5XSkubWFwKCh7IGxhYmVsIH0pID0+IChcclxuICAgICAgICAgICAgICAgICAgPGxpIGtleT17bGFiZWx9IGNsYXNzTmFtZT1cInJvdW5kZWQtZnVsbCBiZy1lbWVyYWxkLTEwMCBweC0yIHB5LTAuNSB0ZXh0LXhzIHRleHQtZW1lcmFsZC05MDBcIj5cclxuICAgICAgICAgICAgICAgICAgICB7bGFiZWx9XHJcbiAgICAgICAgICAgICAgICAgIDwvbGk+XHJcbiAgICAgICAgICAgICAgICApKX1cclxuICAgICAgICAgICAgICA8L3VsPlxyXG4gICAgICAgICAgICAgIHshRkxBR19GSUxURVJTLnNvbWUoKHsga2V5IH0pID0+IHNlbGVjdGVkW2tleV0pID8gKFxyXG4gICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwibXQtMSB0ZXh0LXhzIHRleHQtc2xhdGUtNDAwXCI+S2VpbmUgZ2VzZXR6dGVuIFN0YXR1cy1GbGFncyBpbiBkZXIgRGVtby48L3A+XHJcbiAgICAgICAgICAgICAgKSA6IG51bGx9XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPC9kaXY+XHJcbiAgICAgICl9XHJcbiAgICA8L2Rpdj5cclxuICApO1xyXG59XHJcbiJdLCJmaWxlIjoiQzovVXNlcnMvdmVkYW4vRG9jdW1lbnRzL0RlbWEtRGFzaGJvYXJkL2Zyb250ZW5kL3NyYy9wYWdlcy9WZXJrYXVmdGVyQmVzdGFuZFBhZ2UudHN4In0=

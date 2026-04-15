@@ -930,6 +930,14 @@ export function nowIsoDateTime(): string {
   return localIsoDateTime();
 }
 
+/** Local wall-clock ISO (`YYYY-MM-DDTHH:mm:ss`) for `follow_up_at`, N minutes from now (clamped 1–24h). */
+export function followUpAtFromNowMinutes(minutes: number): string {
+  const clamped = Math.min(24 * 60, Math.max(1, Math.round(minutes)));
+  const d = new Date();
+  d.setMinutes(d.getMinutes() + clamped);
+  return localIsoDateTime(d);
+}
+
 export function timetableRowIsMine(row: TimetableEntry, viewerCode: string): boolean {
   const v = viewerCode.trim().toUpperCase();
   return row.buyer_name === v || row.buyer_name === TIMETABLE_DEMO_BUYER;
@@ -937,4 +945,13 @@ export function timetableRowIsMine(row: TimetableEntry, viewerCode: string): boo
 
 export function timetableRowIsOtherBuyer(row: TimetableEntry, viewerCode: string): boolean {
   return !timetableRowIsMine(row, viewerCode);
+}
+
+/** Two-letter buyer code from session display name (same rules as timetable quick-create). */
+export function viewerBuyerCodeFromSessionName(raw: string | undefined): string {
+  const text = (raw ?? '').trim();
+  if (!text) return 'ES';
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0]?.[0] ?? ''}${words[1]?.[0] ?? ''}`.toUpperCase();
+  return text.slice(0, 2).toUpperCase();
 }

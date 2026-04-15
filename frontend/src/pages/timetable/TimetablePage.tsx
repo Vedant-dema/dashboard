@@ -24,6 +24,7 @@ import type {
 import {
   addTimetableEntries,
   createDraftTimetableEntry,
+  followUpAtFromNowMinutes,
   loadTimetableDb,
   nowIsoDateTime,
   saveTimetableDb,
@@ -31,6 +32,7 @@ import {
   timetableRowIsMine,
   timetableRowIsOtherBuyer,
   upsertTimetableEntry,
+  viewerBuyerCodeFromSessionName,
 } from '../../store/timetableStore';
 import { localeTagForLanguage, useLanguage, type LanguageCode } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,6 +49,10 @@ import {
   getActivityNotesPlainText,
   mergeTimetableOfferInputIntoEntry,
 } from './contactDrawerFormUtils';
+import {
+  parseTimetableEntryIdFromLocationHash,
+  stripTimetableEntryFromLocationHash,
+} from './timetableContactDeepLink';
 
 type CreateFormState = {
   date: string;
@@ -88,14 +94,6 @@ function parseDateForSort(raw: string): number {
   return ms;
 }
 
-function buyerCodeFromName(raw: string | undefined): string {
-  const text = (raw ?? '').trim();
-  if (!text) return 'ES';
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length >= 2) return `${words[0]?.[0] ?? ''}${words[1]?.[0] ?? ''}`.toUpperCase();
-  return text.slice(0, 2).toUpperCase();
-}
-
 function joinNotes(existing: string, append: string): string {
   const base = existing.trim();
   const next = append.trim();
@@ -129,7 +127,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   const [callModalEntry, setCallModalEntry] = useState<TimetableEntry | null>(null);
   const [offerModalEntry, setOfferModalEntry] = useState<TimetableEntry | null>(null);
   const [contactDrawerEntryId, setContactDrawerEntryId] = useState<number | null>(null);
-  const viewerBuyerCode = useMemo(() => buyerCodeFromName(user?.name), [user?.name]);
+  const viewerBuyerCode = useMemo(() => viewerBuyerCodeFromSessionName(user?.name), [user?.name]);
   const contactDrawerEntry = useMemo(
     () =>
       contactDrawerEntryId != null
@@ -184,6 +182,25 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
     const id = window.setTimeout(() => setToast(null), 4200);
     return () => window.clearTimeout(id);
   }, [toast]);
+
+  /** `#/purchase/kalender?ttEntry=<id>` — open contact drawer on that row’s calendar day. */
+  useEffect(() => {
+    const applyHashContact = () => {
+      const entryId = parseTimetableEntryIdFromLocationHash();
+      if (entryId == null) return;
+      const entry = db.entries.find((e) => e.id === entryId);
+      if (!entry) {
+        stripTimetableEntryFromLocationHash();
+        return;
+      }
+      setSelectedDate(normalizeIsoDateFromScheduled(entry.scheduled_at));
+      setContactDrawerEntryId(entryId);
+      stripTimetableEntryFromLocationHash();
+    };
+    applyHashContact();
+    window.addEventListener('hashchange', applyHashContact);
+    return () => window.removeEventListener('hashchange', applyHashContact);
+  }, [db.entries]);
 
   const viewerRows = useMemo(
     () => db.entries.filter((entry) => timetableRowIsMine(entry, viewerBuyerCode)),
@@ -407,6 +424,47 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
       setToast(t('timetableContactSaved', 'Contact saved.'));
     },
     [setDb, t]
+  );
+
+  const applyQuickFollowUp = useCallback(
+    (row: TimetableEntry, minutes: number) => {
+      const follow_up_at = followUpAtFromNowMinutes(minutes);
+      const updated: TimetableEntry = {
+        ...row,
+        outcome: 'follow_up',
+        follow_up_at,
+        is_completed: false,
+        last_called_at: nowIsoDateTime(),
+      };
+      setDb((prev) => upsertTimetableEntry(prev, updated));
+
+      const whenLabel = new Date(follow_up_at).toLocaleString(localeTag, {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      const notifOn =
+        typeof Notification !== 'undefined' && Notification.permission === 'granted';
+
+      const baseToast = t('timetableQuickRemindToast', 'Follow-up saved for {company} at {when}.')
+        .replace('{company}', row.company_name)
+        .replace('{when}', whenLabel);
+      setToast(
+        notifOn
+          ? `${baseToast}\n${t(
+              'timetableQuickRemindToastNotifOn',
+              'Desktop alert at due time when notifications are allowed and this tab stays open (~5 s checks).'
+            )}`
+          : `${baseToast}\n${t(
+              'timetableQuickRemindToastNotifOff',
+              'In-app reminders will still appear when this app is open; enable browser notifications for optional desktop alerts.'
+            )}`
+      );
+    },
+    [localeTag, setDb, t]
   );
 
   return (
@@ -856,7 +914,10 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                     </span>
                   </div>
                   <p className="max-w-xl text-xs leading-relaxed text-slate-500 sm:border-l sm:border-slate-200 sm:pl-4">
-                    {t('timetableQueueOpenRow', 'Click a row to open the customer contact workspace.')}
+                    {t(
+                      'timetableQueueToolbarHint',
+                      'Click a row to open the contact workspace. Under Follow-up, use 10 min, 30 min, or 1 h for instant callback slots; allow notifications for an optional desktop reminder.'
+                    )}
                   </p>
                 </div>
               </div>
@@ -867,6 +928,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                 onOpenContact={(row) => setContactDrawerEntryId(row.id)}
                 onOpenCallLog={setCallModalEntry}
                 onOpenOffer={setOfferModalEntry}
+                onQuickFollowUp={applyQuickFollowUp}
               />
             </div>
         </main>
@@ -877,12 +939,12 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
           className="pointer-events-none fixed bottom-6 left-1/2 z-[120] max-w-md -translate-x-1/2 px-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none"
           role="status"
         >
-          <div className="pointer-events-auto rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3.5 text-center text-sm font-semibold text-white shadow-2xl shadow-slate-900/50 ring-1 ring-white/10">
-            {toast}
+          <div className="pointer-events-auto flex max-w-lg flex-col items-center gap-2 rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-2xl shadow-slate-900/50 ring-1 ring-white/10">
+            <span className="whitespace-pre-line">{toast}</span>
             <button
               type="button"
               onClick={() => setToast(null)}
-              className="ml-3 text-xs font-bold text-emerald-300 underline-offset-2 hover:underline"
+              className="text-xs font-bold text-emerald-300 underline-offset-2 hover:underline"
             >
               {t('commonClose', 'Close')}
             </button>

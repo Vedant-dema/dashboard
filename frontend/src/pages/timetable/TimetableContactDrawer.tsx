@@ -48,7 +48,6 @@ import { TimetableOfferNegotiationHistory } from './components/TimetableOfferNeg
 import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel';
 import { TimetableOfferVehicleStrip } from './components/TimetableOfferVehicleStrip';
 import { TimetableOfferMinimalBlock } from './components/TimetableOfferMinimalBlock';
-import { TimetableOfferCompactPreview } from './components/TimetableOfferCompactPreview';
 import {
   emptyOverviewAdresse,
   formatOverviewAddressLine,
@@ -64,7 +63,7 @@ import {
 } from './timetableOfferMemory';
 import { useAuth } from '../../contexts/AuthContext';
 
-type DrawerWorkspaceTab = 'call' | 'offer' | 'offer_compact_preview';
+type DrawerWorkspaceTab = 'call' | 'offer';
 
 /** Parent supplies this when opening the drawer so we select an offer chip (and optionally merge prices). */
 export type TimetableContactEntryOfferFocus = {
@@ -1043,22 +1042,6 @@ export function TimetableContactDrawer({
                 <Truck className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
                 <span>{t('timetableContactColOffer', 'Offer')}</span>
               </button>
-              <button
-                type="button"
-                role="tab"
-                id="tt-drawer-tab-offer-compact-preview"
-                aria-selected={drawerWorkspaceTab === 'offer_compact_preview'}
-                aria-controls="tt-drawer-panel-offer-compact-preview"
-                onClick={() => setDrawerWorkspaceTab('offer_compact_preview')}
-                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
-                  drawerWorkspaceTab === 'offer_compact_preview'
-                    ? 'bg-gradient-to-r from-slate-800 to-sky-700 text-white shadow-md shadow-sky-900/20 ring-white/15 hover:brightness-105'
-                    : 'border border-sky-200/85 bg-sky-50/85 text-sky-950 shadow-sm ring-sky-900/10 hover:border-sky-300 hover:bg-sky-100/80'
-                }`}
-              >
-                <Sparkles className="h-3.5 w-3.5 shrink-0 opacity-95 sm:h-4 sm:w-4" aria-hidden />
-                <span>{t('timetableOfferCompactPreviewTab', 'Pro Test')}</span>
-              </button>
             </div>
 
             <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
@@ -1420,8 +1403,6 @@ export function TimetableContactDrawer({
                 </div>
               </div>
                 </div>
-              ) : drawerWorkspaceTab === 'offer_compact_preview' ? (
-                <TimetableOfferCompactPreview t={t} />
               ) : (
               <div
                 id="tt-drawer-panel-offer"

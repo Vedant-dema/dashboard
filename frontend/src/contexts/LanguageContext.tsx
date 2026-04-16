@@ -293,6 +293,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     angebotNegotiationHint:
       "Jede Preisrunde übernimmt „Preisvorstellung Kunde“ (Verkäufer) und „Preisvorstellung DEMA“ aus dem Tab „Technik & Termine“. Tragen Sie die Werte dort ein oder ändern Sie sie, wechseln Sie zu diesem Tab und klicken Sie auf „Preisrunde erfassen“.",
     timetableOfferGenScopedHint: "Generator und Formular gelten für das ausgewählte Fahrzeug.",
+    timetableOfferSelectVehicleFullAria: "{label} auswählen. Bestandsfluss: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Farbpunkte am Tab: grün = gekauft · orange = verkauft (Dritte) · grau = nicht zugeordnet · rot = prüfen",
     timetableOutcomePending: "Offen",
     timetableOutcomeFollowUp: "Nachfassen",
     timetableOutcomeHasTrucks: "LKW verfügbar",
@@ -1920,6 +1923,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     angebotNegotiationHint:
       "Each price round captures the customer (seller) asking price and DEMA's price from the Technik & Termine tab. Enter or update those fields there, then return here and tap Record price round.",
     timetableOfferGenScopedHint: "The generator and form apply to the selected vehicle.",
+    timetableOfferSelectVehicleFullAria: "Select {label}. Stock flow: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Tab dots: green = purchased · amber = sold (third party) · gray = unassigned · red = review",
     timetableOutcomePending: "Pending",
     timetableOutcomeFollowUp: "Follow-up",
     timetableOutcomeHasTrucks: "Has trucks",
@@ -3544,6 +3550,9 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     angebotNegotiationHint:
       "Chaque tour de prix reprend la demande du client (vendeur) et le prix DEMA de l’onglet « Technik & Termine ». Saisissez ou ajustez-les là, revenez ici et appuyez sur Enregistrer le tour de prix.",
     timetableOfferGenScopedHint: "Le générateur et le formulaire s’appliquent au véhicule sélectionné.",
+    timetableOfferSelectVehicleFullAria: "Sélectionner {label}. Flux de stock : {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Pastilles sur l’onglet : vert = acheté · ambre = vendu (tiers) · gris = non classé · rouge = à vérifier",
     timetableOutcomePending: "En attente",
     timetableOutcomeFollowUp: "Suivi",
     timetableOutcomeHasTrucks: "Camions disponibles",
@@ -4924,6 +4933,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "Cada ronda de precios toma la pretensión del cliente (vendedor) y la de DEMA de la pestaña « Technik & Termine ». Introdúzcalas o ajústelas allí, vuelva aquí y pulse Registrar ronda de precios.",
     timetableOfferGenScopedHint: "El generador y el formulario se aplican al vehículo seleccionado.",
+    timetableOfferSelectVehicleFullAria: "Seleccionar {label}. Flujo de stock: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Puntos en la pestaña: verde = comprado · ámbar = vendido (tercero) · gris = sin clasificar · rojo = revisar",
     timetableContactCorrespondenceTitle: "Correspondencia",
     timetableContactAppointmentsShort: "Citas",
     timetableContactNewAppointmentShort: "Nueva",
@@ -5481,6 +5493,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "Ogni round di prezzo riprende la previsione cliente (venditore) e quella DEMA dalla scheda « Technik & Termine ». Inserite o modificate i valori lì, tornate qui e toccate Registra round di prezzo.",
     timetableOfferGenScopedHint: "Generatore e modulo si applicano al veicolo selezionato.",
+    timetableOfferSelectVehicleFullAria: "Seleziona {label}. Flusso di magazzino: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Pallini sulla scheda: verde = acquistato · ambra = venduto (terzi) · grigio = non classificato · rosso = verifica",
     timetableContactCorrespondenceTitle: "Corrispondenza",
     timetableContactAppointmentsShort: "Appuntamenti",
     timetableContactNewAppointmentShort: "Nuovo",
@@ -5793,6 +5808,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "Cada ronda de preço usa a expectativa do cliente (vendedor) e a da DEMA no separador « Technik & Termine ». Introduza ou ajuste os valores lá, volte aqui e toque em Registar ronda de preço.",
     timetableOfferGenScopedHint: "O gerador e o formulário aplicam-se ao veículo selecionado.",
+    timetableOfferSelectVehicleFullAria: "Selecionar {label}. Fluxo de stock: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Pontos no separador: verde = comprado · âmbar = vendido (terceiro) · cinzento = por classificar · vermelho = rever",
     timetableContactCorrespondenceTitle: "Correspondência",
     timetableContactAppointmentsShort: "Compromissos",
     timetableContactNewAppointmentShort: "Novo",
@@ -6105,6 +6123,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "Her fiyat turu, « Technik & Termine » sekmesindeki müşteri (satıcı) ve DEMA fiyat beklentilerini alır. Değerleri orada girin veya güncelleyin, buraya dönün ve Fiyat turunu kaydet’e dokunun.",
     timetableOfferGenScopedHint: "Oluşturucu ve form seçili araca uygulanır.",
+    timetableOfferSelectVehicleFullAria: "{label} seç. Stok akışı: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Sekme noktaları: yeşil = satın alındı · kehribar = satıldı (üçüncü taraf) · gri = atanmadı · kırmızı = incele",
     timetableContactCorrespondenceTitle: "Yazışma",
     timetableContactAppointmentsShort: "Randevular",
     timetableContactNewAppointmentShort: "Yeni",
@@ -6417,6 +6438,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "Каждый ценовой раунд фиксирует ожидание клиента (продавца) и цену DEMA из вкладки « Technik & Termine ». Введите или измените значения там, вернитесь сюда и нажмите Записать ценовой раунд.",
     timetableOfferGenScopedHint: "Генератор и форма применяются к выбранному ТС.",
+    timetableOfferSelectVehicleFullAria: "Выбрать {label}. Движение склада: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "Точки на вкладке: зелёный = куплено · янтарный = продано (третьим лицам) · серый = не классифицировано · красный = проверка",
     timetableContactCorrespondenceTitle: "Переписка",
     timetableContactAppointmentsShort: "Встречи",
     timetableContactNewAppointmentShort: "Новая",
@@ -6682,6 +6706,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "प्रत्येक मूल्य राउंड « Technik & Termine » टैब से ग्राहक (विक्रेता) और DEMA की मूल्य अपेक्षा लेता है। वे मान वहाँ दर्ज या अपडेट करें, यहाँ लौटें और मूल्य राउंड रिकॉर्ड करें पर टैप करें।",
     timetableOfferGenScopedHint: "जेनरेटर और फ़ॉर्म चयनित वाहन पर लागू होते हैं।",
+    timetableOfferSelectVehicleFullAria: "{label} चुनें। स्टॉक प्रवाह: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "टैब पर बिंदु: हरा = खरीदा · पीला = बेचा (तीसरे पक्ष) · धूसर = अवर्गीकृत · लाल = समीक्षा",
     timetableContactCorrespondenceTitle: "पत्राचार",
     timetableContactAppointmentsShort: "अपॉइंटमेंट",
     timetableContactNewAppointmentShort: "नया",
@@ -7025,6 +7052,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "كل جولة أسعار تلتقط توقع العميل (البائع) وسعر DEMA من علامة التبويب « Technik & Termine ». أدخل القيم هناك أو عدّلها، ثم عد إلى هنا واضغط تسجيل جولة الأسعار.",
     timetableOfferGenScopedHint: "ينطبق المولّد والنموذج على المركبة المحددة.",
+    timetableOfferSelectVehicleFullAria: "اختر {label}. تدفق المخزون: {lane}.",
+    timetableOfferVehicleStripLegend:
+      "نقاط على التبويب: أخضر = مشترى · كهرماني = مباع (طرف ثالث) · رمادي = غير مصنّف · أحمر = مراجعة",
     timetableContactCorrespondenceTitle: "المراسلات",
     timetableContactAppointmentsShort: "المواعيد",
     timetableContactNewAppointmentShort: "جديد",
@@ -7323,6 +7353,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "每一轮价格会读取「Technik & Termine」标签页中的客户（卖方）期望价与 DEMA 价格。请在该页填写或修改后返回此处，点击记录价格轮次。",
     timetableOfferGenScopedHint: "生成器与表单适用于所选车辆。",
+    timetableOfferSelectVehicleFullAria: "选择{label}。库存流向：{lane}。",
+    timetableOfferVehicleStripLegend:
+      "标签圆点：绿=已购入 · 琥珀=已售（第三方） · 灰=未分类 · 红=待复核",
     timetableContactCorrespondenceTitle: "往来函电",
     timetableContactAppointmentsShort: "预约",
     timetableContactNewAppointmentShort: "新建",
@@ -7623,6 +7656,9 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     angebotNegotiationHint:
       "各価格ラウンドは「Technik & Termine」タブの顧客（売り手）希望価格と DEMA 価格を取り込みます。そこで入力または更新してからこの画面に戻り、価格ラウンドを記録をタップしてください。",
     timetableOfferGenScopedHint: "生成とフォームは選択中の車両に適用されます。",
+    timetableOfferSelectVehicleFullAria: "{label} を選択。在庫フロー：{lane}。",
+    timetableOfferVehicleStripLegend:
+      "タブのドット：緑=購入済み · 琥珀=販売済み（第三者） · 灰=未分類 · 赤=要確認",
     timetableContactCorrespondenceTitle: "文面・連絡履歴",
     timetableContactAppointmentsShort: "予定",
     timetableContactNewAppointmentShort: "新規",

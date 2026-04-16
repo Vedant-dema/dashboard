@@ -36,17 +36,6 @@ export function TimetableOfferMemoryPanel({
           <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">
             {t('timetableOfferMemoryTitle', 'Offer memory')}
           </h4>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            {offerHasVehicleIdentity
-              ? t(
-                  'timetableOfferMemoryHintVehicle',
-                  'Matches from older rows for this supplier and vehicle so repeated calls keep full price context.'
-                )
-              : t(
-                  'timetableOfferMemoryHintSupplier',
-                  'Fill vehicle details (make/model/year) to unlock exact same-truck history. Until then, recent supplier offers are shown.'
-                )}
-          </p>
         </div>
       </div>
 

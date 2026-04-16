@@ -172,13 +172,6 @@ export function TimetableOfferGeneratorBlock({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 bg-gradient-to-b from-slate-50 to-white p-3">
-        <p className="shrink-0 text-xs leading-relaxed text-slate-600">
-          {t(
-            'timetableOfferGenHint',
-            'Customers often report by phone, email, or messenger about a truck for sale. Paste unstructured text here (for example from WhatsApp or email). Format extracts recognized values and shows a structured preview below without changing the offer form. Save applies values to the offer form and clears this box.'
-          )}
-        </p>
-
         <textarea
           value={genText}
           onChange={(e) => {

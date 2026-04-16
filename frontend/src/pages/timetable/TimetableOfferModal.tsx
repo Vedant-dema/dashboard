@@ -255,12 +255,6 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
               {t('angebotStockLedgerLabel', 'Stock transaction type')}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {t(
-                'angebotStockLedgerHint',
-                'Purchase (inbound) and third-party sale (outbound) are mutually exclusive—pick the lane that matches this row.',
-              )}
-            </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {(
                 [

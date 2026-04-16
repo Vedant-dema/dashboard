@@ -195,12 +195,6 @@ export function TimetableOfferMinimalBlock({
         </div>
 
         <div className="mt-5 border-t border-slate-100 pt-5 dark:border-slate-600/50">
-          <p className="mb-4 max-w-3xl text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            {t(
-              'angebotStockLedgerHint',
-              'Purchase (inbound) and third-party sale (outbound) are mutually exclusive—pick the lane that matches this row.',
-            )}
-          </p>
           {ledgerKind === 'conflict' ? (
             <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-snug text-rose-900 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-100">
               {t(

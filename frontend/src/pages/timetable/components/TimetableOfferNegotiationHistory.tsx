@@ -10,7 +10,7 @@ type Props = {
   setOfferField: (patch: Partial<TimetableTruckOffer>) => void
   localeTag: string
   t: (key: string, fallback: string) => string
-  /** When set, replaces the default timetable hint paragraph (for other surfaces, e.g. Angebot modal). */
+  /** Optional short paragraph under the section title (timetable omits this; pass only when needed). */
   description?: ReactNode
   /** Omit top margin when embedded in a tight column layout. */
   compactTop?: boolean
@@ -67,13 +67,9 @@ export function TimetableOfferNegotiationHistory({
         <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">
           {t('timetableNegotiationTitle', 'Price negotiation')}
         </h4>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          {description ??
-            t(
-              'timetableNegotiationHint',
-              'Record a round from the two price fields above so follow-up calls show earlier quotes for this vehicle.'
-            )}
-        </p>
+        {description ? (
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
+        ) : null}
       </div>
 
       {rounds.length === 0 ? (

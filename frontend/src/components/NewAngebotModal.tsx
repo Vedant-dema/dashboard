@@ -637,12 +637,8 @@ export function NewAngebotModal({
                     />
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4">
-                    <p className={labelClass}>{t("angebotStockLedgerLabel", "Stock transaction type")}</p>
-                    <p className="mb-3 text-[11px] leading-snug text-slate-500 sm:text-xs">
-                      {t(
-                        "angebotStockLedgerHint",
-                        "Purchase (inbound) and third-party sale (outbound) are mutually exclusive—pick the lane that matches this row.",
-                      )}
+                    <p className="mb-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t("angebotStockLedgerLabel", "Stock transaction type")}
                     </p>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label={t("angebotStockLedgerLabel", "Stock transaction type")}>
                       {stockLedgerOptions.map(({ id, title, sub, Icon }) => {
@@ -1068,10 +1064,6 @@ export function NewAngebotModal({
                     localeTag={localeTag}
                     t={t}
                     compactTop
-                    description={t(
-                      "angebotNegotiationHint",
-                      "Each price round captures the customer (seller) asking price and DEMA's price from the Technik & Termine tab. Enter or update those fields there, then return here and tap Record price round."
-                    )}
                   />
                 </div>
               </div>

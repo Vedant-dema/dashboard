@@ -130,20 +130,6 @@ export function TimetableOfferVehicleStrip({
           {t('timetableOfferAddVehicle', 'Add vehicle')}
         </button>
       </div>
-      <p className="text-xs text-slate-500">
-        {t(
-          'timetableOfferGenScopedHint',
-          'The generator and form apply to the selected vehicle.'
-        )}
-      </p>
-      {offers.length > 1 ? (
-        <p className="text-[11px] leading-snug text-slate-500">
-          {t(
-            'timetableOfferVehicleStripLegend',
-            'Tab dots: green = purchased · red = sold (third party) · blue = offer · rose = conflict—review'
-          )}
-        </p>
-      ) : null}
     </div>
   );
 }

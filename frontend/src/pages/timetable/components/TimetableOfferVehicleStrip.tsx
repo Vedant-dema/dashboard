@@ -19,12 +19,12 @@ function ledgerDotClass(kind: AngebotLedgerKind): string {
       return 'bg-red-600 ring-1 ring-red-800/35';
     case 'conflict':
       return 'bg-rose-500 ring-1 ring-rose-700/30';
-    default:
-      return 'bg-slate-400 ring-1 ring-slate-600/25';
+    case 'neutral':
+      return 'bg-blue-600 ring-1 ring-blue-800/35';
   }
 }
 
-/** Selected tab border/ring/bg match stock lane (green = gekauft, red = verkauft). */
+/** Selected tab border/ring/bg match stock lane (green = gekauft, red = verkauft, blue = Angebot). */
 function selectedChipShellClass(kind: AngebotLedgerKind): string {
   switch (kind) {
     case 'purchase':
@@ -33,9 +33,16 @@ function selectedChipShellClass(kind: AngebotLedgerKind): string {
       return 'border-red-500 bg-red-50 text-red-950 ring-1 ring-red-200';
     case 'conflict':
       return 'border-rose-600 bg-rose-50 text-rose-950 ring-1 ring-rose-200';
-    default:
-      return 'border-slate-400 bg-slate-50 text-slate-900 ring-1 ring-slate-200';
+    case 'neutral':
+      return 'border-blue-500 bg-blue-50 text-blue-950 ring-1 ring-blue-200';
   }
+}
+
+function unselectedChipShellClass(kind: AngebotLedgerKind): string {
+  if (kind === 'neutral') {
+    return 'border-blue-300 bg-white text-slate-800 hover:border-blue-400';
+  }
+  return 'border-slate-200 bg-white text-slate-700 hover:border-slate-300';
 }
 
 type Props = {
@@ -86,9 +93,7 @@ export function TimetableOfferVehicleStrip({
                 type="button"
                 onClick={() => onSelect(o.id)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                  sel
-                    ? selectedChipShellClass(kind)
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  sel ? selectedChipShellClass(kind) : unselectedChipShellClass(kind)
                 }`}
                 aria-pressed={sel}
                 title={fullAria}
@@ -135,7 +140,7 @@ export function TimetableOfferVehicleStrip({
         <p className="text-[11px] leading-snug text-slate-500">
           {t(
             'timetableOfferVehicleStripLegend',
-            'Tab dots: green = purchased · red = sold (third party) · gray = offer · rose = conflict—review'
+            'Tab dots: green = purchased · red = sold (third party) · blue = offer · rose = conflict—review'
           )}
         </p>
       ) : null}

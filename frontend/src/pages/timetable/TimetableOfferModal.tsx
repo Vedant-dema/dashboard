@@ -282,11 +282,11 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
                     className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition sm:min-h-0 ${
                       active
                         ? id === 'purchase'
-                          ? 'border-emerald-600 bg-emerald-600 text-white'
+                          ? 'border-emerald-600 bg-emerald-600 text-white ring-1 ring-emerald-500/30'
                           : id === 'disposal'
-                            ? 'border-amber-600 bg-amber-600 text-white'
-                            : 'border-slate-600 bg-slate-700 text-white'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'
+                            ? 'border-red-600 bg-red-600 text-white ring-1 ring-red-500/30'
+                            : 'border-blue-600 bg-blue-600 text-white ring-1 ring-blue-500/30'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -232,7 +232,7 @@ export function TimetableOfferMinimalBlock({
                       },
                       {
                         id: 'neutral' as const,
-                        label: t('angebotStockLedgerNeutral', 'Unclassified'),
+                        label: t('angebotStockLedgerNeutral', 'Offer'),
                         Icon: CircleDashed,
                       },
                     ] as const

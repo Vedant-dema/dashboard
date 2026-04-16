@@ -382,7 +382,7 @@ export function NewAngebotModal({
         },
         {
           id: "neutral" as const,
-          title: t("angebotStockLedgerNeutral", "Unclassified"),
+          title: t("angebotStockLedgerNeutral", "Offer"),
           sub: t(
             "angebotStockLedgerNeutralSub",
             "Neither purchase nor third-party sale flagged yet",

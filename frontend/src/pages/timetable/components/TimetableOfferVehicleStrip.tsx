@@ -73,7 +73,7 @@ export function TimetableOfferVehicleStrip({
                 ? t('angebotStockLedgerDisposal', 'Sold (third party)')
                 : kind === 'conflict'
                   ? t('angeboteStockLaneConflict', 'Review')
-                  : t('angebotStockLedgerNeutral', 'Unclassified');
+                  : t('angebotStockLedgerNeutral', 'Offer');
           const fullAria = t(
             'timetableOfferSelectVehicleFullAria',
             'Select {label}. Stock flow: {lane}.'
@@ -135,7 +135,7 @@ export function TimetableOfferVehicleStrip({
         <p className="text-[11px] leading-snug text-slate-500">
           {t(
             'timetableOfferVehicleStripLegend',
-            'Tab dots: green = purchased · red = sold (third party) · gray = unclassified · rose = conflict—review'
+            'Tab dots: green = purchased · red = sold (third party) · gray = offer · rose = conflict—review'
           )}
         </p>
       ) : null}

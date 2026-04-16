@@ -270,7 +270,7 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
                     label: t('angebotStockLedgerDisposal', 'Sold (third party)'),
                     Icon: ArrowUpRight,
                   },
-                  { id: 'neutral' as const, label: t('angebotStockLedgerNeutral', 'Unclassified'), Icon: CircleDashed },
+                  { id: 'neutral' as const, label: t('angebotStockLedgerNeutral', 'Offer'), Icon: CircleDashed },
                 ] as const
               ).map(({ id, label, Icon }) => {
                 const active = form.stock_ledger === id

@@ -386,7 +386,7 @@ export function AngebotePage({ department }: { department?: DepartmentArea }) {
           title={t("angebotStockLedgerNeutralSub", "Neither purchase nor third-party sale flagged yet.")}
         >
           <CircleDashed className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-          <span className="truncate">{t("angebotStockLedgerNeutral", "Unclassified")}</span>
+          <span className="truncate">{t("angebotStockLedgerNeutral", "Offer")}</span>
         </span>
       );
     },

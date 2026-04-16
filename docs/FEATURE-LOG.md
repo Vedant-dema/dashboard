@@ -25,7 +25,7 @@
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
 | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-257 |
 | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) | FEATURE-258, FEATURE-259, FEATURE-260, FEATURE-261, FEATURE-262, FEATURE-263, FEATURE-264, FEATURE-265, FEATURE-266, FEATURE-267, FEATURE-268, FEATURE-269, FEATURE-270, FEATURE-271, FEATURE-272, FEATURE-273, FEATURE-274, FEATURE-275, FEATURE-276, FEATURE-277, FEATURE-278, FEATURE-279, FEATURE-280, FEATURE-281, FEATURE-282, FEATURE-283, FEATURE-284, FEATURE-285, FEATURE-286, FEATURE-287, FEATURE-288, FEATURE-289, FEATURE-290, FEATURE-291, FEATURE-292, FEATURE-293, FEATURE-295, FEATURE-296, FEATURE-297, FEATURE-298, FEATURE-299, FEATURE-300 |
-| 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) | FEATURE-301, FEATURE-302 |
+| 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) | FEATURE-301, FEATURE-302, FEATURE-303 |
 
 ---
 
@@ -339,6 +339,7 @@
 | FEATURE-300 | Timetable vehicle strip — blue chrome for Angebot (neutral) lane | Modified | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) |
 | FEATURE-301 | Timetable minimal offer form — layout + Bestandsfluss colors | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 | FEATURE-302 | Timetable offer UI — remove long instructional copy blocks | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-303 | Bestandsfluss tiles — fix low contrast (remove `dark:` on light card) | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

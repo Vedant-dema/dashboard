@@ -49,27 +49,31 @@ function ledgerTileStyles(
   id: LedgerUiMode,
   active: boolean,
 ): { button: string; icon: string } {
+  /** No `dark:` variants: OS dark-mode can activate them while the offer card stays light → illegible text. */
   const base =
-    'group flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/35 sm:min-h-10'
-  const idle = `${base} border-slate-200/95 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/90 dark:border-slate-600/80 dark:bg-slate-900/25 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800/35`
+    'group flex min-h-11 w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500/40 sm:min-h-10'
+  const idle = `${base} border-slate-300 bg-white text-slate-900 shadow-sm hover:border-slate-400 hover:bg-slate-50`
   if (!active) {
-    return { button: idle, icon: 'h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-slate-500' }
+    return {
+      button: idle,
+      icon: 'h-3.5 w-3.5 shrink-0 text-slate-700 group-hover:text-slate-900',
+    }
   }
   if (id === 'purchase') {
     return {
-      button: `${base} border-emerald-500 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-500/20 dark:bg-emerald-950/25 dark:text-emerald-50`,
-      icon: 'h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400',
+      button: `${base} border-emerald-700 bg-emerald-100 text-emerald-950 shadow-sm ring-2 ring-emerald-600/30`,
+      icon: 'h-3.5 w-3.5 shrink-0 text-emerald-800',
     }
   }
   if (id === 'disposal') {
     return {
-      button: `${base} border-red-500 bg-red-50 text-red-950 ring-1 ring-red-500/20 dark:bg-red-950/25 dark:text-red-50`,
-      icon: 'h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400',
+      button: `${base} border-red-700 bg-red-100 text-red-950 shadow-sm ring-2 ring-red-600/30`,
+      icon: 'h-3.5 w-3.5 shrink-0 text-red-800',
     }
   }
   return {
-    button: `${base} border-blue-500 bg-blue-50 text-blue-950 ring-1 ring-blue-500/20 dark:bg-blue-950/30 dark:text-blue-50`,
-    icon: 'h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400',
+    button: `${base} border-blue-700 bg-blue-100 text-blue-950 shadow-sm ring-2 ring-blue-600/30`,
+    icon: 'h-3.5 w-3.5 shrink-0 text-blue-800',
   }
 }
 

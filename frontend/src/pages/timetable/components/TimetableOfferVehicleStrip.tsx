@@ -16,11 +16,25 @@ function ledgerDotClass(kind: AngebotLedgerKind): string {
     case 'purchase':
       return 'bg-emerald-500 ring-1 ring-emerald-700/25';
     case 'disposal':
-      return 'bg-amber-500 ring-1 ring-amber-800/30';
+      return 'bg-red-600 ring-1 ring-red-800/35';
     case 'conflict':
       return 'bg-rose-500 ring-1 ring-rose-700/30';
     default:
       return 'bg-slate-400 ring-1 ring-slate-600/25';
+  }
+}
+
+/** Selected tab border/ring/bg match stock lane (green = gekauft, red = verkauft). */
+function selectedChipShellClass(kind: AngebotLedgerKind): string {
+  switch (kind) {
+    case 'purchase':
+      return 'border-emerald-500 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200';
+    case 'disposal':
+      return 'border-red-500 bg-red-50 text-red-950 ring-1 ring-red-200';
+    case 'conflict':
+      return 'border-rose-600 bg-rose-50 text-rose-950 ring-1 ring-rose-200';
+    default:
+      return 'border-slate-400 bg-slate-50 text-slate-900 ring-1 ring-slate-200';
   }
 }
 
@@ -73,7 +87,7 @@ export function TimetableOfferVehicleStrip({
                 onClick={() => onSelect(o.id)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition ${
                   sel
-                    ? 'border-amber-400 bg-amber-50 text-amber-950 ring-1 ring-amber-200'
+                    ? selectedChipShellClass(kind)
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                 }`}
                 aria-pressed={sel}
@@ -121,7 +135,7 @@ export function TimetableOfferVehicleStrip({
         <p className="text-[11px] leading-snug text-slate-500">
           {t(
             'timetableOfferVehicleStripLegend',
-            'Tab dots: green = purchased · amber = sold (third party) · gray = unclassified · red = review'
+            'Tab dots: green = purchased · red = sold (third party) · gray = unclassified · rose = conflict—review'
           )}
         </p>
       ) : null}

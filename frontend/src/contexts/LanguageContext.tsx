@@ -295,7 +295,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferGenScopedHint: "Generator und Formular gelten für das ausgewählte Fahrzeug.",
     timetableOfferSelectVehicleFullAria: "{label} auswählen. Bestandsfluss: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Farbpunkte am Tab: grün = gekauft · orange = verkauft (Dritte) · grau = nicht zugeordnet · rot = prüfen",
+      "Farbpunkte am Tab: grün = gekauft · rot = verkauft (Dritte) · grau = nicht zugeordnet · rosa = Konflikt prüfen",
     timetableOutcomePending: "Offen",
     timetableOutcomeFollowUp: "Nachfassen",
     timetableOutcomeHasTrucks: "LKW verfügbar",
@@ -1925,7 +1925,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferGenScopedHint: "The generator and form apply to the selected vehicle.",
     timetableOfferSelectVehicleFullAria: "Select {label}. Stock flow: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Tab dots: green = purchased · amber = sold (third party) · gray = unassigned · red = review",
+      "Tab dots: green = purchased · red = sold (third party) · gray = unclassified · rose = conflict—review",
     timetableOutcomePending: "Pending",
     timetableOutcomeFollowUp: "Follow-up",
     timetableOutcomeHasTrucks: "Has trucks",
@@ -3552,7 +3552,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferGenScopedHint: "Le générateur et le formulaire s’appliquent au véhicule sélectionné.",
     timetableOfferSelectVehicleFullAria: "Sélectionner {label}. Flux de stock : {lane}.",
     timetableOfferVehicleStripLegend:
-      "Pastilles sur l’onglet : vert = acheté · ambre = vendu (tiers) · gris = non classé · rouge = à vérifier",
+      "Pastilles sur l’onglet : vert = acheté · rouge = vendu (tiers) · gris = non classé · rose = conflit — à vérifier",
     timetableOutcomePending: "En attente",
     timetableOutcomeFollowUp: "Suivi",
     timetableOutcomeHasTrucks: "Camions disponibles",
@@ -4935,7 +4935,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "El generador y el formulario se aplican al vehículo seleccionado.",
     timetableOfferSelectVehicleFullAria: "Seleccionar {label}. Flujo de stock: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Puntos en la pestaña: verde = comprado · ámbar = vendido (tercero) · gris = sin clasificar · rojo = revisar",
+      "Puntos en la pestaña: verde = comprado · rojo = vendido (tercero) · gris = sin clasificar · rosa = conflicto — revisar",
     timetableContactCorrespondenceTitle: "Correspondencia",
     timetableContactAppointmentsShort: "Citas",
     timetableContactNewAppointmentShort: "Nueva",
@@ -5495,7 +5495,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "Generatore e modulo si applicano al veicolo selezionato.",
     timetableOfferSelectVehicleFullAria: "Seleziona {label}. Flusso di magazzino: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Pallini sulla scheda: verde = acquistato · ambra = venduto (terzi) · grigio = non classificato · rosso = verifica",
+      "Pallini sulla scheda: verde = acquistato · rosso = venduto (terzi) · grigio = non classificato · rosa = conflitto — verifica",
     timetableContactCorrespondenceTitle: "Corrispondenza",
     timetableContactAppointmentsShort: "Appuntamenti",
     timetableContactNewAppointmentShort: "Nuovo",
@@ -5810,7 +5810,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "O gerador e o formulário aplicam-se ao veículo selecionado.",
     timetableOfferSelectVehicleFullAria: "Selecionar {label}. Fluxo de stock: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Pontos no separador: verde = comprado · âmbar = vendido (terceiro) · cinzento = por classificar · vermelho = rever",
+      "Pontos no separador: verde = comprado · vermelho = vendido (terceiro) · cinzento = por classificar · rosa = conflito — rever",
     timetableContactCorrespondenceTitle: "Correspondência",
     timetableContactAppointmentsShort: "Compromissos",
     timetableContactNewAppointmentShort: "Novo",
@@ -6125,7 +6125,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "Oluşturucu ve form seçili araca uygulanır.",
     timetableOfferSelectVehicleFullAria: "{label} seç. Stok akışı: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Sekme noktaları: yeşil = satın alındı · kehribar = satıldı (üçüncü taraf) · gri = atanmadı · kırmızı = incele",
+      "Sekme noktaları: yeşil = satın alındı · kırmızı = satıldı (üçüncü taraf) · gri = atanmadı · gül = çakışma — incele",
     timetableContactCorrespondenceTitle: "Yazışma",
     timetableContactAppointmentsShort: "Randevular",
     timetableContactNewAppointmentShort: "Yeni",
@@ -6440,7 +6440,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "Генератор и форма применяются к выбранному ТС.",
     timetableOfferSelectVehicleFullAria: "Выбрать {label}. Движение склада: {lane}.",
     timetableOfferVehicleStripLegend:
-      "Точки на вкладке: зелёный = куплено · янтарный = продано (третьим лицам) · серый = не классифицировано · красный = проверка",
+      "Точки на вкладке: зелёный = куплено · красный = продано (третьим лицам) · серый = не классифицировано · розовый = конфликт — проверка",
     timetableContactCorrespondenceTitle: "Переписка",
     timetableContactAppointmentsShort: "Встречи",
     timetableContactNewAppointmentShort: "Новая",
@@ -6708,7 +6708,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "जेनरेटर और फ़ॉर्म चयनित वाहन पर लागू होते हैं।",
     timetableOfferSelectVehicleFullAria: "{label} चुनें। स्टॉक प्रवाह: {lane}.",
     timetableOfferVehicleStripLegend:
-      "टैब पर बिंदु: हरा = खरीदा · पीला = बेचा (तीसरे पक्ष) · धूसर = अवर्गीकृत · लाल = समीक्षा",
+      "टैब पर बिंदु: हरा = खरीदा · लाल = बेचा (तीसरे पक्ष) · धूसर = अवर्गीकृत · गुलाबी = टकराव — समीक्षा",
     timetableContactCorrespondenceTitle: "पत्राचार",
     timetableContactAppointmentsShort: "अपॉइंटमेंट",
     timetableContactNewAppointmentShort: "नया",
@@ -7054,7 +7054,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "ينطبق المولّد والنموذج على المركبة المحددة.",
     timetableOfferSelectVehicleFullAria: "اختر {label}. تدفق المخزون: {lane}.",
     timetableOfferVehicleStripLegend:
-      "نقاط على التبويب: أخضر = مشترى · كهرماني = مباع (طرف ثالث) · رمادي = غير مصنّف · أحمر = مراجعة",
+      "نقاط على التبويب: أخضر = مشترى · أحمر = مباع (طرف ثالث) · رمادي = غير مصنّف · وردي = تعارض — مراجعة",
     timetableContactCorrespondenceTitle: "المراسلات",
     timetableContactAppointmentsShort: "المواعيد",
     timetableContactNewAppointmentShort: "جديد",
@@ -7355,7 +7355,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "生成器与表单适用于所选车辆。",
     timetableOfferSelectVehicleFullAria: "选择{label}。库存流向：{lane}。",
     timetableOfferVehicleStripLegend:
-      "标签圆点：绿=已购入 · 琥珀=已售（第三方） · 灰=未分类 · 红=待复核",
+      "标签圆点：绿=已购入 · 红=已售（第三方） · 灰=未分类 · 玫红=冲突待复核",
     timetableContactCorrespondenceTitle: "往来函电",
     timetableContactAppointmentsShort: "预约",
     timetableContactNewAppointmentShort: "新建",
@@ -7658,7 +7658,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferGenScopedHint: "生成とフォームは選択中の車両に適用されます。",
     timetableOfferSelectVehicleFullAria: "{label} を選択。在庫フロー：{lane}。",
     timetableOfferVehicleStripLegend:
-      "タブのドット：緑=購入済み · 琥珀=販売済み（第三者） · 灰=未分類 · 赤=要確認",
+      "タブのドット：緑=購入済み · 赤=販売済み（第三者） · 灰=未分類 · ローズ=競合要確認",
     timetableContactCorrespondenceTitle: "文面・連絡履歴",
     timetableContactAppointmentsShort: "予定",
     timetableContactNewAppointmentShort: "新規",

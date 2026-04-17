@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Customer modal header chips — animated conic border (see `.customers-modal-genz-h-chip`) */
+/* Customer modal header chips — static conic border highlight (see `.customers-modal-genz-h-chip`) */
 @property --customers-modal-genz-h-chip-orbit {
   syntax: "<angle>";
   inherits: false;
@@ -2003,7 +2003,7 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   .customers-modal-genz-header::before {
     display: none;
   }
-  /* Kalender / timetable page — reuse customer header chip themes + orbit; strip only (no modal header chrome) */
+  /* Kalender / timetable page — reuse customer header chip themes; strip only (no modal header chrome) */
   .customers-modal-genz-header.timetable-kalender-header-chip-shell {
     border-bottom: none !important;
     background: transparent !important;
@@ -2177,7 +2177,8 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     --genz-h-chip-ring-a: 129 140 248;
     --genz-h-chip-ring-b: 99 102 241;
     --genz-h-chip-ring-c: 192 132 252;
-    --customers-modal-genz-h-chip-orbit: 0deg;
+    /* Fixed angle — no orbit keyframe; avoids moving “sheen” on pills */
+    --customers-modal-genz-h-chip-orbit: 42deg;
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
@@ -3630,43 +3631,41 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
 }
 
 .customer360-strip-chips > * {
-  animation:
-    dema-customer360-chip-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards,
-    customers-modal-genz-h-chip-orbit 4s linear infinite;
+  animation: dema-customer360-chip-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .customer360-strip-chips > :nth-child(1) {
-  animation-delay: 0.01s, 0s;
+  animation-delay: 0.01s;
 }
 .customer360-strip-chips > :nth-child(2) {
-  animation-delay: 0.02s, -0.5s;
+  animation-delay: 0.02s;
 }
 .customer360-strip-chips > :nth-child(3) {
-  animation-delay: 0.03s, -1s;
+  animation-delay: 0.03s;
 }
 .customer360-strip-chips > :nth-child(4) {
-  animation-delay: 0.04s, -1.5s;
+  animation-delay: 0.04s;
 }
 .customer360-strip-chips > :nth-child(5) {
-  animation-delay: 0.05s, -2s;
+  animation-delay: 0.05s;
 }
 .customer360-strip-chips > :nth-child(6) {
-  animation-delay: 0.06s, -2.5s;
+  animation-delay: 0.06s;
 }
 .customer360-strip-chips > :nth-child(7) {
-  animation-delay: 0.07s, -3s;
+  animation-delay: 0.07s;
 }
 .customer360-strip-chips > :nth-child(8) {
-  animation-delay: 0.08s, -3.5s;
+  animation-delay: 0.08s;
 }
 .customer360-strip-chips > :nth-child(9) {
-  animation-delay: 0.09s, -4s;
+  animation-delay: 0.09s;
 }
 .customer360-strip-chips > :nth-child(10) {
-  animation-delay: 0.1s, -4.5s;
+  animation-delay: 0.1s;
 }
 .customer360-strip-chips > :nth-child(11) {
-  animation-delay: 0.11s, -5s;
+  animation-delay: 0.11s;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3818,4 +3817,26 @@ html[data-dema-theme="dark"] .customers-page-genz {
 
 .customers-page-genz .dema-canvas-ambient {
   display: none !important;
+}
+
+/* App-wide: disable remaining decorative infinite motion (shimmer lines, CTA gradient drift, auth/B2B accents). */
+.customers-header-ai::after {
+  animation: none !important;
+  background-position: 50% 50%;
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .customers-genz-title {
+    animation: none !important;
+    background-position: 0% 50%;
+  }
+}
+.customers-genz-btn-primary {
+  animation: none !important;
+  background-position: 50% 50%;
+}
+.auth-btn-shimmer::after {
+  animation: none !important;
+}
+.b2b-live-pulse {
+  animation: none !important;
 }

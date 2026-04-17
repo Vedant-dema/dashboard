@@ -1,5 +1,4 @@
 import type { KundenAdresse, KundenKontakt, KundenStamm } from "../../../types/kunden";
-import html2pdf from "html2pdf.js";
 
 export type CustomerBriefRow = { label: string; value: string };
 
@@ -493,6 +492,8 @@ async function runHtml2PdfSave(root: HTMLElement, filename: string, cleanup: () 
   try {
     void root.offsetHeight;
     await waitForPdfPaint();
+
+    const { default: html2pdf } = await import("html2pdf.js");
 
     await html2pdf()
       .set({

@@ -289,15 +289,12 @@ export function TimetableOfferMinimalBlock({
                     'timetableOfferAbholauftragAria',
                     'Open pickup order form (purchase)',
                   )}
-                  className="group flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-emerald-300/90 bg-emerald-50/90 px-3 py-2.5 text-left shadow-sm ring-1 ring-emerald-900/[0.06] transition hover:border-emerald-400 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 sm:min-h-10"
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-emerald-400/80 bg-emerald-200/90 px-3.5 py-2.5 text-left shadow-sm ring-1 ring-emerald-900/[0.08] transition hover:border-emerald-500/80 hover:bg-emerald-300/85 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 sm:min-h-10"
                 >
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-300/90 bg-emerald-200/80 text-emerald-950 transition group-hover:bg-emerald-200"
-                    aria-hidden
-                  >
+                  <span className="flex shrink-0 text-emerald-950" aria-hidden>
                     <Truck className="h-4 w-4" strokeWidth={2} />
                   </span>
-                  <span className="min-w-0 flex-1 font-serif text-xs font-bold leading-snug tracking-tight text-slate-900 sm:text-[13px]">
+                  <span className="min-w-0 flex-1 font-serif text-xs font-bold leading-snug tracking-tight text-emerald-950 sm:text-[13px]">
                     {t('timetableOfferAbholauftragCta', 'Pickup order')}
                   </span>
                 </button>

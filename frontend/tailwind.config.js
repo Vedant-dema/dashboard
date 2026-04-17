@@ -48,5 +48,10 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    /** Decorative motion off only when the OS requests reduction (not in-app preset). */
+    function demaMotionPlugin({ addVariant }) {
+      addVariant("dema-low-motion", ["@media (prefers-reduced-motion: reduce) { & }"]);
+    },
+  ],
 };

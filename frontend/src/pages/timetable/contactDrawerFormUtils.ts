@@ -1,3 +1,4 @@
+import { isOfferSoldDisposal } from '../../lib/angebotLedger'
 import type {
   TimetableActivityNoteEntry,
   TimetableAppointmentHistoryRow,
@@ -68,14 +69,17 @@ export function entryAnyOfferHasContent(entry: TimetableEntry): boolean {
   return (entry.offers ?? []).some((o) => offerHasContent(o))
 }
 
-/** Ensure every offer has an id and `selected_offer_id` points at a real slot when possible. */
+/** Ensure every offer has an id and `selected_offer_id` points at a non–sold-disposal slot when possible. */
 export function ensureOfferIdsAndSelection(entry: TimetableEntry): TimetableEntry {
   const offers = (entry.offers ?? []).map((o) => (o.id ? o : { ...o, id: newTruckOfferId() }))
+  const active = offers.filter((o) => !isOfferSoldDisposal(o))
   let selected_offer_id = entry.selected_offer_id
   if (offers.length === 0) {
     selected_offer_id = null
-  } else if (!selected_offer_id || !offers.some((x) => x.id === selected_offer_id)) {
-    selected_offer_id = offers[0]!.id
+  } else if (active.length === 0) {
+    selected_offer_id = null
+  } else if (!selected_offer_id || !active.some((x) => x.id === selected_offer_id)) {
+    selected_offer_id = active[0]!.id
   }
   return { ...entry, offers, selected_offer_id }
 }

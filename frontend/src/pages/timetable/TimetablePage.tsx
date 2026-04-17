@@ -527,14 +527,14 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
       <div className="timetable-print-root flex min-h-0 flex-1 flex-col gap-5 p-4 pb-10 md:gap-7 md:p-6">
         <header className="order-1 overflow-hidden rounded-3xl border border-slate-800/50 bg-[#06060d] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.45)] ring-1 ring-white/[0.06]">
           <div className="relative px-5 py-6 md:px-8 md:py-8">
-            <div className="pointer-events-none absolute -right-16 -top-32 h-[22rem] w-[22rem] rounded-full bg-indigo-500/25 blur-3xl animate-timetable-blob" />
-            <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl animate-timetable-blob [animation-delay:-11s]" />
+            <div className="pointer-events-none absolute -right-16 -top-32 h-[22rem] w-[22rem] rounded-full bg-indigo-500/25 blur-3xl animate-timetable-blob dema-low-motion:animate-none" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl animate-timetable-blob dema-low-motion:animate-none [animation-delay:-11s]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent" />
             <div className="pointer-events-none absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent blur-sm" />
-            <div className="relative flex flex-col gap-8 motion-safe:animate-timetable-fade-up motion-reduce:animate-none lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+            <div className="relative flex flex-col gap-8 animate-timetable-fade-up dema-low-motion:animate-none lg:flex-row lg:items-center lg:justify-between lg:gap-10">
               <div className="min-w-0 flex-1">
                 <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/15 to-teal-500/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200 shadow-sm shadow-emerald-950/20">
-                  <Sparkles className="h-3.5 w-3.5 text-emerald-300 motion-safe:animate-pulse motion-reduce:animate-none" strokeWidth={2} />
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-300 animate-pulse dema-low-motion:animate-none" strokeWidth={2} />
                   {t('timetableBadgePurchase', 'Purchase desk')}
                 </p>
                 <h1 className="text-balance bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-2xl font-semibold tracking-tight text-transparent md:text-3xl md:leading-tight">
@@ -623,7 +623,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                   <div
                     key={label}
                     style={{ animationDelay: `${idx * 90}ms` }}
-                    className={`rounded-2xl border p-3 text-center ring-1 ring-white/[0.06] backdrop-blur-md transition duration-300 will-change-transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 motion-safe:animate-timetable-stat motion-reduce:animate-none md:p-3.5 ${cardClass}`}
+                    className={`rounded-2xl border p-3 text-center ring-1 ring-white/[0.06] backdrop-blur-md transition duration-300 will-change-transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 animate-timetable-stat dema-low-motion:animate-none md:p-3.5 ${cardClass}`}
                   >
                     <Icon className={`mx-auto mb-1.5 h-4 w-4 ${iconClass}`} strokeWidth={2} />
                     <p className={`text-2xl font-bold tabular-nums tracking-tight ${valueClass}`}>{value}</p>
@@ -635,7 +635,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
           </div>
         </header>
 
-        <main className="order-2 flex min-h-0 flex-1 flex-col gap-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
+        <main className="order-2 flex min-h-0 flex-1 flex-col gap-4 animate-timetable-fade-up dema-low-motion:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
             <div className="no-print relative z-10 overflow-visible rounded-3xl border border-slate-200/80 bg-white/72 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:bg-white/68 md:p-6">
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
@@ -867,7 +867,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
             </div>
 
             {showCreatePanel ? (
-              <div className="no-print relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/40 p-5 shadow-[0_24px_50px_-12px_rgba(5,150,105,0.2)] ring-1 ring-emerald-900/[0.04] motion-safe:animate-timetable-fade-up motion-reduce:animate-none">
+              <div className="no-print relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/40 p-5 shadow-[0_24px_50px_-12px_rgba(5,150,105,0.2)] ring-1 ring-emerald-900/[0.04] animate-timetable-fade-up dema-low-motion:animate-none">
                 <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
                 <div
                   className="pointer-events-none absolute -right-20 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-emerald-400/20 blur-3xl"
@@ -969,7 +969,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
 
       {toast ? (
         <div
-          className="pointer-events-none fixed bottom-6 left-1/2 z-[120] max-w-md -translate-x-1/2 px-4 motion-safe:animate-timetable-fade-up motion-reduce:animate-none"
+          className="pointer-events-none fixed bottom-6 left-1/2 z-[120] max-w-md -translate-x-1/2 px-4 animate-timetable-fade-up dema-low-motion:animate-none"
           role="status"
         >
           <div className="pointer-events-auto flex max-w-lg flex-col items-center gap-2 rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-2xl shadow-slate-900/50 ring-1 ring-white/10">

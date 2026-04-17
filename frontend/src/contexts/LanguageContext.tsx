@@ -305,6 +305,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferVehicleStripRoundsFmt: "{n} Preisrunden",
     timetableOfferVehicleStripFilesFmt: "{n} Dateien",
     timetableOfferVehicleStripAskFmt: "Preisvorstellung {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Liste der als verkauft markierten Fahrzeugzeilen mit Details öffnen",
     timetableOfferSoldVehicleCta: "Verkauftes Fahrzeug",
     timetableOfferSoldVehicleBadge: "Verkauft",
     timetableOfferSoldVehicleCount: "{n} verkauft",
@@ -317,6 +319,18 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferSoldVehicleMenuAria: "Als verkauft markierte Fahrzeugzeilen",
     timetableOfferSoldVehicleMenuMetaCustomer: "Kundenpreis: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "DEMA-Preis: {amount}",
+    timetableOfferSoldArchiveTitle: "Verkaufte Fahrzeuge (Drittverkauf)",
+    timetableOfferSoldArchiveSubtitle:
+      "Diese Zeilen erscheinen nicht mehr in der aktiven Fahrzeugliste. Mit « Zurücknehmen » heben Sie den Drittverkauf auf und bearbeiten die Zeile wieder im Angebotsbereich.",
+    timetableOfferSoldArchiveEmpty: "Keine verkauften Fahrzeugzeilen für diesen Termin.",
+    timetableOfferSoldRestore: "Zurücknehmen",
+    timetableOfferSoldRestoreConfirm:
+      "Diese Fahrzeugzeile wieder in die aktive Liste aufnehmen und den Drittverkauf aufheben?",
+    timetableOfferSoldArchiveShow: "Verkaufte Fahrzeuge",
+    timetableOfferSoldArchiveOpenHint: "Verkaufte Zeilen im Archiv öffnen",
+    timetableOfferSoldArchiveButtonTitle: "Archiv verkaufter Fahrzeugzeilen öffnen (Drittverkauf).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Alle Fahrzeugzeilen sind als verkauft markiert — sie bleiben im Verkaufs-Archiv. Öffnen Sie das Archiv, um Details zu prüfen oder eine Zeile zurückzunehmen.",
     timetableOfferAddVehicle: "Fahrzeug hinzufügen",
     timetableOfferChipUntitled: "Fahrzeug",
     timetableOfferRemoveVehicleAria: "Dieses Fahrzeug aus der Liste entfernen",
@@ -714,6 +728,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     settingsFontSizePercent: "{n} %",
     settingsTypographyTitle: "Typografie",
     settingsTypographySubtitle: "Feinabstimmung, wie Text in der App dargestellt wird.",
+    settingsMotionTitle: "Bewegung & Effekte",
+    settingsMotionSubtitle:
+      "„Wie System“, „Voll“, „Optimiert“ und „Minimal“ behalten volle Bewegung, solange das Betriebssystem keine Reduzierung verlangt. Ladeanzeigen bleiben sichtbar.",
+    settingsMotionSystem: "Wie System",
+    settingsMotionFull: "Voll",
+    settingsMotionBalanced: "Optimiert",
+    settingsMotionMinimal: "Minimal",
+    settingsMotionHelp:
+      "„Wie System“ liest die OS-Einstellung „Animationen reduzieren“. Stärkere Reduzierung steuert das Betriebssystem — die App schaltet Bewegung nicht mehr per „Minimal“ ab, wenn das OS Animationen erlaubt. „Voll“ und „Optimiert“ verhalten sich dann wie „Minimal“. Gleich flüssige Wiedergabe auf jedem Gerät ist technisch nicht garantiert.",
     settingsFontFamily: "Schriftart",
     settingsFontFamilyHelp:
       "Die Auswahl wirkt sofort. Die erste Zeile jeder Karte zeigt die Schriftart.",
@@ -2081,6 +2104,7 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferVehicleStripRoundsFmt: "{n} price rounds",
     timetableOfferVehicleStripFilesFmt: "{n} files",
     timetableOfferVehicleStripAskFmt: "Asking {amount}",
+    timetableOfferStripSoldLinesTriggerTitle: "Open list of sold vehicle lines with details",
     timetableOfferSoldVehicleCta: "Sold vehicle",
     timetableOfferSoldVehicleBadge: "Sold",
     timetableOfferSoldVehicleCount: "{n} sold",
@@ -2093,6 +2117,18 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferSoldVehicleMenuAria: "Vehicle lines marked as sold",
     timetableOfferSoldVehicleMenuMetaCustomer: "Customer price: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "DEMA price: {amount}",
+    timetableOfferSoldArchiveTitle: "Sold vehicles (third party)",
+    timetableOfferSoldArchiveSubtitle:
+      "These lines are hidden from the active vehicle list. Use “Take back” to clear third-party sale and edit the line in the offer workspace again.",
+    timetableOfferSoldArchiveEmpty: "No sold vehicle lines for this appointment.",
+    timetableOfferSoldRestore: "Take back",
+    timetableOfferSoldRestoreConfirm:
+      "Return this vehicle line to the active list and clear third-party sale?",
+    timetableOfferSoldArchiveShow: "Sold vehicles",
+    timetableOfferSoldArchiveOpenHint: "Open sold lines archive",
+    timetableOfferSoldArchiveButtonTitle: "Open archive of sold vehicle lines (third party).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Every vehicle line is marked sold — they are kept in the sold archive. Open it to review details or take a line back.",
     timetableOfferAddVehicle: "Add vehicle",
     timetableOfferChipUntitled: "Vehicle",
     timetableOfferRemoveVehicleAria: "Remove this vehicle from the list",
@@ -2488,6 +2524,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     settingsFontSizePercent: "{n}%",
     settingsTypographyTitle: "Typography",
     settingsTypographySubtitle: "Fine-tune how text appears everywhere in the app.",
+    settingsMotionTitle: "Motion & effects",
+    settingsMotionSubtitle:
+      "Match system, Full, Optimized, and Minimal all keep full motion while the operating system allows it. Loading spinners always stay visible.",
+    settingsMotionSystem: "Match system",
+    settingsMotionFull: "Full",
+    settingsMotionBalanced: "Optimized",
+    settingsMotionMinimal: "Minimal",
+    settingsMotionHelp:
+      "Match system reads the OS “reduce motion” accessibility setting. Stronger reduction is applied by the OS — the in-app Minimal choice no longer disables all animations when the OS still allows motion. Full, Optimized, and Minimal look the same until the system requests less motion. Identical smoothness on every device is not technically guaranteed.",
     settingsFontFamily: "Typeface",
     settingsFontFamilyHelp:
       "Selection applies instantly. The preview line uses each typeface.",
@@ -3854,6 +3899,8 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferVehicleStripRoundsFmt: "{n} tours de prix",
     timetableOfferVehicleStripFilesFmt: "{n} fichiers",
     timetableOfferVehicleStripAskFmt: "Prix demandé {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Ouvrir la liste des lignes véhicule marquées vendues avec détails",
     timetableOfferSoldVehicleCta: "Véhicule vendu",
     timetableOfferSoldVehicleBadge: "Vendu",
     timetableOfferSoldVehicleCount: "{n} vendus",
@@ -3866,6 +3913,18 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     timetableOfferSoldVehicleMenuAria: "Lignes véhicule marquées vendues",
     timetableOfferSoldVehicleMenuMetaCustomer: "Prix client : {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "Prix DEMA : {amount}",
+    timetableOfferSoldArchiveTitle: "Véhicules vendus (tiers)",
+    timetableOfferSoldArchiveSubtitle:
+      "Ces lignes n’apparaissent plus dans la liste active. Utilisez « Reprendre » pour annuler la vente tiers et modifier la ligne dans l’espace offre.",
+    timetableOfferSoldArchiveEmpty: "Aucune ligne véhicule vendue pour ce rendez-vous.",
+    timetableOfferSoldRestore: "Reprendre",
+    timetableOfferSoldRestoreConfirm:
+      "Remettre cette ligne dans la liste active et annuler la vente tiers ?",
+    timetableOfferSoldArchiveShow: "Véhicules vendus",
+    timetableOfferSoldArchiveOpenHint: "Ouvrir l’archive des lignes vendues",
+    timetableOfferSoldArchiveButtonTitle: "Ouvrir l’archive des lignes véhicule vendues (tiers).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Toutes les lignes sont marquées vendues — elles restent dans l’archive. Ouvrez-la pour consulter les détails ou reprendre une ligne.",
     timetableOfferAddVehicle: "Ajouter un véhicule",
     timetableOfferChipUntitled: "Véhicule",
     timetableOfferRemoveVehicleAria: "Retirer ce véhicule de la liste",
@@ -4208,6 +4267,15 @@ const MESSAGES: Record<LanguageCode, Record<string, string>> = {
     settingsFontSizePercent: "{n} %",
     settingsTypographyTitle: "Typographie",
     settingsTypographySubtitle: "Affinez l’affichage du texte dans toute l’application.",
+    settingsMotionTitle: "Mouvement et effets",
+    settingsMotionSubtitle:
+      "« Comme le système », « Complet », « Optimisé » et « Minimal » conservent le mouvement complet tant que le système ne demande pas de réduction. Les indicateurs de chargement restent visibles.",
+    settingsMotionSystem: "Comme le système",
+    settingsMotionFull: "Complet",
+    settingsMotionBalanced: "Optimisé",
+    settingsMotionMinimal: "Minimal",
+    settingsMotionHelp:
+      "« Comme le système » suit le réglage « Réduire les animations » du système. Une réduction plus forte vient du système d’exploitation — le préréglage « Minimal » dans l’app ne coupe plus toutes les animations si le système les autorise encore. Une fluidité identique sur tout matériel n’est pas garantie.",
     settingsFontFamily: "Police",
     settingsFontFamilyHelp:
       "Effet immédiat sur tout le tableau de bord (tableaux et fenêtres inclus). L’aperçu montre chaque police.",
@@ -5273,6 +5341,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     settingsAvatarSaved: "Foto de perfil guardada",
     settingsAvatarRemoved: "Foto de perfil eliminada",
     settingsProfileDetailsSaved: "Detalles del perfil guardados",
+    settingsMotionTitle: "Movimiento y efectos",
+    settingsMotionSubtitle:
+      "« Como el sistema », « Completo », « Optimizado » y « Mínimo » mantienen el movimiento completo si el SO no pide reducir animaciones. Los indicadores de carga siguen visibles.",
+    settingsMotionSystem: "Como el sistema",
+    settingsMotionFull: "Completo",
+    settingsMotionBalanced: "Optimizado",
+    settingsMotionMinimal: "Mínimo",
+    settingsMotionHelp:
+      "« Como el sistema » lee la accesibilidad del SO. Una reducción más fuerte la aplica el sistema — « Mínimo » en la app ya no desactiva todas las animaciones si el SO aún las permite. La misma fluidez en todo hardware no está garantizada.",
     settingsSessionsDevices: "Sesiones & dispositivos",
     settingsSessionsIntro: "Sesiones de inicio de sesión activas en esta demo",
     settingsHideSessions: "Ocultar",
@@ -5485,6 +5562,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} rondas de precio",
     timetableOfferVehicleStripFilesFmt: "{n} archivos",
     timetableOfferVehicleStripAskFmt: "Precio pedido {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Abrir la lista de líneas de vehículo marcadas como vendidas con detalles",
     timetableOfferSoldVehicleCta: "Vehículo vendido",
     timetableOfferSoldVehicleBadge: "Vendido",
     timetableOfferSoldVehicleCount: "{n} vendidos",
@@ -5497,6 +5576,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "Líneas de vehículo marcadas como vendidas",
     timetableOfferSoldVehicleMenuMetaCustomer: "Precio cliente: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "Precio DEMA: {amount}",
+    timetableOfferSoldArchiveTitle: "Vehículos vendidos (tercero)",
+    timetableOfferSoldArchiveSubtitle:
+      "Estas líneas ya no aparecen en la lista activa. Use « Recuperar » para anular la venta a terceros y volver a editar la línea.",
+    timetableOfferSoldArchiveEmpty: "No hay líneas de vehículo vendidas para esta cita.",
+    timetableOfferSoldRestore: "Recuperar",
+    timetableOfferSoldRestoreConfirm:
+      "¿Devolver esta línea a la lista activa y anular la venta a terceros?",
+    timetableOfferSoldArchiveShow: "Vehículos vendidos",
+    timetableOfferSoldArchiveOpenHint: "Abrir archivo de líneas vendidas",
+    timetableOfferSoldArchiveButtonTitle: "Abrir archivo de líneas de vehículo vendidas (tercero).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Todas las líneas están marcadas como vendidas; permanecen en el archivo. Ábralo para revisar o recuperar una línea.",
     timetableOfferAddVehicle: "Añadir vehículo",
     timetableOfferChipUntitled: "Vehículo",
     timetableOfferRemoveVehicleAria: "Quitar este vehículo de la lista",
@@ -5979,6 +6070,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     settingsAvatarSaved: "Foto profilo salvata",
     settingsAvatarRemoved: "Foto profilo rimossa",
     settingsProfileDetailsSaved: "Dettagli profilo salvati",
+    settingsMotionTitle: "Movimento ed effetti",
+    settingsMotionSubtitle:
+      "« Come il sistema », « Completo », « Ottimizzato » e « Minimo » mantengono il movimento completo se il SO non richiede riduzione. Gli indicatori di caricamento restano visibili.",
+    settingsMotionSystem: "Come il sistema",
+    settingsMotionFull: "Completo",
+    settingsMotionBalanced: "Ottimizzato",
+    settingsMotionMinimal: "Minimo",
+    settingsMotionHelp:
+      "« Come il sistema » legge l’accessibilità del SO. Una riduzione più forte viene dal sistema — « Minimo » nell’app non disattiva più tutte le animazioni se il SO le consente ancora. Stessa fluidità su ogni dispositivo non è garantita.",
     settingsSessionsDevices: "Sessioni & dispositivi",
     settingsSessionsIntro: "Sessioni di accesso attive in questa demo",
     settingsHideSessions: "Nascondi",
@@ -6191,6 +6291,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} round di prezzo",
     timetableOfferVehicleStripFilesFmt: "{n} file",
     timetableOfferVehicleStripAskFmt: "Richiesta {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Apri l’elenco delle linee veicolo contrassegnate come vendute con i dettagli",
     timetableOfferSoldVehicleCta: "Veicolo venduto",
     timetableOfferSoldVehicleBadge: "Venduto",
     timetableOfferSoldVehicleCount: "{n} venduti",
@@ -6203,6 +6305,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "Linee veicolo contrassegnate come vendute",
     timetableOfferSoldVehicleMenuMetaCustomer: "Prezzo cliente: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "Prezzo DEMA: {amount}",
+    timetableOfferSoldArchiveTitle: "Veicoli venduti (terze parti)",
+    timetableOfferSoldArchiveSubtitle:
+      "Queste righe non compaiono più nell’elenco attivo. Usa « Riprendi » per annullare la vendita a terzi e modificare di nuovo la riga.",
+    timetableOfferSoldArchiveEmpty: "Nessuna riga veicolo venduta per questo appuntamento.",
+    timetableOfferSoldRestore: "Riprendi",
+    timetableOfferSoldRestoreConfirm:
+      "Riportare questa riga nell’elenco attivo e annullare la vendita a terzi?",
+    timetableOfferSoldArchiveShow: "Veicoli venduti",
+    timetableOfferSoldArchiveOpenHint: "Apri archivio righe vendute",
+    timetableOfferSoldArchiveButtonTitle: "Apri archivio delle righe veicolo vendute (terze parti).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Tutte le righe sono contrassegnate come vendute; restano nell’archivio. Aprilo per i dettagli o per riprendere una riga.",
     timetableOfferAddVehicle: "Aggiungi veicolo",
     timetableOfferChipUntitled: "Veicolo",
     timetableOfferRemoveVehicleAria: "Rimuovi questo veicolo dall’elenco",
@@ -6395,6 +6509,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   pt: {
     navSettings: "Configurações",
     settingsTitle: "Configurações",
+    settingsMotionTitle: "Movimento e efeitos",
+    settingsMotionSubtitle:
+      "« Como o sistema », « Completo », « Otimizado » e « Mínimo » mantêm movimento completo quando o SO não pede redução. Os indicadores de carregamento permanecem visíveis.",
+    settingsMotionSystem: "Como o sistema",
+    settingsMotionFull: "Completo",
+    settingsMotionBalanced: "Otimizado",
+    settingsMotionMinimal: "Mínimo",
+    settingsMotionHelp:
+      "« Como o sistema » segue a acessibilidade do SO. Redução mais forte vem do sistema — « Mínimo » na app já não desliga todas as animações se o SO ainda as permitir. Igual fluidez em todo o hardware não é garantida.",
     settingsLanguage: "Idioma",
     navDashboard: "Painel",
     commonEdit: "Editar",
@@ -6652,6 +6775,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} rondas de preço",
     timetableOfferVehicleStripFilesFmt: "{n} ficheiros",
     timetableOfferVehicleStripAskFmt: "Pedido {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Abrir a lista de linhas de veículo marcadas como vendidas com detalhes",
     timetableOfferSoldVehicleCta: "Veículo vendido",
     timetableOfferSoldVehicleBadge: "Vendido",
     timetableOfferSoldVehicleCount: "{n} vendidos",
@@ -6664,6 +6789,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "Linhas de veículo marcadas como vendidas",
     timetableOfferSoldVehicleMenuMetaCustomer: "Preço cliente: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "Preço DEMA: {amount}",
+    timetableOfferSoldArchiveTitle: "Veículos vendidos (terceiros)",
+    timetableOfferSoldArchiveSubtitle:
+      "Estas linhas deixam de aparecer na lista ativa. Use « Reverter » para cancelar a venda a terceiros e voltar a editar a linha.",
+    timetableOfferSoldArchiveEmpty: "Sem linhas de veículo vendidas para este compromisso.",
+    timetableOfferSoldRestore: "Reverter",
+    timetableOfferSoldRestoreConfirm:
+      "Devolver esta linha à lista ativa e cancelar a venda a terceiros?",
+    timetableOfferSoldArchiveShow: "Veículos vendidos",
+    timetableOfferSoldArchiveOpenHint: "Abrir arquivo de linhas vendidas",
+    timetableOfferSoldArchiveButtonTitle: "Abrir arquivo de linhas de veículo vendidas (terceiros).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Todas as linhas estão marcadas como vendidas; ficam no arquivo. Abra-o para rever ou reverter uma linha.",
     timetableOfferAddVehicle: "Adicionar veículo",
     timetableOfferChipUntitled: "Veículo",
     timetableOfferRemoveVehicleAria: "Remover este veículo da lista",
@@ -6856,6 +6993,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   tr: {
     navSettings: "Ayarlar",
     settingsTitle: "Ayarlar",
+    settingsMotionTitle: "Hareket ve efektler",
+    settingsMotionSubtitle:
+      "« Sisteme uy », « Tam », « Optimize » ve « Minimum »; OS azaltma istemediğinde tam hareketi korur. Yükleniyor göstergeleri görünür kalır.",
+    settingsMotionSystem: "Sisteme uy",
+    settingsMotionFull: "Tam",
+    settingsMotionBalanced: "Optimize",
+    settingsMotionMinimal: "Minimum",
+    settingsMotionHelp:
+      "« Sisteme uy » OS erişilebilirlik ayarını okur. Güçlü azaltma OS’tan gelir — OS harekete izin verirken uygulamadaki « Minimum » artık tüm animasyonları kapatmaz. Tüm donanımda aynı akıcılık garanti değildir.",
     settingsLanguage: "Dil",
     navDashboard: "Gösterge Paneli",
     commonEdit: "Düzenle",
@@ -7091,6 +7237,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} fiyat turu",
     timetableOfferVehicleStripFilesFmt: "{n} dosya",
     timetableOfferVehicleStripAskFmt: "Talep {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Satıldı olarak işaretlenen araç satırlarının ayrıntılı listesini aç",
     timetableOfferSoldVehicleCta: "Satılan araç",
     timetableOfferSoldVehicleBadge: "Satıldı",
     timetableOfferSoldVehicleCount: "{n} satıldı",
@@ -7103,6 +7251,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "Satıldı olarak işaretlenen araç satırları",
     timetableOfferSoldVehicleMenuMetaCustomer: "Müşteri fiyatı: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "DEMA fiyatı: {amount}",
+    timetableOfferSoldArchiveTitle: "Satılan araçlar (üçüncü taraf)",
+    timetableOfferSoldArchiveSubtitle:
+      "Bu satırlar artık aktif listede görünmez. Üçüncü taraf satışını kaldırmak ve satırı yeniden düzenlemek için « Geri al » kullanın.",
+    timetableOfferSoldArchiveEmpty: "Bu randevu için satılmış araç satırı yok.",
+    timetableOfferSoldRestore: "Geri al",
+    timetableOfferSoldRestoreConfirm:
+      "Bu satırı aktif listeye döndürüp üçüncü taraf satışını kaldırmak istiyor musunuz?",
+    timetableOfferSoldArchiveShow: "Satılan araçlar",
+    timetableOfferSoldArchiveOpenHint: "Satılmış satırlar arşivini aç",
+    timetableOfferSoldArchiveButtonTitle: "Satılmış araç satırları arşivini aç (üçüncü taraf).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Tüm satırlar satıldı olarak işaretli; arşivde kalır. Ayrıntı için arşivi açın veya bir satırı geri alın.",
     timetableOfferAddVehicle: "Araç ekle",
     timetableOfferChipUntitled: "Araç",
     timetableOfferRemoveVehicleAria: "Bu aracı listeden kaldır",
@@ -7295,6 +7455,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   ru: {
     navSettings: "Настройки",
     settingsTitle: "Настройки",
+    settingsMotionTitle: "Движение и эффекты",
+    settingsMotionSubtitle:
+      "« Как в системе », « Полные », « Оптимизированные » и « Минимум » сохраняют полное движение, пока ОС не требует сокращения. Индикаторы загрузки остаются видимыми.",
+    settingsMotionSystem: "Как в системе",
+    settingsMotionFull: "Полные",
+    settingsMotionBalanced: "Оптимизированные",
+    settingsMotionMinimal: "Минимум",
+    settingsMotionHelp:
+      "« Как в системе » читает настройку ОС. Сильнее снижение задаёт ОС — в приложении « Минимум » больше не отключает все анимации, если ОС их ещё разрешает. Одинаковая плавность на всём оборудовании не гарантируется.",
     settingsLanguage: "Язык",
     navDashboard: "Панель",
     commonEdit: "Изменить",
@@ -7531,6 +7700,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} ценовых раундов",
     timetableOfferVehicleStripFilesFmt: "{n} файлов",
     timetableOfferVehicleStripAskFmt: "Ожидание {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "Открыть список строк ТС, отмеченных как проданные, с подробностями",
     timetableOfferSoldVehicleCta: "Проданное ТС",
     timetableOfferSoldVehicleBadge: "Продано",
     timetableOfferSoldVehicleCount: "Продано: {n}",
@@ -7543,6 +7714,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "Строки ТС, отмеченные как проданные",
     timetableOfferSoldVehicleMenuMetaCustomer: "Цена клиента: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "Цена DEMA: {amount}",
+    timetableOfferSoldArchiveTitle: "Проданные ТС (третьи стороны)",
+    timetableOfferSoldArchiveSubtitle:
+      "Эти строки скрыты из активного списка. Нажмите «Вернуть», чтобы снять продажу третьим лицом и снова редактировать строку.",
+    timetableOfferSoldArchiveEmpty: "Нет проданных строк ТС для этой встречи.",
+    timetableOfferSoldRestore: "Вернуть",
+    timetableOfferSoldRestoreConfirm:
+      "Вернуть эту строку в активный список и снять продажу третьим лицом?",
+    timetableOfferSoldArchiveShow: "Проданные ТС",
+    timetableOfferSoldArchiveOpenHint: "Открыть архив проданных строк",
+    timetableOfferSoldArchiveButtonTitle: "Открыть архив проданных строк ТС (третьи стороны).",
+    timetableOfferVehicleStripAllSoldHint:
+      "Все строки отмечены как проданные — они хранятся в архиве. Откройте его для просмотра или возврата строки.",
     timetableOfferAddVehicle: "Добавить ТС",
     timetableOfferChipUntitled: "Транспортное средство",
     timetableOfferRemoveVehicleAria: "Удалить это ТС из списка",
@@ -7735,6 +7918,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   hi: {
     navSettings: "सेटिंग्स",
     settingsTitle: "सेटिंग्स",
+    settingsMotionTitle: "मोशन और प्रभाव",
+    settingsMotionSubtitle:
+      "« सिस्टम के अनुसार », « पूर्ण », « अनुकूलित » और « न्यूनतम » — जब तक OS कम मोशन नहीं मांगता, पूर्ण मोशन। लोडिंग संकेतक दिखते रहते हैं।",
+    settingsMotionSystem: "सिस्टम के अनुसार",
+    settingsMotionFull: "पूर्ण",
+    settingsMotionBalanced: "अनुकूलित",
+    settingsMotionMinimal: "न्यूनतम",
+    settingsMotionHelp:
+      "« सिस्टम के अनुसार » OS की सेटिंग पढ़ता है। मज़बूत कमी OS से आती है — OS मोशन की अनुमति दे तो ऐप में « न्यूनतम » अब सारी एनिमेशन बंद नहीं करता। हर डिवाइस पर समान स्मूदनेस की गारंटी नहीं।",
     settingsLanguage: "भाषा",
     navDashboard: "डैशबोर्ड",
     commonEdit: "संपादित करें",
@@ -7921,6 +8113,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} मूल्य राउंड",
     timetableOfferVehicleStripFilesFmt: "{n} फ़ाइलें",
     timetableOfferVehicleStripAskFmt: "अपेक्षा {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "बेचा गया चिह्नित वाहन पंक्तियों की सूची विवरण के साथ खोलें",
     timetableOfferSoldVehicleCta: "बेचा गया वाहन",
     timetableOfferSoldVehicleBadge: "बेचा गया",
     timetableOfferSoldVehicleCount: "{n} बेचे गए",
@@ -7933,6 +8127,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "बेचा गया चिह्नित वाहन पंक्तियाँ",
     timetableOfferSoldVehicleMenuMetaCustomer: "ग्राहक मूल्य: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "DEMA मूल्य: {amount}",
+    timetableOfferSoldArchiveTitle: "बेचे गए वाहन (तीसरा पक्ष)",
+    timetableOfferSoldArchiveSubtitle:
+      "ये पंक्तियाँ सक्रिय सूची में नहीं दिखतीं। तीसरे पक्ष की बिक्री हटाकर पुनः संपादन के लिए « वापस लें » दबाएँ।",
+    timetableOfferSoldArchiveEmpty: "इस अपॉइंटमेंट के लिए कोई बेची वाहन पंक्ति नहीं।",
+    timetableOfferSoldRestore: "वापस लें",
+    timetableOfferSoldRestoreConfirm:
+      "क्या इस पंक्ति को सक्रिय सूची में लौटाएँ और तीसरे पक्ष की बिक्री रद्द करें?",
+    timetableOfferSoldArchiveShow: "बेचे गए वाहन",
+    timetableOfferSoldArchiveOpenHint: "बेची पंक्तियों का संग्रह खोलें",
+    timetableOfferSoldArchiveButtonTitle: "बेची वाहन पंक्तियों का संग्रह खोलें (तीसरा पक्ष)।",
+    timetableOfferVehicleStripAllSoldHint:
+      "सभी पंक्तियाँ बेची गई चिह्नित हैं — वे संग्रह में रहती हैं। विवरण या वापसी के लिए संग्रह खोलें।",
     timetableOfferAddVehicle: "वाहन जोड़ें",
     timetableOfferChipUntitled: "वाहन",
     timetableOfferRemoveVehicleAria: "इस वाहन को सूची से हटाएँ",
@@ -8166,6 +8372,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   ar: {
     navSettings: "الإعدادات",
     settingsTitle: "الإعدادات",
+    settingsMotionTitle: "الحركة والتأثيرات",
+    settingsMotionSubtitle:
+      "« مطابقة النظام » و« كامل » و« محسّن » و« الحد الأدنى » يحافظون على الحركة الكاملة ما لم يطلب النظام التقليل. مؤشرات التحميل تبقى ظاهرة.",
+    settingsMotionSystem: "مطابقة النظام",
+    settingsMotionFull: "كامل",
+    settingsMotionBalanced: "محسّن",
+    settingsMotionMinimal: "الحد الأدنى",
+    settingsMotionHelp:
+      "« مطابقة النظام » تقرأ إعدادات النظام. التقليل الأقوى من النظام — « الحد الأدنى » في التطبيق لم يعد يوقف كل الحركة إذا كان النظام لا يزال يسمح بها. لا يمكن ضمان نفس السلاسة على كل الأجهزة.",
     settingsLanguage: "اللغة",
     navDashboard: "لوحة التحكم",
     commonEdit: "تعديل",
@@ -8393,6 +8608,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} جولات أسعار",
     timetableOfferVehicleStripFilesFmt: "{n} ملفات",
     timetableOfferVehicleStripAskFmt: "المطلوب {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "فتح قائمة أسطر المركبات المعلّمة كمباعة مع التفاصيل",
     timetableOfferSoldVehicleCta: "مركبة مباعة",
     timetableOfferSoldVehicleBadge: "مباع",
     timetableOfferSoldVehicleCount: "{n} مباعة",
@@ -8405,6 +8622,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "أسطر المركبات المعلّمة كمباعة",
     timetableOfferSoldVehicleMenuMetaCustomer: "سعر العميل: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "سعر DEMA: {amount}",
+    timetableOfferSoldArchiveTitle: "مركبات مباعة (طرف ثالث)",
+    timetableOfferSoldArchiveSubtitle:
+      "هذه الأسطر لا تظهر في القائمة النشطة. استخدم «استرجاع» لإلغاء بيع الطرف الثالث وتحرير السطر مجددًا.",
+    timetableOfferSoldArchiveEmpty: "لا توجد أسطر مركبات مباعة لهذا الموعد.",
+    timetableOfferSoldRestore: "استرجاع",
+    timetableOfferSoldRestoreConfirm:
+      "إعادة هذا السطر إلى القائمة النشطة وإلغاء بيع الطرف الثالث؟",
+    timetableOfferSoldArchiveShow: "المركبات المباعة",
+    timetableOfferSoldArchiveOpenHint: "فتح أرشيف الأسطر المباعة",
+    timetableOfferSoldArchiveButtonTitle: "فتح أرشيف أسطر المركبات المباعة (طرف ثالث).",
+    timetableOfferVehicleStripAllSoldHint:
+      "كل الأسطر معلّمة كمباعة وتبقى في الأرشيف. افتحه للتفاصيل أو لاسترجاع سطر.",
     timetableOfferAddVehicle: "إضافة مركبة",
     timetableOfferChipUntitled: "مركبة",
     timetableOfferRemoveVehicleAria: "إزالة هذه المركبة من القائمة",
@@ -8597,6 +8826,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   zh: {
     navSettings: "设置",
     settingsTitle: "设置",
+    settingsMotionTitle: "动效与视觉效果",
+    settingsMotionSubtitle:
+      "“跟随系统”“完整”“优化”“极简”在系统未要求减弱动效时均保持完整动效。加载指示器仍会显示。",
+    settingsMotionSystem: "跟随系统",
+    settingsMotionFull: "完整",
+    settingsMotionBalanced: "优化",
+    settingsMotionMinimal: "极简",
+    settingsMotionHelp:
+      "“跟随系统”读取系统无障碍设置。更强的减弱由系统负责——在系统仍允许动效时，应用内“极简”不再关闭全部动效。无法保证所有设备帧率完全相同。",
     settingsLanguage: "语言",
     navDashboard: "仪表板",
     commonEdit: "编辑",
@@ -8818,6 +9056,7 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "{n} 轮议价",
     timetableOfferVehicleStripFilesFmt: "{n} 个文件",
     timetableOfferVehicleStripAskFmt: "要价 {amount}",
+    timetableOfferStripSoldLinesTriggerTitle: "打开标记为已售的车辆行列表（含详情）",
     timetableOfferSoldVehicleCta: "已售车辆",
     timetableOfferSoldVehicleBadge: "已售",
     timetableOfferSoldVehicleCount: "已售 {n} 辆",
@@ -8830,6 +9069,17 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "标记为已售的车辆行",
     timetableOfferSoldVehicleMenuMetaCustomer: "客户价格：{amount}",
     timetableOfferSoldVehicleMenuMetaDema: "DEMA 价格：{amount}",
+    timetableOfferSoldArchiveTitle: "已售车辆（第三方）",
+    timetableOfferSoldArchiveSubtitle:
+      "这些行不再显示在活动列表中。使用「取回」可取消第三方销售并再次编辑该行。",
+    timetableOfferSoldArchiveEmpty: "此预约没有已售车辆行。",
+    timetableOfferSoldRestore: "取回",
+    timetableOfferSoldRestoreConfirm: "将此行恢复到活动列表并取消第三方销售？",
+    timetableOfferSoldArchiveShow: "已售车辆",
+    timetableOfferSoldArchiveOpenHint: "打开已售记录存档",
+    timetableOfferSoldArchiveButtonTitle: "打开已售车辆行存档（第三方）。",
+    timetableOfferVehicleStripAllSoldHint:
+      "所有行均标记为已售并保存在存档中。打开存档可查看详情或取回某一行。",
     timetableOfferAddVehicle: "添加车辆",
     timetableOfferChipUntitled: "车辆",
     timetableOfferRemoveVehicleAria: "从列表中移除此车辆",
@@ -9018,6 +9268,15 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
   ja: {
     navSettings: "設定",
     settingsTitle: "設定",
+    settingsMotionTitle: "モーションとエフェクト",
+    settingsMotionSubtitle:
+      "「システムに合わせる」「フル」「最適化」「最小」は、OS が削減を求めない限りフルモーションを維持します。読み込みインジケーターは常に表示されます。",
+    settingsMotionSystem: "システムに合わせる",
+    settingsMotionFull: "フル",
+    settingsMotionBalanced: "最適化",
+    settingsMotionMinimal: "最小",
+    settingsMotionHelp:
+      "「システムに合わせる」は OS のアクセシビリティ設定を読み取ります。強い削減は OS 側です — OS が動きを許す場合、アプリの「最小」ですべてのアニメを止めません。すべての端末で同じ滑らかさは保証できません。",
     settingsLanguage: "言語",
     navDashboard: "ダッシュボード",
     commonEdit: "編集",
@@ -9245,6 +9504,8 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferVehicleStripRoundsFmt: "価格ラウンド {n}",
     timetableOfferVehicleStripFilesFmt: "ファイル {n}",
     timetableOfferVehicleStripAskFmt: "希望 {amount}",
+    timetableOfferStripSoldLinesTriggerTitle:
+      "売却済みとしてマークされた車両行の一覧を詳細付きで開く",
     timetableOfferSoldVehicleCta: "売却済み車両",
     timetableOfferSoldVehicleBadge: "売却",
     timetableOfferSoldVehicleCount: "売却 {n} 台",
@@ -9257,6 +9518,18 @@ const LANGUAGE_OVERRIDES: Record<Exclude<LanguageCode, "de" | "en" | "fr">, Reco
     timetableOfferSoldVehicleMenuAria: "売却済みとしてマークされた車両行",
     timetableOfferSoldVehicleMenuMetaCustomer: "顧客価格: {amount}",
     timetableOfferSoldVehicleMenuMetaDema: "DEMA 価格: {amount}",
+    timetableOfferSoldArchiveTitle: "売却済み車両（第三者）",
+    timetableOfferSoldArchiveSubtitle:
+      "これらの行はアクティブ一覧に表示されません。「戻す」で第三者売却を解除し、再度編集できます。",
+    timetableOfferSoldArchiveEmpty: "この予定に売却済みの車両行はありません。",
+    timetableOfferSoldRestore: "戻す",
+    timetableOfferSoldRestoreConfirm:
+      "この行をアクティブ一覧に戻し、第三者売却を解除しますか？",
+    timetableOfferSoldArchiveShow: "売却済み車両",
+    timetableOfferSoldArchiveOpenHint: "売却済み行のアーカイブを開く",
+    timetableOfferSoldArchiveButtonTitle: "売却済み車両行のアーカイブを開く（第三者）。",
+    timetableOfferVehicleStripAllSoldHint:
+      "すべての行が売却済みでアーカイブに保存されます。詳細確認や行の復帰はアーカイブから行ってください。",
     timetableOfferAddVehicle: "車両を追加",
     timetableOfferChipUntitled: "車両",
     timetableOfferRemoveVehicleAria: "この車両を一覧から削除",

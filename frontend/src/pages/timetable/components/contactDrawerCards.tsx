@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 /** Staggered entrance for smart summary (motion-safe). */
 export function overviewStaggerClass(ms: number): string {
-  return `motion-safe:animate-contact-card-in motion-reduce:animate-none [animation-delay:${ms}ms]`;
+  return `animate-contact-card-in dema-low-motion:animate-none [animation-delay:${ms}ms]`;
 }
 
 export function ContactSmartSummaryCard({
@@ -24,11 +24,11 @@ export function ContactSmartSummaryCard({
   return (
     <div className={shell}>
       <div
-        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-blue-400/20 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
+        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-blue-400/20 blur-3xl animate-timetable-blob dema-low-motion:animate-none"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-40 rounded-full bg-indigo-400/18 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-11s]"
+        className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-40 rounded-full bg-indigo-400/18 blur-3xl animate-timetable-blob dema-low-motion:animate-none [animation-delay:-11s]"
         aria-hidden
       />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">

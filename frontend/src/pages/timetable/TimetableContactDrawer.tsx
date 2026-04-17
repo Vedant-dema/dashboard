@@ -48,11 +48,7 @@ import { TimetableActivityNotesThread } from './components/TimetableActivityNote
 import { TimetableOfferGeneratorBlock } from './components/TimetableOfferGeneratorBlock';
 import { TimetableOfferNegotiationHistory } from './components/TimetableOfferNegotiationHistory';
 import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel';
-import {
-  SoldVehicleQuickAccess,
-  TimetableOfferVehicleStrip,
-  timetableOfferVehicleChipLabel,
-} from './components/TimetableOfferVehicleStrip';
+import { SoldVehicleQuickAccess, TimetableOfferVehicleStrip } from './components/TimetableOfferVehicleStrip';
 import { TimetableAbholauftragModal } from './components/TimetableAbholauftragModal';
 import { TimetableOfferMinimalBlock } from './components/TimetableOfferMinimalBlock';
 import {
@@ -69,6 +65,8 @@ import {
   type TimetableOfferMemoryItem,
 } from './timetableOfferMemory';
 import { useAuth } from '../../contexts/AuthContext';
+import { isOfferSoldDisposal } from '../../lib/angebotLedger';
+import { TimetableSoldVehiclesArchiveModal } from './components/TimetableSoldVehiclesArchiveModal';
 
 type DrawerWorkspaceTab = 'call' | 'offer';
 
@@ -313,7 +311,7 @@ function mergeMasterOverview(base: TimetableOverviewKundeDraft, mk: KundenStamm)
 
 /** Staggered entrance for smart summary card (motion-safe). */
 function overviewStaggerClass(ms: number): string {
-  return `motion-safe:animate-contact-card-in motion-reduce:animate-none [animation-delay:${ms}ms]`;
+  return `animate-contact-card-in dema-low-motion:animate-none [animation-delay:${ms}ms]`;
 }
 
 function ContactSmartSummaryCard({
@@ -334,11 +332,11 @@ function ContactSmartSummaryCard({
   return (
     <div className={shell}>
       <div
-        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-blue-400/20 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none"
+        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-blue-400/20 blur-3xl animate-timetable-blob dema-low-motion:animate-none"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-40 rounded-full bg-indigo-400/18 blur-3xl motion-safe:animate-timetable-blob motion-reduce:animate-none [animation-delay:-11s]"
+        className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-40 rounded-full bg-indigo-400/18 blur-3xl animate-timetable-blob dema-low-motion:animate-none [animation-delay:-11s]"
         aria-hidden
       />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
@@ -411,6 +409,7 @@ export function TimetableContactDrawer({
   const [drawerWorkspaceTab, setDrawerWorkspaceTab] = useState<DrawerWorkspaceTab>('call');
   const [bemerkungenComfortOpen, setBemerkungenComfortOpen] = useState(false);
   const [abholauftragModalOpen, setAbholauftragModalOpen] = useState(false);
+  const [soldArchiveOpen, setSoldArchiveOpen] = useState(false);
   const [copyFlash, setCopyFlash] = useState<'ok' | 'err' | null>(null);
   const smartSummaryRef = useRef<HTMLDivElement>(null);
   const unterlagenInputRef = useRef<HTMLInputElement>(null);
@@ -634,20 +633,26 @@ export function TimetableContactDrawer({
   const addVehicleOffer = useCallback(() => {
     patchDraft((prev) => {
       const e0 = ensureOfferIdsAndSelection(prev);
-      const sid = e0.selected_offer_id ?? e0.offers[0]?.id;
-      const current = e0.offers.find((o) => o.id === sid) ?? e0.offers[0];
+      const active = e0.offers.filter((o) => !isOfferSoldDisposal(o));
+      const sid = e0.selected_offer_id ?? active[0]?.id;
+      const current = sid ? e0.offers.find((o) => o.id === sid) : active[0];
       if (current && offerHasVehicleIdentity(current)) {
-        const dup = e0.offers.find((o) => o.id !== current.id && offerVehicleSameEnough(current, o));
+        const dup = e0.offers.find(
+          (o) =>
+            o.id !== current.id &&
+            !isOfferSoldDisposal(o) &&
+            offerVehicleSameEnough(current, o),
+        );
         if (dup) {
-          return { ...e0, selected_offer_id: dup.id };
+          return ensureOfferIdsAndSelection({ ...e0, selected_offer_id: dup.id });
         }
       }
       const nu = createEmptyTruckOffer();
-      return {
+      return ensureOfferIdsAndSelection({
         ...e0,
         offers: [...e0.offers, nu],
         selected_offer_id: nu.id,
-      };
+      });
     });
     scrollOfferVehicleStripIntoView();
   }, [patchDraft]);
@@ -665,15 +670,30 @@ export function TimetableContactDrawer({
         const nextPr: TimetableContactProfile = { ...pr };
         if (Object.keys(vex).length > 0) nextPr.vehicle_extras = vex;
         else delete nextPr.vehicle_extras;
-        return {
+        return ensureOfferIdsAndSelection({
           ...e0,
           offers: nextOffers,
           selected_offer_id,
           contact_profile: nextPr,
-        };
+        });
       });
     },
     [patchDraft]
+  );
+
+  const restoreSoldOffer = useCallback(
+    (id: string) => {
+      patchDraft((prev) => {
+        const e0 = ensureOfferIdsAndSelection(prev);
+        const offers = e0.offers.map((o) =>
+          o.id === id ? { ...o, gekauft: false, verkauft: false } : o,
+        );
+        return ensureOfferIdsAndSelection({ ...e0, offers, selected_offer_id: id });
+      });
+      setSoldArchiveOpen(false);
+      setDirty(true);
+    },
+    [patchDraft],
   );
 
   const patchOverviewKunde = useCallback(
@@ -697,16 +717,21 @@ export function TimetableContactDrawer({
     (patch: Partial<TimetableTruckOffer>) => {
       patchDraft((prev) => {
         const e0 = ensureOfferIdsAndSelection(prev);
-        const sid = e0.selected_offer_id ?? e0.offers[0]?.id;
+        const active = e0.offers.filter((o) => !isOfferSoldDisposal(o));
+        const sid = e0.selected_offer_id ?? active[0]?.id;
         let offers = [...e0.offers];
         if (!sid && offers.length === 0) {
           const nu = createEmptyTruckOffer();
-          return { ...prev, offers: [{ ...nu, ...patch }], selected_offer_id: nu.id };
+          return ensureOfferIdsAndSelection({
+            ...prev,
+            offers: [{ ...nu, ...patch }],
+            selected_offer_id: nu.id,
+          });
         }
         const idx = sid ? offers.findIndex((o) => o.id === sid) : -1;
         if (idx < 0 || !offers[idx]) return e0;
         offers[idx] = { ...offers[idx]!, ...patch };
-        return { ...e0, offers, selected_offer_id: sid };
+        return ensureOfferIdsAndSelection({ ...e0, offers, selected_offer_id: sid });
       });
     },
     [patchDraft]
@@ -716,10 +741,11 @@ export function TimetableContactDrawer({
     (patch: Partial<TimetableVehicleDisplayExtra>) => {
       patchDraft((prev) => {
         const e0 = ensureOfferIdsAndSelection(prev);
-        const sid = e0.selected_offer_id ?? e0.offers[0]?.id;
+        const active = e0.offers.filter((o) => !isOfferSoldDisposal(o));
+        const sid = e0.selected_offer_id ?? active[0]?.id;
         if (!sid) {
           const nu = createEmptyTruckOffer();
-          return {
+          return ensureOfferIdsAndSelection({
             ...prev,
             offers: [nu],
             selected_offer_id: nu.id,
@@ -727,15 +753,12 @@ export function TimetableContactDrawer({
               ...ensureProfile(prev),
               vehicle_extras: { [nu.id]: { ...patch } },
             },
-          };
+          });
         }
         const pr = ensureProfile(e0);
         const vex = { ...(pr.vehicle_extras ?? {}) };
         vex[sid] = { ...(vex[sid] ?? {}), ...patch };
-        return {
-          ...e0,
-          contact_profile: { ...pr, vehicle_extras: vex },
-        };
+        return { ...e0, contact_profile: { ...pr, vehicle_extras: vex } };
       });
     },
     [patchDraft]
@@ -757,7 +780,7 @@ export function TimetableContactDrawer({
             const offers = mergePrices
               ? e0.offers.map((o) => (o.id === item.offerId ? { ...o, ...pricesPart } : o))
               : e0.offers;
-            return { ...e0, offers, selected_offer_id: item.offerId };
+            return ensureOfferIdsAndSelection({ ...e0, offers, selected_offer_id: item.offerId });
           });
           setDrawerWorkspaceTab('offer');
           scrollOfferVehicleStripIntoView();
@@ -829,7 +852,8 @@ export function TimetableContactDrawer({
 
       const base = cloneEntry(draft);
       const withIds = ensureOfferIdsAndSelection(base);
-      const oid = withIds.selected_offer_id ?? withIds.offers[0]?.id;
+      const activeForFiles = withIds.offers.filter((o) => !isOfferSoldDisposal(o));
+      const oid = withIds.selected_offer_id ?? activeForFiles[0]?.id;
       if (!oid) return;
 
       const offers = withIds.offers.map((o) =>
@@ -837,7 +861,7 @@ export function TimetableContactDrawer({
           ? { ...o, vehicle_unterlagen: [...(o.vehicle_unterlagen ?? []), ...neue] }
           : o
       );
-      const merged: TimetableEntry = { ...withIds, offers, selected_offer_id: oid };
+      const merged = ensureOfferIdsAndSelection({ ...withIds, offers, selected_offer_id: oid });
       const persisted = finalizeTimetableEntryForSave(merged, user);
       onPersist(persisted);
       setDraft(persisted);
@@ -867,8 +891,10 @@ export function TimetableContactDrawer({
   const offerSpiralIndex = useMemo(() => {
     if (!draft?.offers?.length) return 0;
     const withIds = ensureOfferIdsAndSelection(draft);
-    const sid = withIds.selected_offer_id ?? withIds.offers[0]?.id ?? '';
-    const i = withIds.offers.findIndex((o) => o.id === sid);
+    const active = withIds.offers.filter((o) => !isOfferSoldDisposal(o));
+    if (active.length === 0) return 0;
+    const sid = withIds.selected_offer_id ?? active[0]!.id;
+    const i = active.findIndex((o) => o.id === sid);
     return i >= 0 ? i : 0;
   }, [draft?.id, draft?.selected_offer_id, offerIdsFingerprint]);
 
@@ -905,16 +931,21 @@ export function TimetableContactDrawer({
 
   const p = ensureProfile(draft);
   const eOffer = ensureOfferIdsAndSelection(draft);
+  const activeOffers = eOffer.offers.filter((o) => !isOfferSoldDisposal(o));
+  const soldArchivedOffers = eOffer.offers.filter((o) => isOfferSoldDisposal(o));
   const { date: slotDate, time: slotTime } = formatRowDateTime(draft.scheduled_at, localeTag);
   const overview = normalizeTimetableOverviewKunde(
     draft.contact_profile?.overview_kunde ?? timetableOverviewFromEntry(draft)
   );
-  const selectedOfferId = eOffer.selected_offer_id ?? eOffer.offers[0]?.id ?? '';
+  const selectedOfferId =
+    eOffer.selected_offer_id && activeOffers.some((o) => o.id === eOffer.selected_offer_id)
+      ? eOffer.selected_offer_id
+      : activeOffers[0]?.id ?? '';
   const offer =
-    eOffer.offers.find((o) => o.id === selectedOfferId) ?? eOffer.offers[0] ?? createEmptyTruckOffer();
+    activeOffers.find((o) => o.id === selectedOfferId) ?? activeOffers[0] ?? createEmptyTruckOffer();
   const ve =
     (selectedOfferId ? p.vehicle_extras?.[selectedOfferId] : undefined) ??
-    (eOffer.offers.length === 1 && selectedOfferId === eOffer.offers[0]?.id ? p.vehicle_extra : undefined) ??
+    (activeOffers.length === 1 && selectedOfferId === activeOffers[0]?.id ? p.vehicle_extra : undefined) ??
     {};
   const offerMemoryItems = collectTimetableOfferMemory({
     entries: allEntries,
@@ -1196,13 +1227,10 @@ export function TimetableContactDrawer({
             <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               <SoldVehicleQuickAccess
                 offers={eOffer.offers}
-                selectedId={eOffer.selected_offer_id}
-                onSelect={(id) => {
-                  selectOfferId(id);
+                onOpenArchive={() => {
+                  setSoldArchiveOpen(true);
                   setDrawerWorkspaceTab('offer');
                 }}
-                chipLabel={timetableOfferVehicleChipLabel}
-                sublineNumberOnly
                 t={t}
               />
               <div className="relative shrink-0" ref={smartSummaryRef}>
@@ -1582,11 +1610,13 @@ export function TimetableContactDrawer({
                   >
                     <div id="tt-offer-vehicle-strip" className="min-w-0 shrink-0 scroll-mt-4">
                       <TimetableOfferVehicleStrip
-                        offers={eOffer.offers}
+                        offers={activeOffers}
                         selectedId={eOffer.selected_offer_id}
                         onSelect={selectOfferId}
                         onAdd={addVehicleOffer}
                         onRemove={removeVehicleOffer}
+                        soldArchiveCount={soldArchivedOffers.length}
+                        onOpenSoldArchive={() => setSoldArchiveOpen(true)}
                         t={t}
                       />
                     </div>
@@ -1804,11 +1834,23 @@ export function TimetableContactDrawer({
       />
     ) : null;
 
+  const soldArchivePortal =
+    soldArchiveOpen && typeof document !== 'undefined' ? (
+      <TimetableSoldVehiclesArchiveModal
+        open
+        onClose={() => setSoldArchiveOpen(false)}
+        soldOffers={soldArchivedOffers}
+        onRestore={restoreSoldOffer}
+        t={t}
+      />
+    ) : null;
+
   return (
     <>
       {createPortal(modalUi, document.body)}
       {bemerkungenComfortPortal ? createPortal(bemerkungenComfortPortal, document.body) : null}
       {abholauftragPortal ? createPortal(abholauftragPortal, document.body) : null}
+      {soldArchivePortal ? createPortal(soldArchivePortal, document.body) : null}
     </>
   );
 }

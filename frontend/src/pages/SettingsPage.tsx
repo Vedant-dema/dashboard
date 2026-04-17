@@ -3,6 +3,7 @@ import {
   Bell,
   Briefcase,
   Camera,
+  Gauge,
   Globe2,
   KeyRound,
   Mail,
@@ -14,11 +15,20 @@ import {
   Plus,
   Shield,
   Smartphone,
+  Sparkles,
   Sun,
   Trash2,
   Type,
   UserCog,
+  ZapOff,
 } from "lucide-react";
+import {
+  applyMotionFromIntent,
+  clampMotionIntent,
+  readMotionIntentFromStorage,
+  subscribeSystemMotionPreference,
+  type MotionIntent,
+} from "../common/utils/appMotion";
 import {
   applyFontFamilyPreset,
   clampFontFamilyPreset,
@@ -121,6 +131,7 @@ export function SettingsPage() {
       ? "dark"
       : "light";
   });
+  const [motionIntent, setMotionIntent] = useState<MotionIntent>(() => readMotionIntentFromStorage());
   const [fontSizeStepIndex, setFontSizeStepIndex] = useState(() => readFontSizeStepIndexFromStorage());
   const [fontFamilyPreset, setFontFamilyPreset] = useState<FontFamilyPresetId>(() =>
     readFontFamilyPresetFromStorage()
@@ -170,8 +181,10 @@ export function SettingsPage() {
         activity?: string[];
         fontSizeStepIndex?: number;
         fontFamilyPreset?: string;
+        motionIntent?: unknown;
       };
       if (s.theme) setTheme(s.theme);
+      if (s.motionIntent !== undefined) setMotionIntent(clampMotionIntent(s.motionIntent));
       if (typeof s.fontSizeStepIndex === "number") {
         setFontSizeStepIndex(clampFontSizeStepIndex(s.fontSizeStepIndex));
       }
@@ -218,6 +231,7 @@ export function SettingsPage() {
         "dema-app-settings",
         JSON.stringify({
           theme,
+          motionIntent,
           fontSizeStepIndex,
           fontFamilyPreset,
           language,
@@ -236,6 +250,7 @@ export function SettingsPage() {
     }
   }, [
     theme,
+    motionIntent,
     fontSizeStepIndex,
     fontFamilyPreset,
     language,
@@ -248,6 +263,17 @@ export function SettingsPage() {
     region,
     activity,
   ]);
+
+  useLayoutEffect(() => {
+    applyMotionFromIntent(motionIntent);
+  }, [motionIntent]);
+
+  useEffect(() => {
+    if (motionIntent !== "system") return;
+    return subscribeSystemMotionPreference(() => {
+      applyMotionFromIntent(readMotionIntentFromStorage());
+    });
+  }, [motionIntent]);
 
   useLayoutEffect(() => {
     applyFontSizeStepIndex(fontSizeStepIndex);
@@ -281,6 +307,17 @@ export function SettingsPage() {
                     "JetBrains Mono — technical monospace across the entire UI."
                   ),
       })),
+    [t]
+  );
+
+  const motionRadioOptions = useMemo(
+    () =>
+      [
+        { id: "system" as const, icon: Monitor, label: t("settingsMotionSystem", "Match system") },
+        { id: "full" as const, icon: Sparkles, label: t("settingsMotionFull", "Full") },
+        { id: "balanced" as const, icon: Gauge, label: t("settingsMotionBalanced", "Optimized") },
+        { id: "minimal" as const, icon: ZapOff, label: t("settingsMotionMinimal", "Minimal") },
+      ] as const,
     [t]
   );
 
@@ -612,6 +649,59 @@ export function SettingsPage() {
                 <Monitor className="mx-auto mb-1.5 h-4 w-4" />
                 {t("themeSystem", "System")}
               </button>
+            </div>
+            <div className="mt-6 border-t border-slate-100 pt-6">
+              <div className="mb-4 flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <Gauge className="h-4 w-4 shrink-0" aria-hidden />
+                </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {t("settingsMotionTitle", "Motion & effects")}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {t(
+                      "settingsMotionSubtitle",
+                      "Match system, Full, Optimized, and Minimal all keep full motion while the operating system allows it. Loading spinners always stay visible."
+                    )}
+                  </p>
+                </div>
+              </div>
+              <p id="settings-motion-label" className="sr-only">
+                {t("settingsMotionTitle", "Motion & effects")}
+              </p>
+              <div
+                className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+                role="radiogroup"
+                aria-labelledby="settings-motion-label"
+              >
+                {motionRadioOptions.map(({ id, icon: Icon, label }) => {
+                  const selected = motionIntent === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setMotionIntent(id)}
+                      className={`rounded-xl border p-3 text-center text-xs font-semibold leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 ${
+                        selected
+                          ? "border-blue-200 bg-blue-50 text-blue-800"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80"
+                      }`}
+                    >
+                      <Icon className="mx-auto mb-1.5 h-4 w-4 shrink-0" aria-hidden />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                {t(
+                  "settingsMotionHelp",
+                  "Match system reads the OS “reduce motion” accessibility setting. Stronger reduction comes from the OS — the in-app Minimal choice no longer disables all animations when the OS still allows motion. Full, Optimized, and Minimal look the same until the system requests less motion. Identical smoothness on every device is not technically guaranteed."
+                )}
+              </p>
             </div>
             <div className="mt-6 border-t border-slate-100 pt-6">
               <div className="mb-4 flex items-center gap-2.5">

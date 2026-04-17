@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
 import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
+import { hydrateMotionFromStorage } from "./common/utils/appMotion";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -11,6 +12,7 @@ import "./app-font-cascade.css";
 
 hydrateAppFontScaleFromStorage();
 hydrateAppFontFamilyFromStorage();
+hydrateMotionFromStorage();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

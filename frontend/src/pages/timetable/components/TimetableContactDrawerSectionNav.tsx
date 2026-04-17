@@ -145,7 +145,7 @@ export const TimetableContactDrawerSectionNav = forwardRef<HTMLDivElement, Props
                   e.preventDefault();
                   scrollSectionIntoView(item.id);
                 }}
-                className={`flex min-h-[2.45rem] min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 py-1.5 text-left text-[10px] font-semibold leading-snug ring-1 transition motion-safe:hover:scale-[1.01] motion-safe:active:scale-[0.99] motion-reduce:hover:scale-100 motion-reduce:active:scale-100 sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs ${
+                className={`flex min-h-[2.45rem] min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 py-1.5 text-left text-[10px] font-semibold leading-snug ring-1 transition hover:scale-[1.01] active:scale-[0.99] dema-low-motion:hover:scale-100 dema-low-motion:active:scale-100 sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs ${
                   activeId === item.id
                     ? 'bg-slate-900 text-white shadow-sm ring-slate-900/20'
                     : SECTION_INACTIVE_SHELL[item.key]

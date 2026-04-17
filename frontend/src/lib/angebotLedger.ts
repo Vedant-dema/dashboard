@@ -12,3 +12,8 @@ export function angebotLedgerKind(a: OfferStockFlags): AngebotLedgerKind {
   if (!g && v) return "disposal";
   return "neutral";
 }
+
+/** Third-party sale lane — these offers are hidden from the active vehicle strip (sold archive). */
+export function isOfferSoldDisposal(a: OfferStockFlags): boolean {
+  return angebotLedgerKind(a) === "disposal";
+}

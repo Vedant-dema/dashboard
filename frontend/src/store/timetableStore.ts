@@ -4,6 +4,7 @@ import type {
   TimetableAssignmentRow,
   TimetableContactPerson,
   TimetableContactProfile,
+  TimetableContactUnterlage,
   TimetableDbState,
   TimetableEntry,
   TimetableNegotiationPriceRound,
@@ -455,6 +456,36 @@ function normalizeScheduledAt(raw: unknown): string {
   return toScheduledAt(localIsoDate(), '09:00');
 }
 
+function normalizeContactUnterlage(raw: unknown): TimetableContactUnterlage | null {
+  const r = asRecord(raw);
+  if (!r) return null;
+  const id =
+    asText(r.id) ||
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `ul-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+  const name = asText(r.name);
+  const data_url = asText(r.data_url);
+  if (!name || !data_url) return null;
+  const size = asNumberOrNull(r.size) ?? 0;
+  const mime_type = asText(r.mime_type) || 'application/octet-stream';
+  let uploaded_at = asText(r.uploaded_at);
+  if (!uploaded_at || Number.isNaN(Date.parse(uploaded_at))) {
+    uploaded_at = new Date().toISOString();
+  }
+  return { id, name, size, mime_type, uploaded_at, data_url };
+}
+
+function normalizeVehicleUnterlagen(raw: unknown): TimetableContactUnterlage[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: TimetableContactUnterlage[] = [];
+  for (const item of raw) {
+    const u = normalizeContactUnterlage(item);
+    if (u) out.push(u);
+  }
+  return out.length ? out : undefined;
+}
+
 function normalizeNegotiationRound(raw: unknown): TimetableNegotiationPriceRound | null {
   const r = asRecord(raw);
   if (!r) return null;
@@ -493,6 +524,7 @@ function normalizeOffer(raw: unknown): TimetableTruckOffer | null {
         .filter((x): x is TimetableNegotiationPriceRound => x != null)
         .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
     : [];
+  const vehicle_unterlagen = normalizeVehicleUnterlagen(r.vehicle_unterlagen);
   const o: TimetableTruckOffer = {
     id,
     captured_at: normalizeScheduledAt(r.captured_at),
@@ -509,6 +541,7 @@ function normalizeOffer(raw: unknown): TimetableTruckOffer | null {
     location,
     notes,
     ...(negotiation_rounds.length > 0 ? { negotiation_rounds } : {}),
+    ...(vehicle_unterlagen ? { vehicle_unterlagen } : {}),
   };
   return offerHasContent(o) ? o : null;
 }

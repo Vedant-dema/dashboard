@@ -258,7 +258,30 @@ export function offerHasContent(o: TimetableTruckOffer | null | undefined): bool
   if (o.expected_price_eur != null) return true
   if (o.purchase_bid_eur != null) return true
   if ((o.negotiation_rounds ?? []).length > 0) return true
+  if ((o.vehicle_unterlagen ?? []).length > 0) return true
   return false
+}
+
+/** Move legacy row-level `timetable_unterlagen` onto the selected (or first) offer slot. */
+export function migrateLegacyTimetableUnterlagenOntoOffers(entry: TimetableEntry): TimetableEntry {
+  const pr = entry.contact_profile
+  const legacy = pr?.timetable_unterlagen
+  if (!legacy?.length || !pr) return entry
+  const offers = entry.offers ?? []
+  if (offers.length === 0) return entry
+  const sel = entry.selected_offer_id
+  let targetIdx = sel ? offers.findIndex((o) => o.id === sel) : 0
+  if (targetIdx < 0) targetIdx = 0
+  const target = offers[targetIdx]!
+  const merged = [...(target.vehicle_unterlagen ?? []), ...legacy]
+  const { timetable_unterlagen: _removed, ...restProfile } = pr
+  const contact_profile: TimetableContactProfile | undefined =
+    Object.keys(restProfile).length > 0 ? (restProfile as TimetableContactProfile) : undefined
+  return {
+    ...entry,
+    offers: offers.map((o, i) => (i === targetIdx ? { ...o, vehicle_unterlagen: merged } : o)),
+    contact_profile,
+  }
 }
 
 export function vehicleExtraHasContent(v: TimetableVehicleDisplayExtra | undefined): boolean {

@@ -51,6 +51,8 @@ export interface TimetableTruckOffer {
   notes: string;
   /** Chronological record of quoted prices for follow-up calls on the same vehicle. */
   negotiation_rounds?: TimetableNegotiationPriceRound[];
+  /** Client-sent photos / PDFs for this vehicle slot (per tab in the offer workspace). */
+  vehicle_unterlagen?: TimetableContactUnterlage[];
 }
 
 /** One row in “weitere Termine Kunde”. */
@@ -119,6 +121,16 @@ export interface TimetableOverviewKundeDraft {
   adressen: TimetableOverviewAdresseDraft[];
 }
 
+/** File attached from the timetable contact drawer when the row is not linked to a CRM customer (stored on the row). */
+export interface TimetableContactUnterlage {
+  id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  uploaded_at: string;
+  data_url: string;
+}
+
 /** One dated remark in the correspondence / Bemerkungen thread (chat-style log). */
 export interface TimetableActivityNoteEntry {
   id: string;
@@ -149,6 +161,8 @@ export interface TimetableContactProfile {
   purchase_confirmed?: boolean;
   /** Extended “Customer & Address” overview (Kalender drawer). */
   overview_kunde?: TimetableOverviewKundeDraft;
+  /** Row-level uploads when no matching customer exists in the CRM DB (demo: data URLs on the timetable entry). */
+  timetable_unterlagen?: TimetableContactUnterlage[];
   /** Responsible person (Zuständige) — UI draft on timetable row, no backend. */
   zustaendige_person?: string;
 }

@@ -25,7 +25,7 @@
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
 | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-257 |
 | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) | FEATURE-258, FEATURE-259, FEATURE-260, FEATURE-261, FEATURE-262, FEATURE-263, FEATURE-264, FEATURE-265, FEATURE-266, FEATURE-267, FEATURE-268, FEATURE-269, FEATURE-270, FEATURE-271, FEATURE-272, FEATURE-273, FEATURE-274, FEATURE-275, FEATURE-276, FEATURE-277, FEATURE-278, FEATURE-279, FEATURE-280, FEATURE-281, FEATURE-282, FEATURE-283, FEATURE-284, FEATURE-285, FEATURE-286, FEATURE-287, FEATURE-288, FEATURE-289, FEATURE-290, FEATURE-291, FEATURE-292, FEATURE-293, FEATURE-295, FEATURE-296, FEATURE-297, FEATURE-298, FEATURE-299, FEATURE-300 |
-| 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) | FEATURE-301, FEATURE-302, FEATURE-303, FEATURE-304 |
+| 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) | FEATURE-301, FEATURE-302, FEATURE-303, FEATURE-304, FEATURE-305, FEATURE-306, FEATURE-307, FEATURE-308, FEATURE-309, FEATURE-310, FEATURE-311, FEATURE-312, FEATURE-313, FEATURE-314, FEATURE-315, FEATURE-316, FEATURE-317, FEATURE-318, FEATURE-319, FEATURE-320, FEATURE-321 |
 
 ---
 
@@ -341,6 +341,23 @@
 | FEATURE-302 | Timetable offer UI — remove long instructional copy blocks | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 | FEATURE-303 | Bestandsfluss tiles — fix low contrast (remove `dark:` on light card) | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 | FEATURE-304 | Timetable contact drawer — remove “Pro Test” tab | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-305 | Timetable offer — Abholauftrag CTA when “Gekauft” selected | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-306 | Digitized Abholauftrag form modal (timetable) | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-307 | Timetable contact drawer — upload documents before Kurzfassung | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-308 | Dashboard purchase follow-ups — dismiss row (X) at end of actions | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-309 | Abholauftrag modal — two-column layout & column labels | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-310 | Abholauftrag modal — width aligned with customer edit panel | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-311 | Abholauftrag modal — dense 3-column fit, compact chrome, hidden list scrollbar | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-312 | Abholauftrag modal — vehicle summary merged into header | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-313 | Abholauftrag vehicle fields — readable 2-column grid (no seven-across) | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-314 | Abholauftrag modal header — remove visible title block (sr-only dialog title) | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-315 | Abholauftrag modal — full-width dark navy header | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-316 | Abholauftrag header — remove mileage readout and copy-summary control | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-317 | Abholauftrag — vehicle photo slot (aligned with FAHRZEUG fields) | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-318 | Abholauftrag — taller FAHRZEUG block (spacious card + photo) | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-319 | Timetable offer — vehicle-scoped document upload beside mileage | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-320 | Abholauftrag — vehicle photo from offer “Unterlagen” images only | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-321 | Purchase dashboard — active customers missing booked next follow-up | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

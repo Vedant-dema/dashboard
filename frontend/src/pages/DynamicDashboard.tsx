@@ -29,6 +29,7 @@ import {
 import { Plus, X, GripVertical } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { TimetableDashboardReminders } from "../components/TimetableDashboardReminders";
+import { TimetableDashboardMissingNextAppointment } from "../components/TimetableDashboardMissingNextAppointment";
 
 const COLS = 12;
 const ROW_HEIGHT = 80;
@@ -153,6 +154,7 @@ export function DynamicDashboard() {
       </div>
       <div className="dema-canvas-content relative p-6 pb-12">
       <TimetableDashboardReminders />
+      <TimetableDashboardMissingNextAppointment />
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">

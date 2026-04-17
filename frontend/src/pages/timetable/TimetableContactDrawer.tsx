@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CalendarDays,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type {
   TimetableContactProfile,
+  TimetableContactUnterlage,
   TimetableEntry,
   TimetableOverviewKundeDraft,
   TimetableTruckOffer,
@@ -38,6 +39,7 @@ import {
   ensureProfile,
   finalizeOffersForPersist,
   getActivityNotesLastSnippet,
+  migrateLegacyTimetableUnterlagenOntoOffers,
   offerHasContent,
   withAutoNegotiationRoundsForEntry,
 } from './contactDrawerFormUtils';
@@ -47,6 +49,7 @@ import { TimetableOfferGeneratorBlock } from './components/TimetableOfferGenerat
 import { TimetableOfferNegotiationHistory } from './components/TimetableOfferNegotiationHistory';
 import { TimetableOfferMemoryPanel } from './components/TimetableOfferMemoryPanel';
 import { TimetableOfferVehicleStrip } from './components/TimetableOfferVehicleStrip';
+import { TimetableAbholauftragModal } from './components/TimetableAbholauftragModal';
 import { TimetableOfferMinimalBlock } from './components/TimetableOfferMinimalBlock';
 import {
   emptyOverviewAdresse,
@@ -206,6 +209,61 @@ function vehicleExtraHasContent(v: TimetableVehicleDisplayExtra | undefined): bo
   return false;
 }
 
+const MAX_TIMETABLE_UNTERLAGE_BYTES = 2 * 1024 * 1024;
+
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const r = reader.result;
+      if (typeof r === 'string') resolve(r);
+      else reject(new Error('read'));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('read'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function finalizeTimetableEntryForSave(
+  draft: TimetableEntry,
+  user: { name?: string | null; email?: string | null } | null | undefined
+): TimetableEntry {
+  let next = cloneEntry(draft);
+  const nowIso = new Date().toISOString();
+  const author = (user?.name ?? user?.email ?? '').trim();
+
+  const prSave = next.contact_profile ? { ...next.contact_profile } : undefined;
+  const ov = prSave?.overview_kunde;
+  if (ov?.firmenname?.trim()) next.company_name = ov.firmenname.trim();
+  const c0 = prSave?.contacts?.[0];
+  if (c0?.name?.trim()) next.contact_name = c0.name.trim();
+  if (c0?.telefon?.trim()) next.phone = c0.telefon.trim();
+  if (prSave) next.contact_profile = prSave;
+  next = withAutoNegotiationRoundsForEntry(next, nowIso, author || undefined);
+
+  const fin = finalizeOffersForPersist(next, nowIso);
+  next = fin.entry;
+  const p = next.contact_profile ? { ...next.contact_profile } : undefined;
+  if (p?.vehicle_extras && fin.prunedOfferIds.length > 0) {
+    const vx = { ...p.vehicle_extras };
+    for (const rid of fin.prunedOfferIds) delete vx[rid];
+    if (Object.keys(vx).length > 0) p.vehicle_extras = vx;
+    else delete p.vehicle_extras;
+  }
+  if (p?.vehicle_extras && Object.keys(p.vehicle_extras).length > 0) {
+    delete p.vehicle_extra;
+  }
+  if (p?.vehicle_extra && !vehicleExtraHasContent(p.vehicle_extra)) {
+    delete p.vehicle_extra;
+  }
+  if (p && !p.purchase_confirmed) {
+    delete p.purchase_confirmed;
+  }
+  if (p) next.contact_profile = p;
+
+  return next;
+}
+
 const ART_LAND_OPTIONS = ['IL', 'EU', 'Drittland'] as const;
 
 const TT_KUNDE_PANEL_SURFACE = 'overflow-hidden rounded-2xl';
@@ -348,8 +406,10 @@ export function TimetableContactDrawer({
   /** Split master/contact vs. offer so the offer generator is not shown on the call workspace. */
   const [drawerWorkspaceTab, setDrawerWorkspaceTab] = useState<DrawerWorkspaceTab>('call');
   const [bemerkungenComfortOpen, setBemerkungenComfortOpen] = useState(false);
+  const [abholauftragModalOpen, setAbholauftragModalOpen] = useState(false);
   const [copyFlash, setCopyFlash] = useState<'ok' | 'err' | null>(null);
   const smartSummaryRef = useRef<HTMLDivElement>(null);
+  const unterlagenInputRef = useRef<HTMLInputElement>(null);
   const prevEntryIdRef = useRef<number | null>(null);
   const copyFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const companyFieldAnchorRef = useRef<HTMLDivElement>(null);
@@ -426,7 +486,7 @@ export function TimetableContactDrawer({
         ];
       }
       next.contact_profile = pr;
-      let seeded = ensureOfferIdsAndSelection(next);
+      let seeded = migrateLegacyTimetableUnterlagenOntoOffers(ensureOfferIdsAndSelection(next));
       const focus = contactEntryOfferFocus;
       let dirtyNext = false;
       if (focus?.offerId && (seeded.offers ?? []).some((o) => o.id === focus.offerId)) {
@@ -497,12 +557,16 @@ export function TimetableContactDrawer({
           setSmartSummaryOpen(false);
           return;
         }
+        if (abholauftragModalOpen) {
+          setAbholauftragModalOpen(false);
+          return;
+        }
         onClose();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [bemerkungenComfortOpen, entry, onClose, smartSummaryOpen]);
+  }, [abholauftragModalOpen, bemerkungenComfortOpen, entry, onClose, smartSummaryOpen]);
 
   const smartBullets = useMemo(() => {
     if (!draft) return [] as string[];
@@ -709,42 +773,85 @@ export function TimetableContactDrawer({
 
   const handleSave = useCallback(() => {
     if (!draft || !entry) return;
-    let next = cloneEntry(draft);
-    const nowIso = new Date().toISOString();
-    const author = (user?.name ?? user?.email ?? '').trim();
-
-    const prSave = next.contact_profile ? { ...next.contact_profile } : undefined;
-    const ov = prSave?.overview_kunde;
-    if (ov?.firmenname?.trim()) next.company_name = ov.firmenname.trim();
-    const c0 = prSave?.contacts?.[0];
-    if (c0?.name?.trim()) next.contact_name = c0.name.trim();
-    if (c0?.telefon?.trim()) next.phone = c0.telefon.trim();
-    if (prSave) next.contact_profile = prSave;
-    next = withAutoNegotiationRoundsForEntry(next, nowIso, author || undefined);
-
-    const fin = finalizeOffersForPersist(next, nowIso);
-    next = fin.entry;
-    const p = next.contact_profile ? { ...next.contact_profile } : undefined;
-    if (p?.vehicle_extras && fin.prunedOfferIds.length > 0) {
-      const vx = { ...p.vehicle_extras };
-      for (const rid of fin.prunedOfferIds) delete vx[rid];
-      if (Object.keys(vx).length > 0) p.vehicle_extras = vx;
-      else delete p.vehicle_extras;
-    }
-    if (p?.vehicle_extras && Object.keys(p.vehicle_extras).length > 0) {
-      delete p.vehicle_extra;
-    }
-    if (p?.vehicle_extra && !vehicleExtraHasContent(p.vehicle_extra)) {
-      delete p.vehicle_extra;
-    }
-    if (p && !p.purchase_confirmed) {
-      delete p.purchase_confirmed;
-    }
-    if (p) next.contact_profile = p;
-
+    const next = finalizeTimetableEntryForSave(draft, user);
     onPersist(next);
     setDirty(false);
-  }, [draft, entry, onPersist, user?.email, user?.name]);
+  }, [draft, entry, onPersist, user]);
+
+  const handleTimetableUnterlagenFiles = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const list = e.target.files;
+      e.target.value = '';
+      if (!list?.length || !draft || !entry) return;
+
+      const files = Array.from(list);
+      const uploadedAt = new Date().toISOString();
+      const neue: TimetableContactUnterlage[] = [];
+      let hasTooLarge = false;
+      let hasReadError = false;
+      for (const file of files) {
+        if (file.size > MAX_TIMETABLE_UNTERLAGE_BYTES) {
+          hasTooLarge = true;
+          continue;
+        }
+        try {
+          const dataUrl = await readFileAsDataURL(file);
+          neue.push({
+            id: `tt-ul-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            name: file.name,
+            size: file.size,
+            mime_type: file.type || 'application/octet-stream',
+            uploaded_at: uploadedAt,
+            data_url: dataUrl,
+          });
+        } catch {
+          hasReadError = true;
+        }
+      }
+      if (neue.length === 0) {
+        if (hasTooLarge) {
+          window.alert(
+            t(
+              'customersFileTooBig',
+              'One or more files were too large (max 2 MB per file in this demo).'
+            )
+          );
+        }
+        if (hasReadError) {
+          window.alert(t('customersFileReadError', 'One or more files could not be read.'));
+        }
+        return;
+      }
+
+      const base = cloneEntry(draft);
+      const withIds = ensureOfferIdsAndSelection(base);
+      const oid = withIds.selected_offer_id ?? withIds.offers[0]?.id;
+      if (!oid) return;
+
+      const offers = withIds.offers.map((o) =>
+        o.id === oid
+          ? { ...o, vehicle_unterlagen: [...(o.vehicle_unterlagen ?? []), ...neue] }
+          : o
+      );
+      const merged: TimetableEntry = { ...withIds, offers, selected_offer_id: oid };
+      const persisted = finalizeTimetableEntryForSave(merged, user);
+      onPersist(persisted);
+      setDraft(persisted);
+      setDirty(false);
+      if (hasTooLarge) {
+        window.alert(
+          t(
+            'customersFileTooBig',
+            'One or more files were too large (max 2 MB per file in this demo).'
+          )
+        );
+      }
+      if (hasReadError) {
+        window.alert(t('customersFileReadError', 'One or more files could not be read.'));
+      }
+    },
+    [draft, entry, onPersist, t, user]
+  );
 
   const handleDiscard = useCallback(() => {
     if (!entry) return;
@@ -1460,12 +1567,23 @@ export function TimetableContactDrawer({
                     >
                       {t('timetableContactColOffer', 'Offer')}
                     </p>
+                    <input
+                      ref={unterlagenInputRef}
+                      type="file"
+                      multiple
+                      className="sr-only"
+                      tabIndex={-1}
+                      onChange={handleTimetableUnterlagenFiles}
+                    />
                     <TimetableOfferMinimalBlock
                       offer={offer}
                       vehicleExtra={ve}
                       setOfferField={setOfferField}
                       setVehicleExtra={setVehicleExtra}
                       t={t}
+                      onOpenAbholauftrag={() => setAbholauftragModalOpen(true)}
+                      vehicleDocsCount={(offer.vehicle_unterlagen ?? []).length}
+                      onUploadVehicleDocuments={() => unterlagenInputRef.current?.click()}
                     />
                   </section>
                   <div
@@ -1599,10 +1717,35 @@ export function TimetableContactDrawer({
 
   if (typeof document === 'undefined') return null;
 
+  const buyerDisplayName = (
+    user?.name?.trim() ||
+    user?.email?.trim() ||
+    draft.buyer_name?.trim() ||
+    ''
+  ).trim();
+
+  const abholauftragPortal =
+    abholauftragModalOpen && typeof document !== 'undefined' ? (
+      <TimetableAbholauftragModal
+        open
+        onClose={() => setAbholauftragModalOpen(false)}
+        localeTag={localeTag}
+        t={t}
+        buyerName={buyerDisplayName}
+        companyName={draft.company_name ?? ''}
+        contactName={draft.contact_name ?? ''}
+        phone={draft.phone ?? ''}
+        overview={overview}
+        offer={offer}
+        vehicleExtra={ve}
+      />
+    ) : null;
+
   return (
     <>
       {createPortal(modalUi, document.body)}
       {bemerkungenComfortPortal ? createPortal(bemerkungenComfortPortal, document.body) : null}
+      {abholauftragPortal ? createPortal(abholauftragPortal, document.body) : null}
     </>
   );
 }

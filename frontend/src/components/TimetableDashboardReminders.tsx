@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlarmClock, Phone, UserRound } from 'lucide-react';
+import { AlarmClock, Phone, UserRound, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { localeTagForLanguage, useLanguage, type LanguageCode } from '../contexts/LanguageContext';
 import {
@@ -14,6 +14,27 @@ import type { TimetableEntry } from '../types/timetable';
 const POLL_MS = 5000;
 /** Show follow-ups due in the next N hours in the “soon” group (matches max quick reminder horizon). */
 const UPCOMING_HOURS = 24;
+const DISMISSED_SS_KEY = 'dema-dashboard-tt-followup-dismissed-v1';
+
+function readDismissedKeys(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(DISMISSED_SS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr.filter((x): x is string => typeof x === 'string'));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDismissedKeys(keys: Set<string>): void {
+  try {
+    sessionStorage.setItem(DISMISSED_SS_KEY, JSON.stringify([...keys].slice(-200)));
+  } catch {
+    // private mode / quota
+  }
+}
 
 function formatWhen(iso: string, localeTag: string): string {
   const ms = parseTimetableFollowUpDueMs(iso);
@@ -40,6 +61,7 @@ export function TimetableDashboardReminders() {
 
   const [overdue, setOverdue] = useState<TimetableEntry[]>([]);
   const [upcoming, setUpcoming] = useState<TimetableEntry[]>([]);
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(() => readDismissedKeys());
 
   const refresh = useCallback(() => {
     const db = loadTimetableDb();
@@ -52,6 +74,8 @@ export function TimetableDashboardReminders() {
 
     for (const row of mine) {
       if (!row.follow_up_at || row.is_completed) continue;
+      const slotKey = `${row.id}|${row.follow_up_at}`;
+      if (dismissedKeys.has(slotKey)) continue;
       const due = parseTimetableFollowUpDueMs(row.follow_up_at);
       if (Number.isNaN(due)) continue;
       if (due <= now) o.push(row);
@@ -64,7 +88,7 @@ export function TimetableDashboardReminders() {
     u.sort(byDue);
     setOverdue(o);
     setUpcoming(u);
-  }, [viewerCode]);
+  }, [viewerCode, dismissedKeys]);
 
   useEffect(() => {
     refresh();
@@ -78,6 +102,17 @@ export function TimetableDashboardReminders() {
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [refresh]);
+
+  const dismissRow = useCallback((row: TimetableEntry) => {
+    if (!row.follow_up_at) return;
+    const slotKey = `${row.id}|${row.follow_up_at}`;
+    setDismissedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(slotKey);
+      persistDismissedKeys(next);
+      return next;
+    });
+  }, []);
 
   const total = overdue.length + upcoming.length;
 
@@ -162,6 +197,17 @@ export function TimetableDashboardReminders() {
                     {t('dashboardFollowUpCall', 'Call')}
                   </a>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => dismissRow(row)}
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300/90 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                  aria-label={t(
+                    'dashboardFollowUpDismissRowAria',
+                    'Hide from dashboard list (this session only)'
+                  )}
+                >
+                  <X className="h-4 w-4" strokeWidth={2} aria-hidden />
+                </button>
               </div>
             </li>
           );

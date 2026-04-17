@@ -1,5 +1,12 @@
 import { useMemo } from 'react'
-import { ArrowDownLeft, ArrowUpRight, CircleDashed } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronRight,
+  CircleDashed,
+  FolderOpen,
+  Truck,
+} from 'lucide-react'
 import type { TimetableTruckOffer, TimetableVehicleDisplayExtra } from '../../../types/timetable'
 import { angebotLedgerKind } from '../../../lib/angebotLedger'
 import {
@@ -15,6 +22,9 @@ type Props = {
   setOfferField: (patch: Partial<TimetableTruckOffer>) => void
   setVehicleExtra: (patch: Partial<TimetableVehicleDisplayExtra>) => void
   t: (key: string, fallback: string) => string
+  onOpenAbholauftrag: () => void
+  vehicleDocsCount: number
+  onUploadVehicleDocuments: () => void
 }
 
 function parsePriceInput(raw: string): number | null {
@@ -87,6 +97,9 @@ export function TimetableOfferMinimalBlock({
   setOfferField,
   setVehicleExtra,
   t,
+  onOpenAbholauftrag,
+  vehicleDocsCount,
+  onUploadVehicleDocuments,
 }: Props) {
   const ph = t('timetableOfferMinimalUnderlinePh', '—')
   const regPh = t('timetableContactRegistrationPh', 'MM/YYYY')
@@ -174,26 +187,59 @@ export function TimetableOfferMinimalBlock({
         </div>
 
         <div className="mt-5 border-t border-slate-100 pt-5 dark:border-slate-600/50">
-          <div className="max-w-full sm:max-w-[min(100%,14rem)]">
-            <div className={overviewFieldClass}>
-              <label className={overviewLabelClass} htmlFor="tt-min-offer-km">
-                {t('timetableOfferMinimalKmStand', 'Mileage')}
-              </label>
-              <input
-                id="tt-min-offer-km"
-                type="text"
-                inputMode="numeric"
-                value={offer.mileage_km != null ? String(offer.mileage_km) : ''}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '')
-                  setOfferField({
-                    mileage_km: digits === '' ? null : Number(digits),
-                  })
-                }}
-                className={overviewInputClass}
-                placeholder={ph}
-                autoComplete="off"
-              />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
+            <div className="min-w-0 max-w-full sm:max-w-[min(100%,14rem)]">
+              <div className={overviewFieldClass}>
+                <label className={overviewLabelClass} htmlFor="tt-min-offer-km">
+                  {t('timetableOfferMinimalKmStand', 'Mileage')}
+                </label>
+                <input
+                  id="tt-min-offer-km"
+                  type="text"
+                  inputMode="numeric"
+                  value={offer.mileage_km != null ? String(offer.mileage_km) : ''}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '')
+                    setOfferField({
+                      mileage_km: digits === '' ? null : Number(digits),
+                    })
+                  }}
+                  className={overviewInputClass}
+                  placeholder={ph}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-md sm:items-stretch">
+              <button
+                type="button"
+                onClick={onUploadVehicleDocuments}
+                className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200/95 bg-gradient-to-br from-white to-slate-50/90 px-3.5 py-2.5 text-left text-xs font-semibold text-slate-900 shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:ring-offset-2 sm:min-h-10 sm:w-auto sm:justify-start"
+                aria-label={t(
+                  'timetableOfferVehicleDocsAria',
+                  'Add photos and client files for this vehicle',
+                )}
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-800 shadow-sm"
+                  aria-hidden
+                >
+                  <FolderOpen className="h-4 w-4" strokeWidth={2} />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="leading-tight">
+                    {t('timetableOfferVehicleDocsUpload', 'Upload documents')}
+                  </span>
+                  {vehicleDocsCount > 0 ? (
+                    <span className="text-[11px] font-medium text-slate-600">
+                      {t('timetableOfferVehicleDocsCount', '{n} file(s)').replace(
+                        '{n}',
+                        String(vehicleDocsCount),
+                      )}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -226,6 +272,33 @@ export function TimetableOfferMinimalBlock({
                 placeholder={ph}
                 autoComplete="off"
               />
+              {activeLedgerMode === 'purchase' ? (
+                <div className="mt-2.5 border-t border-emerald-200/70 pt-2.5">
+                  <button
+                    type="button"
+                    onClick={onOpenAbholauftrag}
+                    aria-label={t(
+                      'timetableOfferAbholauftragAria',
+                      'Go to pickup orders for purchase planning',
+                    )}
+                    className="group flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-gradient-to-br from-white to-emerald-50/80 px-3 py-2 text-left shadow-sm ring-1 ring-emerald-900/[0.04] transition hover:border-emerald-400 hover:shadow-md hover:ring-emerald-600/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2"
+                  >
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-200/80 bg-emerald-100/90 text-emerald-900 transition group-hover:border-emerald-300 group-hover:bg-emerald-100"
+                      aria-hidden
+                    >
+                      <Truck className="h-4 w-4" strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0 flex-1 text-xs font-semibold leading-tight text-emerald-950">
+                      {t('timetableOfferAbholauftragCta', 'Pickup order')}
+                    </span>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-emerald-700"
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              ) : null}
             </div>
             <div className={overviewFieldClass}>
               <label className={overviewLabelClass} htmlFor="tt-min-offer-purchase">

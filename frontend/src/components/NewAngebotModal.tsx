@@ -10,7 +10,7 @@ import {
   type LanguageCode,
 } from "../contexts/LanguageContext";
 import { TimetableOfferNegotiationHistory } from "../pages/timetable/components/TimetableOfferNegotiationHistory";
-import { newTruckOfferId } from "../pages/timetable/contactDrawerFormUtils";
+import { newTruckOfferId } from "../pages/timetable/timetableOfferUtils";
 
 type TabId = "fahrzeug" | "technik" | "preise";
 

@@ -132,9 +132,6 @@ export function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight text-slate-800">
           Willkommen im DEMA Management System
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Hier ist Ihre Übersicht — Sales, Purchase und Waschanlage auf einen Blick.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">

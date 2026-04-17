@@ -15,11 +15,12 @@ export function WelcomeWidget({ config }: WidgetRenderProps) {
   const subtitle = preset
     ? preset.subtitle
     : cfgString(config, "welcomeSubtitle", t("welcomeSubtitle", DEFAULT_WELCOME_SUBTITLE));
+  const showSubtitle = subtitle.trim().length > 0;
 
   return (
     <div className="h-full">
       <h1 className="text-2xl font-bold tracking-tight text-slate-800">{title}</h1>
-      <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+      {showSubtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
     </div>
   );
 }

@@ -1,13 +1,13 @@
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { WidgetRenderProps } from "../types/dashboard";
 import { useWidgetLanguage } from "./useWidgetLanguage";
 import { cfgArray, cfgString } from "./widgetConfigHelpers";
 import { DEFAULT_FINANCE_BARS } from "./defaultWidgetData";
+import { SimpleBarChart } from "./SimpleCharts";
 
 const DEFAULT_SUMMARY = [
-  { label: "Einnahmen", value: "€120K", color: "emerald" as const },
-  { label: "Ausgaben", value: "€85K", color: "red" as const },
-  { label: "Gewinn", value: "€35K", color: "blue" as const },
+  { label: "Einnahmen", value: "EUR 120K", color: "emerald" as const },
+  { label: "Ausgaben", value: "EUR 85K", color: "red" as const },
+  { label: "Gewinn", value: "EUR 35K", color: "blue" as const },
 ];
 
 const DOT: Record<string, string> = {
@@ -24,17 +24,17 @@ export function FinancesWidget({ config }: WidgetRenderProps) {
     "financeBars",
     DEFAULT_FINANCE_BARS
   ).map((row, i) => ({
-    name: row.name ?? String(i),
+    label: t(`finance${String(row.name ?? i)}`, String(row.name ?? i)),
     value: typeof row.value === "number" ? row.value : 0,
-    fill: row.fill ?? "#64748b",
+    color: row.fill ?? "#64748b",
   }));
   const summary = cfgArray<{ label?: string; value?: string; color?: string }>(
     config,
     "financeSummary",
     DEFAULT_SUMMARY
   ).map((row, i) => ({
-    label: row.label ?? DEFAULT_SUMMARY[i]?.label ?? "—",
-    value: row.value ?? "—",
+    label: row.label ?? DEFAULT_SUMMARY[i]?.label ?? "-",
+    value: row.value ?? "-",
     color: row.color ?? "blue",
   }));
 
@@ -42,24 +42,7 @@ export function FinancesWidget({ config }: WidgetRenderProps) {
     <div className="glass-card flex h-full flex-col p-6">
       <h2 className="mb-4 text-lg font-bold text-slate-800">{title}</h2>
       <div className="min-h-[180px] flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={financeBars} margin={{ top: 20, right: 20, left: 0, bottom: 8 }}>
-            <XAxis
-              dataKey="name"
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => t(`finance${String(v)}`, String(v))}
-              tick={{ fill: "#64748b", fontSize: 13 }}
-            />
-            <YAxis hide />
-            <Tooltip formatter={(v: number) => [`${v}K €`, ""]} contentStyle={{ borderRadius: "12px", border: "none" }} />
-            <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={72}>
-              {financeBars.map((e) => (
-                <Cell key={e.name} fill={e.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <SimpleBarChart points={financeBars} color="#2563eb" ariaLabel={title} />
       </div>
       <div className="mt-2 flex flex-wrap justify-center gap-6 text-sm">
         {summary.map((s) => (

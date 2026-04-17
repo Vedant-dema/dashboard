@@ -1,12 +1,17 @@
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { WidgetRenderProps } from "../types/dashboard";
 import { cfgString } from "./widgetConfigHelpers";
 import { DEFAULT_GRAPH_PIE } from "./defaultWidgetData";
 import { useDashboardChartData } from "./useDashboardChartData";
+import { SimpleDonutChart } from "./SimpleCharts";
 
 export function GraphPieWidget({ config }: WidgetRenderProps) {
-  const title = cfgString(config, "customTitle", "Diagramm — Kreis");
+  const title = cfgString(config, "customTitle", "Diagramm - Kreis");
   const { pie } = useDashboardChartData(config, DEFAULT_GRAPH_PIE);
+  const segments = pie.map((p) => ({
+    label: p.name,
+    value: p.value,
+    color: p.color,
+  }));
 
   return (
     <div className="flex h-full min-h-[140px] flex-col">
@@ -17,16 +22,7 @@ export function GraphPieWidget({ config }: WidgetRenderProps) {
           : "Aus Kunden-Stamm (lokal)"}
       </p>
       <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={pie} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
-              {pie.map((e) => (
-                <Cell key={e.name} fill={e.color} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
+        <SimpleDonutChart segments={segments} ariaLabel={title} />
       </div>
     </div>
   );

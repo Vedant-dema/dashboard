@@ -3686,3 +3686,40 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     inset 0 1px 0 rgb(255 255 255 / 0.88),
     0 1px 6px -1px rgb(147 51 234 / 0.18);
 }
+
+/* Low-spec PCs: keep the product usable by removing GPU-heavy ambient layers. */
+html[data-dema-device-tier="modest"] .dema-canvas-base,
+html[data-dema-device-tier="modest"] .dema-canvas-grid,
+html[data-dema-device-tier="modest"] .dema-canvas-shine,
+html[data-dema-device-tier="modest"] .dema-canvas-orb,
+html[data-dema-device-tier="modest"] .auth-ambient-light,
+html[data-dema-device-tier="modest"] .auth-grid-drift,
+html[data-dema-device-tier="modest"] .auth-float-orb-1,
+html[data-dema-device-tier="modest"] .auth-float-orb-2,
+html[data-dema-device-tier="modest"] .auth-float-orb-3,
+html[data-dema-device-tier="modest"] .auth-dark-aurora,
+html[data-dema-device-tier="modest"] .auth-dark-blob-1,
+html[data-dema-device-tier="modest"] .auth-dark-blob-2 {
+  animation: none !important;
+}
+
+html[data-dema-device-tier="modest"] .dema-canvas-orb,
+html[data-dema-device-tier="modest"] .dema-canvas-shine,
+html[data-dema-device-tier="modest"] .dema-canvas-noise,
+html[data-dema-device-tier="modest"] .auth-float-orb-1,
+html[data-dema-device-tier="modest"] .auth-float-orb-2,
+html[data-dema-device-tier="modest"] .auth-float-orb-3,
+html[data-dema-device-tier="modest"] .auth-dark-blob-1,
+html[data-dema-device-tier="modest"] .auth-dark-blob-2 {
+  display: none !important;
+}
+
+html[data-dema-device-tier="modest"] .backdrop-blur-sm,
+html[data-dema-device-tier="modest"] .backdrop-blur-md,
+html[data-dema-device-tier="modest"] .backdrop-blur-lg,
+html[data-dema-device-tier="modest"] .backdrop-blur-xl,
+html[data-dema-device-tier="modest"] .backdrop-blur-2xl,
+html[data-dema-device-tier="modest"] .backdrop-blur-3xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

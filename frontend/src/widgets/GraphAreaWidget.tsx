@@ -1,15 +1,16 @@
-import { useId } from "react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { WidgetRenderProps } from "../types/dashboard";
 import { cfgString } from "./widgetConfigHelpers";
 import { DEFAULT_GRAPH_AREA } from "./defaultWidgetData";
 import { useDashboardChartData } from "./useDashboardChartData";
+import { SimpleLineChart } from "./SimpleCharts";
 
 export function GraphAreaWidget({ config }: WidgetRenderProps) {
-  const gid = useId().replace(/:/g, "");
-  const gradId = `areaG-${gid}`;
-  const title = cfgString(config, "customTitle", "Diagramm — Fläche");
+  const title = cfgString(config, "customTitle", "Diagramm - Flaeche");
   const { areaPoints } = useDashboardChartData(config, DEFAULT_GRAPH_AREA);
+  const points = areaPoints.map((p) => ({
+    label: String(p.i),
+    value: p.v,
+  }));
 
   return (
     <div className="flex h-full min-h-[140px] flex-col">
@@ -20,20 +21,7 @@ export function GraphAreaWidget({ config }: WidgetRenderProps) {
           : "Aus Kunden-Stamm (lokal)"}
       </p>
       <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={areaPoints} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="i" hide />
-            <YAxis hide />
-            <Tooltip contentStyle={{ borderRadius: "10px", border: "none" }} />
-            <Area type="monotone" dataKey="v" stroke="#7c3aed" strokeWidth={2} fill={`url(#${gradId})`} />
-          </AreaChart>
-        </ResponsiveContainer>
+        <SimpleLineChart points={points} color="#7c3aed" area ariaLabel={title} />
       </div>
     </div>
   );

@@ -1,8 +1,7 @@
 /** Shared defaults for dashboard widgets (used by widgets + settings modal). */
 
 export const DEFAULT_WELCOME_TITLE = "Willkommen im DEMA Management System";
-export const DEFAULT_WELCOME_SUBTITLE =
-  "Hier ist Ihre Übersicht — Sales, Purchase und Waschanlage auf einen Blick.";
+export const DEFAULT_WELCOME_SUBTITLE = "";
 
 export interface KpiItemConfig {
   label: string;

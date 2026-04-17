@@ -4,15 +4,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   loadTimetableDb,
+  subscribeTimetableDbChange,
   timetableRowIsMine,
   viewerBuyerCodeFromSessionName,
 } from '../store/timetableStore';
-import { processDueTimetableFollowUpReminders } from '../pages/timetable/timetableReminderNotify';
+import {
+  parseTimetableFollowUpDueMs,
+  processDueTimetableFollowUpReminders,
+} from '../pages/timetable/timetableReminderNotify';
 import { timetableHashOpenContact } from '../pages/timetable/timetableContactDeepLink';
 import type { TimetableEntry } from '../types/timetable';
 
-/** Poll interval for due follow-ups — keep low latency when the tab is active (localStorage read is cheap). */
-const POLL_MS = 1000;
+/** Fallback refresh only; normal delivery is event-driven and scheduled for the next due time. */
+const MAX_REFRESH_MS = 5 * 60 * 1000;
+const MIN_TIMER_MS = 750;
 
 type InAppAlert = {
   key: string;
@@ -89,7 +94,35 @@ export function TimetableFollowUpDueWatcher() {
   useEffect(() => {
     setAlerts([]);
 
-    const run = () => {
+    let disposed = false;
+    let timeoutId: number | undefined;
+
+    const clearTimer = () => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+    };
+
+    const scheduleNextRun = (entries: TimetableEntry[]) => {
+      const now = Date.now();
+      let nextDue: number | null = null;
+      for (const row of entries) {
+        if (!row.follow_up_at || row.is_completed) continue;
+        const due = parseTimetableFollowUpDueMs(row.follow_up_at);
+        if (Number.isNaN(due) || due <= now) continue;
+        nextDue = nextDue == null ? due : Math.min(nextDue, due);
+      }
+      const wait =
+        nextDue == null
+          ? MAX_REFRESH_MS
+          : Math.min(MAX_REFRESH_MS, Math.max(MIN_TIMER_MS, nextDue - now + 250));
+      timeoutId = window.setTimeout(run, wait);
+    };
+
+    function run() {
+      if (disposed) return;
+      clearTimer();
       try {
         const db = loadTimetableDb();
         const mine = db.entries.filter((e) => timetableRowIsMine(e, viewerCode));
@@ -107,19 +140,22 @@ export function TimetableFollowUpDueWatcher() {
             },
           }
         );
+        scheduleNextRun(mine);
       } catch {
-        // ignore corrupt storage during migration
+        timeoutId = window.setTimeout(run, MAX_REFRESH_MS);
       }
-    };
+    }
 
     run();
-    const id = window.setInterval(run, POLL_MS);
+    const unsubscribeTimetable = subscribeTimetableDbChange(run);
     const onVis = () => {
       if (document.visibilityState === 'visible') run();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      window.clearInterval(id);
+      disposed = true;
+      clearTimer();
+      unsubscribeTimetable();
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [viewerCode]);

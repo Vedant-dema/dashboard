@@ -1,2 +1,3 @@
-2026/04/15-10:14:14.287 5404 Creating DB c:\Users\vedan\Documents\Dema-Dashboard\.edge-profile-codex\Default\Site Characteristics Database since it was missing.
-2026/04/15-10:14:14.292 5404 Reusing MANIFEST c:\Users\vedan\Documents\Dema-Dashboard\.edge-profile-codex\Default\Site Characteristics Database/MANIFEST-000001
+2026/04/15-10:14:34.947 4f08 Reusing MANIFEST c:\Users\vedan\Documents\Dema-Dashboard\.edge-profile-codex\Default\Site Characteristics Database/MANIFEST-000001
+2026/04/15-10:14:34.948 4f08 Recovering log #3
+2026/04/15-10:14:34.948 4f08 Reusing old log c:\Users\vedan\Documents\Dema-Dashboard\.edge-profile-codex\Default\Site Characteristics Database/000003.log 

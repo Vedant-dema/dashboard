@@ -39,12 +39,12 @@ export function resolveMotionTier(_intent: MotionIntent): MotionTier {
   return "full";
 }
 
-/** Optional hint for CSS/UX (`data-dema-device-tier`): not used to remove motion. */
+/** Optional hint for CSS/UX (`data-dema-device-tier`) so costly ambient effects can simplify on modest PCs. */
 function applyDeviceTierHint(): void {
   if (typeof document === "undefined" || typeof navigator === "undefined") return;
   const cores = navigator.hardwareConcurrency ?? 8;
   const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-  const modest = cores <= 2 || (typeof mem === "number" && mem <= 4);
+  const modest = cores <= 4 || (typeof mem === "number" && mem <= 4);
   document.documentElement.dataset.demaDeviceTier = modest ? "modest" : "capable";
 }
 

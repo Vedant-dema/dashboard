@@ -235,7 +235,7 @@ export function DynamicDashboard() {
             return (
               <div key={w.id} className="overflow-hidden rounded-2xl">
                 <div className="dashboard-widget-shell flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-                  {w.type !== "welcome" && (
+                  {w.type !== "welcome" && w.type !== "kpi" && (
                     <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-slate-200 bg-slate-50/90 px-1">
                       {isDraggable ? (
                         <button

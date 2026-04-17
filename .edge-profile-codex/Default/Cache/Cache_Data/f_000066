@@ -1,4 +1,4 @@
-import __vite__cjsImport0_react from "/node_modules/.vite/deps/react.js?v=6265600e"; const useMemo = __vite__cjsImport0_react["useMemo"];
+import __vite__cjsImport0_react from "/node_modules/.vite/deps/react.js?v=b3d7d6a2"; const useMemo = __vite__cjsImport0_react["useMemo"];
 import { combinedMatch, searchQueryMeetsMinimum } from "/src/lib/globalSearchMatch.ts";
 import { loadKundenDb } from "/src/store/kundenStore.ts";
 import { loadBestandDb } from "/src/store/bestandStore.ts";

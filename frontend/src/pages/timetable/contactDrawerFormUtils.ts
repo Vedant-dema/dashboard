@@ -1,4 +1,5 @@
 import { isOfferSoldDisposal } from '../../lib/angebotLedger'
+import { newTruckOfferId, offerHasContent } from './timetableOfferUtils'
 import type {
   TimetableActivityNoteEntry,
   TimetableAppointmentHistoryRow,
@@ -15,6 +16,7 @@ import type {
 import { emptyKontakt } from '../../features/customers/mappers/customerFormMapper'
 
 export const OUTCOME_ORDER: TimetableOutcome[] = ['pending', 'follow_up', 'has_trucks', 'no_trucks']
+export { newTruckOfferId, offerHasContent } from './timetableOfferUtils'
 
 export function toDatetimeLocalValue(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -37,12 +39,6 @@ export function fromDatetimeLocalValue(local: string): string | null {
 export function formatEur(value: number | null | undefined, localeTag: string): string {
   if (value == null || Number.isNaN(value)) return '—'
   return new Intl.NumberFormat(localeTag, { style: 'currency', currency: 'EUR' }).format(value)
-}
-
-export function newTruckOfferId(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `o-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
 export function createEmptyTruckOffer(): TimetableTruckOffer {
@@ -247,23 +243,6 @@ export function emptyAssignment(): TimetableAssignmentRow {
 /** Shallow clone — never mutate `entry.contact_profile` in place. */
 export function ensureProfile(entry: TimetableEntry): TimetableContactProfile {
   return { ...(entry.contact_profile ?? {}) }
-}
-
-export function offerHasContent(o: TimetableTruckOffer | null | undefined): boolean {
-  if (!o) return false
-  if (o.vehicle_type.trim()) return true
-  if (o.brand.trim()) return true
-  if (o.model.trim()) return true
-  if (o.location.trim()) return true
-  if (o.notes.trim()) return true
-  if (o.year != null) return true
-  if (o.mileage_km != null) return true
-  if (o.quantity != null) return true
-  if (o.expected_price_eur != null) return true
-  if (o.purchase_bid_eur != null) return true
-  if ((o.negotiation_rounds ?? []).length > 0) return true
-  if ((o.vehicle_unterlagen ?? []).length > 0) return true
-  return false
 }
 
 /** Move legacy row-level `timetable_unterlagen` onto the selected (or first) offer slot. */

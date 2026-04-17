@@ -5,7 +5,6 @@ import { AppRouteFallback } from "./components/AppRouteFallback";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
 import { PresenceReporter } from "./components/PresenceReporter";
-import { TimetableFollowUpDueWatcher } from "./components/TimetableFollowUpDueWatcher";
 
 const DynamicDashboard = lazy(() =>
   import("./pages/DynamicDashboard").then((m) => ({ default: m.DynamicDashboard })),
@@ -50,6 +49,11 @@ const SettingsPage = lazy(() =>
 const ChatPage = lazy(() => import("./pages/ChatPage").then((m) => ({ default: m.ChatPage })));
 const TimetablePage = lazy(() =>
   import("./pages/timetable").then((m) => ({ default: m.TimetablePage })),
+);
+const TimetableFollowUpDueWatcher = lazy(() =>
+  import("./components/TimetableFollowUpDueWatcher").then((m) => ({
+    default: m.TimetableFollowUpDueWatcher,
+  })),
 );
 import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
 import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
@@ -176,6 +180,30 @@ function ogtSectionFromRoute(route: string): "team" | "fahrer" | "tasks" | "chec
   return "team";
 }
 
+function DeferredTimetableFollowUpDueWatcher() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (win.requestIdleCallback) {
+      const id = win.requestIdleCallback(() => setReady(true), { timeout: 3000 });
+      return () => win.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(() => setReady(true), 1500);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  if (!ready) return null;
+  return (
+    <Suspense fallback={null}>
+      <TimetableFollowUpDueWatcher />
+    </Suspense>
+  );
+}
+
 export default function App() {
   const { isAuthenticated } = useAuth();
   const { t } = useLanguage();
@@ -255,7 +283,7 @@ export default function App() {
   return (
     <div className="min-h-screen font-sans">
       <PresenceReporter />
-      <TimetableFollowUpDueWatcher />
+      <DeferredTimetableFollowUpDueWatcher />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-h-screen min-w-0 flex-col md:pl-[260px]">
         <Header

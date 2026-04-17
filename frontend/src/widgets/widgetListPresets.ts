@@ -68,7 +68,7 @@ export const WELCOME_PRESETS = [
   {
     id: "default",
     title: "Willkommen im DEMA Management System",
-    subtitle: "Hier ist Ihre Übersicht — Sales, Purchase und Waschanlage auf einen Blick.",
+    subtitle: "",
   },
   {
     id: "compact",

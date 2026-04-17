@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { localeTagForLanguage, useLanguage, type LanguageCode } from '../contexts/LanguageContext';
 import {
   loadTimetableDb,
+  subscribeTimetableDbChange,
   viewerBuyerCodeFromSessionName,
 } from '../store/timetableStore';
 import { parseTimetableFollowUpDueMs } from '../pages/timetable/timetableReminderNotify';
@@ -13,7 +14,7 @@ import {
   type TimetableMissingNextApptSignal,
 } from '../pages/timetable/timetableMissingNextAppointment';
 
-const POLL_MS = 5000;
+const REFRESH_MS = 60_000;
 const DISMISSED_SS_KEY = 'dema-dashboard-tt-missing-next-appt-dismissed-v1';
 
 function readDismissedIds(): Set<number> {
@@ -89,12 +90,14 @@ export function TimetableDashboardMissingNextAppointment() {
 
   useEffect(() => {
     refresh();
-    const id = window.setInterval(refresh, POLL_MS);
+    const unsubscribeTimetable = subscribeTimetableDbChange(refresh);
+    const id = window.setInterval(refresh, REFRESH_MS);
     const onVis = () => {
       if (document.visibilityState === 'visible') refresh();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
+      unsubscribeTimetable();
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', onVis);
     };
@@ -116,6 +119,8 @@ export function TimetableDashboardMissingNextAppointment() {
 
   const total = visible.length;
 
+  if (total === 0) return null;
+
   return (
     <section
       className="dema-paper-surface mb-6 overflow-hidden rounded-2xl border border-slate-200/90 p-4 ring-1 ring-indigo-200/60"
@@ -131,11 +136,9 @@ export function TimetableDashboardMissingNextAppointment() {
               <h2 className="dema-paper-surface-title text-sm font-bold md:text-base">
                 {t('dashboardNextApptTitle', 'Active customers — book the next slot')}
               </h2>
-              {total > 0 ? (
-                <span className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  {total}
-                </span>
-              ) : null}
+              <span className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                {total}
+              </span>
             </div>
             <p className="dema-paper-surface-muted mt-1 text-xs leading-snug md:text-sm">
               {t(
@@ -147,15 +150,7 @@ export function TimetableDashboardMissingNextAppointment() {
         </div>
       </div>
 
-      {total === 0 ? (
-        <p className="dema-paper-surface-muted rounded-xl border border-dashed border-slate-200/90 bg-slate-50/80 px-3 py-3 text-xs md:text-sm">
-          {t(
-            'dashboardNextApptEmpty',
-            'No gaps detected — active customers either have a follow-up scheduled or no row matched the rules.'
-          )}
-        </p>
-      ) : (
-        <ul className="dema-paper-surface-list divide-y divide-indigo-100/90 rounded-xl border border-indigo-100/80 ring-1 ring-slate-100">
+      <ul className="dema-paper-surface-list divide-y divide-indigo-100/90 rounded-xl border border-indigo-100/80 ring-1 ring-slate-100">
           {visible.map(({ row, signal }) => (
             <li
               key={row.id}
@@ -214,8 +209,7 @@ export function TimetableDashboardMissingNextAppointment() {
               </div>
             </li>
           ))}
-        </ul>
-      )}
+      </ul>
     </section>
   );
 }

@@ -1,12 +1,16 @@
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { WidgetRenderProps } from "../types/dashboard";
 import { cfgString } from "./widgetConfigHelpers";
 import { DEFAULT_GRAPH_LINE } from "./defaultWidgetData";
 import { useDashboardChartData } from "./useDashboardChartData";
+import { SimpleLineChart } from "./SimpleCharts";
 
 export function GraphLineWidget({ config }: WidgetRenderProps) {
-  const title = cfgString(config, "customTitle", "Diagramm — Linie");
+  const title = cfgString(config, "customTitle", "Diagramm - Linie");
   const { lineBar } = useDashboardChartData(config, DEFAULT_GRAPH_LINE);
+  const points = lineBar.map((p) => ({
+    label: p.name,
+    value: p.v,
+  }));
 
   return (
     <div className="flex h-full min-h-[140px] flex-col">
@@ -17,14 +21,7 @@ export function GraphLineWidget({ config }: WidgetRenderProps) {
           : "Aus Kunden-Stamm (lokal)"}
       </p>
       <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={lineBar} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 11 }} />
-            <YAxis hide />
-            <Tooltip contentStyle={{ borderRadius: "10px", border: "none" }} />
-            <Line type="monotone" dataKey="v" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
-          </LineChart>
-        </ResponsiveContainer>
+        <SimpleLineChart points={points} color="#2563eb" ariaLabel={title} />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { localeTagForLanguage, useLanguage, type LanguageCode } from '../contexts/LanguageContext';
 import {
   loadTimetableDb,
+  subscribeTimetableDbChange,
   timetableRowIsMine,
   viewerBuyerCodeFromSessionName,
 } from '../store/timetableStore';
@@ -11,7 +12,7 @@ import { parseTimetableFollowUpDueMs } from '../pages/timetable/timetableReminde
 import { timetableHashOpenContact } from '../pages/timetable/timetableContactDeepLink';
 import type { TimetableEntry } from '../types/timetable';
 
-const POLL_MS = 5000;
+const REFRESH_MS = 60_000;
 /** Show follow-ups due in the next N hours in the “soon” group (matches max quick reminder horizon). */
 const UPCOMING_HOURS = 24;
 const DISMISSED_SS_KEY = 'dema-dashboard-tt-followup-dismissed-v1';
@@ -92,12 +93,14 @@ export function TimetableDashboardReminders() {
 
   useEffect(() => {
     refresh();
-    const id = window.setInterval(refresh, POLL_MS);
+    const unsubscribeTimetable = subscribeTimetableDbChange(refresh);
+    const id = window.setInterval(refresh, REFRESH_MS);
     const onVis = () => {
       if (document.visibilityState === 'visible') refresh();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
+      unsubscribeTimetable();
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', onVis);
     };
@@ -116,6 +119,8 @@ export function TimetableDashboardReminders() {
 
   const total = overdue.length + upcoming.length;
 
+  if (total === 0) return null;
+
   return (
     <section
       className="dema-paper-surface mb-6 overflow-hidden rounded-2xl border p-4 ring-1 ring-amber-300/50"
@@ -130,19 +135,13 @@ export function TimetableDashboardReminders() {
             {t('dashboardFollowUpTitle', 'Purchase follow-ups')}
           </h2>
           <p className="dema-paper-surface-muted mt-0.5 text-xs leading-snug">
-            {total > 0
-              ? t(
-                  'dashboardFollowUpHint',
-                  'From your purchase timetable — due now or within the next few hours.'
-                )
-              : t(
-                  'dashboardFollowUpEmpty',
-                  'No purchase follow-ups due in the next 24 hours.'
-                )}
+            {t(
+              'dashboardFollowUpHint',
+              'From your purchase timetable — due now or within the next few hours.'
+            )}
           </p>
         </div>
       </div>
-      {total > 0 ? (
       <ul className="dema-paper-surface-list divide-y divide-amber-100/90 rounded-xl border ring-1 ring-amber-100/80">
         {[...overdue, ...upcoming].map((row) => {
           const dueMs = parseTimetableFollowUpDueMs(row.follow_up_at!);
@@ -213,7 +212,6 @@ export function TimetableDashboardReminders() {
           );
         })}
       </ul>
-      ) : null}
     </section>
   );
 }

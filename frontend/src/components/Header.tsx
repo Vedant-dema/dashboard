@@ -22,8 +22,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useProfileAvatarDataUrl } from "../hooks/useProfileAvatar";
 import { resolveDisplayName, useProfileExtraSettings } from "../hooks/useProfileExtraSettings";
-import { useChatSync } from "../hooks/useChatSync";
-import { getUnreadTotalForUser } from "../store/chatStore";
+import { useChatUnreadTotal } from "../hooks/useChatSync";
 import {
   getNotificationsForUser,
   getUnreadCountForUser,
@@ -78,8 +77,7 @@ export function Header({
   customersVibe?: boolean;
 }) {
   const { user, logout } = useAuth();
-  useChatSync();
-  const chatUnread = user ? getUnreadTotalForUser(user.email) : 0;
+  const chatUnread = useChatUnreadTotal(user?.email);
   const avatarDataUrl = useProfileAvatarDataUrl();
   const profileExtra = useProfileExtraSettings();
   const { t } = useLanguage();

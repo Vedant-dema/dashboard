@@ -66,6 +66,30 @@ function upgradePinnedWidgets(widgets: WidgetInstance[]): WidgetInstance[] {
   return widgets.map((w) => (w.type === "tasks" ? { ...w, pinned: true } : w));
 }
 
+/** Remove deprecated default welcome subtitle from persisted layout (localStorage). */
+const LEGACY_WELCOME_SUBTITLES = new Set([
+  "Hier ist Ihre Übersicht — Sales, Purchase und Waschanlage auf einen Blick.",
+  "Here is your overview — Sales, Purchase, and Car Wash at a glance.",
+  "Voici votre vue d'ensemble — Ventes, Achats et Lavage en un coup d'oeil.",
+  "La tua panoramica — Vendite, Acquisti e Autolavaggio a colpo d'occhio.",
+]);
+
+function stripLegacyWelcomeSubtitle(widgets: WidgetInstance[]): {
+  widgets: WidgetInstance[];
+  changed: boolean;
+} {
+  let changed = false;
+  const next = widgets.map((w) => {
+    if (w.type !== "welcome" || !w.config) return w;
+    const sub = w.config.welcomeSubtitle;
+    if (typeof sub !== "string" || !LEGACY_WELCOME_SUBTITLES.has(sub.trim())) return w;
+    changed = true;
+    const { welcomeSubtitle: _removed, ...rest } = w.config;
+    return { ...w, config: Object.keys(rest).length > 0 ? rest : undefined };
+  });
+  return { widgets: next, changed };
+}
+
 export function getDefaultWidgets(): WidgetInstance[] {
   return [
     { id: "welcome", type: "welcome", grid: { x: 0, y: 0, w: 12, h: 1 }, locked: true },
@@ -92,7 +116,10 @@ export function loadLayout(): DashboardLayout {
     const withProfile = ensureProfileWidget(clean);
     const withTasks = ensureTasksWidget(withProfile);
     const withPinned = upgradePinnedWidgets(withTasks);
-    return { ...parsed, widgets: withPinned, version: parsed.version ?? 1 };
+    const { widgets, changed } = stripLegacyWelcomeSubtitle(withPinned);
+    const layout: DashboardLayout = { ...parsed, widgets, version: parsed.version ?? 1 };
+    if (changed) saveLayout(layout);
+    return layout;
   } catch {
     return { widgets: getDefaultWidgets(), version: 1 };
   }

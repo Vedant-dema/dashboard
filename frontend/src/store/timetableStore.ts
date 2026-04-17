@@ -12,12 +12,15 @@ import type {
   TimetableTruckOffer,
   TimetableVehicleDisplayExtra,
 } from '../types/timetable';
-import { splitStoredPhone } from '../features/customers/mappers/customerFormMapper';
-import { newTruckOfferId, offerHasContent } from '../pages/timetable/contactDrawerFormUtils';
+import { newTruckOfferId, offerHasContent } from '../pages/timetable/timetableOfferUtils';
 import { normalizeTimetableOverviewKunde } from '../pages/timetable/timetableOverviewKunde';
 
 const STORAGE_KEY = 'dema-purchase-timetable-v6';
 const LEGACY_STORAGE_KEY = 'dema-purchase-timetable-v1';
+export const TIMETABLE_DB_CHANGED_EVENT = 'dema-timetable-db-changed';
+
+let cachedRaw: string | null | undefined;
+let cachedState: TimetableDbState | null = null;
 
 function localIsoDate(now: Date = new Date()): string {
   const y = now.getFullYear();
@@ -421,6 +424,14 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function asText(value: unknown): string {
   if (value == null) return '';
   return String(value).trim();
+}
+
+function splitStoredPhone(stored: string | undefined): { code: string; number: string } {
+  const s = (stored ?? '').trim();
+  if (!s) return { code: '+49', number: '' };
+  const match = s.match(/^(\+\d{1,4})(?:\s+(.+))?$/);
+  if (!match) return { code: '+49', number: s };
+  return { code: match[1] ?? '+49', number: (match[2] ?? '').trim() };
 }
 
 function asBool(value: unknown, defaultValue = false): boolean {
@@ -871,34 +882,65 @@ function fallbackState(): TimetableDbState {
   };
 }
 
+function readStoredTimetableRaw(): string | null {
+  const rawCurrent = localStorage.getItem(STORAGE_KEY);
+  const rawLegacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  return rawCurrent || rawLegacy;
+}
+
+function cacheTimetableState(raw: string | null, state: TimetableDbState): TimetableDbState {
+  cachedRaw = raw;
+  cachedState = state;
+  return state;
+}
+
 export function loadTimetableDb(): TimetableDbState {
   try {
-    const rawCurrent = localStorage.getItem(STORAGE_KEY);
-    const rawLegacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-    const raw = rawCurrent || rawLegacy;
-    if (!raw) return fallbackState();
+    const raw = readStoredTimetableRaw();
+    if (cachedState && raw === cachedRaw) return cachedState;
+    if (!raw) return cacheTimetableState(raw, fallbackState());
 
     const parsed = JSON.parse(raw) as { entries?: unknown; nextId?: unknown };
     const entriesRaw = Array.isArray(parsed.entries) ? parsed.entries : [];
     const normalized = entriesRaw
       .map((entry, index) => normalizeEntry(entry, index + 1))
       .filter((entry): entry is TimetableEntry => entry != null);
-    if (normalized.length === 0) return fallbackState();
+    if (normalized.length === 0) return cacheTimetableState(raw, fallbackState());
 
     const parsedNext = asNumberOrNull(parsed.nextId);
     const nextId = parsedNext && parsedNext > 0 ? parsedNext : Math.max(...normalized.map((e) => e.id)) + 1;
-    return ensureSharedDemoTimetableRows({ entries: normalized, nextId });
+    return cacheTimetableState(raw, ensureSharedDemoTimetableRows({ entries: normalized, nextId }));
   } catch {
-    return fallbackState();
+    return cacheTimetableState(null, fallbackState());
   }
 }
 
 export function saveTimetableDb(state: TimetableDbState): void {
+  let raw: string | null = null;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    raw = JSON.stringify(state);
+    localStorage.setItem(STORAGE_KEY, raw);
   } catch {
     // ignore
   }
+  cacheTimetableState(raw, state);
+  window.dispatchEvent(new CustomEvent(TIMETABLE_DB_CHANGED_EVENT));
+}
+
+export function subscribeTimetableDbChange(listener: () => void): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY || event.key === LEGACY_STORAGE_KEY) {
+      cachedRaw = undefined;
+      cachedState = null;
+      listener();
+    }
+  };
+  window.addEventListener(TIMETABLE_DB_CHANGED_EVENT, listener);
+  window.addEventListener('storage', onStorage);
+  return () => {
+    window.removeEventListener(TIMETABLE_DB_CHANGED_EVENT, listener);
+    window.removeEventListener('storage', onStorage);
+  };
 }
 
 export function upsertTimetableEntry(state: TimetableDbState, entry: TimetableEntry): TimetableDbState {

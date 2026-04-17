@@ -1,4 +1,4 @@
-import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/auth/AuthMarketingPanel.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6265600e"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/auth/AuthMarketingPanel.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=b3d7d6a2"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
 import * as RefreshRuntime from "/@react-refresh";
 const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 let prevRefreshReg;
@@ -14,7 +14,7 @@ if (import.meta.hot && !inWebWorker) {
   window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/vedan/Documents/Dema-Dashboard/frontend/src/components/auth/AuthMarketingPanel.tsx");
   window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 }
-import { BarChart3, LayoutDashboard, Lock, Shield, Sparkles } from "/node_modules/.vite/deps/lucide-react.js?v=6265600e";
+import { BarChart3, LayoutDashboard, Lock, Shield, Sparkles } from "/node_modules/.vite/deps/lucide-react.js?v=b3d7d6a2";
 import { AuthDashboardGraphic } from "/src/components/auth/AuthDashboardGraphic.tsx";
 import { AuthTruckBrandAnimation } from "/src/components/auth/AuthTruckBrandAnimation.tsx";
 const highlights = [

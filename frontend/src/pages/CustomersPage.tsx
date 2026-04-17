@@ -52,10 +52,6 @@ import {
 const NewCustomerModal = lazy(() =>
   import("../components/NewCustomerModal").then((m) => ({ default: m.NewCustomerModal })),
 );
-import {
-  buildCustomerFieldBriefSections,
-  downloadCustomerFieldBriefPdf,
-} from "../features/customers/utils/customerFieldBriefPrint";
 import { DatePickerInput } from "../components/DatePickerInput";
 import { SuggestTextInput } from "../components/SuggestTextInput";
 import {
@@ -440,6 +436,9 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
   const handleDownloadCustomerFieldBriefPdf = useCallback(async () => {
     if (!draftKunde) return;
+    const { buildCustomerFieldBriefSections, downloadCustomerFieldBriefPdf } = await import(
+      "../features/customers/utils/customerFieldBriefPrint"
+    );
     const apptSectionTitle = t("customersFieldBriefSectionAppointments", "Appointments");
     const sections = buildCustomerFieldBriefSections(draftKunde, t).filter(
       (s) => s.title !== apptSectionTitle

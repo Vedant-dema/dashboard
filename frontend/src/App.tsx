@@ -1,26 +1,56 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useLayoutEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
-import { DynamicDashboard } from "./pages/DynamicDashboard";
-import { CustomersPage } from "./pages/CustomersPage";
-import { AngebotePage } from "./pages/AngebotePage";
-import { AnfragenPage } from "./pages/AnfragenPage";
-import { VerkaufterBestandPage } from "./pages/VerkaufterBestandPage";
-import { BestandPage } from "./pages/BestandPage";
-import { AbholauftraegePage } from "./pages/AbholauftraegePage";
-import { KennzeichenSuchePage } from "./pages/KennzeichenSuchePage";
-import { DoppelteKundenPage } from "./pages/DoppelteKundenPage";
-import { RechnungenPage } from "./pages/RechnungenPage";
-import { B2BPortalPage } from "./pages/B2BPortalPage";
+import { AppRouteFallback } from "./components/AppRouteFallback";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
-import { HrmPage } from "./pages/HrmPage";
-import { OnGroundTeamPage } from "./pages/OnGroundTeamPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { ChatPage } from "./pages/ChatPage";
-import { TimetablePage } from "./pages/timetable";
 import { PresenceReporter } from "./components/PresenceReporter";
 import { TimetableFollowUpDueWatcher } from "./components/TimetableFollowUpDueWatcher";
+
+const DynamicDashboard = lazy(() =>
+  import("./pages/DynamicDashboard").then((m) => ({ default: m.DynamicDashboard })),
+);
+const CustomersPage = lazy(() =>
+  import("./pages/CustomersPage").then((m) => ({ default: m.CustomersPage })),
+);
+const AngebotePage = lazy(() =>
+  import("./pages/AngebotePage").then((m) => ({ default: m.AngebotePage })),
+);
+const AnfragenPage = lazy(() =>
+  import("./pages/AnfragenPage").then((m) => ({ default: m.AnfragenPage })),
+);
+const VerkaufterBestandPage = lazy(() =>
+  import("./pages/VerkaufterBestandPage").then((m) => ({ default: m.VerkaufterBestandPage })),
+);
+const BestandPage = lazy(() =>
+  import("./pages/BestandPage").then((m) => ({ default: m.BestandPage })),
+);
+const AbholauftraegePage = lazy(() =>
+  import("./pages/AbholauftraegePage").then((m) => ({ default: m.AbholauftraegePage })),
+);
+const KennzeichenSuchePage = lazy(() =>
+  import("./pages/KennzeichenSuchePage").then((m) => ({ default: m.KennzeichenSuchePage })),
+);
+const DoppelteKundenPage = lazy(() =>
+  import("./pages/DoppelteKundenPage").then((m) => ({ default: m.DoppelteKundenPage })),
+);
+const RechnungenPage = lazy(() =>
+  import("./pages/RechnungenPage").then((m) => ({ default: m.RechnungenPage })),
+);
+const B2BPortalPage = lazy(() =>
+  import("./pages/B2BPortalPage").then((m) => ({ default: m.B2BPortalPage })),
+);
+const HrmPage = lazy(() => import("./pages/HrmPage").then((m) => ({ default: m.HrmPage })));
+const OnGroundTeamPage = lazy(() =>
+  import("./pages/OnGroundTeamPage").then((m) => ({ default: m.OnGroundTeamPage })),
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
+const ChatPage = lazy(() => import("./pages/ChatPage").then((m) => ({ default: m.ChatPage })));
+const TimetablePage = lazy(() =>
+  import("./pages/timetable").then((m) => ({ default: m.TimetablePage })),
+);
 import { hydrateAppFontFamilyFromStorage } from "./common/utils/appFontFamily";
 import { hydrateAppFontScaleFromStorage } from "./common/utils/appFontScale";
 import { useAuth, setReturnHash } from "./contexts/AuthContext";
@@ -188,7 +218,17 @@ export default function App() {
     return <SignupPage />;
   }
   if (route === "b2b-portal") {
-    return <B2BPortalPage />;
+    return (
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-slate-50">
+            <AppRouteFallback />
+          </div>
+        }
+      >
+        <B2BPortalPage />
+      </Suspense>
+    );
   }
   if (!isAuthenticated) {
     return (
@@ -223,37 +263,39 @@ export default function App() {
           customersVibe={isCustomers}
         />
         <main className="flex min-h-0 flex-1 flex-col">
-          {isBestand ? (
-            <BestandPage department={customerDepartmentFromRoute(route)} />
-          ) : isCustomers ? (
-            <CustomersPage department={customerDepartmentFromRoute(route)} />
-          ) : isAngebote ? (
-            <AngebotePage department={customerDepartmentFromRoute(route)} />
-          ) : isAnfragen ? (
-            <AnfragenPage department={customerDepartmentFromRoute(route)} />
-          ) : isVerkaufterBestand ? (
-            <VerkaufterBestandPage department={customerDepartmentFromRoute(route)} />
-          ) : isAbholauftraege ? (
-            <AbholauftraegePage department={customerDepartmentFromRoute(route)} />
-          ) : isKennzeichenSuche ? (
-            <KennzeichenSuchePage department={customerDepartmentFromRoute(route)} />
-          ) : isDoppelteKunden ? (
-            <DoppelteKundenPage department={customerDepartmentFromRoute(route)} />
-          ) : isRechnungen ? (
-            <RechnungenPage department={customerDepartmentFromRoute(route)} />
-          ) : isTimetable ? (
-            <TimetablePage department={customerDepartmentFromRoute(route)} />
-          ) : isHrm ? (
-            <HrmPage section={hrmSectionFromRoute(route)} />
-          ) : isOnGroundTeam ? (
-            <OnGroundTeamPage section={ogtSectionFromRoute(route)} />
-          ) : route === "settings" || route === "profile" ? (
-            <SettingsPage />
-          ) : route === "chat" ? (
-            <ChatPage />
-          ) : (
-            <DynamicDashboard />
-          )}
+          <Suspense fallback={<AppRouteFallback />}>
+            {isBestand ? (
+              <BestandPage department={customerDepartmentFromRoute(route)} />
+            ) : isCustomers ? (
+              <CustomersPage department={customerDepartmentFromRoute(route)} />
+            ) : isAngebote ? (
+              <AngebotePage department={customerDepartmentFromRoute(route)} />
+            ) : isAnfragen ? (
+              <AnfragenPage department={customerDepartmentFromRoute(route)} />
+            ) : isVerkaufterBestand ? (
+              <VerkaufterBestandPage department={customerDepartmentFromRoute(route)} />
+            ) : isAbholauftraege ? (
+              <AbholauftraegePage department={customerDepartmentFromRoute(route)} />
+            ) : isKennzeichenSuche ? (
+              <KennzeichenSuchePage department={customerDepartmentFromRoute(route)} />
+            ) : isDoppelteKunden ? (
+              <DoppelteKundenPage department={customerDepartmentFromRoute(route)} />
+            ) : isRechnungen ? (
+              <RechnungenPage department={customerDepartmentFromRoute(route)} />
+            ) : isTimetable ? (
+              <TimetablePage department={customerDepartmentFromRoute(route)} />
+            ) : isHrm ? (
+              <HrmPage section={hrmSectionFromRoute(route)} />
+            ) : isOnGroundTeam ? (
+              <OnGroundTeamPage section={ogtSectionFromRoute(route)} />
+            ) : route === "settings" || route === "profile" ? (
+              <SettingsPage />
+            ) : route === "chat" ? (
+              <ChatPage />
+            ) : (
+              <DynamicDashboard />
+            )}
+          </Suspense>
         </main>
       </div>
     </div>

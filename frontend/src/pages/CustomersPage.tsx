@@ -5,6 +5,8 @@ import {
   useLayoutEffect,
   useCallback,
   useRef,
+  lazy,
+  Suspense,
   type DragEvent,
 } from "react";
 import {
@@ -31,6 +33,7 @@ import {
   CircleDashed,
   Pencil,
   Printer,
+  Loader2,
 } from "lucide-react";
 import type { KundenHistoryEntry, KundenRisikoanalyse, KundenStamm, KundenWashStamm } from "../types/kunden";
 import type { RechnungListRow } from "../types/rechnungen";
@@ -46,7 +49,9 @@ import {
   type RisikoanalyseUpsertFields,
   type AuditEditor,
 } from "../features/customers/repository/customerRepository";
-import { NewCustomerModal } from "../components/NewCustomerModal";
+const NewCustomerModal = lazy(() =>
+  import("../components/NewCustomerModal").then((m) => ({ default: m.NewCustomerModal })),
+);
 import {
   buildCustomerFieldBriefSections,
   downloadCustomerFieldBriefPdf,
@@ -186,6 +191,19 @@ function emptyWashDraft(kundenId: number): KundenWashStamm {
 
 export function CustomersPage({ department }: { department?: DepartmentArea }) {
   const { t, language } = useLanguage();
+  const newCustomerModalFallback = useMemo(
+    () => (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
+        role="status"
+        aria-live="polite"
+      >
+        <Loader2 className="h-10 w-10 animate-spin text-white drop-shadow" aria-hidden />
+        <span className="sr-only">{t("customersLoading", "Loading…")}</span>
+      </div>
+    ),
+    [t],
+  );
   const { user } = useAuth();
   const editor: AuditEditor | undefined = user ? { name: user.name, email: user.email } : undefined;
   const localeTag = language === "de" ? "de-DE"
@@ -1406,6 +1424,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
 
 
       {selectedRowId && draftKunde && (
+        <Suspense fallback={newCustomerModalFallback}>
         <NewCustomerModal
           key={selectedRowId}
           open={Boolean(selectedRowId)}
@@ -2049,6 +2068,7 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
           onSubmit={handleEditCustomerSubmit}
           historyEntries={historyForCustomer}
         />
+        </Suspense>
       )}
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -2075,8 +2095,10 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
         </p>
       </div>
 
+      {showAddCustomer ? (
+        <Suspense fallback={newCustomerModalFallback}>
       <NewCustomerModal
-        open={showAddCustomer}
+        open
         onClose={() => setShowAddCustomer(false)}
         department={department}
         nextKundenNrPreview={customerRepository.generateNextKundenNr(db)}
@@ -2122,6 +2144,8 @@ export function CustomersPage({ department }: { department?: DepartmentArea }) {
             }));
         }}
       />
+        </Suspense>
+      ) : null}
 
       {unterlagenOpen && draftKunde ? (
         <div

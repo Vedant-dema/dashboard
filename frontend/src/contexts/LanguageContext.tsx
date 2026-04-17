@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  startTransition,
   type ReactNode,
 } from "react";
 import {
@@ -9851,8 +9852,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
             acc[keys[j]!] = tr[j] ?? texts[j]!;
           }
           if (gen !== mtGeneration.current) return;
-          setMtByKey({ ...acc });
+        }
+        if (gen === mtGeneration.current) {
           writeMtCache(language, acc);
+          startTransition(() => {
+            if (gen === mtGeneration.current) setMtByKey(acc);
+          });
         }
       } catch {
         if (gen === mtGeneration.current) setMtByKey({});

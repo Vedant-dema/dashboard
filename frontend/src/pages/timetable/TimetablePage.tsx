@@ -508,7 +508,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
   );
 
   return (
-    <div className="dema-canvas-root timetable-page-chrono relative flex min-h-full min-h-0 flex-1 flex-col overflow-x-hidden">
+    <div className="dema-canvas-root timetable-page-chrono relative flex min-h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden">
       <div className="timetable-chrono-ambient" aria-hidden>
         <div className="timetable-chrono-base" />
         <div className="timetable-chrono-float timetable-chrono-float-a" />
@@ -523,10 +523,10 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
         <div className="timetable-chrono-vignette" />
       </div>
 
-      <div className="dema-canvas-content flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="timetable-print-root flex min-h-0 flex-1 flex-col gap-5 p-4 pb-10 md:gap-7 md:p-6">
-        <header className="order-1 overflow-hidden rounded-3xl border border-slate-800/50 bg-[#06060d] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.45)] ring-1 ring-white/[0.06]">
-          <div className="relative px-5 py-6 md:px-8 md:py-8">
+      <div className="dema-canvas-content flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="timetable-print-root box-border flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-5 px-3 py-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-4 md:gap-7 md:px-6 md:py-6 md:pb-10">
+        <header className="order-1 min-w-0 overflow-hidden rounded-3xl border border-slate-800/50 bg-[#06060d] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.45)] ring-1 ring-white/[0.06]">
+          <div className="relative px-4 py-5 sm:px-5 sm:py-6 md:px-8 md:py-8">
             <div className="pointer-events-none absolute -right-16 -top-32 h-[22rem] w-[22rem] rounded-full bg-indigo-500/25 blur-3xl animate-timetable-blob dema-low-motion:animate-none" />
             <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl animate-timetable-blob dema-low-motion:animate-none [animation-delay:-11s]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent" />
@@ -635,8 +635,8 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
           </div>
         </header>
 
-        <main className="order-2 flex min-h-0 flex-1 flex-col gap-4 animate-timetable-fade-up dema-low-motion:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
-            <div className="no-print relative z-10 overflow-visible rounded-3xl border border-slate-200/80 bg-white/72 p-5 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent md:bg-white/68 md:p-6">
+        <main className="order-2 flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 animate-timetable-fade-up dema-low-motion:animate-none [animation-delay:80ms] [animation-fill-mode:both]">
+            <div className="no-print relative z-10 min-w-0 max-w-full overflow-visible rounded-3xl border border-slate-200/80 bg-white/72 p-4 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.03] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-400/30 before:to-transparent sm:p-5 md:bg-white/68 md:p-6">
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
                   <div className="min-w-0 flex-1">
@@ -672,7 +672,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                         </button>
                         {filtersOpen ? (
                           <div
-                            className="absolute left-0 top-[calc(100%+0.35rem)] z-[62] w-[min(calc(100vw-2rem),24rem)] overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/[0.04]"
+                            className="absolute left-0 top-[calc(100%+0.35rem)] z-[62] w-[min(calc(100vw-1.5rem),24rem)] max-w-[calc(100vw-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)-0.75rem)] overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/[0.04]"
                             role="dialog"
                             aria-label={t('timetableFiltersTitle', 'Quick filters')}
                           >
@@ -787,12 +787,12 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                     </div>
                   </div>
 
-                  <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap lg:w-auto lg:shrink-0">
-                    <div className="flex min-h-11 flex-1 items-stretch gap-0.5 rounded-2xl bg-gradient-to-b from-slate-100/95 to-slate-50/90 p-1 shadow-inner shadow-slate-900/5 ring-1 ring-slate-200/70 sm:min-w-0 sm:flex-initial">
+                  <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:w-auto lg:shrink-0 lg:flex-nowrap lg:justify-end">
+                    <div className="flex min-h-11 w-full min-w-0 flex-1 items-stretch gap-0.5 rounded-2xl bg-gradient-to-b from-slate-100/95 to-slate-50/90 p-1 shadow-inner shadow-slate-900/5 ring-1 ring-slate-200/70 sm:w-auto sm:min-w-0 sm:flex-initial">
                       <button
                         type="button"
                         onClick={() => shiftSelectedDay(-1)}
-                        className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95"
+                        className="inline-flex h-11 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95 sm:h-10 sm:w-9"
                         aria-label={t('timetablePrevDay', 'Previous day')}
                       >
                         <ChevronLeft className="h-5 w-5" strokeWidth={2} />
@@ -807,14 +807,14 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                           aria-expanded={showDayPicker}
                           aria-haspopup="dialog"
                           aria-label={t('timetableOpenDayPicker', 'Open calendar')}
-                          className="flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-semibold text-slate-900 shadow-md shadow-slate-900/5 ring-1 ring-slate-200/50 transition hover:ring-emerald-300/50"
+                          className="flex h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-semibold text-slate-900 shadow-md shadow-slate-900/5 ring-1 ring-slate-200/50 transition hover:ring-emerald-300/50 sm:h-10"
                         >
                           <CalendarDays className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2} />
                           <span className="truncate capitalize">{selectedDateLabel}</span>
                         </button>
                         {showDayPicker ? (
                           <div
-                            className="absolute right-0 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-2rem),20.5rem)] rounded-xl border border-slate-200/90 bg-white p-3 shadow-xl shadow-slate-900/15 ring-1 ring-slate-100 sm:left-0 sm:right-auto"
+                            className="absolute left-1/2 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-1.5rem),20.5rem)] max-w-[calc(100vw-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)-0.75rem)] -translate-x-1/2 rounded-xl border border-slate-200/90 bg-white p-3 shadow-xl shadow-slate-900/15 ring-1 ring-slate-100 sm:left-0 sm:right-auto sm:max-w-none sm:translate-x-0"
                             role="dialog"
                             aria-label={t('timetableMiniCalTitle', 'Jump to day')}
                           >
@@ -846,7 +846,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                       <button
                         type="button"
                         onClick={() => shiftSelectedDay(1)}
-                        className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95"
+                        className="inline-flex h-11 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-sm active:scale-95 sm:h-10 sm:w-9"
                         aria-label={t('timetableNextDay', 'Next day')}
                       >
                         <ChevronRight className="h-5 w-5" strokeWidth={2} />
@@ -856,7 +856,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
                     <button
                       type="button"
                       onClick={() => setShowCreatePanel((prev) => !prev)}
-                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/25 ring-1 ring-white/10 transition duration-300 hover:scale-[1.02] hover:shadow-emerald-900/35 hover:brightness-105 active:scale-[0.98]"
+                      className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 px-5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/25 ring-1 ring-white/10 transition duration-300 hover:scale-[1.02] hover:shadow-emerald-900/35 hover:brightness-105 active:scale-[0.98] sm:w-auto"
                     >
                       <Plus className="h-4 w-4" strokeWidth={2.5} />
                       {t('timetableNewAppointment', 'New appointment')}
@@ -940,7 +940,7 @@ export function TimetablePage({ department }: { department?: DepartmentArea }) {
               </div>
             ) : null}
 
-            <div className="relative z-0 min-h-0 flex-1">
+            <div className="relative z-0 min-h-0 w-full min-w-0 flex-1">
               <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md shadow-slate-900/20">

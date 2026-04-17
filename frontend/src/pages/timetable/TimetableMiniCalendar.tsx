@@ -102,7 +102,7 @@ export function TimetableMiniCalendar({
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
           {grid.map((day, idx) => {
             if (day == null) return <span key={`empty-${idx}`} className="h-11 sm:h-12" />;
             const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

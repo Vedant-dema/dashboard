@@ -84,8 +84,8 @@ export function TimetableTable({
   const emptyMark = useMemo(() => t('commonPlaceholderDash', '—'), [t]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-900/[0.04]">
-      <div className="overflow-x-auto">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-900/[0.04]">
+      <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain">
         <table className="min-w-[1180px] w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">

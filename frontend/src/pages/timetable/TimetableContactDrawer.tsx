@@ -990,19 +990,19 @@ export function TimetableContactDrawer({
 
   const modalUi = (
     <div
-      className="customers-modal-genz-backdrop dema-modal-backdrop-vibe fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-5"
+      className="customers-modal-genz-backdrop dema-modal-backdrop-vibe fixed inset-0 z-[100] flex min-w-0 items-center justify-center overflow-x-hidden overflow-y-auto overscroll-contain p-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] ps-[max(0.5rem,env(safe-area-inset-left,0px))] pe-[max(0.5rem,env(safe-area-inset-right,0px))] sm:p-4 md:p-5"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="customers-modal-genz-panel relative flex w-full min-w-0 max-h-[92vh] max-w-[min(118rem,99vw)] flex-col overflow-hidden rounded-2xl"
+        className="customers-modal-genz-panel relative box-border flex w-full min-w-0 max-h-[min(92dvh,calc(100svh-1rem))] max-w-[min(118rem,calc(100dvw-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)-1rem))] flex-col overflow-hidden rounded-2xl sm:max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="timetable-contact-drawer-title"
       >
         <div className="customers-modal-genz-topline pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px]" aria-hidden />
-        <div className="customers-modal-genz-header relative shrink-0 border-b border-transparent px-4 py-2.5 pr-14 sm:pl-5 sm:pr-16 md:pr-20">
+        <div className="customers-modal-genz-header relative shrink-0 border-b border-transparent px-3 py-2.5 pr-12 sm:px-4 sm:pr-16 md:px-5 md:pr-20">
           <button
             type="button"
             onClick={onClose}
@@ -1182,13 +1182,13 @@ export function TimetableContactDrawer({
           </div>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/90 px-3 pb-2 pt-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:pb-2 sm:pt-2.5 md:px-5">
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
+        <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/90 px-2.5 pb-2 pt-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:px-4 sm:pb-2 sm:pt-2.5 md:px-5">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 md:flex-nowrap">
             <div
               role="tablist"
               aria-label={t('timetableContactDrawerTabsAria', 'Contact workspace')}
-              className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 sm:flex-nowrap sm:gap-2"
+              className="flex min-w-0 shrink-0 flex-wrap items-stretch gap-1.5 sm:flex-nowrap sm:items-center sm:gap-2"
             >
               <button
                 type="button"
@@ -1197,7 +1197,7 @@ export function TimetableContactDrawer({
                 aria-selected={drawerWorkspaceTab === 'call'}
                 aria-controls="tt-drawer-panel-call"
                 onClick={() => setDrawerWorkspaceTab('call')}
-                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:min-h-0 sm:rounded-xl sm:px-3.5 sm:py-0 sm:text-xs ${
                   drawerWorkspaceTab === 'call'
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/25 ring-white/10 hover:brightness-105'
                     : 'border border-teal-200/90 bg-teal-50/90 text-teal-950 shadow-sm ring-teal-900/10 hover:border-teal-300 hover:bg-teal-100/85'
@@ -1213,7 +1213,7 @@ export function TimetableContactDrawer({
                 aria-selected={drawerWorkspaceTab === 'offer'}
                 aria-controls="tt-drawer-panel-offer"
                 onClick={() => setDrawerWorkspaceTab('offer')}
-                className={`inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:rounded-xl sm:px-3.5 sm:text-xs ${
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold ring-1 transition duration-200 active:scale-[0.98] sm:h-9 sm:min-h-0 sm:rounded-xl sm:px-3.5 sm:py-0 sm:text-xs ${
                   drawerWorkspaceTab === 'offer'
                     ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-900/20 ring-white/15 hover:brightness-105'
                     : 'border border-fuchsia-200/85 bg-fuchsia-50/85 text-fuchsia-950 shadow-sm ring-fuchsia-900/10 hover:border-fuchsia-300 hover:bg-fuchsia-100/80'
@@ -1224,7 +1224,7 @@ export function TimetableContactDrawer({
               </button>
             </div>
 
-            <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
+            <div className="flex w-full min-w-0 shrink-0 flex-wrap items-stretch justify-start gap-2 sm:w-auto sm:flex-nowrap sm:items-center sm:justify-end">
               <SoldVehicleQuickAccess
                 offers={eOffer.offers}
                 onOpenArchive={() => {
@@ -1239,7 +1239,7 @@ export function TimetableContactDrawer({
                   onClick={() => {
                     setSmartSummaryOpen((o) => !o);
                   }}
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-blue-200/80 bg-gradient-to-r from-white to-blue-50/50 px-2 text-[11px] font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300 hover:shadow-md active:scale-[0.98] sm:h-9 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-blue-200/80 bg-gradient-to-r from-white to-blue-50/50 px-2 py-2 text-[11px] font-semibold text-blue-950 shadow-sm shadow-blue-900/[0.06] transition hover:border-blue-300 hover:shadow-md active:scale-[0.98] sm:h-9 sm:min-h-0 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:py-0 sm:text-xs"
                   aria-expanded={smartSummaryOpen}
                   aria-haspopup="dialog"
                   aria-controls="timetable-contact-smart-summary-popover"
@@ -1255,7 +1255,7 @@ export function TimetableContactDrawer({
                     id="timetable-contact-smart-summary-popover"
                     role="dialog"
                     aria-label={t('timetableContactAiTitle', 'Smart summary')}
-                    className="absolute right-0 top-[calc(100%+0.5rem)] z-[115] w-[min(calc(100vw-1.5rem),22rem)] max-h-[min(65dvh,26rem)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl shadow-blue-900/18 ring-1 ring-slate-900/[0.06] backdrop-blur-xl [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/90"
+                    className="absolute left-1/2 top-[calc(100%+0.5rem)] z-[115] w-[min(calc(100vw-1rem),22rem)] max-w-[calc(100dvw-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)-1rem)] max-h-[min(65dvh,26rem)] -translate-x-1/2 overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl shadow-blue-900/18 ring-1 ring-slate-900/[0.06] backdrop-blur-xl [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/90 sm:left-auto sm:right-0 sm:max-w-none sm:translate-x-0"
                   >
                     <ContactSmartSummaryCard bullets={smartBullets} t={t} variant="dropdown" />
                   </div>
@@ -1266,14 +1266,14 @@ export function TimetableContactDrawer({
           </div>
 
           <div
-            className="customers-modal-genz-body min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 has-edit-side sm:px-6 sm:py-5"
+            className="customers-modal-genz-body min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 has-edit-side sm:px-5 sm:py-5 md:px-6"
             role="region"
             aria-label={t('timetableContactDrawerBodyAria', 'Customer contact — main area')}
           >
             <div
-              className={`grid items-stretch gap-5 md:gap-6 ${
+              className={`grid w-full min-w-0 max-w-full items-stretch gap-4 sm:gap-5 lg:gap-6 ${
                 drawerWorkspaceTab === 'call'
-                  ? 'grid-cols-1 md:grid-cols-3 lg:grid-cols-12'
+                  ? 'grid-cols-1 lg:grid-cols-12'
                   : 'grid-cols-1'
               }`}
             >
@@ -1285,7 +1285,7 @@ export function TimetableContactDrawer({
                   className="contents"
                 >
               <div
-                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--1 flex h-full min-h-0 min-w-0 flex-col space-y-4 border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} md:col-span-1 lg:col-span-4`}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--1 flex h-full min-h-0 min-w-0 max-w-full flex-col space-y-4 border border-slate-200/60 bg-white/90 p-4 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-4`}
               >
                 <p className={`${TT_KUNDE_SECTION_TITLE} customers-modal-genz-kunde-col-title--1`}>
                   {t('customerModalColStammdaten', 'Master data')}
@@ -1539,7 +1539,7 @@ export function TimetableContactDrawer({
               </div>
 
               <div
-                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--2 flex h-full min-h-0 min-w-0 flex-col gap-3 border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} md:col-span-1 lg:col-span-5`}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--2 flex h-full min-h-0 min-w-0 max-w-full flex-col gap-3 border border-slate-200/60 bg-white/90 p-4 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-5`}
               >
                 <TimetableExtraKontakteBlock
                   contacts={p.contacts}
@@ -1554,7 +1554,7 @@ export function TimetableContactDrawer({
               </div>
 
               <div
-                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 flex h-full min-h-0 min-w-0 flex-col overflow-hidden border border-slate-200/60 bg-white/90 p-5 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} md:col-span-1 lg:col-span-3`}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--4 flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden border border-slate-200/60 bg-white/90 p-4 shadow-sm sm:p-6 ${TT_KUNDE_PANEL_SURFACE} lg:col-span-3`}
               >
                 <div className="flex shrink-0 flex-wrap items-start justify-between gap-2">
                   <p
@@ -1596,7 +1596,7 @@ export function TimetableContactDrawer({
                 id="tt-drawer-panel-offer"
                 role="tabpanel"
                 aria-labelledby="tt-drawer-tab-offer"
-                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 flex min-h-0 min-w-0 w-full flex-col border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 ${TT_KUNDE_PANEL_SURFACE}`}
+                className={`customers-modal-genz-kunde-col customers-modal-genz-kunde-col--3 flex min-h-0 w-full min-w-0 max-w-full flex-col border border-slate-200/60 bg-white p-3 shadow-sm sm:p-5 ${TT_KUNDE_PANEL_SURFACE}`}
               >
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col [perspective:2000px]">
                   <div
@@ -1720,7 +1720,7 @@ export function TimetableContactDrawer({
           </div>
 
           <div
-            className={`customers-modal-genz-footer shrink-0 border-t px-4 py-3 is-edit-footer border-slate-200/80 sm:px-6`}
+            className={`customers-modal-genz-footer w-full min-w-0 max-w-full shrink-0 border-t px-3 py-3 is-edit-footer border-slate-200/80 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:px-6`}
           >
             {dirty ? (
               <div
@@ -1731,19 +1731,19 @@ export function TimetableContactDrawer({
               </div>
             ) : null}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end sm:gap-4">
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
                 <button
                   type="button"
                   onClick={handleDiscard}
                   disabled={!dirty}
-                  className="customers-modal-genz-btn-cancel rounded px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+                  className="customers-modal-genz-btn-cancel order-2 min-h-11 w-full rounded px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40 sm:order-none sm:w-auto sm:min-h-0"
                 >
                   {t('timetableContactDiscard', 'Discard')}
                 </button>
                 <button
                   type="button"
                   onClick={handleSave}
-                  className="rounded bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                  className="order-1 min-h-11 w-full rounded bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 sm:order-none sm:w-auto sm:min-h-0"
                 >
                   {t('timetableContactSave', 'Save contact')}
                 </button>

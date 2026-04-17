@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, Save, Sparkles, X, Zap } from 'lucide-react'
+import { Copy, Save, Sparkles } from 'lucide-react'
 import type { TimetableTruckOffer, TimetableVehicleDisplayExtra } from '../../../types/timetable'
 import { parseOfferFreeText } from '../timetableOfferFreeTextParse'
 
@@ -25,13 +25,11 @@ export function TimetableOfferGeneratorBlock({
   t,
 }: Props) {
   const [genText, setGenText] = useState('')
-  const [genOpen, setGenOpen] = useState(true)
   const [statusText, setStatusText] = useState('')
   const [lastParsed, setLastParsed] = useState<ReturnType<typeof parseOfferFreeText> | null>(null)
 
   useEffect(() => {
     setGenText('')
-    setGenOpen(true)
     setStatusText('')
     setLastParsed(null)
   }, [rowKey])
@@ -132,46 +130,19 @@ export function TimetableOfferGeneratorBlock({
     }
   }, [genText, t])
 
-  if (!genOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setGenOpen(true)}
-        className="w-full rounded-xl border border-sky-300/70 bg-gradient-to-r from-sky-50 to-indigo-50 py-2 text-xs font-semibold text-slate-800 hover:from-sky-100 hover:to-indigo-100"
-      >
-        {t('timetableOfferGenTitle', 'Offer generator')}
-      </button>
-    )
-  }
-
   return (
     <section
-      className="flex min-h-[min(56vh,24rem)] w-full flex-col overflow-hidden rounded-2xl border border-sky-200/80 bg-white shadow-sm ring-1 ring-sky-100/70 lg:min-h-[min(64vh,28rem)]"
+      className="flex min-h-0 w-full max-h-[min(52vh,26rem)] flex-col overflow-hidden rounded-xl border border-sky-200/80 bg-white shadow-sm ring-1 ring-sky-100/70 lg:max-h-[min(48vh,24rem)]"
       aria-label={t('timetableOfferGenTitle', 'Offer generator')}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 bg-gradient-to-r from-slate-900 via-slate-800 to-sky-900 px-3 py-2.5 text-white">
-        <div className="flex min-w-0 items-center gap-2">
-          <Zap className="h-4 w-4 shrink-0 text-sky-300" aria-hidden />
-          <span className="truncate text-sm font-semibold tracking-tight">
-            {t('timetableOfferGenTitle', 'Offer generator')}
-          </span>
-          {lastParsed ? (
-            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 bg-gradient-to-b from-slate-50 to-white p-3 sm:p-3.5">
+        {lastParsed ? (
+          <div className="flex shrink-0 items-center justify-start">
+            <span className="rounded-full border border-sky-200/80 bg-sky-50/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-900">
               {t('timetableOfferGenDetected', 'Detected')}: {extractedCount(lastParsed)}
             </span>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={() => setGenOpen(false)}
-          className="rounded p-1 text-white/90 hover:bg-white/10"
-          aria-label={t('timetableOfferGenCloseAria', 'Close generator')}
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </button>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3 bg-gradient-to-b from-slate-50 to-white p-3">
+          </div>
+        ) : null}
         <textarea
           value={genText}
           onChange={(e) => {
@@ -179,8 +150,8 @@ export function TimetableOfferGeneratorBlock({
             setLastParsed(null)
             setStatusText('')
           }}
-          rows={7}
-          className="min-h-[10.5rem] w-full flex-1 resize-y rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-800 shadow-inner outline-none focus:border-sky-400/80 focus:ring-2 focus:ring-sky-200/70"
+          rows={4}
+          className="min-h-[6.5rem] w-full flex-1 resize-y rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-[13px] leading-snug text-slate-800 shadow-inner outline-none focus:border-sky-400/80 focus:ring-2 focus:ring-sky-200/70 sm:min-h-[7rem] sm:px-3 sm:text-sm"
           placeholder={t(
             'timetableOfferGenPlaceholder',
             'Paste message: MAN TGX 18.500, EZ 03/2020, 450tkm, Standort Bremen, Preis 85.000 EUR, Retarder, Standklima'

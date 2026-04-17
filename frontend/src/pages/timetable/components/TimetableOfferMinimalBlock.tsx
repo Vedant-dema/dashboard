@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  ChevronRight,
   CircleDashed,
   FolderOpen,
   Truck,
@@ -25,6 +24,8 @@ type Props = {
   onOpenAbholauftrag: () => void
   vehicleDocsCount: number
   onUploadVehicleDocuments: () => void
+  /** Match Angebotsarchiv column card (blue-tinted gradient panel in timetable drawer). */
+  archiveColumnSurface?: boolean
 }
 
 function parsePriceInput(raw: string): number | null {
@@ -100,6 +101,7 @@ export function TimetableOfferMinimalBlock({
   onOpenAbholauftrag,
   vehicleDocsCount,
   onUploadVehicleDocuments,
+  archiveColumnSurface = false,
 }: Props) {
   const ph = t('timetableOfferMinimalUnderlinePh', '—')
   const regPh = t('timetableContactRegistrationPh', 'MM/YYYY')
@@ -117,6 +119,10 @@ export function TimetableOfferMinimalBlock({
     return 'neutral'
   }, [ledgerKind])
 
+  const outerSurfaceClass = archiveColumnSurface
+    ? 'min-w-0 rounded-xl border border-blue-100/90 bg-gradient-to-br from-blue-50/70 via-white to-white p-3 shadow-sm ring-1 ring-blue-900/[0.04] sm:p-3.5'
+    : 'rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.04] sm:p-6 dark:border-slate-600/70 dark:ring-white/[0.06]'
+
   return (
     <form
       className="min-w-0"
@@ -124,8 +130,8 @@ export function TimetableOfferMinimalBlock({
         e.preventDefault()
       }}
     >
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.04] sm:p-6 dark:border-slate-600/70 dark:ring-white/[0.06]">
-        <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+      <div className={outerSurfaceClass}>
+        <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
           <div className={overviewFieldClass}>
             <label className={overviewLabelClass} htmlFor="tt-min-offer-vt">
               {t('timetableOfferMinimalFahrzeugart', 'Vehicle category')}
@@ -186,8 +192,8 @@ export function TimetableOfferMinimalBlock({
           </div>
         </div>
 
-        <div className="mt-5 border-t border-slate-100 pt-5 dark:border-slate-600/50">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
+        <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-600/50">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <div className="min-w-0 max-w-full sm:max-w-[min(100%,14rem)]">
               <div className={overviewFieldClass}>
                 <label className={overviewLabelClass} htmlFor="tt-min-offer-km">
@@ -244,7 +250,7 @@ export function TimetableOfferMinimalBlock({
           </div>
         </div>
 
-        <div className="mt-5 border-t border-slate-100 pt-5 dark:border-slate-600/50">
+        <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-600/50">
           {ledgerKind === 'conflict' ? (
             <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-snug text-rose-900 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-100">
               {t(
@@ -254,55 +260,54 @@ export function TimetableOfferMinimalBlock({
             </p>
           ) : null}
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-start lg:gap-6">
-            <div className={overviewFieldClass}>
-              <label className={overviewLabelClass} htmlFor="tt-min-offer-seller">
-                {t('timetableOfferSellerAskingShort', 'Seller asking (EUR)')}
-              </label>
-              <input
-                id="tt-min-offer-seller"
-                type="text"
-                inputMode="decimal"
-                value={offer.expected_price_eur != null ? String(offer.expected_price_eur) : ''}
-                onChange={(e) => {
-                  const n = parsePriceInput(e.target.value)
-                  setOfferField({ expected_price_eur: n })
-                }}
-                className={overviewInputClass}
-                placeholder={ph}
-                autoComplete="off"
-              />
+          <div className="grid gap-3 sm:grid-cols-3 sm:items-start sm:gap-x-3 lg:gap-x-4">
+            {/* Column 1 — seller price + pickup order (purchase lane only), aligned like reference layout */}
+            <div className="flex min-w-0 flex-col gap-3">
+              <div className={overviewFieldClass}>
+                <label className={overviewLabelClass} htmlFor="tt-min-offer-seller">
+                  {t('timetableOfferSellerAskingShort', 'Customer price (EUR)')}
+                </label>
+                <input
+                  id="tt-min-offer-seller"
+                  type="text"
+                  inputMode="decimal"
+                  value={offer.expected_price_eur != null ? String(offer.expected_price_eur) : ''}
+                  onChange={(e) => {
+                    const n = parsePriceInput(e.target.value)
+                    setOfferField({ expected_price_eur: n })
+                  }}
+                  className={overviewInputClass}
+                  placeholder={ph}
+                  autoComplete="off"
+                />
+              </div>
               {activeLedgerMode === 'purchase' ? (
-                <div className="mt-2.5 border-t border-emerald-200/70 pt-2.5">
-                  <button
-                    type="button"
-                    onClick={onOpenAbholauftrag}
-                    aria-label={t(
-                      'timetableOfferAbholauftragAria',
-                      'Go to pickup orders for purchase planning',
-                    )}
-                    className="group flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-gradient-to-br from-white to-emerald-50/80 px-3 py-2 text-left shadow-sm ring-1 ring-emerald-900/[0.04] transition hover:border-emerald-400 hover:shadow-md hover:ring-emerald-600/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2"
+                <button
+                  type="button"
+                  onClick={onOpenAbholauftrag}
+                  aria-label={t(
+                    'timetableOfferAbholauftragAria',
+                    'Open pickup order form (purchase)',
+                  )}
+                  className="group flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-emerald-300/90 bg-emerald-50/90 px-3 py-2.5 text-left shadow-sm ring-1 ring-emerald-900/[0.06] transition hover:border-emerald-400 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 sm:min-h-10"
+                >
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-300/90 bg-emerald-200/80 text-emerald-950 transition group-hover:bg-emerald-200"
+                    aria-hidden
                   >
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-200/80 bg-emerald-100/90 text-emerald-900 transition group-hover:border-emerald-300 group-hover:bg-emerald-100"
-                      aria-hidden
-                    >
-                      <Truck className="h-4 w-4" strokeWidth={2} />
-                    </span>
-                    <span className="min-w-0 flex-1 text-xs font-semibold leading-tight text-emerald-950">
-                      {t('timetableOfferAbholauftragCta', 'Pickup order')}
-                    </span>
-                    <ChevronRight
-                      className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-emerald-700"
-                      aria-hidden
-                    />
-                  </button>
-                </div>
+                    <Truck className="h-4 w-4" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 flex-1 font-serif text-xs font-bold leading-snug tracking-tight text-slate-900 sm:text-[13px]">
+                    {t('timetableOfferAbholauftragCta', 'Pickup order')}
+                  </span>
+                </button>
               ) : null}
             </div>
+
+            {/* Column 2 — purchasing bid only */}
             <div className={overviewFieldClass}>
               <label className={overviewLabelClass} htmlFor="tt-min-offer-purchase">
-                {t('timetableOfferPurchaseBidShort', 'Purchasing bid (EUR)')}
+                {t('timetableOfferPurchaseBidShort', 'DEMA price (EUR)')}
               </label>
               <input
                 id="tt-min-offer-purchase"
@@ -318,12 +323,14 @@ export function TimetableOfferMinimalBlock({
                 autoComplete="off"
               />
             </div>
-            <div className={`${overviewFieldClass} min-w-0 sm:col-span-2 lg:col-span-1`}>
+
+            {/* Column 3 — stock flow, stacked */}
+            <div className={`${overviewFieldClass} min-w-0`}>
               <span className={overviewLabelClass} id="tt-min-offer-ledger-label">
-                {t('angebotStockLedgerLabel', 'Stock transaction type')}
+                {t('angeboteStockFlowColHeader', 'Stock flow')}
               </span>
               <div
-                className="flex flex-col gap-1.5"
+                className="mt-1.5 flex flex-col gap-1.5"
                 role="group"
                 aria-labelledby="tt-min-offer-ledger-label"
               >
@@ -365,7 +372,7 @@ export function TimetableOfferMinimalBlock({
           </div>
         </div>
 
-        <div className="mt-6 border-t border-slate-100 pt-6 dark:border-slate-600/50">
+        <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-600/50">
           <div className={overviewFieldClass}>
             <label className={overviewLabelClass} htmlFor="tt-min-offer-ausst">
               {t('timetableOfferMinimalAusstattung', 'Equipment / features')}
@@ -374,8 +381,8 @@ export function TimetableOfferMinimalBlock({
               id="tt-min-offer-ausst"
               value={offer.notes}
               onChange={(e) => setOfferField({ notes: e.target.value })}
-              rows={4}
-              className={`${textareaClassScrollable} !mt-0 min-h-[6.5rem] resize-y sm:min-h-[7rem]`}
+              rows={3}
+              className={`${textareaClassScrollable} !mt-0 min-h-[5.25rem] resize-y sm:min-h-[5.75rem]`}
               placeholder={ph}
             />
           </div>

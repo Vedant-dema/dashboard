@@ -25,7 +25,8 @@
 | 2026-04-13 | [2026-04-13.md](feature-logs/2026-04-13.md) | FEATURE-185 … FEATURE-241 |
 | 2026-04-14 | [2026-04-14.md](feature-logs/2026-04-14.md) | FEATURE-242 … FEATURE-257 |
 | 2026-04-15 | [2026-04-15.md](feature-logs/2026-04-15.md) | FEATURE-258, FEATURE-259, FEATURE-260, FEATURE-261, FEATURE-262, FEATURE-263, FEATURE-264, FEATURE-265, FEATURE-266, FEATURE-267, FEATURE-268, FEATURE-269, FEATURE-270, FEATURE-271, FEATURE-272, FEATURE-273, FEATURE-274, FEATURE-275, FEATURE-276, FEATURE-277, FEATURE-278, FEATURE-279, FEATURE-280, FEATURE-281, FEATURE-282, FEATURE-283, FEATURE-284, FEATURE-285, FEATURE-286, FEATURE-287, FEATURE-288, FEATURE-289, FEATURE-290, FEATURE-291, FEATURE-292, FEATURE-293, FEATURE-295, FEATURE-296, FEATURE-297, FEATURE-298, FEATURE-299, FEATURE-300 |
-| 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) | FEATURE-301, FEATURE-302, FEATURE-303, FEATURE-304, FEATURE-305, FEATURE-306, FEATURE-307, FEATURE-308, FEATURE-309, FEATURE-310, FEATURE-311, FEATURE-312, FEATURE-313, FEATURE-314, FEATURE-315, FEATURE-316, FEATURE-317, FEATURE-318, FEATURE-319, FEATURE-320, FEATURE-321 |
+| 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) | FEATURE-301, FEATURE-302, FEATURE-303, FEATURE-304, FEATURE-305, FEATURE-306, FEATURE-307, FEATURE-308, FEATURE-309, FEATURE-310, FEATURE-311, FEATURE-312, FEATURE-313, FEATURE-314, FEATURE-315, FEATURE-316, FEATURE-317, FEATURE-318, FEATURE-319, FEATURE-320, FEATURE-321, FEATURE-324 |
+| 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) | FEATURE-325, FEATURE-326, FEATURE-328, FEATURE-329, FEATURE-330, FEATURE-331, FEATURE-332, FEATURE-333, FEATURE-334, FEATURE-335, FEATURE-336, FEATURE-337, FEATURE-338, FEATURE-339, FEATURE-340, FEATURE-341, FEATURE-342, FEATURE-343, FEATURE-344, FEATURE-345, FEATURE-346, FEATURE-347, FEATURE-348, FEATURE-349, FEATURE-350 |
 
 ---
 
@@ -358,6 +359,32 @@
 | FEATURE-319 | Timetable offer — vehicle-scoped document upload beside mileage | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 | FEATURE-320 | Abholauftrag — vehicle photo from offer “Unterlagen” images only | Modified | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
 | FEATURE-321 | Purchase dashboard — active customers missing booked next follow-up | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-324 | Timetable offer strip — sold vehicle quick access | Added | 2026-04-16 | [2026-04-16.md](feature-logs/2026-04-16.md) |
+| FEATURE-325 | Timetable Angebot tab — Angebotsarchiv column beside Preisvergleich | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-326 | Timetable contact drawer — grid parity with customer modal (width/height) | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-328 | Timetable offer — Abholauftrag CTA layout and alignment | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-329 | Timetable Angebot tab — equal-width offer columns | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-330 | Timetable Angebot column — surface matches Angebotsarchiv | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-331 | Timetable offer — Abholauftrag CTA under price fields | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-332 | Timetable drawer — sold vehicle control before Kurzfassung | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-333 | Timetable offer — remove generator close and negotiation notes UI | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-334 | Timetable offer — scalable vehicle strip (overflow picker + scroll chips) | Added | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-335 | Timetable offer minimal block — three-column price / stock layout | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-336 | Timetable vehicle strip — earlier overflow threshold + pill selector | Extended | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-337 | Timetable offer tab — slim vehicle bar + denser workspace | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-338 | Timetable vehicle lane selector — narrow trigger width | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-339 | Timetable vehicle picker — z-index above offer generator | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-340 | Timetable vehicle picker — portal + fixed position to escape overflow | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-341 | Timetable offer — vehicle arrows + spiral transition on workspace | Extended | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-342 | Timetable offer — uniform vehicle transition + refined motion | Extended | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-343 | Timetable offer — vehicle strip centered in form | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-344 | Timetable offer — vehicle strip meta + card layout | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-345 | Timetable offer — customer vs DEMA price labels | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-346 | Timetable vehicle strip — remove inside card, smaller | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-347 | Timetable vehicle strip — minimal row, + beside next | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-348 | Sold-vehicle quick access — professional module chrome | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-349 | Sold-vehicle menu rows — label + price meta | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
+| FEATURE-350 | Sold-vehicle menu — same strip detail line as main card | Modified | 2026-04-17 | [2026-04-17.md](feature-logs/2026-04-17.md) |
 
 <!-- NEW ROWS ARE ADDED HERE BY CURSOR AI WHEN A NEW FEATURE IS LOGGED -->
 

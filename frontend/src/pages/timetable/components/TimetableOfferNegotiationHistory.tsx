@@ -1,10 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { TimetableTruckOffer } from '../../../types/timetable'
 import { useAuth } from '../../../contexts/AuthContext'
 import { formatEur, newTruckOfferId } from '../contactDrawerFormUtils'
-import { overviewInputClass, overviewLabelClass } from '../contactDrawerFormClasses'
-
 type Props = {
   offer: TimetableTruckOffer
   setOfferField: (patch: Partial<TimetableTruckOffer>) => void
@@ -14,6 +12,8 @@ type Props = {
   description?: ReactNode
   /** Omit top margin when embedded in a tight column layout. */
   compactTop?: boolean
+  /** When the parent column already shows a title (e.g. Preisvergleich), hide the inner card heading. */
+  hideCardTitle?: boolean
 }
 
 export function TimetableOfferNegotiationHistory({
@@ -23,11 +23,10 @@ export function TimetableOfferNegotiationHistory({
   t,
   description,
   compactTop,
+  hideCardTitle,
 }: Props) {
   const { user } = useAuth()
   const author = useMemo(() => (user?.name ?? user?.email ?? '').trim(), [user?.email, user?.name])
-  const [roundNote, setRoundNote] = useState('')
-
   const rounds = offer.negotiation_rounds ?? []
   const canRecord = offer.expected_price_eur != null || offer.purchase_bid_eur != null
 
@@ -45,11 +44,9 @@ export function TimetableOfferNegotiationHistory({
       ...(author ? { author_name: author } : {}),
       seller_asking_eur: offer.expected_price_eur ?? null,
       purchase_bid_eur: offer.purchase_bid_eur ?? null,
-      ...(roundNote.trim() ? { note: roundNote.trim() } : {}),
     }
     const next = [...rounds, row].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
     setOfferField({ negotiation_rounds: next })
-    setRoundNote('')
   }
 
   const removeRound = (id: string) => {
@@ -63,14 +60,18 @@ export function TimetableOfferNegotiationHistory({
         compactTop ? 'mt-0' : 'mt-5'
       } space-y-3 rounded-2xl border border-indigo-100/90 bg-gradient-to-br from-indigo-50/60 via-white to-white p-4 shadow-sm ring-1 ring-indigo-900/[0.04] sm:p-5`}
     >
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">
-          {t('timetableNegotiationTitle', 'Price negotiation')}
-        </h4>
-        {description ? (
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
-        ) : null}
-      </div>
+      {hideCardTitle ? (
+        description ? <p className="text-xs leading-relaxed text-slate-500">{description}</p> : null
+      ) : (
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">
+            {t('timetableNegotiationTitle', 'Price negotiation')}
+          </h4>
+          {description ? (
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
+          ) : null}
+        </div>
+      )}
 
       {rounds.length === 0 ? (
         <p className="text-sm text-slate-500">{t('timetableNegotiationEmpty', 'No saved rounds yet.')}</p>
@@ -83,7 +84,6 @@ export function TimetableOfferNegotiationHistory({
                 <th className="px-2 py-2">{t('timetableNegotiationColPurchase', 'Purchasing')}</th>
                 <th className="px-2 py-2">{t('timetableNegotiationColSeller', 'Seller')}</th>
                 <th className="px-2 py-2">{t('timetableNegotiationColAuthor', 'By')}</th>
-                <th className="min-w-[6rem] px-2 py-2">{t('timetableNegotiationColNote', 'Note')}</th>
                 <th className="w-10 px-1 py-2" aria-hidden />
               </tr>
             </thead>
@@ -99,9 +99,6 @@ export function TimetableOfferNegotiationHistory({
                   </td>
                   <td className="max-w-[7rem] truncate px-2 py-2 text-slate-600" title={r.author_name}>
                     {r.author_name?.trim() || t('timetableContactActivityAuthorUnknown', 'Not recorded')}
-                  </td>
-                  <td className="max-w-[12rem] px-2 py-2 text-slate-600">
-                    <span className="line-clamp-2 whitespace-pre-wrap break-words">{r.note ?? ''}</span>
                   </td>
                   <td className="px-1 py-1 text-right">
                     <button
@@ -120,18 +117,7 @@ export function TimetableOfferNegotiationHistory({
         </div>
       )}
 
-      <div className="space-y-2">
-        <label className="block">
-          <span className={overviewLabelClass}>{t('timetableNegotiationNoteLabel', 'Note (optional)')}</span>
-          <input
-            type="text"
-            value={roundNote}
-            onChange={(e) => setRoundNote(e.target.value)}
-            className={`${overviewInputClass} mt-1`}
-            placeholder={t('timetableNegotiationNotePlaceholder', 'e.g. Customer revisiting same truck')}
-            autoComplete="off"
-          />
-        </label>
+      <div className="pt-1">
         <button
           type="button"
           onClick={appendRound}

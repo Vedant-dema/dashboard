@@ -10,6 +10,11 @@ type Props = {
   onApplyPrices: (item: TimetableOfferMemoryItem) => void
   /** Select that vehicle in the strip (same calendar row) or jump to the other row; does not merge prices. */
   onOpenOffer?: (item: TimetableOfferMemoryItem) => void
+  /**
+   * `column` — parent supplies the section title; panel shows content only (cleaner grid column).
+   * `card` — default standalone banner with icon + title.
+   */
+  layout?: 'card' | 'column'
 }
 
 function formatWhen(iso: string, localeTag: string, t: Props['t']): string {
@@ -25,28 +30,54 @@ export function TimetableOfferMemoryPanel({
   t,
   onApplyPrices,
   onOpenOffer,
+  layout = 'card',
 }: Props) {
+  const isColumn = layout === 'column'
+  const memoryLabel = t('timetableOfferMemoryTitle', 'Offer memory')
+
   return (
-    <div className="rounded-2xl border border-blue-100/90 bg-gradient-to-br from-blue-50/70 via-white to-white p-4 shadow-sm ring-1 ring-blue-900/[0.04] sm:p-5">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
-          <History className="h-4 w-4" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">
-            {t('timetableOfferMemoryTitle', 'Offer memory')}
-          </h4>
+    <div
+      className={`rounded-2xl border border-blue-100/90 bg-gradient-to-br from-blue-50/70 via-white to-white shadow-sm ring-1 ring-blue-900/[0.04] ${
+        isColumn ? 'flex min-h-0 flex-1 flex-col p-3.5 sm:p-4' : 'p-4 sm:p-5'
+      }`}
+      role="region"
+      aria-label={memoryLabel}
+    >
+      {isColumn ? null : (
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+            <History className="h-4 w-4" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">{memoryLabel}</h4>
+          </div>
         </div>
-      </div>
+      )}
 
       {items.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">
-          {offerHasVehicleIdentity
-            ? t('timetableOfferMemoryEmptyVehicle', 'No prior matching truck offers found for this supplier.')
-            : t('timetableOfferMemoryEmptySupplier', 'No previous offer pricing found for this supplier yet.')}
-        </p>
+        isColumn ? (
+          <div className="flex min-h-[5rem] flex-1 gap-3 sm:min-h-[5.5rem]">
+            <span
+              className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/20"
+              aria-hidden
+            >
+              <History className="h-4 w-4" />
+            </span>
+            <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-slate-600 sm:text-sm">
+              {offerHasVehicleIdentity
+                ? t('timetableOfferMemoryEmptyVehicle', 'No prior matching truck offers found for this supplier.')
+                : t('timetableOfferMemoryEmptySupplier', 'No previous offer pricing found for this supplier yet.')}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm leading-relaxed text-slate-500">
+            {offerHasVehicleIdentity
+              ? t('timetableOfferMemoryEmptyVehicle', 'No prior matching truck offers found for this supplier.')
+              : t('timetableOfferMemoryEmptySupplier', 'No previous offer pricing found for this supplier yet.')}
+          </p>
+        )
       ) : (
-        <div className="mt-3 space-y-2.5">
+        <div className={`min-h-0 space-y-2.5 overflow-y-auto ${isColumn ? 'mt-0 flex-1 pr-0.5 pt-1' : 'mt-3'}`}>
           {items.map((item) => {
             const canApply = item.latestSellerAskingEur != null || item.latestPurchaseBidEur != null
             return (

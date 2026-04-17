@@ -236,7 +236,7 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
             />
           </label>
           <label className="text-sm font-medium text-slate-700">
-            {t('timetableOfferSellerAskingShort', 'Seller asking (EUR)')}
+            {t('timetableOfferSellerAskingShort', 'Customer price (EUR)')}
             <input
               value={form.expected_price_eur}
               onChange={(e) => setForm((prev) => ({ ...prev, expected_price_eur: e.target.value }))}
@@ -244,7 +244,7 @@ export function TimetableOfferModal({ entry, allEntries, localeTag, t, onClose, 
             />
           </label>
           <label className="text-sm font-medium text-slate-700">
-            {t('timetableOfferPurchaseBidShort', 'Purchasing bid (EUR)')}
+            {t('timetableOfferPurchaseBidShort', 'DEMA price (EUR)')}
             <input
               value={form.purchase_bid_eur}
               onChange={(e) => setForm((prev) => ({ ...prev, purchase_bid_eur: e.target.value }))}

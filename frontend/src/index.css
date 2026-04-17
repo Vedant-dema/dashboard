@@ -3632,6 +3632,51 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
   }
 }
 
+/* Timetable offer tab — unified 3D panel transition (vehicle strip + all offer columns) */
+.tt-offer-spiral-next,
+.tt-offer-spiral-prev {
+  transform-origin: 50% 42%;
+  will-change: transform, opacity;
+}
+
+@keyframes tt-offer-spiral-next-kf {
+  from {
+    opacity: 0.82;
+    transform: translate3d(18px, 8px, -36px) rotateY(-8deg) rotateX(3deg) scale(0.989);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg) scale(1);
+  }
+}
+
+@keyframes tt-offer-spiral-prev-kf {
+  from {
+    opacity: 0.82;
+    transform: translate3d(-18px, 8px, -36px) rotateY(8deg) rotateX(3deg) scale(0.989);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg) scale(1);
+  }
+}
+
+.tt-offer-spiral-next {
+  animation: tt-offer-spiral-next-kf 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.tt-offer-spiral-prev {
+  animation: tt-offer-spiral-prev-kf 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-offer-spiral-next,
+  .tt-offer-spiral-prev {
+    animation: none !important;
+    will-change: auto;
+  }
+}
+
 /* Timetable contact drawer — smart summary “Live” tag (light card surfaces) */
 .tt-drawer-ai-live-tag {
   border: 1px solid rgb(192 132 252 / 0.42);

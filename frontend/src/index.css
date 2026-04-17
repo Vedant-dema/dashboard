@@ -1453,6 +1453,40 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
     position: relative;
     z-index: 10;
   }
+
+  /* App route shells — static ambient (gradients/orbs remain; no moving background). */
+  .dema-canvas-base,
+  .dema-canvas-orb-a,
+  .dema-canvas-orb-b,
+  .dema-canvas-orb-c,
+  .dema-canvas-orb-d,
+  .dema-canvas-shine,
+  .dema-canvas-grid {
+    animation: none !important;
+  }
+
+  .auth-ambient-light {
+    animation: none !important;
+    background-position: 0% 40%, 100% 60%, 50% 50%, 0 0;
+  }
+
+  .timetable-chrono-float-a,
+  .timetable-chrono-float-b,
+  .timetable-chrono-ambient::after,
+  .timetable-chrono-base,
+  .timetable-chrono-bands,
+  .timetable-chrono-cyclic,
+  .timetable-chrono-rhythm,
+  .timetable-chrono-trace {
+    animation: none !important;
+  }
+
+  .timetable-chrono-float-a,
+  .timetable-chrono-float-b,
+  .timetable-chrono-cyclic {
+    will-change: auto;
+  }
+
   /* Modal overlay — neutral (customer modal; no animated sapphire wash) */
   .dema-modal-backdrop-vibe {
     background-color: rgb(0 0 0 / 0.45);
@@ -1633,6 +1667,19 @@ html[data-dema-theme="dark"] .react-grid-item > .react-resizable-handle::after {
       0 0 0 4px rgb(59 130 246 / 0.14),
       0 0 40px -4px rgb(37 99 235 / 0.12),
       0 0 48px -8px rgb(125 211 252 / 0.14);
+  }
+
+  /* Kunden list — stop blue “wash” motion (search strip underline + title gradient drift). */
+  .customers-page-genz .customers-header-ai::after {
+    animation: none !important;
+    background-position: 50% 50%;
+    opacity: 0.95;
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .customers-page-genz .customers-genz-title {
+      animation: none !important;
+      background-position: 0% 50%;
+    }
   }
 
   /* Purchase Kalender / timetable — chrono lattice (distinct from Customers sapphire orbs + grid drift) */
@@ -3722,4 +3769,53 @@ html[data-dema-device-tier="modest"] .backdrop-blur-2xl,
 html[data-dema-device-tier="modest"] .backdrop-blur-3xl {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* Page backgrounds: clean, static canvas with no ambient animation effects. */
+.dema-canvas-base,
+.auth-ambient-light,
+.timetable-chrono-base,
+.dema-modal-backdrop-vibe {
+  animation: none !important;
+  will-change: auto !important;
+}
+
+.dema-canvas-orb,
+.dema-canvas-shine,
+.dema-canvas-grid,
+.dema-canvas-noise,
+.auth-grid-drift,
+.auth-float-orb-1,
+.auth-float-orb-2,
+.auth-float-orb-3,
+.auth-dark-aurora,
+.auth-dark-blob-1,
+.auth-dark-blob-2,
+.timetable-chrono-float,
+.timetable-chrono-ambient::after,
+.timetable-chrono-bands,
+.timetable-chrono-cyclic-shell,
+.timetable-chrono-rhythm,
+.timetable-chrono-trace,
+.timetable-chrono-noise {
+  display: none !important;
+  animation: none !important;
+  will-change: auto !important;
+}
+
+.animate-timetable-blob {
+  animation: none !important;
+}
+
+/* Kunden page: remove the blue animated background wash completely. */
+.customers-page-genz {
+  background-color: #f8fafc;
+}
+
+html[data-dema-theme="dark"] .customers-page-genz {
+  background-color: #0f172a;
+}
+
+.customers-page-genz .dema-canvas-ambient {
+  display: none !important;
 }
